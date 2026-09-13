@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Himwellness TikTok Shop Media Buying Master App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .tab-active { background-color: #1e293b; color: #38bdf8; border-bottom: 2px solid #38bdf8; }
+    .badge-boost { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .badge-keep { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+    .badge-remove { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-8 flex flex-wrap items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-amber-500 to-red-600 flex items-center justify-center font-black text-white text-lg shadow-lg shadow-amber-500/20">
+        HIM
+      </div>
+      <div>
+        <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+          Himwellness Growth OS
+          <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Target: RM 1.05M</span>
+        </h1>
+        <p class="text-xs text-slate-400">Hero SKU: HIMCoffee (Target ROI ≥ 7.0 | AOV: RM 148.29)</p>
+      </div>
+    </div>
+
+    <!-- Live Dayparting Pulse -->
+    <div id="liveDaypartingBadge" class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs">
+      <span id="pulseDot" class="h-2 w-2 rounded-full bg-emerald-400 animate-ping"></span>
+      <span id="daypartingText" class="font-medium text-slate-200">Calculating Peak Window...</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+
+    <!-- KPI & Financial Tracker Header -->
+    <section class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+        <span class="text-xs text-slate-400 font-medium">Monthly Target</span>
+        <div class="text-xl sm:text-2xl font-black text-white mt-1">RM 1,050,135</div>
+        <span class="text-xs text-emerald-400">RM 35,004 / day baseline</span>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+        <span class="text-xs text-slate-400 font-medium">Target ROI / CPA Cap</span>
+        <div class="text-xl sm:text-2xl font-black text-amber-400 mt-1">ROI ≥ 7.0</div>
+        <span class="text-xs text-slate-400">Max CPA: <strong class="text-white">RM 21.18</strong></span>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+        <span class="text-xs text-slate-400 font-medium">Baseline AOV</span>
+        <div class="text-xl sm:text-2xl font-black text-sky-400 mt-1">RM 148.29</div>
+        <span class="text-xs text-slate-400">Need ~236 orders/day</span>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+        <span class="text-xs text-slate-400 font-medium">Target Cash-Out ROAS</span>
+        <div class="text-xl sm:text-2xl font-black text-purple-400 mt-1">2.38x Gross</div>
+        <span class="text-xs text-slate-400">Protects 2.0x Net Cash Out</span>
+      </div>
+    </section>
+
+    <!-- Navigation Tabs -->
+    <div class="border-b border-slate-800 flex overflow-x-auto gap-2 text-sm font-medium pb-px">
+      <button onclick="switchTab('strategies')" id="tab-strategies" class="px-4 py-2.5 rounded-t-lg tab-active whitespace-nowrap transition">
+        📚 All 15 Strategies & Workflows
+      </button>
+      <button onclick="switchTab('calculator')" id="tab-calculator" class="px-4 py-2.5 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap transition">
+        ⚖️ 25-Affiliate Video Pruner Tool
+      </button>
+      <button onclick="switchTab('sla')" id="tab-sla" class="px-4 py-2.5 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap transition">
+        🎯 Creative SLA & Scripts
+      </button>
+      <button onclick="switchTab('dayparting')" id="tab-dayparting" class="px-4 py-2.5 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap transition">
+        ⏰ Golden Windows & Dayparting
+      </button>
+    </div>
+
+    <!-- TAB 1: ALL 15 STRATEGIES -->
+    <section id="view-strategies" class="space-y-6">
+      
+      <!-- Filter and Progress Bar -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/50 p-4 rounded-xl border border-slate-800">
+        <div class="flex items-center gap-2">
+          <input type="text" id="strategySearch" placeholder="Search strategy, workflow, keyword..." onkeyup="filterStrategies()" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500 w-64">
+          <select id="moduleFilter" onchange="filterStrategies()" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+            <option value="all">All Modules (1-15)</option>
+            <option value="module1">Module 1: Funnel & Bidding (1-5)</option>
+            <option value="module2">Module 2: Creative & SLA (6-10)</option>
+            <option value="module3">Module 3: Live, LAL & Payday (11-15)</option>
+          </select>
+        </div>
+        <div class="text-xs text-slate-400 flex items-center gap-2">
+          <span>Execution Checklist:</span>
+          <span id="checkedCount" class="font-bold text-sky-400">0</span> / 15 Activated
+        </div>
+      </div>
+
+      <!-- Strategy Cards Grid -->
+      <div id="strategyGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- TAB 2: AFFILIATE VIDEO PRUNER CALCULATOR -->
+    <section id="view-calculator" class="hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 max-w-2xl mx-auto shadow-xl">
+        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+          <span>⚖️</span> Affiliate Video Diagnostic Calculator (GMV Max)
+        </h2>
+        <p class="text-xs text-slate-400 mt-1">Input the metrics directly from your Product GMV Max video breakdown table to get the exact decision.</p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300">Cost / Spend (RM)</label>
+            <input type="number" id="calcSpend" placeholder="e.g. 65.00" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1 focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300">SKU Orders</label>
+            <input type="number" id="calcOrders" placeholder="e.g. 0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1 focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300">Gross Revenue (RM)</label>
+            <input type="number" id="calcRevenue" placeholder="e.g. 0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1 focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300">2-Second View Rate (%)</label>
+            <input type="number" id="calc2s" placeholder="e.g. 18.5" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white mt-1 focus:border-sky-500">
+          </div>
+        </div>
+
+        <button onclick="diagnoseVideo()" class="w-full mt-5 bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2.5 rounded-lg text-sm transition">
+          Diagnose Creative Action
+        </button>
+
+        <div id="calcResult" class="hidden mt-6 p-4 rounded-xl border"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: CREATIVE SLA & COPYABLE SCRIPTS -->
+    <section id="view-sla" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Script 1 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Strategy 6</span>
+              <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded">High AOV</span>
+            </div>
+            <h3 class="text-base font-bold text-white mt-2">"Rugi Beli Satu" (Bundle 3 Boxes)</h3>
+            <p class="text-xs text-slate-400 mt-1">Pushes RM 199 3-Box Set + Free Shaker to lift AOV.</p>
+            <div class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-slate-300 mt-3 space-y-2 border border-slate-800">
+              <p><strong>(0-3s Hook):</strong> "Tolong jangan buat silap ni bila beli HIMCoffee dekat beg kuning. Ramai menyesal beli sekotak!"</p>
+              <p><strong>(4-12s Agitation):</strong> "Sekotak ada berapa sachet je bang. Baru minum seminggu, badan baru nak rasa sedap, dah habis. Nak repeat kena tunggu postage lagi."</p>
+              <p><strong>(13-20s Stacking):</strong> "Sekarang HQ buat promo combo 3 kotak. Jatuh harga sekotak jauh jimat, dapat free shaker, postage free."</p>
+              <p><strong>(21-25s CTA):</strong> "Tekan beg kuning sekarang, pilih 'Pakej 3 Kotak Jimat'. Jangan beli satu!"</p>
+            </div>
+          </div>
+          <button onclick="copyScript('script1')" id="btn-script1" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-2 rounded-lg border border-slate-700 transition">
+            📋 Copy Script to Clipboard
+          </button>
+        </div>
+
+        <!-- Script 2 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-pink-400 uppercase tracking-wider">Strategy 7A</span>
+              <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Female Buyer</span>
+            </div>
+            <h3 class="text-base font-bold text-white mt-2">"Isteri Prihatin" (Wife POV)</h3>
+            <p class="text-xs text-slate-400 mt-1">Targets women buying for exhausted husbands without policy bans.</p>
+            <div class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-slate-300 mt-3 space-y-2 border border-slate-800">
+              <p><strong>(0-3s Hook):</strong> "Kesian tengok suami balik kerja pukul 6 terus terlentap atas sofa. Penat sangat katanya..."</p>
+              <p><strong>(4-12s Core):</strong> "Saya gantikan kopi manis dia dengan HIMCoffee ni. Herba premium, tak ada gula berlebihan, tak buat jantung laju. Sekarang balik kerja ada tenaga tolong basuh pinggan & layan anak."</p>
+              <p><strong>(13-20s CTA):</strong> "Isteri yang sayangkan suami, hadiahkan dia sekotak dua. Tekan beg kuning sebelum promo HQ habis."</p>
+            </div>
+          </div>
+          <button onclick="copyScript('script2')" id="btn-script2" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-2 rounded-lg border border-slate-700 transition">
+            📋 Copy Script to Clipboard
+          </button>
+        </div>
+
+        <!-- Script 3 -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold text-blue-400 uppercase tracking-wider">Strategy 7B</span>
+              <span class="text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded">Blue-Collar</span>
+            </div>
+            <h3 class="text-base font-bold text-white mt-2">"Abang Lori & Shift-Worker"</h3>
+            <p class="text-xs text-slate-400 mt-1">Replaces unhealthy canned energy drinks with sustained herbal stamina.</p>
+            <div class="bg-slate-950 p-3 rounded-lg text-xs font-mono text-slate-300 mt-3 space-y-2 border border-slate-800">
+              <p><strong>(0-3s Hook):</strong> "Siapa sini kerja drive jauh atau buat kerja berat yang hari-hari 'bergantung' dengan air tin kedai runcit?"</p>
+              <p><strong>(4-12s Core):</strong> "Air tin tu gula tinggi bang, sejam dua segar lepas tu badan hancur, perut berangin. Switch kepada HIMCoffee. Tenaga maintain sampai petang, tak berdebar, kepala tak pening."</p>
+              <p><strong>(13-20s CTA):</strong> "Pilih pakej combo dekat beg kuning bawah, jimat banyak untuk stok sebulan."</p>
+            </div>
+          </div>
+          <button onclick="copyScript('script3')" id="btn-script3" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-2 rounded-lg border border-slate-700 transition">
+            📋 Copy Script to Clipboard
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- TAB 4: GOLDEN WINDOWS & DAYPARTING MONITOR -->
+    <section id="view-dayparting" class="hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <h2 class="text-base font-bold text-white mb-2">Malaysian TikTok Shop Hourly Action Map</h2>
+        <p class="text-xs text-slate-400 mb-6">Synchronize your TTAM ad schedules and GMV Max checks against these verified peak revenue zones.</p>
+
+        <div class="space-y-3">
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-start gap-4">
+            <div class="px-2.5 py-1 rounded bg-red-950 text-red-400 font-mono text-xs font-bold border border-red-800">02:00 - 05:00</div>
+            <div>
+              <h4 class="text-sm font-semibold text-red-300">Dead Zone 1 (Deep Sleep)</h4>
+              <p class="text-xs text-slate-400 mt-0.5">GMV drops to RM0, ROAS hits 0.0x. TTAM schedules must be completely paused. No ads permitted to deliver.</p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-start gap-4">
+            <div class="px-2.5 py-1 rounded bg-red-950 text-red-400 font-mono text-xs font-bold border border-red-800">06:00 - 08:00</div>
+            <div>
+              <h4 class="text-sm font-semibold text-red-300">Dead Zone 2 (Morning Routine / Commute)</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Scrollers getting ready for work. Incidental 1 sale can show fake ROAS spike, but baseline volume is near zero. Keep TTAM turned OFF.</p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-emerald-900/50 flex items-start gap-4">
+            <div class="px-2.5 py-1 rounded bg-emerald-950 text-emerald-300 font-mono text-xs font-bold border border-emerald-700">11:00 - 13:00</div>
+            <div>
+              <h4 class="text-sm font-semibold text-emerald-300">Golden Window 1 (Midday / Lunch Rush)</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Strongest daytime purchasing spike. Inject fresh creative iterations at 10:30 AM to enter review right as this window opens.</p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-start gap-4">
+            <div class="px-2.5 py-1 rounded bg-amber-950 text-amber-300 font-mono text-xs font-bold border border-amber-800">16:00 - 17:30</div>
+            <div>
+              <h4 class="text-sm font-semibold text-amber-300">Afternoon Lull (Workday Wrap-Up)</h4>
+              <p class="text-xs text-slate-400 mt-0.5">GMV dip between lunch and evening. Strictly freeze budget edits and creative boosts during this window.</p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-emerald-900/50 flex items-start gap-4">
+            <div class="px-2.5 py-1 rounded bg-emerald-950 text-emerald-300 font-mono text-xs font-bold border border-emerald-700">18:00 - 20:00</div>
+            <div>
+              <h4 class="text-sm font-semibold text-emerald-300">Golden Window 2 (Post-Work Efficiency Spike)</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Sharpest ROAS spikes of the day (up to 15x). Evening batch injection at 17:30 PM catches this surge.</p>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-950 border border-sky-900/50 flex items-start gap-4 ring-1 ring-sky-500/30">
+            <div class="px-2.5 py-1 rounded bg-sky-950 text-sky-300 font-mono text-xs font-bold border border-sky-700">21:00 - 23:30</div>
+            <div>
+              <h4 class="text-sm font-semibold text-sky-300">Golden Window 3 (The Mega-Peak at 22:00)</h4>
+              <p class="text-xs text-slate-400 mt-0.5">Highest daily revenue window (RM 6k–RM 8k at 22:00). Scale Live GMV Max budget by +20% at 20:30 PM to flood AI stream with prime buyers.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Complete 15 Strategy Dataset
+    const strategies = [
+      {
+        id: 1,
+        module: "module1",
+        title: "The TTAM-to-GMV Max Synergistic Feeder Funnel",
+        summary: "Unlocking GMV Max spend at ROI ≥ 7.0 by feeding high-intent shop traffic from TTAM.",
+        explanation: "Product GMV Max locked at Target ROI 7.0+ will not spend aggressively on cold traffic because 7x return on cold impressions is rare. To force GMV Max to spend RM 1,500–RM 2,500/day at ROI ≥ 7.0, you must artificially expand the warm retargeting pool using TTAM Traffic campaigns linked to your Shop Profile.",
+        workflow: [
+          "Allocate RM 2,200–RM 2,500/day across TTAM Traffic campaigns.",
+          "Set Campaign Objective: Traffic -> Destination: TikTok Shop Profile / Product Page.",
+          "Lock TTAM delivery strictly to the 3 Golden Windows (11-13h, 18-20h, 21-23:30h).",
+          "Check Seller Center Analytics daily: verify shop visitors increase to 4,500+ and GMV Max spend expands."
+        ]
+      },
+      {
+        id: 2,
+        module: "module1",
+        title: "The 3-Tier TTAM Audience Segmentation",
+        summary: "Targeting LAL 1% Purchases, Shift-Workers, and Wives in separate ABO campaigns.",
+        explanation: "Never send broad unqualified traffic to your shop from TTAM. If cold visitors bounce, they pollute GMV Max's retargeting pixel. Segmenting into 3 high-intent buyer personas ensures only qualified lookalikes land on your product page.",
+        workflow: [
+          "Campaign 1: LAL 1% Complete Purchase 180D + LAL 1% Initiate Checkout 180D (RM 800/day).",
+          "Campaign 2: Male 25-54, Interests: Commercial Transport, Logistics, Heavy Equipment, Energy Drinks (RM 700/day).",
+          "Campaign 3: Female 25-45, Interests: Family Health, Household, Wellness (RM 700/day).",
+          "Always exclude 'Complete Purchase 30D' across all 3 campaigns."
+        ]
+      },
+      {
+        id: 3,
+        module: "module1",
+        title: "The Golden-Window Dayparting Protocol",
+        summary: "Restricting ad delivery to 11-13h, 18-20h, and 21-23:30h (Peak at 22:00).",
+        explanation: "Your data proves GMV surges at midday (11-13h), transition (18-20h), and late night (21-23h, reaching RM 6k-8k at 22:00). Running ads evenly 24/7 bleeds up to 30% of your daily cash in dead zones.",
+        workflow: [
+          "In TTAM Ad Scheduling, check ONLY: 11:00-13:00, 18:00-20:00, 21:00-23:30.",
+          "Leave 01:30-08:30 completely unselected in TTAM.",
+          "At 10:45 AM, verify HIMCoffee GMV Max campaign is active for lunch rush.",
+          "At 20:45 PM, verify top boosted affiliate creatives have budget available for the 22:00 peak."
+        ]
+      },
+      {
+        id: 4,
+        module: "module1",
+        title: "The 25-Affiliate GMV Max Pruning & Boost Scorecard",
+        summary: "Enforcing Max CPA ≤ RM 21.18 to protect Target ROI ≥ 7.0.",
+        explanation: "With AOV RM 148.29 and ROI ≥ 7.0, your Max CPA is strictly RM 21.18. Do not let dead affiliate videos waste spend. Use daily data checks to boost winners and eliminate margin bleeders.",
+        workflow: [
+          "BOOST: ROI ≥ 7.0, Orders ≥ 3, CPA ≤ RM 22.00, CVR ≥ 3.5% (Max 2-3 boosted simultaneously).",
+          "REMOVE: Cost reaches RM 50-65 with 0 orders -> Exclude immediately.",
+          "REMOVE: Cost > RM 80 and CPA > RM 28.00 (ROI < 5.3) -> Exclude immediately.",
+          "REMOVE: Exploration status = 'Failed Exploration' -> Exclude."
+        ]
+      },
+      {
+        id: 5,
+        module: "module1",
+        title: "Dead-Zone Budget Protection & Cash-Bleed Prevention",
+        summary: "Suppressing delivery between 02:00-08:00 and freezing changes at 16:00-17:30.",
+        explanation: "The 02:00-05:00 dead zone yields RM0 GMV and 0.0x ROAS. Early morning (06:00-08:00) has near-zero volume. The 16:00-17:30 dip is a focus lull. Delivering during these times burns margin and raises your average CPA.",
+        workflow: [
+          "Hard lock TTAM ad schedule: complete shut-off between 01:30 AM and 08:30 AM.",
+          "Optional GMV Max night shield: If spend leaks past RM 50 between 02:00-05:00, bump Target ROI to 8.5 at 23:45 PM; reset to 7.0 at 10:00 AM.",
+          "Afternoon Freeze Rule: Never launch new ads or increase budgets between 15:30 and 17:30."
+        ]
+      },
+      {
+        id: 6,
+        module: "module2",
+        title: "The 'Rugi Beli Satu' High-AOV Briefing Framework",
+        summary: "Using loss-aversion psychology to push the 3-Box + Shaker Bundle (RM 199).",
+        explanation: "At RM 148.29 AOV, you need 236 orders/day. If customers buy 1 box (RM 89), required orders spike. Briefing the creative team on 'Rugi beli satu' shifts the purchase mix to 3 boxes, pushing AOV past RM 180+ and dropping daily order requirements to ~194.",
+        workflow: [
+          "Brief creative team with side-by-side comparison: 1 Box (sad) vs 3 Boxes + Shaker (grand).",
+          "Hook: 'Tolong jangan buat silap ni... ramai menyesal beli sekotak!'",
+          "Agitation: 1 box runs out in 1 week right when stamina starts kicking in.",
+          "Value stack: 3-box combo drops price per box, free shaker, free postage."
+        ]
+      },
+      {
+        id: 7,
+        module: "module2",
+        title: "The Third-Party POV Creative Matrix (Wife & Shift-Worker)",
+        summary: "Unlocking fresh audience pools without triggering TikTok medical policy bans.",
+        explanation: "Dr. Samhan authority ads are already saturated. Third-Party POVs bypass medical claims (no banned terms like 'ubat kuat') by positioning HIMCoffee as daily lifestyle vitality for families and shift-workers.",
+        workflow: [
+          "Angle A (Isteri Prihatin): Wife replaces husband's sugary coffee with HIMCoffee so he has energy to help with kids after 6:00 PM.",
+          "Angle B (Abang Lori / Rider): Blue-collar driver replaces gastric-inducing canned energy drinks with sustained herbal stamina.",
+          "Submit briefs to marketing team with compliance guidelines strictly forbidding medical treatment claims."
+        ]
+      },
+      {
+        id: 8,
+        module: "module2",
+        title: "The Creative Metric Scorecard & Team SLA",
+        summary: "Actionable Monday SLA based on 2s View Rate, 6s View Rate, CTR, and CVR.",
+        explanation: "Stop letting the creative team guess performance using vanity likes. Pull GMV Max video breakdown data every Monday at 10:00 AM and hand over diagnostic instructions based on ad auction math.",
+        workflow: [
+          "2s View Rate < 25%: Hook failed -> Change first 3 seconds with pattern interrupts.",
+          "6s View Rate < 12%: Story dropped -> Trim pauses between seconds 3 and 8.",
+          "CTR < 1.8%: CTA failed -> Add explicit yellow bag finger-point in last 5 seconds.",
+          "CVR < 3.5%: Price mismatch -> State bundle pricing in video to filter tire-kickers."
+        ]
+      },
+      {
+        id: 9,
+        module: "module2",
+        title: "Creative Injection & Replacement Timing",
+        summary: "Injecting new creatives at 10:30 AM or 17:30 PM on Tuesdays and Fridays.",
+        explanation: "Launching videos during dead zones ruins test impressions and leads the GMV Max algorithm to throttle them. Injecting right before lunch (10:30 AM) or evening (17:30 PM) ensures review completes as buying intent spikes.",
+        workflow: [
+          "Upload/toggle new in-house or affiliate creatives on Tuesdays and Fridays only.",
+          "Morning Batch: Activate at 10:30 AM for the 11:00-13:00 lunch rush.",
+          "Evening Batch: Activate at 17:30 PM for the 18:00-20:00 and 21:00-23:00 waves.",
+          "Never activate new videos between 15:00-17:30 or after 23:00."
+        ]
+      },
+      {
+        id: 10,
+        module: "module2",
+        title: "The 25-Affiliate 48-Hour Funnel & 365-Day Auth Code Pipeline",
+        summary: "Enforcing 365-day Spark codes and filtering organic views before boosting.",
+        explanation: "Affiliate codes expiring after 30 days kill active GMV Max delivery without notice. Furthermore, boosting all 25 affiliate videos directly burns margin. Filter organic winners before spending.",
+        workflow: [
+          "Mandate all Spark Ad codes are requested for 365 Days in TikTok Creator Center.",
+          "Track codes in a centralized sheet with expiry date and SKU link.",
+          "48-Hour Organic Filter: If video gets < 300 organic views, do not boost.",
+          "If video gets > 1,000 views or ≥ 1 organic sale, flag as 'Prime Candidate for GMV Max Boost'."
+        ]
+      },
+      {
+        id: 11,
+        module: "module3",
+        title: "Live GMV Max Dayparting & Peak-Hour Spend Surge",
+        summary: "Surging AI Live ad budget by +20% at 20:30 PM to capture the 22:00 peak.",
+        explanation: "Running an AI live stream for 16 hours straight bleeds cash during off-peak hours when no manual flash vouchers are running. Managing spend dynamically from the ad dashboard concentrates impressions into high-converting windows.",
+        workflow: [
+          "Daytime Baseline: Maintain standard conservative Live GMV Max budget.",
+          "At 20:30 PM: Check live stream ROAS. If ≥ 3.0x, increase daily budget by 20%-25%.",
+          "Capture the massive RM 6k-RM 8k GMV surge between 21:00 and 23:30.",
+          "At 23:45 PM: Reset Live GMV Max budget back to baseline to prevent 02:00-05:00 bleed."
+        ]
+      },
+      {
+        id: 12,
+        module: "module3",
+        title: "AI Stream Visual-Trust Overlay & Product Pinning Protocol",
+        summary: "Screen banners, KKM/Dr. Samhan badges, and permanently pinning the 3-Box Set.",
+        explanation: "AI digital humans lack human spontaneity. Without manual flash vouchers, visual elements in OBS / Live Studio must establish legitimacy and urgency within 3 seconds of a viewer joining.",
+        workflow: [
+          "Top Banner: 'PENGHANTARAN SEGERA | 100% ORIGINAL HQ'.",
+          "Corner Badges: Dr. Samhan brand logo + Halal / KKM approval seal.",
+          "Bottom Ticker: 'PAKEJ 3 KOTAK JIMAT RM50 + FREE GIFT - STOK TERHAD'.",
+          "Automated Pinning Rule: Permanently pin the 3-Box HIMCoffee Bundle as Product #1."
+        ]
+      },
+      {
+        id: 13,
+        module: "module3",
+        title: "Audience Asset Stacking & Lookalike Scaling (LAL 1% & 1-2%)",
+        summary: "Staging LAL 1% to LAL 1-2% from 180D Purchases and Checkouts.",
+        explanation: "LAL 1% audiences reach frequency saturation within 10-14 days. To hit RM 1,050,135, you must systematically scale into LAL 1-2% and Add-to-Cart lookalikes without dropping conversion quality.",
+        workflow: [
+          "Weeks 1-2: Target LAL 1% Complete Purchase 180D + LAL 1% Initiate Checkout 180D.",
+          "Week 3 (Frequency > 2.2): Expand to LAL 1-2% Complete Purchase + LAL 1% ATC 180D.",
+          "Week 4 (Payday): Stack all 180D custom audiences (Purchase, ATC, PDP View) + LAL 1-3%.",
+          "Ensure LAL audiences are set to auto-refresh weekly in TTAM."
+        ]
+      },
+      {
+        id: 14,
+        module: "module3",
+        title: "In-Listing Variant Prioritization (Driving the 3-Box Choice)",
+        summary: "Configuring Seller Center child variants so Option 1 is 'Paling Laris 3 Kotak'.",
+        explanation: "TikTok Shop defaults to showing the lowest priced variant (1 Box ~RM 89) if not configured. If a customer clicks expecting RM 89 and sees RM 199, they bounce. Set the 3-box set as Option 1 to establish value upfront.",
+        workflow: [
+          "In Seller Center -> Edit HIMCoffee -> Set Option 1 as '[PALING LARIS] 3 Kotak Jimat + Free Shaker'.",
+          "Set Option 2 as '2 Kotak Jimat' and Option 3 as '[CUBA JALAN] 1 Kotak (Tiada Gift)'.",
+          "Add a high-contrast 'BEST VALUE / 60% JIMAT' badge graphic to the 3-box thumbnail.",
+          "Align video CTA to say: 'Bila tekan beg kuning, terus tekan pilihan 3 Kotak Jimat'."
+        ]
+      },
+      {
+        id: 15,
+        module: "module3",
+        title: "Malaysian Payday & Mega-Event Surge Architecture",
+        summary: "Pacing budget: Accumulation (1st-24th) vs Payday Surge (25th-2nd) generating RM 60k/day.",
+        explanation: "Over 45% of monthly TikTok Shop GMV in Malaysia occurs between the 25th and 2nd. Running a flat daily budget misses this surge. Accumulate carts all month, then double spend during payday to harvest cash.",
+        workflow: [
+          "Days 1-24 (Accumulation): Spend RM 3,000-RM 3,500/day. Build ATC and PDP views. Aim RM 20k-25k GMV/day.",
+          "Day 25-2nd (Payday Surge): Double TTAM Feeder spend to RM 4,500/day. Surge Live GMV Max.",
+          "Product GMV Max harvests accumulated carts, spending RM 2,000-RM 3,500/day at ROI ≥ 7.0.",
+          "Generate RM 55,000-RM 70,000 GMV daily during these 8 days (~RM 480k total) to crush RM 1.05M."
+        ]
+      }
+    ];
+
+    // Render Strategy Cards
+    function renderStrategies(data) {
+      const grid = document.getElementById("strategyGrid");
+      grid.innerHTML = "";
+      
+      const storedChecks = JSON.parse(localStorage.getItem("him_checks") || "{}");
+
+      data.forEach(s => {
+        const isChecked = storedChecks[s.id] || false;
+        const card = document.createElement("div");
+        card.className = `bg-slate-900 border ${isChecked ? 'border-sky-500/50 bg-slate-900/90' : 'border-slate-800'} rounded-xl p-5 flex flex-col justify-between transition hover:border-slate-700`;
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold text-sky-400 uppercase tracking-wider">Strategy ${s.id}</span>
+              <label class="flex items-center gap-1.5 cursor-pointer text-xs ${isChecked ? 'text-emerald-400 font-semibold' : 'text-slate-400'}">
+                <input type="checkbox" onchange="toggleCheck(${s.id})" ${isChecked ? 'checked' : ''} class="rounded bg-slate-800 border-slate-700 text-sky-500 focus:ring-0">
+                <span>${isChecked ? 'Active' : 'Mark Done'}</span>
+              </label>
+            </div>
+            <h3 class="text-base font-bold text-white mt-2">${s.title}</h3>
+            <p class="text-xs text-slate-300 font-medium mt-1">${s.summary}</p>
+            
+            <div class="mt-4 pt-3 border-t border-slate-800/80">
+              <span class="text-xs font-semibold text-slate-400 block mb-1">Why This Matters:</span>
+              <p class="text-xs text-slate-400 leading-relaxed">${s.explanation}</p>
+            </div>
+
+            <div class="mt-3 pt-3 border-t border-slate-800/80">
+              <span class="text-xs font-semibold text-sky-400 block mb-1.5">Operational Workflow:</span>
+              <ul class="space-y-1 text-xs text-slate-300">
+                ${s.workflow.map(w => `<li class="flex items-start gap-1.5"><span class="text-sky-500 mt-0.5">•</span><span>${w}</span></li>`).join('')}
+              </ul>
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      updateCheckCount();
+    }
+
+    // Tab Switcher
+    function switchTab(tab) {
+      ['strategies', 'calculator', 'sla', 'dayparting'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).className = 'px-4 py-2.5 rounded-t-lg text-slate-400 hover:text-slate-200 whitespace-nowrap transition';
+      });
+      document.getElementById(`view-${tab}`).classList.remove('hidden');
+      document.getElementById(`tab-${tab}`).className = 'px-4 py-2.5 rounded-t-lg tab-active whitespace-nowrap transition';
+    }
+
+    // Filter Strategies
+    function filterStrategies() {
+      const q = document.getElementById("strategySearch").value.toLowerCase();
+      const mod = document.getElementById("moduleFilter").value;
+
+      const filtered = strategies.filter(s => {
+        const matchesQuery = s.title.toLowerCase().includes(q) || s.summary.toLowerCase().includes(q) || s.explanation.toLowerCase().includes(q);
+        const matchesMod = mod === "all" || s.module === mod;
+        return matchesQuery && matchesMod;
+      });
+
+      renderStrategies(filtered);
+    }
+
+    // Toggle Checklist
+    function toggleCheck(id) {
+      const storedChecks = JSON.parse(localStorage.getItem("him_checks") || "{}");
+      storedChecks[id] = !storedChecks[id];
+      localStorage.setItem("him_checks", JSON.stringify(storedChecks));
+      filterStrategies();
+    }
+
+    function updateCheckCount() {
+      const storedChecks = JSON.parse(localStorage.getItem("him_checks") || "{}");
+      const count = Object.values(storedChecks).filter(Boolean).length;
+      document.getElementById("checkedCount").innerText = count;
+    }
+
+    // Affiliate Video Calculator Logic
+    function diagnoseVideo() {
+      const spend = parseFloat(document.getElementById("calcSpend").value) || 0;
+      const orders = parseInt(document.getElementById("calcOrders").value) || 0;
+      const revenue = parseFloat(document.getElementById("calcRevenue").value) || 0;
+      const view2s = parseFloat(document.getElementById("calc2s").value) || 0;
+      const resultBox = document.getElementById("calcResult");
+
+      if (spend <= 0) {
+        alert("Please enter a valid spend amount.");
+        return;
+      }
+
+      const roi = spend > 0 ? (revenue / spend).toFixed(2) : 0;
+      const cpa = orders > 0 ? (spend / orders).toFixed(2) : 0;
+
+      let badge = "";
+      let title = "";
+      let reasoning = "";
+      let actionClass = "";
+
+      // Rule 1: BOOST
+      if (roi >= 7.0 && orders >= 3 && cpa <= 22.00) {
+        badge = "🚀 ACTION: CLICK BOOST";
+        title = "Top Performing Unicorn Video";
+        reasoning = `ROI is ${roi}x (≥ 7.0) with ${orders} orders and an exceptional CPA of RM ${cpa} (≤ RM 22). Boost this video to maximize impression share.`;
+        actionClass = "badge-boost";
+      }
+      // Rule 2: REMOVE (Zero orders with spend >= 50)
+      else if (orders === 0 && spend >= 50) {
+        badge = "❌ ACTION: REMOVE / EXCLUDE";
+        title = "Zero-Conversion Budget Drain";
+        reasoning = `Video has spent RM ${spend.toFixed(2)} with ZERO purchases. At RM 50+ spend without sales, an ROI of 7.0 is mathematically unachievable. Exclude immediately.`;
+        actionClass = "badge-remove";
+      }
+      // Rule 3: REMOVE (High CPA / Low ROI)
+      else if (orders > 0 && (cpa > 28.00 || roi < 5.0)) {
+        badge = "❌ ACTION: REMOVE / EXCLUDE";
+        title = "Margin Bleeder Video";
+        reasoning = `CPA is RM ${cpa} (> RM 28) and ROI is only ${roi}x (< 5.0). After TikTok's 25% fees and taxes, this video is losing net cash. Exclude it.`;
+        actionClass = "badge-remove";
+      }
+      // Rule 4: LEAVE ALONE (Exploring)
+      else {
+        badge = "⏸️ ACTION: LEAVE ALONE (KEEP RUNNING)";
+        title = "Candidate in System Exploration";
+        reasoning = `Spend is RM ${spend.toFixed(2)} with ${orders} order(s) and ROI ${roi}x. Metric is still within exploration tolerance. Let system gather more data.`;
+        actionClass = "badge-keep";
+      }
+
+      resultBox.className = `mt-6 p-4 rounded-xl border ${actionClass}`;
+      resultBox.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-black tracking-wider uppercase">${badge}</span>
+          <span class="text-xs font-mono">Calculated CPA: <strong>RM ${cpa}</strong> | ROI: <strong>${roi}x</strong></span>
+        </div>
+        <h4 class="text-sm font-bold mt-1.5">${title}</h4>
+        <p class="text-xs mt-1 leading-relaxed opacity-90">${reasoning}</p>
+      `;
+      resultBox.classList.remove("hidden");
+    }
+
+    // Copy Script Logic
+    function copyScript(scriptId) {
+      const scripts = {
+        script1: `(0-3s Hook): "Tolong jangan buat silap ni bila beli HIMCoffee dekat beg kuning. Ramai menyesal beli sekotak!"\n(4-12s Agitation): "Sekotak ada berapa sachet je bang. Baru minum seminggu, badan baru nak rasa sedap, dah habis. Nak repeat kena tunggu postage lagi."\n(13-20s Stacking): "Sekarang HQ buat promo combo 3 kotak. Jatuh harga sekotak jauh jimat, dapat free shaker, postage free."\n(21-25s CTA): "Tekan beg kuning sekarang, pilih 'Pakej 3 Kotak Jimat'. Jangan beli satu!"`,
+        script2: `(0-3s Hook): "Kesian tengok suami balik kerja pukul 6 terus terlentap atas sofa. Penat sangat katanya..."\n(4-12s Core): "Saya gantikan kopi manis dia dengan HIMCoffee ni. Herba premium, tak ada gula berlebihan, tak buat jantung laju. Sekarang balik kerja ada tenaga tolong basuh pinggan & layan anak."\n(13-20s CTA): "Isteri yang sayangkan suami, hadiahkan dia sekotak dua. Tekan beg kuning sebelum promo HQ habis."`,
+        script3: `(0-3s Hook): "Siapa sini kerja drive jauh atau buat kerja berat yang hari-hari 'bergantung' dengan air tin kedai runcit?"\n(4-12s Core): "Air tin tu gula tinggi bang, sejam dua segar lepas tu badan hancur, perut berangin. Switch kepada HIMCoffee. Tenaga maintain sampai petang, tak berdebar, kepala tak pening."\n(13-20s CTA): "Pilih pakej combo dekat beg kuning bawah, jimat banyak untuk stok sebulan."`
+      };
+
+      navigator.clipboard.writeText(scripts[scriptId]).then(() => {
+        const btn = document.getElementById(`btn-${scriptId}`);
+        const originalText = btn.innerText;
+        btn.innerText = "✅ Copied to Clipboard!";
+        btn.classList.add("text-emerald-400");
+        setTimeout(() => {
+          btn.innerText = originalText;
+          btn.classList.remove("text-emerald-400");
+        }, 2000);
+      });
+    }
+
+    // Malaysian Live Dayparting Clock Logic
+    function updateDaypartingClock() {
+      // Calculate current Malaysian time (UTC+8)
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const myTime = new Date(utc + (3600000 * 8));
+      const hours = myTime.getHours();
+      const minutes = myTime.getMinutes();
+      const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} MYT`;
+
+      const textEl = document.getElementById("daypartingText");
+      const dotEl = document.getElementById("pulseDot");
+
+      // Check Golden Windows & Dead Zones
+      if (hours >= 2 && hours < 5) {
+        textEl.innerHTML = `<span class="text-red-400 font-bold">[DEAD ZONE]</span> ${timeStr} — Deep Sleep. Suppress all ads.`;
+        dotEl.className = "h-2 w-2 rounded-full bg-red-500 animate-pulse";
+      } else if (hours >= 6 && hours < 8) {
+        textEl.innerHTML = `<span class="text-red-400 font-bold">[DEAD ZONE]</span> ${timeStr} — Morning Routine. Keep TTAM OFF.`;
+        dotEl.className = "h-2 w-2 rounded-full bg-red-500 animate-pulse";
+      } else if (hours >= 11 && hours < 13) {
+        textEl.innerHTML = `<span class="text-emerald-400 font-bold">[GOLDEN WINDOW 1]</span> ${timeStr} — Lunch Rush Active!`;
+        dotEl.className = "h-2 w-2 rounded-full bg-emerald-400 animate-ping";
+      } else if (hours >= 16 && (hours < 17 || (hours === 17 && minutes <= 30))) {
+        textEl.innerHTML = `<span class="text-amber-400 font-bold">[AFTERNOON LULL]</span> ${timeStr} — Freeze budget & bid edits.`;
+        dotEl.className = "h-2 w-2 rounded-full bg-amber-400 animate-pulse";
+      } else if (hours >= 18 && hours < 20) {
+        textEl.innerHTML = `<span class="text-emerald-400 font-bold">[GOLDEN WINDOW 2]</span> ${timeStr} — Evening Efficiency Spike!`;
+        dotEl.className = "h-2 w-2 rounded-full bg-emerald-400 animate-ping";
+      } else if (hours >= 21 && (hours < 23 || (hours === 23 && minutes <= 30))) {
+        textEl.innerHTML = `<span class="text-sky-400 font-bold">[MEGA-PEAK 3]</span> ${timeStr} — Prime Bedtime Rush (Surge Mode)!`;
+        dotEl.className = "h-2 w-2 rounded-full bg-sky-400 animate-ping";
+      } else {
+        textEl.innerHTML = `<span class="text-slate-300 font-medium">[STANDARD DELIVERY]</span> ${timeStr} — Baseline Harvest.`;
+        dotEl.className = "h-2 w-2 rounded-full bg-slate-400";
+      }
+    }
+
+    // Init App
+    renderStrategies(strategies);
+    updateDaypartingClock();
+    setInterval(updateDaypartingClock, 30000);
+  </script>
+</body>
+</html>

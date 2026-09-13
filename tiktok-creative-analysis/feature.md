@@ -5,10 +5,12 @@ accounts make money. No installation, no uploads — everything stays on your ow
 
 ## How to open it
 
-1. Open a terminal in the `marketer` folder and run:
+1. Open a terminal in the `tiktok-creative-analysis` folder and run:
    `python -m http.server`
 2. Open your browser and go to: `http://localhost:8000`
 3. Click **Load bundled file** (or drag your Excel file into the dotted box).
+
+The latest version is also saved on GitHub (`ikrammdzmn/marketer`) so it is never lost.
 
 Under the buttons you'll see the **data period** (e.g. `7 days (06 September 2026 –
 13 September 2026)`, read from the file name) and the **file date** — so you always

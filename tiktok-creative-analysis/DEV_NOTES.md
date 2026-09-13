@@ -23,44 +23,41 @@ analysis for HIMCoffee / Dr Samhan product). The user's messages are short burst
 Never dump long technical essays. Short answers, then build. They validate visually in the
 browser (`http://localhost:8000`), not by reading code.
 
-## Current mood (end of this window)
+## Current mood (this window)
 
-Productive and satisfied. Shipped in one session: accounts.json, full visualiser, CPM,
-coverage notes, 2nd-status, 1k tick, grouped dropdown, account search + suggestions,
-Post-ID paste search, modal popup + pagination, filter layout. User kept saying "ok" and
-moving forward — momentum is high. Don't break it with big unsolicited refactors.
+Git-surgery + ship-it energy. This window: diagnosed the 10k phantom Source Control
+count (repo rooted at home folder), bundled + removed it, pushed to a fresh GitHub repo,
+answered a VS Code account-scope dialog, and moved everything into
+`tiktok-creative-analysis/`. User is decisive ("1", "ok move it all") and trusts the
+loop. Momentum still high — keep changes small, verified, and pushed.
 
-## Project snapshot
+## Project snapshot (updated: everything now lives under `tiktok-creative-analysis/`)
 
-- Dir: `C:\Users\PC CUSTOM\Documents\github\marketer\`
-- `index.html` + `app.js` (~515 lines, vanilla IIFE) + `style.css` + `data/accounts.json`
-  - `plan.md` + `source-file/*.xlsx` (~1 MB). **No npm, no build** — Tailwind Play CDN
-    (`darkMode: 'class'`), SheetJS 0.20.3 CDN, Chart.js 4.4.1 CDN.
-- Run: `python -m http.server` → `http://localhost:8000`. `file://` blocks bundled-file
-  fetch (CORS) — upload/drag-drop still works there.
-- Data: 9,217 rows × 24 cols, 1,613 distinct TikTok accounts. Allowlist = user's 9 managed
-  accounts in `data/accounts.json` (simple string array, **their spelling preserved** —
-  5 of 9 DON'T match the xlsx: spaced `Affiliate Dr Samhan 3/4/6` vs no-space actuals,
-  `Dr Samhan Offcial3` typo vs `Official3`, spaced `Official4` vs `DrSamhanOfficial4`,
-  and `Affiliate Dr Samhan1` genuinely has 0 rows). User will fix spelling "later" —
-  the coverage-hints feature exists precisely to bridge this gap. Do NOT "fix" their
-  JSON unasked.
-- Key data quirks: **no CPM column** (derived = Cost÷Impr×1000); 19-digit Post IDs exceed
-  2^53 so matching compares Numbers both sides (identical rounding → exact) but displayed
-  IDs may differ in trailing digits (logged in plan.md); only **14/9,217** rows hit 1000+
-  impressions; `Exploration secondary status` values: Unavailable 4701, Underperforming
-  3031, Authorization needed 537, Exploring 437, Rejected 352, Performing 153, Outstanding 6.
-- Status tracking lives in **`plan.md`** — user explicitly asked for it and checks it
-  ("i dont see any edit in plan.md" was once just an un-reloaded editor + untracked git
-  folder; files were fine). Keep it ticked per change.
-- Display-only changes go on the webpage; **exports untouched unless asked** (user said so
-  for coverage notes).
-- Sample-data finding (2026-09-13): 2 same-day exports compared — (1) full 9,202 rows
-  with 60× `Dr. Samhan`, (2) filtered 118 rows with 117× `Dr. Samhan`. All 60 IDs from
-  (1) exist in (2); the +57 in (2) are all `Ineligible / Not active`, 0 impr, ~0 cost
-  (Cost 58.35→59.26 drift on 7/60 common rows = different export times). The 52
-  `Explored` rows match exactly, so the full export stays safe for sales/performance.
-  Shipped a non-technical General-notes card on the page + `feature.md`/`plan.md` entries.
+- Dir: `C:\Users\PC CUSTOM\Documents\github\marketer\tiktok-creative-analysis\`
+  (serve / run / commit from HERE now, not from `marketer/` root).
+- GitHub: `https://github.com/ikrammdzmn/marketer.git`, branch `main` (tracks
+  `origin/main`). Commits so far: `8f8018c` initial tool, `5be1f3c` folder move.
+- Home-level repo saga (closed): old `.git` at `C:\Users\PC CUSTOM` (170 commits of
+  `multimedia-mamtj6/dev`, empty index, 0 tracked files) caused the ~10k Source
+  Control badge. Backed up to
+  `Documents/github/home-git-backup-20260913.bundle` (20.7 MB, `git bundle verify`
+  passed — restorable via `git clone <bundle>`), then deleted. `kalendar-hijrah/`
+  has its own independent `.git` — never touched. Identity (`HC Office / darkvadez…`)
+  was recovered from the deleted repo's local config and re-set repo-local in marketer.
+- Features added since last notes: dataset **period + file-date line** (parsed from
+  filename like `7 days 2026-09-06 - 2026-09-13`, formatted DD MMMM YYYY, falls back to
+  min/max Time posted; file date = Last-Modified header or upload timestamp), raw-data
+  inventory answer (13 of 24 columns consumed — see chat), filter-card 3-row layout.
+- Still true from before: **no npm/build** (Tailwind Play, SheetJS, Chart.js CDNs);
+  run `python -m http.server` → `:8000`, `file://` blocks bundled fetch. Allowlist
+  spelling is authoritative — 5 of 9 entries intentionally mismatch the xlsx, never
+  "fix" unasked. No CPM column in source (derived). 19-digit Post IDs: exact match via
+  identical Number rounding, trailing display digits may differ. Only ~14/9,217 rows hit
+  1000+ impr. `plan.md` is user-read — tick per change. Display changes stay off exports
+  unless asked.
+- Prior window shipped (already in code + docs, verified present in `index.html:159`):
+  General-notes card, sample-data comparison (57-row `Dr. Samhan` gap = dead
+  `Ineligible / Not active` inventory; 52 `Explored` rows identical).
 
 ## Bugs found & fixed (and the lesson from each)
 
@@ -84,10 +81,29 @@ moving forward — momentum is high. Don't break it with big unsolicited refacto
    `.encode('ascii','backslashreplace')`. **Windows `head` doesn't exist** in PowerShell —
    don't pipe to it. **Background HTTP servers**: always `Stop-Job/Remove-Job` in
    `finally`, and use a fresh port per test (8123, 8124…).
+7. **Wrote a garbled line into DEV_NOTES.md itself** (autocomplete glitch mid-sentence).
+   Caught on re-read, fixed immediately. *Lesson: re-read doc files after writing them
+   too — not just code.*
+8. **Parallel shell calls raced** (folder listing ran before `git bundle create`
+   finished → momentary confusion + a stale `.bundle.lock` to clean up). *Lesson:
+   dependent shell steps go sequential in one command, not parallel calls.*
+9. **Deleting the home repo also deleted its local git identity** → commit failed with
+   "Author identity unknown". Recovered the values from memory and re-set repo-local.
+   *Lesson: dump `git config --local --list` into the backup notes BEFORE removing any
+   repo; set identity repo-local (`git config user.name/...` inside the repo), never
+   global, unless asked.*
+10. **Moved the app with `git mv`** (100% renames, history kept) — verified all relative
+    paths (`data/…`, `source-file/…`, `app.js`, `style.css`) survived by re-running the
+    HTTP smoke test from the new dir. *Lesson: `git mv` + re-verify from the new
+    location; update the working directory in your head (serve/commit from the subfolder
+    now). Also: `New-Item` errors if the user already created the folder — harmless,
+    ignore and continue.*
 
 ## Standing patterns to preserve
 
 - `node --check app.js` + HTTP smoke test (200s for touched files) after EVERY change.
-- `plan.md` checkbox per feature, promptly.
+- `plan.md` checkbox per feature, promptly. Commit + push when the user says so (branch
+  `main`, remote `origin`); future pushes are bare `git push`.
 - Ask-mode vs build-mode: feasibility = words only; "proceed/go" = code.
+- Git hygiene: repos live in project folders, never above them. Moves via `git mv`.
 - Keep replies short. Demos happen in their browser, not in chat.
