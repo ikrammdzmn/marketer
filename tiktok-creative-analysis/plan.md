@@ -8,7 +8,7 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
 - Account allowlist as JSON objects {name, username, note} (Option 2).
 
 ## 2. Scope
-- [x] `data/accounts.json` — 9 entries {name, username, note}, user spelling (status: done; `Affiliate Dr Samhan1` removed by user, `Dr Samhan Official4` kept with username)
+- [x] `data/accounts.json` — 10 entries {name, username, note}, user spelling (status: done; `Affiliate Dr Samhan1` removed by user then `Dr. Samhan` added; `Dr Samhan Official4` kept with username)
 - [x] Static tool `index.html` + `app.js` (SheetJS via CDN, Tailwind Play CDN, dark-mode class, 768px breakpoint) (status: done)
   - [x] Upload/drag-drop xlsx + auto-load `source-file/*.xlsx` when served over HTTP
   - [x] Filters: account (from accounts.json), status, creative type, search, min ROI/cost/orders
@@ -29,10 +29,14 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Bundled loader auto-detects the xlsx in source-file/ via server listing (latest by filename; falls back to the bundled constant) — survives weekly file swaps
   - [x] Period parser accepts bare `YYYY-MM-DD - YYYY-MM-DD` filenames (new TikTok naming has no "N days" prefix)
   - [x] Product Card: blank TikTok accounts (`''`/`'0'`/`'-'`) normalised to user-named `Product Card` (default catalogue promo, not a creative); `Exclude Product Card` tick (default off) filters it from KPIs/tables/chart/modal/preview/exports
+  - [x] Posting date: `Posted` column (`10 Sep · 4d`, blanks show `–`) in top table, account modal, preview, CSV export; `Posted within (days)` filter (blank dates excluded when active; post date ≠ pool-entry time)
+  - [x] Insight engine: file-adaptive benchmarks (median CPM, top-20 min impressions, median 2s rate/AOV, p90 ROI) + per-video verdict chips (Catalogue/Template/Review/Boost/Learning/Hook weak/retention cliff/Small basket) in top table, modal, preview, CSV
+  - [x] SOP targets (`data/targets.json` {topN, minImpr, maxCPM}; blank = auto): benchmark strip above Top creatives with Top-N switcher (10/15/20/25), manual bars tagged `yours`, editable in Manage accounts, saved via POST /api/targets
+  - [x] Exploration 2nd-status pill badges (✓ Performing, 🏆 Outstanding, 🛡 Underperforming + neutral pills for the rest) in top table, modal, preview
   - [x] Allowlist coverage notes (webpage only): 0-row accounts flagged with did-you-mean hints, collapsible (default collapsed)
   - [x] Exploration secondary status: column + filter + CSV export
   - [x] 1000+ impressions tick (green ✓ in Impr. cell) + "Only 1000+ impressions" filter
-  - [x] Account dropdown grouped: Allowlisted (9) / Other accounts in file optgroups
+  - [x] Account dropdown grouped: Allowlisted (10) / Other accounts in file optgroups
   - [x] Account search box beside dropdown (narrows options, Enter picks first match)
   - [x] Search suggestions popup (top 8, allowlisted tagged) + "No account found" note
   - [x] Search box: keyword search + pasted Post ID exact match (multi-ID, auto-detect)
@@ -45,7 +49,7 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
 - [x] Verify over HTTP (`python server.py`), smoke test (status: done — index.html/app.js/accounts.json/xlsx all 200)
 
 ## 3. accounts.json (Option 2 — exact content)
-See `data/accounts.json`. Array of 9 `{name, username, note}` objects, user spelling
+See `data/accounts.json`. Array of 10 `{name, username, note}` objects, user spelling
 preserved. Matching is exact on `name`; `username`/`note` are display-only.
 
 ## 4. Spelling history (all resolved by user)
@@ -57,5 +61,10 @@ preserved. Matching is exact on `name`; `username`/`note` are display-only.
   `DrSamhanOfficial4` has 23 rows/0 orders; coverage hints bridge it)
 
 ## 5. Verify
-- [x] JSON parses, 9 entries, UTF-8/LF
+- [x] JSON parses, 10 entries, UTF-8/LF
 - [x] Re-count rows per account after spelling fix (bundled file 2026-09-06–13, rows/orders): DrSamhanWellness 74/2; HIMCoffee 85/6; Dr Samhan 38/0; Affiliate Dr Samhan3 72/0; Affiliate Dr Samhan4 59/1; Affiliate Dr Samhan6 76/0; Dr Samhan Official 82/1; Dr Samhan Official3 70/3; Affiliate Dr Samhan1 0/0; Dr Samhan Official4 0/0 (xlsx twin DrSamhanOfficial4: 23 rows/0 orders)
+
+## 6. Backlog (explore next)
+- [ ] Exploration exit signals: boosting an inactive video re-enters Exploring
+  (pool entry is repeatable — post date is never the clock); whole file is
+  catalog-attached, so no per-row yellow-bag flag exists to add

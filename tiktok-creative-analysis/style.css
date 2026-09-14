@@ -90,3 +90,36 @@
 .tick { color: #16a34a; font-weight: 700; }
 .dark .tick { color: #4ade80; }
 @media (max-width: 768px) { .chart-wrap { height: 220px; } }
+/* Insight verdict chips */
+.chip { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; cursor: default; }
+.chip-b { background: #dcfce7; color: #166534; }
+.chip-r { background: #fee2e2; color: #991b1b; }
+.chip-s { background: #fef3c7; color: #92400e; }
+.chip-l { background: #dbeafe; color: #1e40af; }
+.chip-h { background: #ffedd5; color: #9a3412; }
+.chip-d { background: #f3e8ff; color: #6b21a8; }
+.chip-k { background: #ccfbf1; color: #115e59; }
+.chip-c { background: #f3f4f6; color: #4b5563; }
+.dark .chip-b { background: rgba(22,101,52,0.4); color: #86efac; }
+.dark .chip-r { background: rgba(153,27,27,0.4); color: #fca5a5; }
+.dark .chip-s { background: rgba(146,64,14,0.4); color: #fcd34d; }
+.dark .chip-l { background: rgba(30,64,175,0.4); color: #93c5fd; }
+.dark .chip-h { background: rgba(154,52,18,0.4); color: #fdba74; }
+.dark .chip-d { background: rgba(107,33,168,0.4); color: #d8b4fe; }
+.dark .chip-k { background: rgba(17,94,89,0.4); color: #5eead4; }
+.dark .chip-c { background: #374151; color: #d1d5db; }
+/* Exploration secondary-status badges */
+.sec { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 9999px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
+.sec-performing { background: #dcfce7; color: #166534; }
+.sec-outstanding { background: #fef3c7; color: #92400e; }
+.sec-underperforming { background: #f3f4f6; color: #4b5563; }
+.sec-exploring { background: #dbeafe; color: #1e40af; }
+.sec-calculating { background: #ffedd5; color: #9a3412; }
+.sec-flat { background: #f3f4f6; color: #4b5563; }
+.sec-rejected { background: #fee2e2; color: #991b1b; }
+.dark .sec-performing { background: rgba(22,101,52,0.4); color: #86efac; }
+.dark .sec-outstanding { background: rgba(146,64,14,0.4); color: #fcd34d; }
+.dark .sec-underperforming, .dark .sec-flat { background: #374151; color: #d1d5db; }
+.dark .sec-exploring { background: rgba(30,64,175,0.4); color: #93c5fd; }
+.dark .sec-calculating { background: rgba(154,52,18,0.4); color: #fdba74; }
+.dark .sec-rejected { background: rgba(153,27,27,0.4); color: #fca5a5; }

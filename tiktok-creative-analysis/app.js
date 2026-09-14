@@ -5,7 +5,8 @@
   var BUNDLED_FILE = 'source-file/Creative data 2026-09-07 - 2026-09-14 - Product 1729556489100298210.xlsx';
   var MAX_TABLE_ROWS = 200;
 
-  var state = { rows: [], allowlist: [], allowMeta: {}, chart: null };
+  var state = { rows: [], allowlist: [], allowMeta: {}, bench: null, chart: null,
+    targets: { topN: 20, minImpr: null, maxCPM: null } };
 
   function $(id) { return document.getElementById(id); }
 
@@ -25,6 +26,148 @@
   function esc(s) {
     return String(s === null || s === undefined ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  /* Posting date: 'YYYY-MM-DD hh:mm' -> '10 Sep · 4d'; blank/dash -> '–'.
+     NOTE: post date is NOT pool-entry time (boosts re-enter Exploring). */
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function ageDays(tp) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(tp || ''));
+    if (!m) return NaN;
+    var ms = Date.now() - new Date(+m[1], +m[2] - 1, +m[3]).getTime();
+    if (!isFinite(ms)) return -1;
+    return Math.floor(ms / 86400000);
+  }
+  function fmtPosted(tp) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(tp || ''));
+    if (!m) return '–';
+    var a = ageDays(tp);
+    return (+m[3]) + ' ' + MONTHS[+m[2] - 1] + (a >= 0 ? ' · ' + a + 'd' : '');
+  }
+
+  /* ---------- insight engine (file-adaptive benchmarks + per-video verdicts) ---------- */
+  function median(a) {
+    if (!a.length) return 0;
+    var s = a.slice().sort(function (x, y) { return x - y; });
+    var m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+  function percentile(a, p) {
+    if (!a.length) return 0;
+    var s = a.slice().sort(function (x, y) { return x - y; });
+    return s[Math.min(s.length - 1, Math.floor(p * s.length))];
+  }
+  function computeBench() {
+    var rows = state.rows;
+    var N = (state.targets && state.targets.topN) || 20;
+    var byImpr = rows.slice().sort(function (a, b) { return b.impr - a.impr; });
+    var top = byImpr.slice(0, N);
+    var autoTop = top.length ? top[top.length - 1].impr : 0;
+    var autoCpm = median(top.filter(function (r) { return r.impr > 0; }).map(function (r) { return r.cpm; }));
+    var revRows = rows.filter(function (r) { return r.revenue > 0; });
+    var t = state.targets || {};
+    state.bench = {
+      topN: N,
+      topBar: (typeof t.minImpr === 'number') ? t.minImpr : autoTop,
+      topSrc: (typeof t.minImpr === 'number') ? 'yours' : 'auto',
+      cpmBar: (typeof t.maxCPM === 'number') ? t.maxCPM : autoCpm,
+      cpmSrc: (typeof t.maxCPM === 'number') ? 'yours' : 'auto',
+      medV2: median(rows.filter(function (r) { return r.impr >= 200; }).map(function (r) { return r.v2; })),
+      medAOV: median(rows.filter(function (r) { return r.orders > 0; }).map(function (r) { return r.aov; })),
+      p90roi: percentile(revRows.map(function (r) { return r.roi; }), 0.9),
+      medRev: median(revRows.map(function (r) { return r.revenue; }))
+    };
+  }
+  /* Benchmark strip above Top creatives */
+  function renderBench() {
+    var el = $('benchText');
+    if (!el) return;
+    var B = state.bench;
+    if (!B || !state.rows.length) { el.textContent = 'Load a file to see the benchmark bar.'; return; }
+    el.textContent = 'Top-' + B.topN + ' bar: ≥' + fmt(B.topBar) + ' impr (' + B.topSrc +
+      ') · CPM ≤' + B.cpmBar.toFixed(2) + ' (' + B.cpmSrc + ')';
+  }
+  function syncTopNUI() {
+    var sel = $('fTopN');
+    if (sel) sel.value = String((state.targets && state.targets.topN) || 20);
+  }
+  /* SOP targets: data/targets.json ({topN, minImpr, maxCPM}; null = auto) */
+  function loadTargets() {
+    return fetch('data/targets.json?v=' + Date.now())
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (o) {
+        if (o && typeof o === 'object') {
+          var tn = parseInt(o.topN, 10);
+          state.targets.topN = (!isNaN(tn) && tn >= 5 && tn <= 50) ? tn : 20;
+          state.targets.minImpr = (typeof o.minImpr === 'number' && o.minImpr >= 0) ? o.minImpr : null;
+          state.targets.maxCPM = (typeof o.maxCPM === 'number' && o.maxCPM >= 0) ? o.maxCPM : null;
+        }
+        syncTopNUI();
+        if (state.rows.length) { computeBench(); renderBench(); applyFilters(); }
+      })
+      .catch(function () { syncTopNUI(); });
+  }
+  loadTargets();
+  /* Biggest relative retention drop (v2 -> 25% -> 50% -> 75% -> 100%), >= 40% */
+  function cliffOf(r) {
+    var seq = [['25%', r.v25], ['50%', r.v50], ['75%', r.v75], ['100%', r.v100]];
+    var prev = r.v2, worst = null, worstDrop = 0.4;
+    for (var i = 0; i < seq.length; i++) {
+      var cur = seq[i][1];
+      if (prev > 0) {
+        var drop = (prev - cur) / prev;
+        if (drop >= worstDrop) { worst = seq[i][0]; worstDrop = drop; }
+      }
+      prev = cur;
+    }
+    return worst;
+  }
+  /* One verdict per video. Priority: Catalogue > Template > Review > Boost >
+     Learning > Hook > Retention cliff > Basket > neutral. Thresholds adapt to
+     the loaded file via state.bench (recomputed on every ingest). */
+  function insightOf(r) {
+    var B = state.bench || { topBar: 0, topSrc: 'auto', cpmBar: 0, cpmSrc: 'auto', medV2: 0, medAOV: 0, p90roi: 0, medRev: 0 };
+    if (r.account === 'Product Card')
+      return { chip: '📇', cls: 'chip-c', label: 'Catalogue', detail: 'TikTok catalogue promo, not a creative. Tick Exclude Product Card for creative-only numbers.' };
+    if (r.revenue > 0 && B.medRev > 0 && r.roi >= B.p90roi && r.revenue >= B.medRev)
+      return { chip: '⭐', cls: 'chip-s', label: 'Template', detail: 'Top-decile ROI (' + r.roi.toFixed(2) + ') with RM' + fmt(r.revenue, 2) + ' revenue. Copy its hook and retention curve.' };
+    if (r.orders === 0 && r.cost >= 5)
+      return { chip: '🛑', cls: 'chip-r', label: 'Review', detail: 'RM' + fmt(r.cost, 2) + ' spent, 0 orders' + (B.cpmBar > 0 && r.cpm > B.cpmBar ? ' — CPM ' + r.cpm.toFixed(2) + ' above bar ' + B.cpmBar.toFixed(2) + ' (' + B.cpmSrc + ')' : '') + '. Consider excluding.' };
+    if ((r.sec === 'Performing' || r.sec === 'Outstanding') && r.roi >= 3 && r.cost < 50 && r.impr > 0 && B.cpmBar > 0 && r.cpm <= B.cpmBar)
+      return { chip: '🚀', cls: 'chip-b', label: 'Boost', detail: 'ROI ' + r.roi.toFixed(2) + ', RM' + fmt(r.cost, 2) + ' spend, CPM ' + r.cpm.toFixed(2) + ' at/below bar ' + B.cpmBar.toFixed(2) + ' (' + B.cpmSrc + '). Candidate to boost toward ' + fmt(B.topBar) + ' impressions (' + B.topSrc + ').' };
+    if (r.impr < 1000)
+      return { chip: '👀', cls: 'chip-l', label: 'Learning', detail: fmt(r.impr) + ' impressions — too early to judge. Watch toward ' + fmt(B.topBar) + ' (' + B.topSrc + ').' };
+    if (B.medV2 > 0 && r.v2 < B.medV2)
+      return { chip: '🪝', cls: 'chip-h', label: 'Hook weak', detail: '2s view rate ' + (r.v2 * 100).toFixed(1) + '% below file median ' + (B.medV2 * 100).toFixed(1) + '%. Re-shoot the opening.' };
+    var cliff = cliffOf(r);
+    if (cliff)
+      return { chip: '📉', cls: 'chip-d', label: 'Drops @' + cliff, detail: 'Retention cliff at ' + cliff + ' — fix that segment.' };
+    if (r.orders > 0 && B.medAOV > 0 && r.aov < B.medAOV)
+      return { chip: '🧺', cls: 'chip-k', label: 'Small basket', detail: 'AOV RM' + r.aov.toFixed(2) + ' below median RM' + B.medAOV.toFixed(2) + '. Push bundles.' };
+    return { chip: '', cls: '', label: '—', detail: '' };
+  }
+  function insightCell(r) {
+    var ins = insightOf(r);
+    if (!ins.chip) return '<td>—</td>';
+    return '<td><span class="chip ' + ins.cls + '" title="' + esc(ins.detail) + '">' + ins.chip + ' ' + esc(ins.label) + '</span></td>';
+  }
+  function insightText(r) {
+    var ins = insightOf(r);
+    return ins.label + (ins.detail ? ' — ' + ins.detail : '');
+  }
+  /* Exploration secondary status as a pill badge (icon + label) */
+  var SEC_BADGE = {
+    'Performing': ['sec-performing', '✓'],
+    'Outstanding': ['sec-outstanding', '🏆'],
+    'Underperforming': ['sec-underperforming', '🛡'],
+    'Exploring': ['sec-exploring', '◷'],
+    'Calculating': ['sec-calculating', '⏳'],
+    'Unavailable': ['sec-flat', '–'],
+    'Authorization needed': ['sec-flat', '🔑'],
+    'Rejected': ['sec-rejected', '✕']
+  };
+  function secBadge(sec) {
+    var b = SEC_BADGE[sec] || ['sec-flat', '•'];
+    return '<span class="sec ' + b[0] + '">' + b[1] + ' ' + esc(sec) + '</span>';
   }
 
   /* ---------- theme ---------- */
@@ -130,10 +273,17 @@
         aov: orders > 0 ? revenue / orders : 0, // derived: source xlsx has no AOV column
         impr: impr,
         clicks: int(r['Product ad clicks']),
+        ctr: num(r['Product ad click rate']),
+        v2: num(r['2-second ad video view rate']),
+        v25: num(r['25% ad video view rate']),
+        v50: num(r['50% ad video view rate']),
+        v75: num(r['75% ad video view rate']),
+        v100: num(r['100% ad video view rate']),
         cpm: impr > 0 ? cost / impr * 1000 : 0 // derived: source xlsx has no CPM column
       };
     });
     populateFacets();
+    computeBench();
     setStatus('Loaded ' + fmt(state.rows.length) + ' rows from ' + esc(name) + '.');
     renderFileMeta(fileName, fileDate);
     applyFilters();
@@ -323,11 +473,20 @@
   }
 
   /* ---------- filtering + render ---------- */
-  ['fAccount', 'fStatus', 'fSec', 'fType', 'fSearch', 'fMinRoi', 'fMinOrders', 'fSort', 'fAllowlist', 'fMin1k', 'fNoCard']
+  ['fAccount', 'fStatus', 'fSec', 'fType', 'fSearch', 'fMinRoi', 'fMinOrders', 'fMaxAge', 'fSort', 'fAllowlist', 'fMin1k', 'fNoCard']
     .forEach(function (id) {
       $(id).addEventListener('input', applyFilters);
       $(id).addEventListener('change', applyFilters);
     });
+  /* Top-N switcher: re-bars the file, then re-renders (kept out of the generic
+     list so the bench recomputes BEFORE filters re-apply) */
+  $('fTopN').addEventListener('change', function () {
+    var tn = parseInt($('fTopN').value, 10);
+    if (isNaN(tn) || tn < 5 || tn > 50) return;
+    state.targets.topN = tn;
+    computeBench();
+    applyFilters();
+  });
 
   function filtered(forceAccount) {
     var acc = forceAccount !== undefined ? forceAccount : $('fAccount').value, st = $('fStatus').value, ty = $('fType').value;
@@ -343,6 +502,7 @@
     var q = rawQ.toLowerCase();
     var minRoi = parseFloat($('fMinRoi').value);
     var minOrd = parseInt($('fMinOrders').value, 10);
+    var maxAge = parseInt($('fMaxAge').value, 10);
     var onlyAllow = $('fAllowlist').checked;
     var only1k = $('fMin1k').checked;
     var noCard = $('fNoCard').checked;
@@ -357,6 +517,7 @@
       if (se && String(r.sec) !== se) return false;
       if (ty && String(r.type) !== ty) return false;
       if (r.roi < minRoi || r.orders < minOrd) return false;
+      if (!isNaN(maxAge)) { var ad = ageDays(r.timePosted); if (isNaN(ad) || ad > maxAge) return false; }
       if (rawQ) {
         if (idMode) {
           var pv = Number(r.postId);
@@ -376,6 +537,7 @@
   }
 
   function applyFilters() {
+    renderBench();
     var rows = filtered();
     var cost = 0, rev = 0, ord = 0, impr = 0;
     rows.forEach(function (r) { cost += r.cost; rev += r.revenue; ord += r.orders; impr += r.impr; });
@@ -486,6 +648,7 @@
     if (sq) bits.push((state.idMode ? 'Post ID=' : 'Search=') + (sq.length > 40 ? sq.slice(0, 40) + '…' : sq));
     if ($('fMinRoi').value) bits.push('ROI>=' + $('fMinRoi').value);
     if ($('fMinOrders').value) bits.push('Orders>=' + $('fMinOrders').value);
+    if ($('fMaxAge').value) bits.push('posted≤' + $('fMaxAge').value + 'd');
     if ($('fMin1k').checked) bits.push('1000+ impressions');
     if ($('fNoCard').checked) bits.push('Product Card excluded');
     if ($('fAllowlist').checked) bits.push('allowlist only');
@@ -500,12 +663,12 @@
     tb.innerHTML = rows.slice(0, state.modalCount).map(function (r, i) {
       var cr = String(r.creative || '');
       if (cr.length > 90) cr = cr.slice(0, 90) + '…';
-      return '<tr><td>' + (i + 1) + '</td><td>' + esc(cr) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.sec) +
+      return '<tr><td>' + (i + 1) + '</td><td>' + esc(cr) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td>' + insightCell(r) + '<td>' + fmtPosted(r.timePosted) +
         '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) + '</td><td>' + fmt(r.revenue, 2) + '</td><td>' + r.roi.toFixed(2) +
         '</td><td>' + r.aov.toFixed(2) +
         '</td><td>' + (r.impr >= 1000 ? '<span class="tick" title="1000+ impressions">✓ </span>' : '') + fmt(r.impr) +
         '</td><td>' + fmt(r.clicks) + '</td><td>' + r.cpm.toFixed(2) + '</td></tr>';
-    }).join('') || '<tr><td colspan="13" class="empty-note">No creatives match the active filters.</td></tr>';
+    }).join('') || '<tr><td colspan="15" class="empty-note">No creatives match the active filters.</td></tr>';
     if (scrollBox) scrollBox.scrollTop = st;
     $('acctModalFoot').textContent = 'Showing ' + Math.min(state.modalCount, rows.length) + ' of ' +
       fmt(rows.length) + ' by current sort. Use the main table + Export for the full set.';
@@ -560,12 +723,12 @@
   function renderTop(rows) {
     $('rowCount').textContent = '— ' + fmt(rows.length) + ' match';
     var tb = $('topTable').querySelector('tbody');
-    if (!rows.length) { tb.innerHTML = '<tr><td colspan="14" class="empty-note">No rows match.</td></tr>'; return; }
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="16" class="empty-note">No rows match.</td></tr>'; return; }
     tb.innerHTML = rows.slice(0, MAX_TABLE_ROWS).map(function (r) {
       var cr = String(r.creative || '');
       if (cr.length > 90) cr = cr.slice(0, 90) + '…';
       return '<tr><td class="mono">' + esc(r.postId) + '</td><td>' + esc(cr) + '</td><td>' + esc(r.account) +
-        '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.sec) + '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) +
+        '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td>' + insightCell(r) + '<td>' + fmtPosted(r.timePosted) + '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) +
         '</td><td>' + fmt(r.revenue, 2) + '</td><td>' + r.roi.toFixed(2) + '</td><td>' + r.aov.toFixed(2) + '</td><td>' + (r.impr >= 1000 ? '<span class="tick" title="1000+ impressions">✓ </span>' : '') + fmt(r.impr) + '</td><td>' + fmt(r.clicks) + '</td><td>' + r.cpm.toFixed(2) + '</td></tr>';
     }).join('');
   }
@@ -601,6 +764,9 @@
   }
   function renderMgr() {
     $('mgrStatus').textContent = '';
+    $('mgrTopN').value = (state.targets && state.targets.topN) || 20;
+    $('mgrMinImpr').value = (state.targets && typeof state.targets.minImpr === 'number') ? state.targets.minImpr : '';
+    $('mgrMaxCPM').value = (state.targets && typeof state.targets.maxCPM === 'number') ? state.targets.maxCPM : '';
     $('mgrRows').innerHTML = state.allowlist.map(function (a) {
       var m = state.allowMeta[a] || { username: '', note: '' };
       return mgrRow(a, m.username, m.note);
@@ -616,6 +782,39 @@
       out.push({ name: name, username: username, note: note });
     });
     return { rows: out, bad: bad };
+  }
+  function collectTargets() {
+    var tn = parseInt($('mgrTopN').value, 10);
+    var mi = $('mgrMinImpr').value.trim(), mc = $('mgrMaxCPM').value.trim();
+    if (isNaN(tn) || tn < 5 || tn > 50) return { ok: false, error: 'Top-N must be 5–50.' };
+    var out = { topN: tn, minImpr: null, maxCPM: null };
+    if (mi !== '') {
+      var a = parseFloat(mi);
+      if (isNaN(a) || a < 0) return { ok: false, error: 'Min impressions must be empty or ≥ 0.' };
+      out.minImpr = a;
+    }
+    if (mc !== '') {
+      var b = parseFloat(mc);
+      if (isNaN(b) || b < 0) return { ok: false, error: 'Max CPM must be empty or ≥ 0.' };
+      out.maxCPM = b;
+    }
+    return { ok: true, value: out };
+  }
+  function postJSON(url, obj) {
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(obj)
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var o = null;
+        try { o = JSON.parse(t); } catch (e) { o = null; }
+        if (o && o.ok) return o;
+        if (r.status === 501 || (t && t.charAt(0) === '<')) throw new Error('plain file server detected — stop it and run python server.py (or use Download JSON)');
+        if (!t) throw new Error('empty reply from server (static hosting?) — use Download JSON, or edit locally with server.py');
+        throw new Error((o && o.error) || ('HTTP ' + r.status));
+      });
+    });
   }
   function openMgr() {
     renderMgr();
@@ -672,27 +871,25 @@
     var c = collectMgr();
     if (c.bad > 0) { $('mgrStatus').textContent = 'Row ' + c.bad + ' needs a name.'; return; }
     if (c.rows.length > 100) { $('mgrStatus').textContent = 'Too many entries (max 100).'; return; }
+    var t = collectTargets();
+    if (!t.ok) { $('mgrStatus').textContent = t.error; return; }
     $('mgrStatus').textContent = 'Saving…';
-    fetch('/api/accounts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(c.rows)
-    }).then(function (r) {
-      return r.text().then(function (t) {
-        var o = null;
-        try { o = JSON.parse(t); } catch (e) { o = null; }
-        if (o && o.ok) return o;
-        if (r.status === 501 || (t && t.charAt(0) === '<')) throw new Error('plain file server detected — stop it and run python server.py (or use Download JSON)');
-        if (!t) throw new Error('empty reply from server (static hosting?) — use Download JSON, or edit locally with server.py');
-        throw new Error((o && o.error) || ('HTTP ' + r.status));
+    postJSON('/api/accounts', c.rows)
+      .then(function (o) { state.savedEntries = o.entries; return postJSON('/api/targets', t.value); })
+      .then(function () {
+        $('mgrStatus').textContent = 'Saved ' + state.savedEntries + ' accounts + targets. Reloading…';
+        state.targets = t.value;
+        syncTopNUI();
+        loadAllowlist().then(function () {
+          computeBench();
+          applyFilters();
+          closeMgr();
+          setStatus('Accounts + targets reloaded (' + state.savedEntries + ' entries).');
+        });
+      })
+      .catch(function (e) {
+        $('mgrStatus').textContent = 'Save failed: ' + e.message + '.';
       });
-    }).then(function (o) {
-      $('mgrStatus').textContent = 'Saved ' + o.entries + ' entries' +
-        (o.backup ? ' (backup: ' + o.backup + ')' : '') + '. Reloading…';
-      loadAllowlist().then(function () { applyFilters(); closeMgr(); setStatus('Allowlist reloaded (' + o.entries + ' entries).'); });
-    }).catch(function (e) {
-      $('mgrStatus').textContent = 'Save failed: ' + e.message + '.';
-    });
   });
   $('mgrModal').addEventListener('click', function (e) {
     if (e.target === $('mgrModal')) closeMgr();
@@ -709,10 +906,10 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
   function buildCsv(rows) {
-    var head = ['Post ID', 'Creative', 'Account', 'Type', 'Status', 'Exploration secondary status', 'Cost', 'Orders', 'Revenue', 'ROI', 'AOV', 'Impressions', 'Clicks', 'CPM'];
+    var head = ['Post ID', 'Creative', 'Account', 'Type', 'Status', 'Exploration secondary status', 'Insight', 'Posted', 'Cost', 'Orders', 'Revenue', 'ROI', 'AOV', 'Impressions', 'Clicks', 'CPM'];
     var q = function (v) { return '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"'; };
     var lines = [head.join(',')].concat(rows.map(function (r) {
-      return [q(r.postId), q(r.creative), q(r.account), q(r.type), q(r.status), q(r.sec),
+      return [q(r.postId), q(r.creative), q(r.account), q(r.type), q(r.status), q(r.sec), q(insightText(r)), q(r.timePosted),
         r.cost.toFixed(2), r.orders, r.revenue.toFixed(2), r.roi.toFixed(2), r.aov.toFixed(2), r.impr, r.clicks, r.cpm.toFixed(2)].join(',');
     }));
     return lines.join('\n');
@@ -725,8 +922,8 @@
   /* Sheet-like preview: same filtered set as Export, rendered as a standalone
      HTML table page (new tab, local-only blob). Drag header edges to resize
      columns (Chrome/Edge); click any cell to expand its full text. */
-  var PREVIEW_COLS = ['Post ID', 'Creative', 'Account', 'Type', 'Status', 'Exploration secondary status', 'Cost', 'Orders', 'Revenue', 'ROI', 'AOV', 'Impressions', 'Clicks', 'CPM'];
-  var PREVIEW_WIDTHS = [150, 340, 170, 90, 110, 150, 90, 80, 110, 70, 80, 110, 80, 80];
+  var PREVIEW_COLS = ['Post ID', 'Creative', 'Account', 'Type', 'Status', 'Exploration secondary status', 'Insight', 'Posted', 'Cost', 'Orders', 'Revenue', 'ROI', 'AOV', 'Impressions', 'Clicks', 'CPM'];
+  var PREVIEW_WIDTHS = [150, 340, 170, 90, 110, 150, 150, 110, 90, 80, 110, 70, 80, 110, 80, 80];
   function buildPreviewHtml(rows) {
     var css = 'body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f3f4f6;color:#111827}' +
       '@media (prefers-color-scheme:dark){body{background:#111827;color:#e5e7eb}}' +
@@ -742,7 +939,16 @@
       '@media (prefers-color-scheme:dark){thead th{background:#030712}}' +
       'tbody tr:nth-child(even){background:rgba(0,0,0,0.04)}' +
       'td.num{text-align:right;font-variant-numeric:tabular-nums}td.mono{font-family:ui-monospace,monospace;font-size:11px}' +
-      'td.open{white-space:normal;overflow:visible}table.wrap-all td{white-space:normal;overflow:visible}';
+      'td.open{white-space:normal;overflow:visible}table.wrap-all td{white-space:normal;overflow:visible}' +
+      '.sec{display:inline-block;padding:1px 8px;border-radius:9999px;font-size:11px;font-weight:600;white-space:nowrap}' +
+      '.sec-performing{background:#dcfce7;color:#166534}.sec-outstanding{background:#fef3c7;color:#92400e}' +
+      '.sec-underperforming{background:#f3f4f6;color:#4b5563}.sec-exploring{background:#dbeafe;color:#1e40af}' +
+      '.sec-calculating{background:#ffedd5;color:#9a3412}.sec-flat{background:#f3f4f6;color:#4b5563}' +
+      '.sec-rejected{background:#fee2e2;color:#991b1b}' +
+      '@media (prefers-color-scheme:dark){.sec-performing{background:rgba(22,101,52,.5);color:#86efac}' +
+      '.sec-outstanding{background:rgba(146,64,14,.5);color:#fcd34d}.sec-underperforming,.sec-flat{background:#374151;color:#d1d5db}' +
+      '.sec-exploring{background:rgba(30,64,175,.5);color:#93c5fd}.sec-calculating{background:rgba(154,52,18,.5);color:#fdba74}' +
+      '.sec-rejected{background:rgba(153,27,27,.5);color:#fca5a5}}';
     var js = 'document.querySelector("tbody").addEventListener("click",function(e){' +
       'var td=e.target.closest?e.target.closest("td"):null;if(td)td.classList.toggle("open");});' +
       'document.getElementById("wrapAll").addEventListener("change",function(e){' +
@@ -751,7 +957,7 @@
     var cols = PREVIEW_WIDTHS.map(function (w) { return '<col style="width:' + w + 'px">'; }).join('');
     var body = rows.map(function (r) {
       return '<tr><td class="mono">' + esc(r.postId) + '</td><td>' + esc(r.creative) + '</td><td>' + esc(r.account) +
-        '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.sec) + '</td><td class="num">' + fmt(r.cost, 2) + '</td><td class="num">' + fmt(r.orders) +
+        '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td><td>' + esc(insightText(r)) + '</td><td>' + fmtPosted(r.timePosted) + '</td><td class="num">' + fmt(r.cost, 2) + '</td><td class="num">' + fmt(r.orders) +
         '</td><td class="num">' + fmt(r.revenue, 2) + '</td><td class="num">' + r.roi.toFixed(2) + '</td><td class="num">' + r.aov.toFixed(2) + '</td><td class="num">' + fmt(r.impr) +
         '</td><td class="num">' + fmt(r.clicks) + '</td><td class="num">' + r.cpm.toFixed(2) + '</td></tr>';
     }).join('');

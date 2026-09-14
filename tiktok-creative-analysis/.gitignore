@@ -1,4 +1,4 @@
 # Local safety copies made by server.py on every Save — never commit these.
-data/accounts.backup-*.json
+data/*.backup-*.json
 # Python bytecode cache (server.py).
 __pycache__/

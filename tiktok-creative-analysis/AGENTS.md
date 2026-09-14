@@ -9,8 +9,10 @@ no framework**. Keep it that way.
   0.20.3, Chart.js 4.4.1). Anti-flash dark-mode script in `<head>`.
 - `app.js` — all logic, single vanilla IIFE. No modules, no transpiling.
 - `style.css` — extras only; layout via Tailwind classes.
-- `data/accounts.json` — allowlist of 9 managed TikTok accounts (array of
+- `data/accounts.json` — allowlist of 10 managed TikTok accounts (array of
   `{name, username, note}` objects; matching is exact on `name` only).
+- `data/targets.json` — SOP targets `{topN, minImpr, maxCPM}` (null = auto from
+  file); edited in Manage accounts, saved via POST /api/targets.
 - `server.py` — local-only server (stdlib, 127.0.0.1): static files + POST
   /api/accounts (validates ≤100 entries, timestamped backup, LF). Never expose.
 - `start-server.bat` — double-click launcher (python check, opens browser, runs
@@ -41,7 +43,7 @@ files). Serve on a fresh port per test; always stop background servers.
 ## Rules
 
 1. **Never hand-edit `source-file/*.xlsx`** or invent account names. The user's entries
-   in `accounts.json` are authoritative — 8 of 9 match the xlsx exactly;
+   in `accounts.json` are authoritative — 9 of 10 match the xlsx exactly;
    `Dr Samhan Official4` intentionally has 0 rows (kept, with username);
    the coverage-hints feature bridges near-misses (e.g. `DrSamhanOfficial4`).
    Matching is exact on `name` only — `username`/`note` are display-only.
@@ -58,6 +60,11 @@ files). Serve on a fresh port per test; always stop background servers.
    in non-technical words. Blank TikTok accounts (`''`/`'0'`/`'-'`) normalise to
    `Product Card` (default catalogue promo, ~29% of revenue in the 09-07 file);
    the `Exclude Product Card` tick (default off) filters them everywhere.
+   Insight engine (`insightOf`): verdicts from file-adaptive benchmarks
+   (median CPM, top-20 min impressions, median 2s rate/AOV, p90 ROI, recomputed
+   per ingest) — thresholds live in code, never hardcode file numbers.
+   SOP bars (`topBar`/`cpmBar`): manual `targets.json` values win, else auto from
+   top-N; source tagged `yours`/`auto` in UI text.
 4. **Editing**: copy exact strings from Read output for edit anchors, never retype.
    After each edit, grep the touched identifiers and re-read the region — CSS appends
    and plan.md lines have been clobbered before by overlapping matches.

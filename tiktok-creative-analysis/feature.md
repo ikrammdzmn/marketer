@@ -35,12 +35,26 @@ Rows, Cost (MYR), Revenue (MYR), Orders, Avg ROI, Avg AOV, Impressions, Avg CPM.
 **Chart** — top 10 accounts by revenue at a glance.
 
 **Per-account summary** — one row per TikTok account: cost, revenue, orders, ROI, AOV, CPM,
-and whether it is one of your 9 managed accounts (shown as `Name (@username)`). **Click any row** to open a popup
+and whether it is one of your 10 managed accounts (shown as `Name (@username)`). **Click any row** to open a popup
 with that account's videos, its own mini-totals, and a **Show more** button to see all
 of them (50 at a time so the page stays fast).
 
 **Top creatives table** — the actual videos, best first. First 200 shown; use Export
-for the full list.
+for the full list. Above it sits the **benchmark bar** (e.g. `Top-20 bar: ≥574 impr
+(auto) · CPM ≤22.16 (auto)`): the minimum impressions of the top videos and their
+median CPM, recomputed from each file. Switch Top 10/15/20/25 to re-bar instantly.
+Set your own numbers in Manage accounts (blank = auto); yours are tagged `yours`. The **Posted** column shows when the video was posted and how
+many days ago (e.g. `10 Sep · 4d`); a few rows show `–` (no date in the file).
+The **Insight** column gives each video one verdict — hover it for the why:
+
+- 🚀 **Boost** — profitable, cheap reach, low spend: your boost candidate.
+- 🛑 **Review** — spent money, zero orders: exclusion candidate.
+- ⭐ **Template** — top-decile ROI with real revenue: copy its hook and retention.
+- 👀 **Learning** — under 1,000 views: too early to judge.
+- 🪝 **Hook weak** — opening loses vs the file average: re-shoot it.
+- 📉 **Drops @50%** — viewers leave at that point: fix that segment.
+- 🧺 **Small basket** — profitable but tiny orders: push bundles.
+- 📇 **Catalogue** — TikTok promo, not a creative.
 
 ## General notes (shown on the page)
 
@@ -55,32 +69,36 @@ for the full list.
 ## Finding things
 
 - **Account** — type in the search box (suggestions appear as you type; you can also
-  type a @username), then pick from the dropdown. Your 9 managed accounts are grouped
+  type a @username), then pick from the dropdown. Your 10 managed accounts are grouped
   at the top as `Name (@username)` — a few carry a `no orders yet` note; all other
   accounts are grouped below. `Product Card` is TikTok's default catalogue promo
   (no creative, no account) — it appears as its own row.
 - **Search creative / Post ID** — type words to find video captions, or **paste full
   Post ID numbers** (one or many, even a whole column copied from Excel) to jump
   straight to those videos.
-- **Status / 2nd status / Type** — narrow by video status. Tip: 2nd status
+- **Status / 2nd status / Type** — narrow by video status. The 2nd status shows as
+  a coloured badge (green ✓ Performing, gold 🏆 Outstanding, grey 🛡
+  Underperforming). Tip: 2nd status
   `Performing` or `Outstanding`, sorted by ROI, surfaces winners. Note:
   `Outstanding` means winners *within their own campaign*, not the top videos
   overall — a `Performing` video can out-earn them all, so always sort by ROI.
-- **Min ROI / Min orders / Only 1000+ impressions / Exclude Product Card / Only
+- **Min ROI / Min orders / Posted within (days) / Only 1000+ impressions / Exclude Product Card / Only
   allowlist accounts** — tick or fill to cut the noise. Tick **Exclude Product Card**
   to keep every number creative-only (catalogue sales vanish from totals and exports).
+  **Posted within** keeps only recent videos (rows without a date are hidden while it is set).
 - **Allowlist coverage** (collapsed line under the account table) — click to expand and
-  see which of your 9 managed accounts have no data in the loaded file, with
+  see which of your 10 managed accounts have no data in the loaded file, with
   suggestions when the name looks like a typo.
 
 ## Managing your accounts
 
 Click **Manage accounts** (top right) to edit the list: fix a name, add a @username
-or a note, remove an old account, or add a new one with **＋ Add account**. **Save**
-writes it to the file (a dated backup is kept next to it) and the page reloads the
-list straight away. Names must match the Excel file exactly, or that account's rows
-won't be recognised — usernames and notes are just labels. If saving ever fails,
-use **Download JSON** instead.
+or a note, remove an old account, or add a new one with **＋ Add account**. The
+**SOP targets** box sets your Top-N, minimum impressions, and max CPM (blank =
+auto from the file). **Save** writes everything to file (dated backups kept) and
+the page reloads straight away. Names must match the Excel file exactly, or that
+account's rows won't be recognised — usernames and notes are just labels. If saving
+ever fails, use **Download JSON** instead.
 
 ## Saving results
 
@@ -93,7 +111,8 @@ your computer.
 ## Everyday workflows
 
 - *Which video should I boost?* → 2nd status `Performing`, sort ROI ↓, look for ✓.
-- *How are my 9 accounts doing?* → tick **Only allowlist accounts**, compare the
+- *What's fresh and working?* → Posted within 30 days, sort ROI ↓.
+- *How are my 10 accounts doing?* → tick **Only allowlist accounts**, compare the
   per-account table, click a row for details.
 - *Someone sent me Post IDs* → paste them into **Search creative / Post ID**.
 - *Cheapest reach?* → sort by **CPM ↑ (cheapest reach)**.
