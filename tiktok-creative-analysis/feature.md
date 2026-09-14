@@ -5,8 +5,9 @@ accounts make money. No installation, no uploads — everything stays on your ow
 
 ## How to open it
 
-1. Open a terminal in the `tiktok-creative-analysis` folder and run:
-   `python server.py`
+1. Double-click **`start-server.bat`** in the `tiktok-creative-analysis` folder
+   (it opens your browser by itself; keep its black window open while you work).
+   No IDE or Live Server needed. Alternative: run `python server.py` yourself.
 2. Open your browser and go to: `http://localhost:8000`
 3. Click **Load bundled file** (picks the newest Excel in `source-file/` by itself)
    or drag your Excel file into the dotted box.

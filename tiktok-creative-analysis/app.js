@@ -624,20 +624,20 @@
     probeSaver();
   }
   /* Detect whether the saver endpoint exists (server.py). Plain static servers
-     answer POST with 501/404/empty HTML; server.py always answers JSON. */
+     answer /api/version with 404/empty HTML; server.py answers JSON. */
   function probeSaver() {
     $('mgrStatus').textContent = 'Checking saver…';
-    fetch('/api/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '' })
+    fetch('/api/version?v=' + Date.now())
       .then(function (r) {
         return r.text().then(function (t) {
           var o = null;
           try { o = JSON.parse(t); } catch (e) { o = null; }
-          if (o && typeof o.ok === 'boolean') {
+          if (o && o.server === 'server.py') {
             $('mgrStatus').textContent = 'Saver connected (local server.py).';
-          } else if (r.status === 501 || (t && t.charAt(0) === '<')) {
-            $('mgrStatus').textContent = 'Saver unavailable (plain file server) — run python server.py to enable Save, or use Download JSON.';
+          } else if (t && t.charAt(0) === '<') {
+            $('mgrStatus').textContent = 'Saver unavailable (plain file server at ' + location.host + ') — stop it and run python server.py in the tiktok-creative-analysis folder, or use Download JSON.';
           } else if (!t) {
-            $('mgrStatus').textContent = 'Saver unavailable (empty reply — static hosting or wrong server?) — use Download JSON, or edit locally with server.py.';
+            $('mgrStatus').textContent = 'Saver unavailable (empty reply from ' + location.host + ') — something else sits on this port. Stop it, run python server.py, reload, or use Download JSON.';
           } else {
             $('mgrStatus').textContent = 'Saver unavailable (HTTP ' + r.status + ') — use Download JSON.';
           }

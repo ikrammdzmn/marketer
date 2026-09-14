@@ -22,6 +22,9 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Allowlist spelling fix to match xlsx: `Affiliate Dr Samhan3/4` (no space), `Dr Samhan Official3` (typo fixed); `Affiliate Dr Samhan1` + `Dr Samhan Official4` kept intentionally (0 rows)
   - [x] Local saver `server.py` (stdlib only, 127.0.0.1): static + POST /api/accounts (validates ≤100 entries, timestamped backup, LF enforced)
   - [x] Manage accounts popup: edit/add/remove name/@username/note, Save (reloads list on success) + Download JSON fallback
+  - [x] Saver self-diagnosis: GET /api/version fingerprint + per-cause Save errors (plain server / empty reply / validation), JS cache-buster in index.html
+  - [x] `start-server.bat`: double-click launcher (checks python, opens browser, runs server.py; no IDE needed)
+  - [x] `.gitignore`: saver backups (`data/accounts.backup-*.json`) + `__pycache__/` never show in git
   - [x] Bundled loader auto-detects the xlsx in source-file/ via server listing (latest by filename; falls back to the bundled constant) — survives weekly file swaps
   - [x] Period parser accepts bare `YYYY-MM-DD - YYYY-MM-DD` filenames (new TikTok naming has no "N days" prefix)
   - [x] Product Card: blank TikTok accounts (`''`/`'0'`/`'-'`) normalised to user-named `Product Card` (default catalogue promo, not a creative); `Exclude Product Card` tick (default off) filters it from KPIs/tables/chart/modal/preview/exports

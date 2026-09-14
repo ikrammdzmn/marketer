@@ -13,6 +13,8 @@ no framework**. Keep it that way.
   `{name, username, note}` objects; matching is exact on `name` only).
 - `server.py` — local-only server (stdlib, 127.0.0.1): static files + POST
   /api/accounts (validates ≤100 entries, timestamped backup, LF). Never expose.
+- `start-server.bat` — double-click launcher (python check, opens browser, runs
+  server.py). No IDE / Live Server needed.
 - `source-file/*.xlsx` — input data (9,217 rows × 24 cols). Read-only.
 - `sample-data/` — 2 same-day exports for comparison: (1) full 9,202 rows, 60× `Dr. Samhan`; (2) filtered 118 rows, 117× `Dr. Samhan`.
 - `plan.md` — status checklist. Tick it per change; the user reads this file.

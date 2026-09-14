@@ -76,6 +76,13 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def do_GET(self):
+        # Fingerprint endpoint so the page can tell server.py apart from any
+        # plain static server (which answers 404 HTML here instead of JSON).
+        if urlparse(self.path).path == "/api/version":
+            return self._json(200, {"ok": True, "server": "server.py", "version": 1})
+        return super().do_GET()
+
     def do_POST(self):
         if urlparse(self.path).path != "/api/accounts":
             return self._json(404, {"ok": False, "error": "not found"})
