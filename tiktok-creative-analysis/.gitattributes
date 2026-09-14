@@ -1,0 +1,4 @@
+# Enforce LF everywhere git touches text (server.py also writes LF).
+# Without this, Windows checkouts convert JSON/JS to CRLF and fight the saver.
+* text=auto eol=lf
+*.xlsx binary

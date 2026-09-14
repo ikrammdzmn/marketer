@@ -15,7 +15,8 @@ no framework**. Keep it that way.
   /api/accounts (validates ≤100 entries, timestamped backup, LF). Never expose.
 - `start-server.bat` — double-click launcher (python check, opens browser, runs
   server.py). No IDE / Live Server needed.
-- `source-file/*.xlsx` — input data (9,217 rows × 24 cols). Read-only.
+- `source-file/*.xlsx` — input data (≈9.2k rows × 24 cols; TikTok swaps it weekly,
+  loader auto-picks the newest). Read-only.
 - `sample-data/` — 2 same-day exports for comparison: (1) full 9,202 rows, 60× `Dr. Samhan`; (2) filtered 118 rows, 117× `Dr. Samhan`.
 - `plan.md` — status checklist. Tick it per change; the user reads this file.
 - `feature.md` — end-user guide (non-technical). Update it when UI behavior changes.

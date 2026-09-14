@@ -3,7 +3,8 @@
 Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
 
 ## 1. Goal
-- Process/analyze/extract TikTok Creative xlsx (9217 rows x 24 cols).
+- Process/analyze/extract TikTok Creative xlsx (≈9.2k rows × 24 cols; TikTok swaps
+  the file weekly — the loader auto-picks the newest in `source-file/`).
 - Account allowlist as JSON objects {name, username, note} (Option 2).
 
 ## 2. Scope
@@ -41,16 +42,19 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Filter card layout: Account search+dropdown on one row, creative/Post ID search full-width row
   - [x] Dataset period + file date display (7 days + range, DD MMMM YYYY; filename parsed, data fallback)
   - [x] General notes section on page (full file safe to use; Dr. Samhan count diff = inactive rows; exact account names)
-- [x] Verify over HTTP (`python -m http.server`), smoke test (status: done — index.html/app.js/accounts.json/xlsx all 200)
+- [x] Verify over HTTP (`python server.py`), smoke test (status: done — index.html/app.js/accounts.json/xlsx all 200)
 
 ## 3. accounts.json (Option 2 — exact content)
-See `data/accounts.json`. Simple string array, 9 entries, user spelling preserved (user fixes typos/spacing later).
+See `data/accounts.json`. Array of 9 `{name, username, note}` objects, user spelling
+preserved. Matching is exact on `name`; `username`/`note` are display-only.
 
-## 4. Known mismatches (user fixes later)
-- `Affiliate Dr Samhan 3/4/6` (space) → xlsx uses no-space `Affiliate Dr Samhan3/4/6`
-- `Dr Samhan Offcial3` (typo) → xlsx `Dr Samhan Official3` (70 rows)
-- `Dr Samhan Official4` (space) → xlsx `DrSamhanOfficial4`
-- `Affiliate Dr Samhan1` → 0 rows in xlsx, kept intentionally
+## 4. Spelling history (all resolved by user)
+- `Affiliate Dr Samhan 3/4` (space) → fixed to no-space `Affiliate Dr Samhan3/4`
+- `Dr Samhan Offcial3` (typo) → fixed to `Dr Samhan Official3`
+- `Affiliate Dr Samhan 6` (space) → fixed to no-space `Affiliate Dr Samhan6`
+- `Affiliate Dr Samhan1` → removed by user (was 0 rows, kept intentionally before)
+- `Dr Samhan Official4` → kept intentionally (0 exact rows; xlsx twin
+  `DrSamhanOfficial4` has 23 rows/0 orders; coverage hints bridge it)
 
 ## 5. Verify
 - [x] JSON parses, 9 entries, UTF-8/LF
