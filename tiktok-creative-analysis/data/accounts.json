@@ -1,11 +1,47 @@
 [
-  "DrSamhanWellness",
-  "HIMCoffee",
-  "Affiliate Dr Samhan1",
-  "Affiliate Dr Samhan 3",
-  "Affiliate Dr Samhan 4",
-  "Affiliate Dr Samhan 6",
-  "Dr Samhan Official",
-  "Dr Samhan Offcial3",
-  "Dr Samhan Official4"
+  {
+    "name": "DrSamhanWellness",
+    "username": "drsamhanwellness",
+    "note": ""
+  },
+  {
+    "name": "HIMCoffee",
+    "username": "himcoffeedrsamhan",
+    "note": ""
+  },
+  {
+    "name": "Dr Samhan",
+    "username": "affiliatedrsamhan1",
+    "note": "no orders yet"
+  },
+  {
+    "name": "Affiliate Dr Samhan3",
+    "username": "affiliatedrsamhan3",
+    "note": "no orders yet"
+  },
+  {
+    "name": "Affiliate Dr Samhan4",
+    "username": "affiliatedrsamhan4",
+    "note": ""
+  },
+  {
+    "name": "Affiliate Dr Samhan6",
+    "username": "affiliatedrsamhan6",
+    "note": "no orders yet"
+  },
+  {
+    "name": "Dr Samhan Official",
+    "username": "drsamhanofficial",
+    "note": ""
+  },
+  {
+    "name": "Dr Samhan Official3",
+    "username": "drsamhanofficial3",
+    "note": ""
+  },
+  {
+    "name": "Dr Samhan Official4",
+    "username": "drsamhanofficial4",
+    "note": ""
+  }
 ]

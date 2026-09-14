@@ -5,7 +5,7 @@
   var BUNDLED_FILE = 'source-file/Creative data 7 days 2026-09-06 - 2026-09-13 - Product 1729556489100298210 (1).xlsx';
   var MAX_TABLE_ROWS = 200;
 
-  var state = { rows: [], allowlist: [], chart: null };
+  var state = { rows: [], allowlist: [], allowMeta: {}, chart: null };
 
   function $(id) { return document.getElementById(id); }
 
@@ -34,15 +34,32 @@
   });
 
   /* ---------- allowlist ---------- */
-  fetch('data/accounts.json?v=' + Date.now())
+  function loadAllowlist() {
+    return fetch('data/accounts.json?v=' + Date.now())
     .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function (arr) {
-      state.allowlist = Array.isArray(arr) ? arr.map(String) : [];
+      // accounts.json: array of {name, username, note} (legacy plain strings tolerated).
+      // Matching is ALWAYS exact on name; username/note are display-only.
+      var list = Array.isArray(arr) ? arr : [];
+      state.allowlist = list.map(function (e) { return typeof e === 'string' ? e : String(e.name || ''); }).filter(Boolean);
+      state.allowMeta = {};
+      list.forEach(function (e) {
+        if (e && typeof e === 'object' && e.name) {
+          state.allowMeta[String(e.name)] = { username: String(e.username || ''), note: String(e.note || '') };
+        }
+      });
       buildAccountOptions();
     })
     .catch(function () {
       setStatus('Note: data/accounts.json not found — run over HTTP to enable allowlist.');
     });
+  }
+  loadAllowlist();
+
+  /* Allowlist display helpers: ' (@username)' suffix + ' — note' suffix */
+  function allowUser(a) { var m = state.allowMeta[a]; return (m && m.username) ? ' (@' + m.username + ')' : ''; }
+  function allowNote(a) { var m = state.allowMeta[a]; return (m && m.note) ? m.note : ''; }
+  function allowLabel(a) { var n = allowNote(a); return a + allowUser(a) + (n ? ' — ' + n : ''); }
 
   /* ---------- loading ---------- */
   function setStatus(msg) { $('loadStatus').textContent = msg; }
@@ -59,11 +76,16 @@
     if (isNaN(dt.getTime())) return '–';
     return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
   }
-  /* Dataset period: parsed from filename ("7 days 2026-09-06 - 2026-09-13"),
-     falling back to the min/max Time posted values in the data. */
+  /* Dataset period: parsed from filename ("7 days 2026-09-06 - 2026-09-13" or bare
+     "2026-09-07 - 2026-09-14"), falling back to the min/max Time posted values. */
   function parsePeriod(name) {
     var m = /(\d+)\s*days?\s*(\d{4}-\d{2}-\d{2})\s*[–—-]\s*(\d{4}-\d{2}-\d{2})/i.exec(name || '');
     if (m) return { days: parseInt(m[1], 10), from: m[2], to: m[3] };
+    var r = /(\d{4}-\d{2}-\d{2})\s*[–—-]\s*(\d{4}-\d{2}-\d{2})/.exec(name || '');
+    if (r) {
+      var span = Math.round((new Date(r[2]) - new Date(r[1])) / 86400000);
+      if (isFinite(span)) return { days: Math.max(1, span), from: r[1], to: r[2] };
+    }
     var dates = [];
     state.rows.forEach(function (r) {
       var t = /^(\d{4}-\d{2}-\d{2})/.exec(String(r.timePosted || ''));
@@ -88,18 +110,24 @@
     state.rows = json.map(function (r) {
       var cost = num(r['Cost']);
       var impr = int(r['Product ad impressions']);
+      var orders = int(r['SKU orders']);
+      var revenue = num(r['Gross revenue']);
+      var rawAcc = String(r['TikTok account'] === null || r['TikTok account'] === undefined ? '' : r['TikTok account']).trim();
+      // TikTok's unattributed placeholders ('', '0', '-') = default catalogue promo, not a creative
+      var account = (rawAcc === '' || rawAcc === '0' || rawAcc === '-') ? 'Product Card' : rawAcc;
       return {
         postId: r['Post ID'],
         creative: r['Creative'],
-        account: String(r['TikTok account'] === null || r['TikTok account'] === undefined ? '' : r['TikTok account']).trim(),
+        account: account,
         type: r['Creative type'],
         status: r['Status'],
         sec: r['Exploration secondary status'],
         timePosted: r['Time posted'],
         cost: cost,
-        orders: int(r['SKU orders']),
-        revenue: num(r['Gross revenue']),
+        orders: orders,
+        revenue: revenue,
         roi: num(r['ROI']),
+        aov: orders > 0 ? revenue / orders : 0, // derived: source xlsx has no AOV column
         impr: impr,
         clicks: int(r['Product ad clicks']),
         cpm: impr > 0 ? cost / impr * 1000 : 0 // derived: source xlsx has no CPM column
@@ -128,16 +156,43 @@
     reader.readAsArrayBuffer(f);
   });
 
-  $('loadBundled').addEventListener('click', function () {
-    setStatus('Fetching bundled file…');
-    fetch(encodeURI(BUNDLED_FILE) + '?v=' + Date.now())
+  /* Bundled file: auto-detect the xlsx in source-file/ via the server directory
+     listing (works on server.py / python http.server). Filenames carry the date
+     range, so the last alphabetically = latest. Falls back to BUNDLED_FILE. */
+  function fetchBundledFile(url, label) {
+    return fetch(url + '?v=' + Date.now())
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status + ' — serve via http://localhost:8000, file:// is blocked');
         var lm = r.headers.get('Last-Modified');
         return r.arrayBuffer().then(function (buf) { return { buf: buf, date: lm ? new Date(lm) : new Date() }; });
       })
-      .then(function (o) { loadArrayBuffer(o.buf, BUNDLED_FILE, o.date); })
-      .catch(function (e) { setStatus('Bundled load failed: ' + e.message); });
+      .then(function (o) { loadArrayBuffer(o.buf, label, o.date); });
+  }
+  function findBundledCandidates() {
+    return fetch('source-file/?v=' + Date.now())
+      .then(function (r) {
+        if (!r.ok) throw 0;
+        return r.text();
+      })
+      .then(function (html) {
+        var seen = {}, out = [], m, re = /href="([^"]*?\.xlsx)"/gi;
+        while ((m = re.exec(html))) {
+          var name = decodeURIComponent(m[1].split('/').pop().split('?')[0]);
+          if (name && !seen[name]) { seen[name] = 1; out.push(name); }
+        }
+        if (!out.length) throw 0;
+        out.sort();
+        return out;
+      })
+      .catch(function () { return [BUNDLED_FILE.split('/').pop()]; });
+  }
+  $('loadBundled').addEventListener('click', function () {
+    setStatus('Fetching bundled file…');
+    findBundledCandidates().then(function (names) {
+      var file = names[names.length - 1];
+      fetchBundledFile(encodeURI('source-file/' + file), file)
+        .catch(function (e) { setStatus('Bundled load failed: ' + e.message); });
+    });
   });
 
   var dz = $('dropzone');
@@ -183,7 +238,7 @@
     } else {
       box.innerHTML = matches.slice(0, 8).map(function (a) {
         var tag = state.allowlist.indexOf(a) !== -1 ? '<span class="suggest-tag">allowlisted</span>' : '';
-        return '<button type="button" class="suggest-item" data-acc="' + esc(a) + '"><span>' + esc(a) + '</span>' + tag + '</button>';
+        return '<button type="button" class="suggest-item" data-acc="' + esc(a) + '"><span>' + esc(a) + esc(allowUser(a)) + '</span>' + tag + '</button>';
       }).join('');
     }
     box.hidden = false;
@@ -235,7 +290,7 @@
     g1.label = 'Allowlisted (' + state.allowlist.length + ')';
     state.allowlist.forEach(function (a) {
       var o = document.createElement('option');
-      o.value = a; o.textContent = a;
+      o.value = a; o.textContent = allowLabel(a);
       g1.appendChild(o);
     });
     sel.appendChild(g1);
@@ -268,7 +323,7 @@
   }
 
   /* ---------- filtering + render ---------- */
-  ['fAccount', 'fStatus', 'fSec', 'fType', 'fSearch', 'fMinRoi', 'fMinOrders', 'fSort', 'fAllowlist', 'fMin1k']
+  ['fAccount', 'fStatus', 'fSec', 'fType', 'fSearch', 'fMinRoi', 'fMinOrders', 'fSort', 'fAllowlist', 'fMin1k', 'fNoCard']
     .forEach(function (id) {
       $(id).addEventListener('input', applyFilters);
       $(id).addEventListener('change', applyFilters);
@@ -290,12 +345,14 @@
     var minOrd = parseInt($('fMinOrders').value, 10);
     var onlyAllow = $('fAllowlist').checked;
     var only1k = $('fMin1k').checked;
+    var noCard = $('fNoCard').checked;
     if (isNaN(minRoi)) minRoi = -Infinity;
     if (isNaN(minOrd)) minOrd = -Infinity;
     var out = state.rows.filter(function (r) {
       if (acc && r.account !== acc) return false;
       if (onlyAllow && state.allowlist.indexOf(r.account) === -1) return false;
       if (only1k && r.impr < 1000) return false;
+      if (noCard && r.account === 'Product Card') return false;
       if (st && String(r.status) !== st) return false;
       if (se && String(r.sec) !== se) return false;
       if (ty && String(r.type) !== ty) return false;
@@ -327,6 +384,7 @@
     $('kRev').textContent = fmt(rev, 2);
     $('kOrders').textContent = fmt(ord);
     $('kRoi').textContent = cost > 0 ? (rev / cost).toFixed(2) : '–';
+    $('kAov').textContent = ord > 0 ? (rev / ord).toFixed(2) : '–';
     $('kImpr').textContent = fmt(impr);
     $('kCpm').textContent = impr > 0 ? (cost / impr * 1000).toFixed(2) : '–';
     renderAcct(rows);
@@ -344,15 +402,16 @@
     var list = Object.keys(map).map(function (k) {
       return { account: k, rows: map[k].rows, cost: map[k].cost, rev: map[k].rev, ord: map[k].ord,
         roi: map[k].cost > 0 ? map[k].rev / map[k].cost : 0,
+        aov: map[k].ord > 0 ? map[k].rev / map[k].ord : 0,
         cpm: map[k].impr > 0 ? map[k].cost / map[k].impr * 1000 : 0 };
     }).sort(function (a, b) { return b.rev - a.rev; });
     var tb = $('acctTable').querySelector('tbody');
-    if (!list.length) { tb.innerHTML = '<tr><td colspan="8" class="empty-note">No rows match.</td></tr>'; return; }
+    if (!list.length) { tb.innerHTML = '<tr><td colspan="9" class="empty-note">No rows match.</td></tr>'; return; }
     tb.innerHTML = list.slice(0, 50).map(function (a) {
       var allow = state.allowlist.indexOf(a.account) !== -1;
-      return '<tr data-acc="' + esc(a.account) + '" title="Click for creative details"><td>' + esc(a.account) + '</td><td>' + (allow ? 'yes' : '–') + '</td><td>' + fmt(a.rows) +
+      return '<tr data-acc="' + esc(a.account) + '" title="Click for creative details"><td>' + esc(a.account) + esc(allowUser(a.account)) + '</td><td>' + (allow ? 'yes' : '–') + '</td><td>' + fmt(a.rows) +
         '</td><td>' + fmt(a.cost, 2) + '</td><td>' + fmt(a.rev, 2) + '</td><td>' + fmt(a.ord) +
-        '</td><td>' + a.roi.toFixed(2) + '</td><td>' + a.cpm.toFixed(2) + '</td></tr>';
+        '</td><td>' + a.roi.toFixed(2) + '</td><td>' + a.aov.toFixed(2) + '</td><td>' + a.cpm.toFixed(2) + '</td></tr>';
     }).join('');
   }
 
@@ -399,7 +458,7 @@
         return 'Did you mean <button class="hint-btn" data-acc="' + esc(b.h) + '">' + esc(b.h) +
           '</button> (' + fmt(b.n) + ' rows)?';
       }).join(' ');
-      html += '<div class="cov-miss">&#9888; <strong>' + esc(a) + '</strong> — 0 rows in this file, excluded from totals. ' + hints + '</div>';
+      html += '<div class="cov-miss">&#9888; <strong>' + esc(a) + '</strong>' + esc(allowUser(a)) + ' — 0 rows in this file, excluded from totals. ' + hints + '</div>';
       missing++;
     });
     box.innerHTML = html;
@@ -428,6 +487,7 @@
     if ($('fMinRoi').value) bits.push('ROI>=' + $('fMinRoi').value);
     if ($('fMinOrders').value) bits.push('Orders>=' + $('fMinOrders').value);
     if ($('fMin1k').checked) bits.push('1000+ impressions');
+    if ($('fNoCard').checked) bits.push('Product Card excluded');
     if ($('fAllowlist').checked) bits.push('allowlist only');
     if ($('fSort').value) bits.push('sorted by ' + $('fSort').value);
     return bits.length ? 'Active filters: ' + bits.join(' · ') : 'No filters — all creatives for this account';
@@ -442,9 +502,10 @@
       if (cr.length > 90) cr = cr.slice(0, 90) + '…';
       return '<tr><td>' + (i + 1) + '</td><td>' + esc(cr) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.sec) +
         '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) + '</td><td>' + fmt(r.revenue, 2) + '</td><td>' + r.roi.toFixed(2) +
+        '</td><td>' + r.aov.toFixed(2) +
         '</td><td>' + (r.impr >= 1000 ? '<span class="tick" title="1000+ impressions">✓ </span>' : '') + fmt(r.impr) +
         '</td><td>' + fmt(r.clicks) + '</td><td>' + r.cpm.toFixed(2) + '</td></tr>';
-    }).join('') || '<tr><td colspan="12" class="empty-note">No creatives match the active filters.</td></tr>';
+    }).join('') || '<tr><td colspan="13" class="empty-note">No creatives match the active filters.</td></tr>';
     if (scrollBox) scrollBox.scrollTop = st;
     $('acctModalFoot').textContent = 'Showing ' + Math.min(state.modalCount, rows.length) + ' of ' +
       fmt(rows.length) + ' by current sort. Use the main table + Export for the full set.';
@@ -455,12 +516,14 @@
     var cost = 0, rev = 0, ord = 0, impr = 0;
     rows.forEach(function (r) { cost += r.cost; rev += r.revenue; ord += r.orders; impr += r.impr; });
     var allow = state.allowlist.indexOf(account) !== -1;
-    $('acctModalTitle').textContent = account + (allow ? ' ✓ allowlisted' : '');
+    var note = allowNote(account);
+    $('acctModalTitle').textContent = account + (allow ? ' ✓ allowlisted' + allowUser(account) + (note ? ' — ' + note : '') : '');
     $('acctModalCtx').textContent = filterContext();
     $('acctModalKpis').innerHTML =
       kpiMini('Creatives', fmt(rows.length)) + kpiMini('Cost (MYR)', fmt(cost, 2)) +
       kpiMini('Revenue (MYR)', fmt(rev, 2)) + kpiMini('Orders', fmt(ord)) +
       kpiMini('Avg ROI', cost > 0 ? (rev / cost).toFixed(2) : '–') +
+      kpiMini('Avg AOV', ord > 0 ? (rev / ord).toFixed(2) : '–') +
       kpiMini('Avg CPM', impr > 0 ? (cost / impr * 1000).toFixed(2) : '–');
     state.modalAccount = account;
     state.modalCount = MODAL_STEP;
@@ -491,18 +554,19 @@
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && !$('acctModal').hidden) closeAccountModal();
+    if (e.key === 'Escape' && !$('mgrModal').hidden) closeMgr();
   });
 
   function renderTop(rows) {
     $('rowCount').textContent = '— ' + fmt(rows.length) + ' match';
     var tb = $('topTable').querySelector('tbody');
-    if (!rows.length) { tb.innerHTML = '<tr><td colspan="13" class="empty-note">No rows match.</td></tr>'; return; }
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="14" class="empty-note">No rows match.</td></tr>'; return; }
     tb.innerHTML = rows.slice(0, MAX_TABLE_ROWS).map(function (r) {
       var cr = String(r.creative || '');
       if (cr.length > 90) cr = cr.slice(0, 90) + '…';
       return '<tr><td class="mono">' + esc(r.postId) + '</td><td>' + esc(cr) + '</td><td>' + esc(r.account) +
         '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.sec) + '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) +
-        '</td><td>' + fmt(r.revenue, 2) + '</td><td>' + r.roi.toFixed(2) + '</td><td>' + (r.impr >= 1000 ? '<span class="tick" title="1000+ impressions">✓ </span>' : '') + fmt(r.impr) + '</td><td>' + fmt(r.clicks) + '</td><td>' + r.cpm.toFixed(2) + '</td></tr>';
+        '</td><td>' + fmt(r.revenue, 2) + '</td><td>' + r.roi.toFixed(2) + '</td><td>' + r.aov.toFixed(2) + '</td><td>' + (r.impr >= 1000 ? '<span class="tick" title="1000+ impressions">✓ </span>' : '') + fmt(r.impr) + '</td><td>' + fmt(r.clicks) + '</td><td>' + r.cpm.toFixed(2) + '</td></tr>';
     }).join('');
   }
 
@@ -527,6 +591,113 @@
     });
   }
 
+  /* ---------- account manager (local server.py saver) ---------- */
+  function mgrRow(name, username, note) {
+    return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0.5rem;align-items:center" data-mrow>' +
+      '<input data-f="name" class="filter-input" value="' + esc(name) + '" placeholder="Exact account name">' +
+      '<input data-f="username" class="filter-input" value="' + esc(username) + '" placeholder="username (no @)">' +
+      '<input data-f="note" class="filter-input" value="' + esc(note) + '" placeholder="note (optional)">' +
+      '<button type="button" data-mdel class="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm" title="Remove">✕</button></div>';
+  }
+  function renderMgr() {
+    $('mgrStatus').textContent = '';
+    $('mgrRows').innerHTML = state.allowlist.map(function (a) {
+      var m = state.allowMeta[a] || { username: '', note: '' };
+      return mgrRow(a, m.username, m.note);
+    }).join('');
+  }
+  function collectMgr() {
+    var out = [], bad = -1;
+    Array.prototype.forEach.call($('mgrRows').querySelectorAll('[data-mrow]'), function (row, i) {
+      var g = function (f) { return row.querySelector('[data-f="' + f + '"]').value.trim(); };
+      var name = g('name'), username = g('username'), note = g('note');
+      if (!name && !username && !note) return; // skip blank rows
+      if (!name) { bad = i + 1; return; }
+      out.push({ name: name, username: username, note: note });
+    });
+    return { rows: out, bad: bad };
+  }
+  function openMgr() {
+    renderMgr();
+    $('mgrModal').hidden = false;
+    document.body.style.overflow = 'hidden';
+    probeSaver();
+  }
+  /* Detect whether the saver endpoint exists (server.py). Plain static servers
+     answer POST with 501/404/empty HTML; server.py always answers JSON. */
+  function probeSaver() {
+    $('mgrStatus').textContent = 'Checking saver…';
+    fetch('/api/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '' })
+      .then(function (r) {
+        return r.text().then(function (t) {
+          var o = null;
+          try { o = JSON.parse(t); } catch (e) { o = null; }
+          if (o && typeof o.ok === 'boolean') {
+            $('mgrStatus').textContent = 'Saver connected (local server.py).';
+          } else if (r.status === 501 || (t && t.charAt(0) === '<')) {
+            $('mgrStatus').textContent = 'Saver unavailable (plain file server) — run python server.py to enable Save, or use Download JSON.';
+          } else if (!t) {
+            $('mgrStatus').textContent = 'Saver unavailable (empty reply — static hosting or wrong server?) — use Download JSON, or edit locally with server.py.';
+          } else {
+            $('mgrStatus').textContent = 'Saver unavailable (HTTP ' + r.status + ') — use Download JSON.';
+          }
+        });
+      })
+      .catch(function () {
+        $('mgrStatus').textContent = 'Saver unreachable — use Download JSON.';
+      });
+  }
+  function closeMgr() {
+    $('mgrModal').hidden = true;
+    document.body.style.overflow = '';
+  }
+  $('manageAccts').addEventListener('click', openMgr);
+  $('mgrClose').addEventListener('click', closeMgr);
+  $('mgrAdd').addEventListener('click', function () {
+    $('mgrRows').insertAdjacentHTML('beforeend', mgrRow('', '', ''));
+  });
+  $('mgrRows').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-mdel]') : null;
+    if (!b) return;
+    var row = b.closest('[data-mrow]');
+    if (row) row.remove();
+  });
+  $('mgrDownload').addEventListener('click', function () {
+    var c = collectMgr();
+    if (c.bad > 0) { $('mgrStatus').textContent = 'Row ' + c.bad + ' needs a name.'; return; }
+    download('accounts.json', JSON.stringify(c.rows, null, 2) + '\n', 'application/json');
+    $('mgrStatus').textContent = 'Downloaded ' + c.rows.length + ' entries — replace data/accounts.json with it.';
+  });
+  $('mgrSave').addEventListener('click', function () {
+    var c = collectMgr();
+    if (c.bad > 0) { $('mgrStatus').textContent = 'Row ' + c.bad + ' needs a name.'; return; }
+    if (c.rows.length > 100) { $('mgrStatus').textContent = 'Too many entries (max 100).'; return; }
+    $('mgrStatus').textContent = 'Saving…';
+    fetch('/api/accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(c.rows)
+    }).then(function (r) {
+      return r.text().then(function (t) {
+        var o = null;
+        try { o = JSON.parse(t); } catch (e) { o = null; }
+        if (o && o.ok) return o;
+        if (r.status === 501 || (t && t.charAt(0) === '<')) throw new Error('plain file server detected — stop it and run python server.py (or use Download JSON)');
+        if (!t) throw new Error('empty reply from server (static hosting?) — use Download JSON, or edit locally with server.py');
+        throw new Error((o && o.error) || ('HTTP ' + r.status));
+      });
+    }).then(function (o) {
+      $('mgrStatus').textContent = 'Saved ' + o.entries + ' entries' +
+        (o.backup ? ' (backup: ' + o.backup + ')' : '') + '. Reloading…';
+      loadAllowlist().then(function () { applyFilters(); closeMgr(); setStatus('Allowlist reloaded (' + o.entries + ' entries).'); });
+    }).catch(function (e) {
+      $('mgrStatus').textContent = 'Save failed: ' + e.message + '.';
+    });
+  });
+  $('mgrModal').addEventListener('click', function (e) {
+    if (e.target === $('mgrModal')) closeMgr();
+  });
+
   /* ---------- export ---------- */
   function download(name, content, mime) {
     var blob = new Blob([content], { type: mime });
@@ -537,16 +708,69 @@
     a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
-  $('expCsv').addEventListener('click', function () {
-    var rows = filtered();
-    if (!rows.length) return;
-    var head = ['Post ID', 'Creative', 'Account', 'Type', 'Status', 'Exploration secondary status', 'Cost', 'Orders', 'Revenue', 'ROI', 'Impressions', 'Clicks', 'CPM'];
+  function buildCsv(rows) {
+    var head = ['Post ID', 'Creative', 'Account', 'Type', 'Status', 'Exploration secondary status', 'Cost', 'Orders', 'Revenue', 'ROI', 'AOV', 'Impressions', 'Clicks', 'CPM'];
     var q = function (v) { return '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"'; };
     var lines = [head.join(',')].concat(rows.map(function (r) {
       return [q(r.postId), q(r.creative), q(r.account), q(r.type), q(r.status), q(r.sec),
-        r.cost.toFixed(2), r.orders, r.revenue.toFixed(2), r.roi.toFixed(2), r.impr, r.clicks, r.cpm.toFixed(2)].join(',');
+        r.cost.toFixed(2), r.orders, r.revenue.toFixed(2), r.roi.toFixed(2), r.aov.toFixed(2), r.impr, r.clicks, r.cpm.toFixed(2)].join(',');
     }));
-    download('creatives-filtered.csv', lines.join('\n'), 'text/csv');
+    return lines.join('\n');
+  }
+  $('expCsv').addEventListener('click', function () {
+    var rows = filtered();
+    if (!rows.length) return;
+    download('creatives-filtered.csv', buildCsv(rows), 'text/csv');
+  });
+  /* Sheet-like preview: same filtered set as Export, rendered as a standalone
+     HTML table page (new tab, local-only blob). Drag header edges to resize
+     columns (Chrome/Edge); click any cell to expand its full text. */
+  var PREVIEW_COLS = ['Post ID', 'Creative', 'Account', 'Type', 'Status', 'Exploration secondary status', 'Cost', 'Orders', 'Revenue', 'ROI', 'AOV', 'Impressions', 'Clicks', 'CPM'];
+  var PREVIEW_WIDTHS = [150, 340, 170, 90, 110, 150, 90, 80, 110, 70, 80, 110, 80, 80];
+  function buildPreviewHtml(rows) {
+    var css = 'body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f3f4f6;color:#111827}' +
+      '@media (prefers-color-scheme:dark){body{background:#111827;color:#e5e7eb}}' +
+      'header{position:sticky;top:0;z-index:5;background:inherit;padding:12px 16px;border-bottom:1px solid #d1d5db}' +
+      'h1{font-size:16px;margin:0 0 4px}p.meta{font-size:12px;color:#6b7280;margin:0 0 8px}' +
+      '.toolbar{display:flex;gap:16px;align-items:center;font-size:13px}.tip{color:#6b7280}' +
+      '.wrap-scroll{overflow:auto;max-height:calc(100vh - 140px)}' +
+      'table{border-collapse:collapse;table-layout:fixed;width:max-content;min-width:100%;font-size:12px;background:#fff}' +
+      '@media (prefers-color-scheme:dark){table{background:#1f2937}}' +
+      'th,td{border:1px solid #e5e7eb;padding:6px 8px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}' +
+      '@media (prefers-color-scheme:dark){th,td{border-color:#374151}}' +
+      'thead th{position:sticky;top:0;background:#e5e7eb;resize:horizontal;overflow:hidden;min-width:60px;max-width:800px;z-index:2}' +
+      '@media (prefers-color-scheme:dark){thead th{background:#030712}}' +
+      'tbody tr:nth-child(even){background:rgba(0,0,0,0.04)}' +
+      'td.num{text-align:right;font-variant-numeric:tabular-nums}td.mono{font-family:ui-monospace,monospace;font-size:11px}' +
+      'td.open{white-space:normal;overflow:visible}table.wrap-all td{white-space:normal;overflow:visible}';
+    var js = 'document.querySelector("tbody").addEventListener("click",function(e){' +
+      'var td=e.target.closest?e.target.closest("td"):null;if(td)td.classList.toggle("open");});' +
+      'document.getElementById("wrapAll").addEventListener("change",function(e){' +
+      'document.querySelector("table").classList.toggle("wrap-all",e.target.checked);});';
+    var head = '<tr>' + PREVIEW_COLS.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr>';
+    var cols = PREVIEW_WIDTHS.map(function (w) { return '<col style="width:' + w + 'px">'; }).join('');
+    var body = rows.map(function (r) {
+      return '<tr><td class="mono">' + esc(r.postId) + '</td><td>' + esc(r.creative) + '</td><td>' + esc(r.account) +
+        '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + esc(r.sec) + '</td><td class="num">' + fmt(r.cost, 2) + '</td><td class="num">' + fmt(r.orders) +
+        '</td><td class="num">' + fmt(r.revenue, 2) + '</td><td class="num">' + r.roi.toFixed(2) + '</td><td class="num">' + r.aov.toFixed(2) + '</td><td class="num">' + fmt(r.impr) +
+        '</td><td class="num">' + fmt(r.clicks) + '</td><td class="num">' + r.cpm.toFixed(2) + '</td></tr>';
+    }).join('');
+    return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>Preview (' + fmt(rows.length) + ' rows) — TikTok Creative Analysis</title>' +
+      '<style>' + css + '</style></head><body>' +
+      '<header><h1>Preview — ' + fmt(rows.length) + ' rows</h1>' +
+      '<p class="meta">' + esc(filterContext()) + ' · generated ' + esc(new Date().toLocaleString('en-GB')) + '</p>' +
+      '<div class="toolbar"><label><input type="checkbox" id="wrapAll"> Wrap all cells</label>' +
+      '<span class="tip">Tip: drag a column edge to resize, click any cell to expand it, Ctrl+F to find.</span></div></header>' +
+      '<div class="wrap-scroll"><table><colgroup>' + cols + '</colgroup><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>' +
+      '<script>' + js + '</scr' + 'ipt></body></html>';
+  }
+  $('previewCsv').addEventListener('click', function () {
+    var rows = filtered();
+    if (!rows.length) return;
+    var blob = new Blob([buildPreviewHtml(rows)], { type: 'text/html;charset=utf-8' });
+    window.open(URL.createObjectURL(blob), '_blank');
   });
   $('expJson').addEventListener('click', function () {
     download('creatives-filtered.json', JSON.stringify(filtered(), null, 2), 'application/json');
