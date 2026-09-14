@@ -2,7 +2,7 @@
 (function () {
   'use strict';
 
-  var BUNDLED_FILE = 'source-file/Creative data 7 days 2026-09-06 - 2026-09-13 - Product 1729556489100298210 (1).xlsx';
+  var BUNDLED_FILE = 'source-file/Creative data 2026-09-07 - 2026-09-14 - Product 1729556489100298210.xlsx';
   var MAX_TABLE_ROWS = 200;
 
   var state = { rows: [], allowlist: [], allowMeta: {}, chart: null };

@@ -15,6 +15,10 @@ no framework**. Keep it that way.
   /api/accounts (validates ≤100 entries, timestamped backup, LF). Never expose.
 - `start-server.bat` — double-click launcher (python check, opens browser, runs
   server.py). No IDE / Live Server needed.
+- `.gitignore` — keeps saver backups (`data/accounts.backup-*.json`) and
+  `__pycache__/` out of git.
+- `.gitattributes` — enforces LF text + `*.xlsx` binary (Windows `core.autocrlf`
+  would otherwise flip JSON/JS to CRLF against the saver's LF).
 - `source-file/*.xlsx` — input data (≈9.2k rows × 24 cols; TikTok swaps it weekly,
   loader auto-picks the newest). Read-only.
 - `sample-data/` — 2 same-day exports for comparison: (1) full 9,202 rows, 60× `Dr. Samhan`; (2) filtered 118 rows, 117× `Dr. Samhan`.
@@ -46,7 +50,7 @@ files). Serve on a fresh port per test; always stop background servers.
 2. **Display changes stay on the webpage** unless export changes are requested.
 3. **Data quirks**: source has no CPM column (derived: Cost ÷ Impr × 1000). 19-digit
    Post IDs exceed 2^53 — compare as Numbers (identical rounding both sides = exact
-   match), but displayed IDs may differ in trailing digits. Only ~14/9,217 rows reach
+   match), but displayed IDs may differ in trailing digits. Only ~14/9,268 rows reach
    1000+ impressions. Sample-data finding: the 57-row `Dr. Samhan` gap between the 2
    same-day exports is dead inventory only — file (2) adds 57× `Ineligible / Not active`
    rows (0 impr, ~0 cost) missing from file (1); the 52 `Explored` rows match exactly.

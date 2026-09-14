@@ -38,8 +38,11 @@ the root cause of the whole saver saga). Expect to redirect twice.
 Long, dense, productive session — AOV → CSV preview → username allowlist → local
 saver → bundled 404 → period bug → exploration audit → Product Card → save debugging
 → gitignore → handoff. User is decisive and trusting ("ok proceed", "okkk"). Loop is
-healthy. Loose ends (top of next window): user never confirmed "Saver connected" on
-THEIR machine — ask for the probe status line first thing if save comes up again.
+healthy. UPDATE: user confirmed **Save works on their machine** (was Live Server on
+the wrong port all along — the probe + `.bat` + fingerprint closed it). Remaining:
+uncommitted work (accounts.json cleanup, AGENTS/plan/DEV_NOTES, `.gitattributes`)
+awaiting their go; `feature.md` Outstanding warning added; BUNDLED_FILE fallback
+repointed at the 09-07 file; plan.md contradiction fixed.
 
 ## Project snapshot
 
@@ -56,8 +59,10 @@ THEIR machine — ask for the probe status line first thing if save comes up aga
 - `accounts.json`: 9 × `{name, username, note}` objects; matching exact on `name`;
   8 of 9 match xlsx; `Dr Samhan Official4` kept (0 rows, coverage hints bridge
   `DrSamhanOfficial4` twin). User edits this file directly too — re-read before work.
-- Source xlsx rotates weekly (`source-file/` currently 09-07–09-14, 9,268 rows);
-  loader auto-picks newest by filename; period parser accepts bare date ranges.
+- Source xlsx rotates weekly (`source-file/` currently 09-07–09-14, 9,268 rows,
+  14 hit 1000+ impr); loader auto-picks newest by filename; period parser accepts
+  bare date ranges; BUNDLED_FILE fallback repointed at the current file (matters
+  for GitHub Pages, which has no directory listing).
 - Blank accounts (`''`/`'0'`/`'-'`) normalise to user-named `Product Card`
   (catalogue promo, was ~29% of revenue); `Exclude Product Card` tick, default off.
 - Derived metrics: CPM, AOV (no source columns). 19-digit Post IDs: Number-compare,
@@ -116,4 +121,5 @@ Prior windows 1–10 live below (kept for continuity). This window:
   names byte-for-byte.
 - First question on any save complaint: "what does the probe status line say?"
   Second: "Ctrl+Shift+R, then tell me." Third: confirm `server.py` (not Live
-  Server) owns port 8000.
+  Server) owns port 8000. (Resolved this window: it was Live Server + stale cache;
+  user confirmed Save works. `app.js?v=4` current.)

@@ -20,7 +20,7 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Derived CPM (Cost ÷ Impr × 1000): KPI card, both tables, CSV export, sort
   - [x] Derived AOV (Revenue ÷ Orders): KPI card, both tables, account modal, CSV + JSON export
   - [x] Allowlist usernames + notes: dropdown/suggestions/account table/modal/coverage show `Name (@username)` plus `— no orders yet` where set (matching stays exact on name)
-  - [x] Allowlist spelling fix to match xlsx: `Affiliate Dr Samhan3/4` (no space), `Dr Samhan Official3` (typo fixed); `Affiliate Dr Samhan1` + `Dr Samhan Official4` kept intentionally (0 rows)
+  - [x] Allowlist spelling fix to match xlsx: `Affiliate Dr Samhan3/4` (no space), `Dr Samhan Official3` (typo fixed); `Dr Samhan Official4` kept intentionally (0 rows)
   - [x] Local saver `server.py` (stdlib only, 127.0.0.1): static + POST /api/accounts (validates ≤100 entries, timestamped backup, LF enforced)
   - [x] Manage accounts popup: edit/add/remove name/@username/note, Save (reloads list on success) + Download JSON fallback
   - [x] Saver self-diagnosis: GET /api/version fingerprint + per-cause Save errors (plain server / empty reply / validation), JS cache-buster in index.html

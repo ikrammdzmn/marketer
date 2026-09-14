@@ -63,7 +63,9 @@ for the full list.
   Post ID numbers** (one or many, even a whole column copied from Excel) to jump
   straight to those videos.
 - **Status / 2nd status / Type** — narrow by video status. Tip: 2nd status
-  `Performing` or `Outstanding`, sorted by ROI, surfaces winners.
+  `Performing` or `Outstanding`, sorted by ROI, surfaces winners. Note:
+  `Outstanding` means winners *within their own campaign*, not the top videos
+  overall — a `Performing` video can out-earn them all, so always sort by ROI.
 - **Min ROI / Min orders / Only 1000+ impressions / Exclude Product Card / Only
   allowlist accounts** — tick or fill to cut the noise. Tick **Exclude Product Card**
   to keep every number creative-only (catalogue sales vanish from totals and exports).
