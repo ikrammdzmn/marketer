@@ -1,9 +1,10 @@
 # AGENTS.md — tiktok-account folder conventions
 
-New mini-project: bulk list of videos + post times per TikTok account via the
-official TikTok Display API (`POST /v2/video/list/`, `video.list` scope,
-`create_time` field). No npm, no build — plain docs + a small local tester
-(pending) that stays on the owner's laptop.
+Stage 1 local system: per-account video + post-time + counts dashboard via the
+official TikTok Display API (`POST /v2/video/list/`, scopes
+`user.info.basic,profile,stats + video.list`). No npm, no build — Python
+stdlib server + vanilla JS page, Tailwind Play CDN for styling. Stays on the
+owner's laptop (`127.0.0.1` only, never published as-is).
 
 ## Files
 
@@ -11,6 +12,16 @@ official TikTok Display API (`POST /v2/video/list/`, `video.list` scope,
 - `DEV_NOTES.md` — private handoff notes between sessions (vibe + facts).
 - `feature.md` — end-user guide (non-technical). Update it when behavior changes.
 - `plan.md` — status checklist. Tick it per change; the user reads this file.
+- `SETUP.md` — portal + sandbox setup record (up to first sandbox CSV).
+- `otherdevice.md` — per-PC rerun guide (keys + relink only; portal not repeated).
+- `tester.py` — one-run-per-account fallback (stdlib, PKCE-hex, form token
+  exchange). FROZEN — do not modify; new work goes in `dashboard/`.
+- `dashboard/` — the main app: `dashboard.py` (stdlib server, per-account
+  pending OAuth, silent refresh, cached table APIs), `dashboard.html`
+  (Tailwind UI: pill account picker, calendar range filter, column toggles,
+  relative MYT times), `tokens/` + `csvs/` (gitignored runtime), `.gitignore`.
+- `.gitignore` — `csvs/`, `.local_secrets.json`, `__pycache__/`.
+- `.local_secrets.EXAMPLE.json` — keys template (real file never in git).
 - `../docs/terms.html` + `../docs/privacy.html` (repo root) — TikTok app-review
   pages (Himwellness internal-use wording). Do not move without updating the
   TikTok app form URLs.
@@ -21,20 +32,30 @@ official TikTok Display API (`POST /v2/video/list/`, `video.list` scope,
 
 The 10 managed accounts live in
 `tiktok-creative-analysis/data/accounts.json` (exact names authoritative there).
-This folder does not duplicate that list — it reads it when the tester is built.
+This folder never duplicates that list — dashboard reads it live per request
+(no restart needed after adding an account there).
 
 ## Run / verify
 
-Nothing runnable yet. When the tester lands: local-only, stdlib preferred,
-`127.0.0.1` only, never expose tokens. After EVERY change: syntax check +
-smoke test; always stop background servers.
+```powershell
+python tiktok-account/dashboard/dashboard.py          # owns 8080
+python tiktok-account/tester.py --account X --port 8081   # fallback only
+# open http://127.0.0.1:8080/
+```
+
+Local-only, stdlib preferred, `127.0.0.1` only, never expose tokens. After
+EVERY change: `python -m py_compile` touched `.py` + `node --check` extracted
+dashboard JS + HTTP smoke test on a scratch port; always stop background
+servers. Secrets (Sandbox key, tokens) via env or untracked files only.
 
 ## Rules
 
 1. **Official API only in this folder** — no scrapers, no unofficial endpoints.
-   Display API works for OWN authorized accounts only (one OAuth per account).
-2. **Secrets never committed** — Client Secret / access tokens stay in-memory or
-   in an untracked local file; never in git.
+   Display API works for OWN authorized accounts only (one OAuth per account;
+   `--account` is just a filename label — data = whoever logged in).
+2. **Secrets never committed** — Client Secret / access + refresh tokens stay in
+   `tokens/` / `.local_secrets.json` (gitignored) or env; never in git, chat
+   screenshots, or error pastes. `git status` must never show them.
 3. **Replies**: short. Feasibility questions ("just answer, do not edit") get
    words only; code only on explicit "proceed/go/build".
 4. **GitHub Pages** (source `main`/`(root)`, project site): URLs carry the repo
@@ -42,5 +63,11 @@ smoke test; always stop background servers.
    update the TikTok app form on switch. Domain verification on github.io:
    verify URL-prefix WITH repo path (`.../marketer/`); `Domain`/DNS type is
    impossible on github.io.
-5. **Don't touch `tiktok-creative-analysis/`** from this folder's work unless
+5. **TikTok portal facts** (do not re-derive): Desktop PKCE challenge = hex
+   SHA256; token exchange = form-encoded; token JSON is flat; Desktop
+   redirects allow only `localhost`/`127.0.0.1` (Web tab forces `https`);
+   Sandbox ≠ Production config (redirects/scopes/keys re-added); Sandbox
+   target users cap 10 (~1hr to appear); production blocks `video.list`
+   pre-approval (`client_key` error); codes single-use; one server process.
+6. **Don't touch `tiktok-creative-analysis/`** from this folder's work unless
    asked — that tool has its own AGENTS.md and invariants.

@@ -33,6 +33,9 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Insight engine: file-adaptive benchmarks (median CPM, top-20 min impressions, median 2s rate/AOV, p90 ROI) + per-video verdict chips (Catalogue/Template/Review/Boost/Learning/Hook weak/retention cliff/Small basket) in top table, modal, preview, CSV
   - [x] SOP targets (`data/targets.json` {topN, minImpr, maxCPM}; blank = auto): benchmark strip above Top creatives with Top-N switcher (10/15/20/25), manual bars tagged `yours`, editable in Manage accounts, saved via POST /api/targets
   - [x] Exploration 2nd-status pill badges (✓ Performing, 🏆 Outstanding, 🛡 Underperforming + neutral pills for the rest) in top table, modal, preview
+  - [x] Multi-file compare (up to 7 files): multi-pick upload / drag-drop / Load all bundled, baseline→latest Δ table (NEW/LOST/KEPT, ΔRevenue/Orders/Cost/ROI/Impr/CPM + status Δ, noise-greyed), Combine-days sum mode, overlap warning, compare CSV export
+  - [x] Bulk product-campaigns dialect: header aliases (Video title→Creative, Video ID→Post ID), Campaign/CampaignID/ProductID carried, ROI derived when column absent, `~`-with-hours period parse, Campaign filter + column (Top/modal/compare/CSV/preview), N/A-ID text-fallback join, bundled checkbox picker (period + type badge, newest pre-ticked) with mixed-type/overlap/size warnings
+  - [x] `data/catalog.json`: 4 campaign IDs + 18 product IDs from the 09-08 bulk file (labels blank for user to name); friendly labels in filter/tables/CSV/preview, Product column everywhere, unmapped-ID hint under the Campaign filter
   - [x] Allowlist coverage notes (webpage only): 0-row accounts flagged with did-you-mean hints, collapsible (default collapsed)
   - [x] Exploration secondary status: column + filter + CSV export
   - [x] 1000+ impressions tick (green ✓ in Impr. cell) + "Only 1000+ impressions" filter

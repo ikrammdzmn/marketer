@@ -1,0 +1,4 @@
+# Local safety — never commit real keys or tokens.
+.local_secrets.json
+csvs/
+__pycache__/

@@ -6,7 +6,8 @@
   var MAX_TABLE_ROWS = 200;
 
   var state = { rows: [], allowlist: [], allowMeta: {}, bench: null, chart: null,
-    targets: { topN: 20, minImpr: null, maxCPM: null } };
+    targets: { topN: 20, minImpr: null, maxCPM: null },
+    files: [], cmpRows: [], cmpMode: 'compare', cmpInfo: '', dialectCache: {} };
 
   function $(id) { return document.getElementById(id); }
 
@@ -199,6 +200,51 @@
   }
   loadAllowlist();
 
+  /* Catalog (campaign/product ID → friendly names). data/catalog.json is user-authored;
+     IDs/labels are display-only — matching stays exact on raw file values. */
+  function loadCatalog() {
+    return fetch('data/catalog.json?v=' + Date.now())
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (o) {
+      state.catalog = (o && typeof o === 'object') ? o : { campaigns: {}, products: {} };
+      if (!state.catalog.campaigns) state.catalog.campaigns = {};
+      if (!state.catalog.products) state.catalog.products = {};
+      if (state.rows.length) { populateFacets(); renderCatHint(); applyFilters(); }
+    })
+    .catch(function () { state.catalog = { campaigns: {}, products: {} }; });
+  }
+  loadCatalog();
+  function campLabel(row) {
+    var c = (state.catalog && state.catalog.campaigns) || {};
+    var e = c[String((row && row.campaignId) || '')];
+    if (e && e.label) return e.label;
+    return (row && row.campaign) || '–';
+  }
+  function prodName(row) {
+    var p = (state.catalog && state.catalog.products) || {};
+    var e = p[String((row && row.productId) || '')];
+    if (e && e.name) return e.name;
+    return (row && row.productId) || '–';
+  }
+  // Unmapped-ID hint: which campaign/product IDs in the loaded files have no friendly name yet.
+  function renderCatHint() {
+    var el = $('catHint');
+    if (!el) return;
+    var c = (state.catalog && state.catalog.campaigns) || {};
+    var p = (state.catalog && state.catalog.products) || {};
+    var uc = {}, up = {};
+    state.files.forEach(function (f) {
+      f.rows.forEach(function (r) {
+        if (r.campaignId && !(c[r.campaignId] && c[r.campaignId].label)) uc[r.campaignId] = r.campaign || r.campaignId;
+        if (r.productId && !(p[r.productId] && p[r.productId].name)) up[r.productId] = 1;
+      });
+    });
+    var nc = Object.keys(uc).length, np = Object.keys(up).length;
+    el.textContent = (!state.files.length || (!nc && !np)) ? '' :
+      'Catalog: ' + (nc ? nc + ' campaign(s)' : '') + (nc && np ? ' + ' : '') + (np ? np + ' product(s)' : '') +
+      ' unnamed — name them in data/catalog.json to show friendly labels.';
+  }
+
   /* Allowlist display helpers: ' (@username)' suffix + ' — note' suffix */
   function allowUser(a) { var m = state.allowMeta[a]; return (m && m.username) ? ' (@' + m.username + ')' : ''; }
   function allowNote(a) { var m = state.allowMeta[a]; return (m && m.note) ? m.note : ''; }
@@ -229,6 +275,12 @@
       var span = Math.round((new Date(r[2]) - new Date(r[1])) / 86400000);
       if (isFinite(span)) return { days: Math.max(1, span), from: r[1], to: r[2] };
     }
+    // Bulk product-campaigns naming: "2026-09-08 00 ~ 2026-09-15 05" (tilde + hour suffixes)
+    var t = /(\d{4}-\d{2}-\d{2})(?:\s+\d{1,2})?\s*~\s*(\d{4}-\d{2}-\d{2})(?:\s+\d{1,2})?/.exec(name || '');
+    if (t) {
+      var tspan = Math.round((new Date(t[2]) - new Date(t[1])) / 86400000);
+      if (isFinite(tspan)) return { days: Math.max(1, tspan), from: t[1], to: t[2] };
+    }
     var dates = [];
     state.rows.forEach(function (r) {
       var t = /^(\d{4}-\d{2}-\d{2})/.exec(String(r.timePosted || ''));
@@ -246,22 +298,67 @@
       : 'File dated: ' + fmtLong(fileDate);
   }
 
-  function ingest(workbook, fileName, fileDate) {
+  /* ---------- multi-file compare engine ---------- */
+  // Pure period parse from filename only (no state fallback) — used for overlap detection + sorting.
+  function periodOfName(name) {
+    var m = /(\d+)\s*days?\s*(\d{4}-\d{2}-\d{2})\s*[–—-]\s*(\d{4}-\d{2}-\d{2})/i.exec(name || '');
+    if (m) return { days: parseInt(m[1], 10), from: m[2], to: m[3] };
+    var r = /(\d{4}-\d{2}-\d{2})\s*[–—-]\s*(\d{4}-\d{2}-\d{2})/.exec(name || '');
+    if (r) {
+      var span = Math.round((new Date(r[2]) - new Date(r[1])) / 86400000);
+      if (isFinite(span)) return { days: Math.max(1, span), from: r[1], to: r[2] };
+    }
+    // Bulk product-campaigns naming: "2026-09-08 00 ~ 2026-09-15 05" (tilde + hour suffixes)
+    var t = /(\d{4}-\d{2}-\d{2})(?:\s+\d{1,2})?\s*~\s*(\d{4}-\d{2}-\d{2})(?:\s+\d{1,2})?/.exec(name || '');
+    if (t) {
+      var tspan = Math.round((new Date(t[2]) - new Date(t[1])) / 86400000);
+      if (isFinite(tspan)) return { days: Math.max(1, tspan), from: t[1], to: t[2] };
+    }
+    return null;
+  }
+  function fileRank(f) { var p = f.period; return (p && p.to ? p.to : '') + '|' + f.label; }
+  function sortedFiles() { return state.files.slice().sort(function (a, b) {
+    return fileRank(a) < fileRank(b) ? -1 : fileRank(a) > fileRank(b) ? 1 : 0; }); }
+  function rangesOverlap() {
+    var fs = sortedFiles().filter(function (f) { return f.period && f.period.from && f.period.to; });
+    for (var i = 1; i < fs.length; i++) {
+      if (fs[i].period.from <= fs[i - 1].period.to) return true;
+    }
+    return false;
+  }
+  // Join key: 19-digit Post IDs exceed 2^53 — Number() both sides (identical rounding) + account.
+  // Bulk exports use Video ID 'N/A' for catalogue rows — those fall back to creative-text + account.
+  function keyOf(postId, account, creative) {
+    var s = String(postId === null || postId === undefined ? '' : postId).trim();
+    if (s === '' || s.toUpperCase() === 'N/A') return 'TXT:' + String(creative || '').slice(0, 80) + '|' + String(account || '');
+    var n = Number(s);
+    return (isFinite(n) ? n : s) + '|' + String(account || '');
+  }
+  // Header adapter: accepts per-campaign dialect (Post ID / Creative / ROI) and bulk
+  // product-campaigns dialect (Video ID / Video title / Campaign name / no ROI).
+  function rowsOfWorkbook(workbook) {
     var name = workbook.SheetNames[0];
     var ws = workbook.Sheets[name];
     var json = XLSX.utils.sheet_to_json(ws, { defval: '' });
-    state.rows = json.map(function (r) {
+    var keys = json.length ? Object.keys(json[0]) : [];
+    var bulk = keys.indexOf('Video ID') !== -1 || keys.indexOf('Video title') !== -1 || keys.indexOf('Campaign name') !== -1;
+    return { sheet: name, dialect: bulk ? 'bulk' : 'single', rows: json.map(function (r) {
       var cost = num(r['Cost']);
       var impr = int(r['Product ad impressions']);
       var orders = int(r['SKU orders']);
       var revenue = num(r['Gross revenue']);
       var rawAcc = String(r['TikTok account'] === null || r['TikTok account'] === undefined ? '' : r['TikTok account']).trim();
-      // TikTok's unattributed placeholders ('', '0', '-') = default catalogue promo, not a creative
       var account = (rawAcc === '' || rawAcc === '0' || rawAcc === '-') ? 'Product Card' : rawAcc;
+      var pid = (r['Post ID'] !== '' && r['Post ID'] !== undefined) ? r['Post ID'] : r['Video ID'];
+      var cr = (r['Creative'] !== '' && r['Creative'] !== undefined) ? r['Creative'] : r['Video title'];
+      var roiRaw = (r['ROI'] !== '' && r['ROI'] !== undefined) ? num(r['ROI']) : NaN;
       return {
-        postId: r['Post ID'],
-        creative: r['Creative'],
+        postId: pid,
+        creative: cr,
         account: account,
+        campaign: String(r['Campaign name'] === null || r['Campaign name'] === undefined ? '' : r['Campaign name']),
+        campaignId: String(r['Campaign ID'] === null || r['Campaign ID'] === undefined ? '' : r['Campaign ID']),
+        productId: String(r['Product ID'] === null || r['Product ID'] === undefined ? '' : r['Product ID']),
         type: r['Creative type'],
         status: r['Status'],
         sec: r['Exploration secondary status'],
@@ -269,8 +366,8 @@
         cost: cost,
         orders: orders,
         revenue: revenue,
-        roi: num(r['ROI']),
-        aov: orders > 0 ? revenue / orders : 0, // derived: source xlsx has no AOV column
+        roi: isNaN(roiRaw) ? (cost > 0 ? revenue / cost : 0) : roiRaw, // bulk files carry no ROI column — derived
+        aov: orders > 0 ? revenue / orders : 0,
         impr: impr,
         clicks: int(r['Product ad clicks']),
         ctr: num(r['Product ad click rate']),
@@ -279,31 +376,267 @@
         v50: num(r['50% ad video view rate']),
         v75: num(r['75% ad video view rate']),
         v100: num(r['100% ad video view rate']),
-        cpm: impr > 0 ? cost / impr * 1000 : 0 // derived: source xlsx has no CPM column
+        cpm: impr > 0 ? cost / impr * 1000 : 0
       };
+    }) };
+  }
+  // Combine mode: sum discrete days by Post-ID key (keeps latest text fields, recomputes roi/aov/cpm).
+  function buildCombined(fs) {
+    var map = {};
+    fs.forEach(function (f) {
+      f.rows.forEach(function (r) {
+        var k = keyOf(r.postId, r.account, r.creative);
+        var m = map[k];
+        if (!m) { map[k] = { base: r, cost: 0, orders: 0, revenue: 0, impr: 0, clicks: 0, latest: r }; }
+        var e = map[k];
+        e.cost += r.cost; e.orders += r.orders; e.revenue += r.revenue; e.impr += r.impr; e.clicks += r.clicks;
+        e.latest = r;
+      });
     });
+    return Object.keys(map).map(function (k) {
+      var e = map[k], L = e.latest;
+      return { postId: L.postId, creative: L.creative, account: L.account, campaign: L.campaign, campaignId: L.campaignId, productId: L.productId, type: L.type,
+        status: L.status, sec: L.sec, timePosted: L.timePosted, cost: e.cost, orders: e.orders,
+        revenue: e.revenue, roi: e.cost > 0 ? e.revenue / e.cost : 0,
+        aov: e.orders > 0 ? e.revenue / e.orders : 0, impr: e.impr, clicks: e.clicks,
+        ctr: L.ctr, v2: L.v2, v25: L.v25, v50: L.v50, v75: L.v75, v100: L.v100,
+        cpm: e.impr > 0 ? e.cost / e.impr * 1000 : 0 };
+    });
+  }
+  // Compare mode: baseline (oldest) vs latest — per-video deltas + NEW/LOST/KEPT flags.
+  function rebuildCompare() {
+    var fs = sortedFiles();
+    state.cmpRows = [];
+    if (fs.length < 2 || state.cmpMode !== 'compare') return;
+    var A = fs[0], B = fs[fs.length - 1];
+    var ma = {}, mb = {};
+    A.rows.forEach(function (r) { ma[keyOf(r.postId, r.account, r.creative)] = r; });
+    B.rows.forEach(function (r) { mb[keyOf(r.postId, r.account, r.creative)] = r; });
+    var keys = {};
+    Object.keys(ma).forEach(function (k) { keys[k] = 1; });
+    Object.keys(mb).forEach(function (k) { keys[k] = 1; });
+    state.cmpRows = Object.keys(keys).map(function (k) {
+      var a = ma[k] || null, b = mb[k] || null;
+      var ref = b || a;
+      var ac = a ? a.cost : 0, bc = b ? b.cost : 0;
+      var ao = a ? a.orders : 0, bo = b ? b.orders : 0;
+      var ar = a ? a.revenue : 0, br = b ? b.revenue : 0;
+      var ai = a ? a.impr : 0, bi = b ? b.impr : 0;
+      var aroi = a ? a.roi : 0, broi = b ? b.roi : 0;
+      var acpm = a ? a.cpm : 0, bcpm = b ? b.cpm : 0;
+      return { move: !a ? 'NEW' : !b ? 'LOST' : 'KEPT',
+        creative: ref.creative, account: ref.account, postId: ref.postId,
+        campaign: ref.campaign || '', campId: ref.campaignId || '', prodId: ref.productId || '',
+        aCamp: a ? (a.campaign || '') : '', bCamp: b ? (b.campaign || '') : '',
+        aCampId: a ? (a.campaignId || '') : '', bCampId: b ? (b.campaignId || '') : '',
+        campMoved: !!a && !!b && (a.campaign || '') !== (b.campaign || ''),
+        aRev: ar, bRev: br, dRev: br - ar,
+        aOrd: ao, bOrd: bo, dOrd: bo - ao,
+        aCost: ac, bCost: bc, dCost: bc - ac,
+        aRoi: aroi, bRoi: broi, dRoi: broi - aroi,
+        aImpr: ai, bImpr: bi, dImpr: bi - ai,
+        aCpm: acpm, bCpm: bcpm,
+        aStatus: a ? a.status : '—', bStatus: b ? b.status : '—',
+        aSec: a ? a.sec : '', bSec: b ? b.sec : '',
+        noise: Math.abs(bc - ac) < 1 && (bo - ao) === 0 };
+    });
+    state.cmpInfo = A.label + ' → ' + B.label;
+  }
+  function refreshAfterFiles(announce) {
+    var fs = sortedFiles();
+    if (!fs.length) {
+      state.rows = []; state.cmpRows = [];
+      setStatus('No file loaded.');
+      $('fileMeta').textContent = '';
+      renderFileList(); renderCompareBar(); renderCompare(); renderCatHint();
+      populateFacets(); computeBench(); applyFilters();
+      return;
+    }
+    // Main view: latest file in compare mode, summed rows in combine mode.
+    if (state.cmpMode === 'combine' && fs.length > 1) {
+      state.rows = buildCombined(fs);
+    } else {
+      state.rows = fs[fs.length - 1].rows;
+    }
+    rebuildCompare();
+    var cur = fs[fs.length - 1];
     populateFacets();
     computeBench();
-    setStatus('Loaded ' + fmt(state.rows.length) + ' rows from ' + esc(name) + '.');
-    renderFileMeta(fileName, fileDate);
+    setStatus(announce || ('Loaded ' + fmt(state.rows.length) + ' rows from ' +
+      (state.cmpMode === 'combine' && fs.length > 1 ? fs.length + ' files combined.' : cur.label + '.')));
+    renderFileMeta(cur.label, cur.fileDate);
+    renderFileList(); renderCompareBar(); renderCompare(); renderCatHint();
     applyFilters();
   }
+  function addFile(label, fileDate, parsed, replaceAll) {
+    if (replaceAll) state.files = [];
+    // cap 7 files — drop oldest (by rank) when overflowing
+    state.files.push({ label: label, fileDate: fileDate, period: periodOfName(label), rows: parsed.rows, dialect: parsed.dialect || 'single' });
+    state.dialectCache[label] = parsed.dialect || 'single';
+    var fs = sortedFiles();
+    while (fs.length > 7) { var drop = fs.shift(); state.files.splice(state.files.indexOf(drop), 1); fs = sortedFiles(); }
+    // auto-pick intent on 2nd file: overlap -> compare, disjoint -> combine stays user choice (default compare first, hint combine)
+    if (state.files.length === 2) {
+      state.cmpMode = rangesOverlap() ? 'compare' : 'compare';
+      syncCmpModeUI();
+    }
+    refreshAfterFiles();
+  }
+  function renderFileList() {
+    var box = $('fileList');
+    if (!box) return;
+    var fs = sortedFiles();
+    if (!fs.length) { box.innerHTML = ''; return; }
+    box.innerHTML = fs.map(function (f, i) {
+      var tag = fs.length > 1 ? (i === 0 ? ' <span class="suggest-tag">baseline</span>' : i === fs.length - 1 ? ' <span class="suggest-tag">latest</span>' : '') : '';
+      var dia = f.dialect ? ' <span class="suggest-tag">' + esc(f.dialect) + '</span>' : '';
+      var p = f.period ? ' · ' + f.period.from + ' → ' + f.period.to : '';
+      return '<div class="flex flex-wrap items-center gap-2"><span>📄 <strong>' + esc(f.label) + '</strong>' +
+        ' <span class="text-gray-500">(' + fmt(f.rows.length) + ' rows' + p + ')</span>' + dia + tag + '</span>' +
+        '<button type="button" class="hint-btn" data-unload="' + esc(f.label) + '">remove</button></div>';
+    }).join('');
+  }
+  function renderCompareBar() {
+    var bar = $('compareBar');
+    if (!bar) return;
+    var show = state.files.length > 1;
+    bar.hidden = !show;
+    if (!show) return;
+    var w = $('overlapWarn');
+    if (w) w.textContent = rangesOverlap()
+      ? '⚠ ranges overlap — use Latest − Baseline (summing double-counts).'
+      : 'No overlap — daily slices can be summed, or diffed for momentum.';
+    var mw = $('mixWarn');
+    if (mw) {
+      var dias = {};
+      state.files.forEach(function (f) { dias[f.dialect || 'single'] = 1; });
+      var mixed = Object.keys(dias).length > 1;
+      var big = state.files.some(function (f) { return f.rows.length > 20000; });
+      mw.textContent = (mixed ? '⚠ mixed file types (single + bulk) — Campaign is blank for single-campaign files. ' : '') +
+        (big ? '⏳ large file(s) loaded — parsing may take a few seconds.' : '');
+    }
+  }
+  function syncCmpModeUI() {
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="cmpMode"]'), function (r) {
+      r.checked = (r.value === state.cmpMode);
+    });
+  }
+  function cmpFiltered() {
+    var acc = $('fAccount').value, q = $('fSearch').value.trim().toLowerCase();
+    var mv = $('cmpMove').value, noCard = $('fNoCard').checked;
+    var cpEl = $('fCamp'), cp = cpEl ? cpEl.value : '';
+    var out = state.cmpRows.filter(function (r) {
+      if (acc && r.account !== acc) return false;
+      if (mv && r.move !== mv) return false;
+      if (cp && String(r.campaign || '') !== cp) return false;
+      if (noCard && r.account === 'Product Card') return false;
+      if (q && String(r.creative).toLowerCase().indexOf(q) === -1 &&
+          String(r.postId).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    var s = $('cmpSort').value;
+    var key = { drev_desc: 'dRev', droi_desc: 'dRoi', dcost_desc: 'dCost', dord_desc: 'dOrd', dimpr_desc: 'dImpr' }[s] || 'dRev';
+    out.sort(function (a, b) { return b[key] - a[key]; });
+    return out;
+  }
+  function fmtDelta(n, d) { var s = (n > 0 ? '+' : '') + fmt(n, d === undefined ? 2 : d); return s; }
+  function renderCompare() {
+    var sec = $('cmpSection');
+    if (!sec) return;
+    var show = state.files.length > 1 && state.cmpMode === 'compare';
+    sec.hidden = !show;
+    if (!show) return;
+    var rows = cmpFiltered();
+    $('cmpCount').textContent = '— ' + fmt(rows.length) + ' videos (' + state.cmpInfo + ')';
+    $('cmpMeta').textContent = 'Baseline = oldest, Latest = newest. Δ = Latest − Baseline. Greyed rows = noise (ΔCost < RM1, ΔOrders = 0).';
+    var tb = $('cmpTable').querySelector('tbody');
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="24" class="empty-note">No videos match.</td></tr>'; return; }
+    var cat = (state.catalog && state.catalog.campaigns) || {};
+    var prd = (state.catalog && state.catalog.products) || {};
+    var lab = function (nm, id) { var e = cat[String(id || '')]; return (e && e.label) ? e.label : (nm || '–'); };
+    tb.innerHTML = rows.slice(0, MAX_TABLE_ROWS).map(function (r) {
+      var cr = String(r.creative || '');
+      if (cr.length > 60) cr = cr.slice(0, 60) + '…';
+      var badge = r.move === 'NEW' ? '<span class="sec sec-performing">● NEW</span>' :
+        r.move === 'LOST' ? '<span class="sec sec-rejected">● LOST</span>' : '<span class="sec sec-flat">KEPT</span>';
+      var sd = (r.aStatus === r.bStatus) ? esc(r.bStatus) : esc(r.aStatus) + ' → ' + esc(r.bStatus);
+      var camp = r.campMoved ? esc(lab(r.aCamp, r.aCampId)) + ' → ' + esc(lab(r.bCamp, r.bCampId)) : esc(lab(r.campaign, r.campId));
+      var pe = prd[String(r.prodId || '')];
+      var prod = (pe && pe.name) ? pe.name : (r.prodId || '–');
+      var style = r.noise ? ' style="opacity:.45"' : '';
+      return '<tr' + style + '><td>' + badge + '</td><td>' + esc(cr) + '</td><td>' + esc(r.account) +
+        '</td><td>' + camp + '</td><td title="' + esc(r.prodId || '') + '">' + esc(prod) + '</td><td class="mono">' + esc(r.postId) + '</td><td>' + fmt(r.aRev, 2) + '</td><td>' + fmt(r.bRev, 2) +
+        '</td><td>' + fmtDelta(r.dRev) + '</td><td>' + fmt(r.aOrd) + '</td><td>' + fmt(r.bOrd) + '</td><td>' + fmtDelta(r.dOrd, 0) +
+        '</td><td>' + fmt(r.aCost, 2) + '</td><td>' + fmt(r.bCost, 2) + '</td><td>' + fmtDelta(r.dCost) +
+        '</td><td>' + r.aRoi.toFixed(2) + '</td><td>' + r.bRoi.toFixed(2) + '</td><td>' + fmtDelta(r.dRoi) +
+        '</td><td>' + fmt(r.aImpr) + '</td><td>' + fmt(r.bImpr) + '</td><td>' + fmtDelta(r.dImpr, 0) +
+        '</td><td>' + r.aCpm.toFixed(2) + '</td><td>' + r.bCpm.toFixed(2) + '</td><td>' + sd + '</td></tr>';
+    }).join('');
+  }
 
-  function loadArrayBuffer(buf, label, fileDate) {
+  function ingest(workbook, fileName, fileDate) {
+    // Single-file entry: replaces the slot list (old behaviour preserved).
+    var parsed = rowsOfWorkbook(workbook);
+    addFile(fileName, fileDate, parsed, true);
+  }
+
+  function loadArrayBuffer(buf, label, fileDate, replaceAll) {
     try {
       var wb = XLSX.read(buf, { type: 'array' });
-      ingest(wb, label, fileDate);
+      var parsed = rowsOfWorkbook(wb);
+      addFile(label, fileDate, parsed, replaceAll !== false);
     } catch (e) {
       setStatus('Parse failed (' + label + '): ' + e.message);
     }
   }
+  function loadManyBuffers(items) {
+    // items: [{buf, label, fileDate}] — added without clearing between each.
+    state.files = [];
+    items.forEach(function (it, idx) {
+      try {
+        var wb = XLSX.read(it.buf, { type: 'array' });
+        var parsed = rowsOfWorkbook(wb);
+        state.files.push({ label: it.label, fileDate: it.fileDate, period: periodOfName(it.label), rows: parsed.rows, dialect: parsed.dialect || 'single' });
+        state.dialectCache[it.label] = parsed.dialect || 'single';
+      } catch (e) { setStatus('Parse failed (' + it.label + '): ' + e.message); }
+    });
+    var fs = sortedFiles();
+    while (fs.length > 7) { var drop = fs.shift(); state.files.splice(state.files.indexOf(drop), 1); fs = sortedFiles(); }
+    syncCmpModeUI();
+    refreshAfterFiles();
+  }
 
   $('fileInput').addEventListener('change', function (e) {
-    var f = e.target.files && e.target.files[0];
-    if (!f) return;
-    var reader = new FileReader();
-    reader.onload = function () { loadArrayBuffer(reader.result, f.name, new Date(f.lastModified)); };
-    reader.readAsArrayBuffer(f);
+    var list = e.target.files;
+    if (!list || !list.length) return;
+    var arr = Array.prototype.slice.call(list, 0, 7);
+    if (arr.length === 1 && state.files.length === 0) {
+      var f0 = arr[0], r0 = new FileReader();
+      r0.onload = function () { loadArrayBuffer(r0.result, f0.name, new Date(f0.lastModified), true); };
+      r0.readAsArrayBuffer(f0);
+      e.target.value = '';
+      return;
+    }
+    var pending = arr.map(function (f) { return { f: f, buf: null }; });
+    var done = 0;
+    pending.forEach(function (p) {
+      var rd = new FileReader();
+      rd.onload = function () {
+        p.buf = rd.result; done++;
+        if (done === pending.length) {
+          // append to existing slots (cap 7 inside addFile/loadManyBuffers path)
+          pending.forEach(function (q) {
+            try {
+              var wb = XLSX.read(q.buf, { type: 'array' });
+              var parsed = rowsOfWorkbook(wb);
+              addFile(q.f.name, new Date(q.f.lastModified), parsed, false);
+            } catch (err) { setStatus('Parse failed (' + q.f.name + '): ' + err.message); }
+          });
+        }
+      };
+      rd.readAsArrayBuffer(p.f);
+    });
+    e.target.value = '';
   });
 
   /* Bundled file: auto-detect the xlsx in source-file/ via the server directory
@@ -344,6 +677,51 @@
         .catch(function (e) { setStatus('Bundled load failed: ' + e.message); });
     });
   });
+  var loadAllBtn = $('loadAllBundled');
+  if (loadAllBtn) loadAllBtn.addEventListener('click', function () {
+    var box = $('bundlePick');
+    if (!box.hidden) { box.hidden = true; box.innerHTML = ''; return; }
+    box.innerHTML = '<span class="text-gray-500">Listing source-file/…</span>';
+    box.hidden = false;
+    findBundledCandidates().then(function (names) {
+      var sorted = names.slice().sort();
+      box.innerHTML = sorted.map(function (n, i) {
+        var p = periodOfName(n);
+        var meta = p ? ' · ' + p.from + ' → ' + p.to : ' · <span class="text-gray-500">no date in name</span>';
+        var dia = state.dialectCache[n] ? ' · <span class="suggest-tag">' + esc(state.dialectCache[n]) + '</span>' : '';
+        var checked = (i === sorted.length - 1) ? ' checked' : '';
+        return '<label class="flex flex-wrap items-center gap-2 py-0.5"><input type="checkbox" data-bpick value="' + esc(n) + '"' + checked + ' class="w-4 h-4">' +
+          '<span>📄 <strong>' + esc(n) + '</strong><span class="text-gray-500"> (' + meta + dia + ')</span></span></label>';
+      }).join('') +
+      '<div class="flex flex-wrap items-center gap-2 mt-2"><button id="bundleLoad" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Load selected (max 7)</button>' +
+      '<span class="text-xs text-gray-500">Newest is pre-ticked. Type badge appears after a file has been read once.</span></div>';
+      $('bundleLoad').addEventListener('click', function () {
+        var sel = Array.prototype.map.call(box.querySelectorAll('[data-bpick]:checked'), function (c) { return c.value; });
+        if (!sel.length) { setStatus('Tick at least one bundled file.'); return; }
+        sel = sel.slice(-7);
+        setStatus('Fetching ' + sel.length + ' bundled file(s)…');
+        var results = [], chain = Promise.resolve();
+        sel.forEach(function (file) {
+          chain = chain.then(function () {
+            return fetch(encodeURI('source-file/' + file) + '?v=' + Date.now()).then(function (r) {
+              if (!r.ok) throw new Error('HTTP ' + r.status);
+              var lm = r.headers.get('Last-Modified');
+              return r.arrayBuffer().then(function (buf) { results.push({ buf: buf, label: file, fileDate: lm ? new Date(lm) : new Date() }); });
+            });
+          });
+        });
+        chain.then(function () {
+          box.hidden = true; box.innerHTML = '';
+          loadManyBuffers(results);
+        }).catch(function (e) { setStatus('Bundled load failed: ' + e.message); });
+      });
+    });
+  });
+  var clearBtn = $('clearFiles');
+  if (clearBtn) clearBtn.addEventListener('click', function () {
+    state.files = []; state.cmpRows = [];
+    refreshAfterFiles('Cleared. No file loaded.');
+  });
 
   var dz = $('dropzone');
   ['dragover', 'dragenter'].forEach(function (ev) {
@@ -353,11 +731,39 @@
     dz.addEventListener(ev, function (e) { e.preventDefault(); dz.classList.remove('drag-over'); });
   });
   dz.addEventListener('drop', function (e) {
-    var f = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (!f) return;
-    var reader = new FileReader();
-    reader.onload = function () { loadArrayBuffer(reader.result, f.name, new Date(f.lastModified)); };
-    reader.readAsArrayBuffer(f);
+    var list = e.dataTransfer.files;
+    if (!list || !list.length) return;
+    var arr = Array.prototype.slice.call(list, 0, 7);
+    arr.forEach(function (f) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var wb = XLSX.read(reader.result, { type: 'array' });
+          var parsed = rowsOfWorkbook(wb);
+          addFile(f.name, new Date(f.lastModified), parsed, state.files.length === 0);
+        } catch (err) { setStatus('Parse failed (' + f.name + '): ' + err.message); }
+      };
+      reader.readAsArrayBuffer(f);
+    });
+  });
+  // Compare controls: mode toggle + movement/sort + per-file remove
+  Array.prototype.forEach.call(document.querySelectorAll('input[name="cmpMode"]'), function (r) {
+    r.addEventListener('change', function () {
+      state.cmpMode = document.querySelector('input[name="cmpMode"]:checked').value;
+      refreshAfterFiles();
+    });
+  });
+  ['cmpMove', 'cmpSort'].forEach(function (id) {
+    var el = $(id);
+    if (el) { el.addEventListener('input', renderCompare); el.addEventListener('change', renderCompare); }
+  });
+  var flBox = $('fileList');
+  if (flBox) flBox.addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-unload]') : null;
+    if (!b) return;
+    var label = b.getAttribute('data-unload');
+    state.files = state.files.filter(function (f) { return f.label !== label; });
+    refreshAfterFiles();
   });
 
   /* ---------- facets ---------- */
@@ -460,11 +866,21 @@
   }
 
   function populateFacets() {
-    var statuses = {}, types = {}, secs = {};
-    state.rows.forEach(function (r) { statuses[r.status] = 1; types[r.type] = 1; secs[r.sec] = 1; });
+    var statuses = {}, types = {}, secs = {}, camps = {}, campIds = {};
+    state.rows.forEach(function (r) { statuses[r.status] = 1; types[r.type] = 1; secs[r.sec] = 1; if (r.campaign) { camps[r.campaign] = 1; campIds[r.campaign] = r.campaignId || ''; } });
     fillSelect('fStatus', Object.keys(statuses));
     fillSelect('fType', Object.keys(types));
     fillSelect('fSec', Object.keys(secs));
+    // Campaign options show the catalog label when named, value stays the raw file name.
+    var sel = $('fCamp'), cur = sel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    Object.keys(camps).sort().forEach(function (n) {
+      var lab = campLabel({ campaign: n, campaignId: campIds[n] });
+      var o = document.createElement('option');
+      o.value = n; o.textContent = (lab && lab !== n) ? lab + ' — ' + n : n;
+      sel.appendChild(o);
+    });
+    sel.value = cur;
     // all distinct file accounts -> "Other" group (allowlist filtered out in builder)
     var seen = {};
     state.rows.forEach(function (r) { if (r.account) seen[r.account] = 1; });
@@ -473,7 +889,7 @@
   }
 
   /* ---------- filtering + render ---------- */
-  ['fAccount', 'fStatus', 'fSec', 'fType', 'fSearch', 'fMinRoi', 'fMinOrders', 'fMaxAge', 'fSort', 'fAllowlist', 'fMin1k', 'fNoCard']
+  ['fAccount', 'fStatus', 'fSec', 'fType', 'fCamp', 'fSearch', 'fMinRoi', 'fMinOrders', 'fMaxAge', 'fSort', 'fAllowlist', 'fMin1k', 'fNoCard']
     .forEach(function (id) {
       $(id).addEventListener('input', applyFilters);
       $(id).addEventListener('change', applyFilters);
@@ -490,7 +906,7 @@
 
   function filtered(forceAccount) {
     var acc = forceAccount !== undefined ? forceAccount : $('fAccount').value, st = $('fStatus').value, ty = $('fType').value;
-    var se = $('fSec').value;
+    var se = $('fSec').value, cp = $('fCamp').value;
     // Pasted Post IDs (all-digit tokens, comma/space/newline separated) -> exact ID match.
     // Anything else -> creative-text keyword search. Excel-safe: 19-digit IDs exceed
     // 2^53, so both sides compare as Numbers (identical IEEE754 rounding both ways).
@@ -516,6 +932,7 @@
       if (st && String(r.status) !== st) return false;
       if (se && String(r.sec) !== se) return false;
       if (ty && String(r.type) !== ty) return false;
+      if (cp && String(r.campaign || '') !== cp) return false;
       if (r.roi < minRoi || r.orders < minOrd) return false;
       if (!isNaN(maxAge)) { var ad = ageDays(r.timePosted); if (isNaN(ad) || ad > maxAge) return false; }
       if (rawQ) {
@@ -553,6 +970,7 @@
     renderCoverage(rows);
     renderTop(rows);
     renderChart(rows);
+    renderCompare();
   }
 
   function renderAcct(rows) {
@@ -644,6 +1062,7 @@
     if ($('fStatus').value) bits.push('Status=' + $('fStatus').value);
     if ($('fSec').value) bits.push('2nd=' + $('fSec').value);
     if ($('fType').value) bits.push('Type=' + $('fType').value);
+    if ($('fCamp').value) bits.push('Campaign=' + $('fCamp').value);
     var sq = $('fSearch').value.trim();
     if (sq) bits.push((state.idMode ? 'Post ID=' : 'Search=') + (sq.length > 40 ? sq.slice(0, 40) + '…' : sq));
     if ($('fMinRoi').value) bits.push('ROI>=' + $('fMinRoi').value);
@@ -663,12 +1082,12 @@
     tb.innerHTML = rows.slice(0, state.modalCount).map(function (r, i) {
       var cr = String(r.creative || '');
       if (cr.length > 90) cr = cr.slice(0, 90) + '…';
-      return '<tr><td>' + (i + 1) + '</td><td>' + esc(cr) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td>' + insightCell(r) + '<td>' + fmtPosted(r.timePosted) +
+      return '<tr><td>' + (i + 1) + '</td><td>' + esc(cr) + '</td><td title="' + esc(r.campaign || '') + '">' + esc(campLabel(r)) + '</td><td title="' + esc(r.productId || '') + '">' + esc(prodName(r)) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td>' + insightCell(r) + '<td>' + fmtPosted(r.timePosted) +
         '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) + '</td><td>' + fmt(r.revenue, 2) + '</td><td>' + r.roi.toFixed(2) +
         '</td><td>' + r.aov.toFixed(2) +
         '</td><td>' + (r.impr >= 1000 ? '<span class="tick" title="1000+ impressions">✓ </span>' : '') + fmt(r.impr) +
         '</td><td>' + fmt(r.clicks) + '</td><td>' + r.cpm.toFixed(2) + '</td></tr>';
-    }).join('') || '<tr><td colspan="15" class="empty-note">No creatives match the active filters.</td></tr>';
+    }).join('') || '<tr><td colspan="17" class="empty-note">No creatives match the active filters.</td></tr>';
     if (scrollBox) scrollBox.scrollTop = st;
     $('acctModalFoot').textContent = 'Showing ' + Math.min(state.modalCount, rows.length) + ' of ' +
       fmt(rows.length) + ' by current sort. Use the main table + Export for the full set.';
@@ -723,12 +1142,12 @@
   function renderTop(rows) {
     $('rowCount').textContent = '— ' + fmt(rows.length) + ' match';
     var tb = $('topTable').querySelector('tbody');
-    if (!rows.length) { tb.innerHTML = '<tr><td colspan="16" class="empty-note">No rows match.</td></tr>'; return; }
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="18" class="empty-note">No rows match.</td></tr>'; return; }
     tb.innerHTML = rows.slice(0, MAX_TABLE_ROWS).map(function (r) {
       var cr = String(r.creative || '');
       if (cr.length > 90) cr = cr.slice(0, 90) + '…';
       return '<tr><td class="mono">' + esc(r.postId) + '</td><td>' + esc(cr) + '</td><td>' + esc(r.account) +
-        '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td>' + insightCell(r) + '<td>' + fmtPosted(r.timePosted) + '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) +
+        '</td><td title="' + esc(r.campaign || '') + '">' + esc(campLabel(r)) + '</td><td title="' + esc(r.productId || '') + '">' + esc(prodName(r)) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td>' + insightCell(r) + '<td>' + fmtPosted(r.timePosted) + '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) +
         '</td><td>' + fmt(r.revenue, 2) + '</td><td>' + r.roi.toFixed(2) + '</td><td>' + r.aov.toFixed(2) + '</td><td>' + (r.impr >= 1000 ? '<span class="tick" title="1000+ impressions">✓ </span>' : '') + fmt(r.impr) + '</td><td>' + fmt(r.clicks) + '</td><td>' + r.cpm.toFixed(2) + '</td></tr>';
     }).join('');
   }
@@ -906,10 +1325,10 @@
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   }
   function buildCsv(rows) {
-    var head = ['Post ID', 'Creative', 'Account', 'Type', 'Status', 'Exploration secondary status', 'Insight', 'Posted', 'Cost', 'Orders', 'Revenue', 'ROI', 'AOV', 'Impressions', 'Clicks', 'CPM'];
+    var head = ['Post ID', 'Creative', 'Account', 'Campaign', 'Campaign ID', 'Product', 'Product ID', 'Type', 'Status', 'Exploration secondary status', 'Insight', 'Posted', 'Cost', 'Orders', 'Revenue', 'ROI', 'AOV', 'Impressions', 'Clicks', 'CPM'];
     var q = function (v) { return '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"'; };
     var lines = [head.join(',')].concat(rows.map(function (r) {
-      return [q(r.postId), q(r.creative), q(r.account), q(r.type), q(r.status), q(r.sec), q(insightText(r)), q(r.timePosted),
+      return [q(r.postId), q(r.creative), q(r.account), q(campLabel(r)), q(r.campaignId || ''), q(prodName(r)), q(r.productId || ''), q(r.type), q(r.status), q(r.sec), q(insightText(r)), q(r.timePosted),
         r.cost.toFixed(2), r.orders, r.revenue.toFixed(2), r.roi.toFixed(2), r.aov.toFixed(2), r.impr, r.clicks, r.cpm.toFixed(2)].join(',');
     }));
     return lines.join('\n');
@@ -919,11 +1338,42 @@
     if (!rows.length) return;
     download('creatives-filtered.csv', buildCsv(rows), 'text/csv');
   });
+  function buildCmpCsv(rows) {
+    var head = ['Move', 'Creative', 'Account', 'Campaign', 'Campaign moved', 'Product', 'Post ID',
+      'Base Revenue', 'Latest Revenue', 'Delta Revenue',
+      'Base Orders', 'Latest Orders', 'Delta Orders',
+      'Base Cost', 'Latest Cost', 'Delta Cost',
+      'Base ROI', 'Latest ROI', 'Delta ROI',
+      'Base Impr', 'Latest Impr', 'Delta Impr',
+      'Base CPM', 'Latest CPM', 'Base Status', 'Latest Status', 'Files'];
+    var q = function (v) { return '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"'; };
+    var cat = (state.catalog && state.catalog.campaigns) || {};
+    var prd = (state.catalog && state.catalog.products) || {};
+    var lines = [head.join(',')].concat(rows.map(function (r) {
+      var ce = cat[String(r.campId || '')], pe = prd[String(r.prodId || '')];
+      var cl = (ce && ce.label) ? ce.label : (r.campaign || '');
+      var pn = (pe && pe.name) ? pe.name : (r.prodId || '');
+      return [q(r.move), q(r.creative), q(r.account), q(cl), r.campMoved ? 'yes' : 'no', q(pn), q(r.postId),
+        r.aRev.toFixed(2), r.bRev.toFixed(2), r.dRev.toFixed(2),
+        r.aOrd, r.bOrd, r.dOrd,
+        r.aCost.toFixed(2), r.bCost.toFixed(2), r.dCost.toFixed(2),
+        r.aRoi.toFixed(2), r.bRoi.toFixed(2), r.dRoi.toFixed(2),
+        r.aImpr, r.bImpr, r.dImpr,
+        r.aCpm.toFixed(2), r.bCpm.toFixed(2), q(r.aStatus), q(r.bStatus), q(state.cmpInfo)].join(',');
+    }));
+    return 'Files: ' + state.cmpInfo + '\n' + lines.join('\n');
+  }
+  var cmpCsvBtn = $('cmpCsv');
+  if (cmpCsvBtn) cmpCsvBtn.addEventListener('click', function () {
+    var rows = cmpFiltered();
+    if (!rows.length) return;
+    download('creatives-compare.csv', buildCmpCsv(rows), 'text/csv');
+  });
   /* Sheet-like preview: same filtered set as Export, rendered as a standalone
      HTML table page (new tab, local-only blob). Drag header edges to resize
      columns (Chrome/Edge); click any cell to expand its full text. */
-  var PREVIEW_COLS = ['Post ID', 'Creative', 'Account', 'Type', 'Status', 'Exploration secondary status', 'Insight', 'Posted', 'Cost', 'Orders', 'Revenue', 'ROI', 'AOV', 'Impressions', 'Clicks', 'CPM'];
-  var PREVIEW_WIDTHS = [150, 340, 170, 90, 110, 150, 150, 110, 90, 80, 110, 70, 80, 110, 80, 80];
+  var PREVIEW_COLS = ['Post ID', 'Creative', 'Account', 'Campaign', 'Product', 'Type', 'Status', 'Exploration secondary status', 'Insight', 'Posted', 'Cost', 'Orders', 'Revenue', 'ROI', 'AOV', 'Impressions', 'Clicks', 'CPM'];
+  var PREVIEW_WIDTHS = [150, 340, 170, 170, 150, 90, 110, 150, 150, 110, 90, 80, 110, 70, 80, 110, 80, 80];
   function buildPreviewHtml(rows) {
     var css = 'body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f3f4f6;color:#111827}' +
       '@media (prefers-color-scheme:dark){body{background:#111827;color:#e5e7eb}}' +
@@ -957,7 +1407,7 @@
     var cols = PREVIEW_WIDTHS.map(function (w) { return '<col style="width:' + w + 'px">'; }).join('');
     var body = rows.map(function (r) {
       return '<tr><td class="mono">' + esc(r.postId) + '</td><td>' + esc(r.creative) + '</td><td>' + esc(r.account) +
-        '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td><td>' + esc(insightText(r)) + '</td><td>' + fmtPosted(r.timePosted) + '</td><td class="num">' + fmt(r.cost, 2) + '</td><td class="num">' + fmt(r.orders) +
+        '</td><td>' + esc(campLabel(r)) + '</td><td>' + esc(prodName(r)) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td><td>' + esc(insightText(r)) + '</td><td>' + fmtPosted(r.timePosted) + '</td><td class="num">' + fmt(r.cost, 2) + '</td><td class="num">' + fmt(r.orders) +
         '</td><td class="num">' + fmt(r.revenue, 2) + '</td><td class="num">' + r.roi.toFixed(2) + '</td><td class="num">' + r.aov.toFixed(2) + '</td><td class="num">' + fmt(r.impr) +
         '</td><td class="num">' + fmt(r.clicks) + '</td><td class="num">' + r.cpm.toFixed(2) + '</td></tr>';
     }).join('');

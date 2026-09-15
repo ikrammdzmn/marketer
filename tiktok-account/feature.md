@@ -1,47 +1,59 @@
-# TikTok Account Video List — What It Can Do (User Guide)
+# TikTok Accounts Dashboard — What It Can Do (User Guide)
 
-No technical knowledge needed. This explains the system that lists every video
-posted by your TikTok accounts, with post times, in bulk.
+No technical knowledge needed. This is your laptop page that shows every video
+posted by your TikTok accounts, with post times and view/like/comment/share
+counts, all in one place.
 
 ## What this system can do
 
-- **List all videos per account, in bulk** — give it your TikTok account
-  (e.g. `@drsamhanwellness`) and get back every public video: video link,
-  caption, and **post time**, newest first.
-- **Covers all 10 managed accounts** — repeat the same login step once per
-  account; each account's list stays separate.
-- **Post time included** — each video shows when it was posted (date + time),
-  so you can see posting frequency and match videos to sales weeks.
-- **Export to Excel** — the list downloads as CSV, which opens directly in Excel
-  for filtering and sharing with your team.
-- **Official + safe** — uses TikTok's own Display API with your login. Only
-  your own accounts, nothing scraped, no bans.
+- **All 10 accounts in one page** — pick an account from the dropdown (green
+  `linked` pill = ready, red `not linked` = needs one login). No repeated
+  logins: each account is linked once, then it just works for months.
+- **Every public video, newest first** — title, Video ID, post time shown as
+  "3 days ago" (exact Malaysia time on hover), views, likes, comments, shares,
+  plus link to open the video and its cover image.
+- **Account profile on top** — followers, following, total likes, video count,
+  verified tick, bio.
+- **Calendar date filter** — presets (Today, Yesterday, Last 7 / 30 days,
+  3 / 6 / 12 months), any month, or click start + end days on the calendar.
+  Days with no videos are greyed out so you can't pick an empty range.
+- **Show / hide columns** — tick boxes above the table (e.g. hide covers for
+  a compact view). The `All` box hides everything except Video ID.
+- **Export to Excel** — downloads exactly what you see (respects the filter),
+  opens directly in Excel for sharing with your team.
+- **Official + safe** — uses TikTok's own system with your logins. Only your
+  own accounts, nothing scraped, no bans. Posting, deleting, passwords — the
+  system cannot touch any of that, viewing only.
 
-## How to use it (once set up)
+## How to use it (daily)
 
-1. **Approve the TikTok app** — your tech helper submits the app form (Terms and
-   Privacy pages are already published). Wait for TikTok's approval.
-2. **Log in once per account** — open the login link your helper gives you,
-   log in as the TikTok account (e.g. `@himcoffeedrsamhan`), and press
-   **Authorize**. Repeat for each of the 10 accounts.
-3. **Get the list** — your helper runs the download and gives you one Excel file
-   per account (or one combined file), each row = one video with its post time.
-4. **Re-run anytime** — to refresh (e.g. weekly), just ask for a new pull; login
-   is only needed again if TikTok expired the permission.
+1. Your helper starts the page on his laptop; you open
+   `http://127.0.0.1:8080/`.
+2. Pick an account → press **Refresh from TikTok** (locks + spins while
+   loading) → the table fills.
+3. Filter by date if needed → press **Export CSV** → open in Excel.
+4. First time per account only: press **Link / Relink**, log in as that
+   TikTok account, press **Authorize**. Done for months — relink only if the
+   page ever says `Relink` (about yearly, or after a password change).
 
 ## What you need from your side
 
-- Ability to **log in to each TikTok account** when asked (for the one-time
-  authorize step).
-- The TikTok app's **Client Key** (your helper handles the secret parts).
+- Ability to **log in to each TikTok account** when asked (the one-time Link
+  step per account — 10 logins total, can be spread over days).
+- Nothing to install. Weekly refresh = press Refresh, no new logins.
 
 ## If something looks wrong
 
-- **Login page fails** → check you are logging in as the right TikTok account;
-  each account must authorize separately.
-- **List looks short / missing videos** → private, deleted or under-review videos
-  are not returned by TikTok; only public videos appear.
-- **Post times look off by hours** → TikTok returns UTC time; your helper
-  converts it to Malaysia time (UTC+8) in the Excel file — ask if unsure.
-- **Authorize button expired** → permissions expire; just log in and authorize
-  that account again.
+- **Page says `Relink`** → that account's permission expired; press
+  Link / Relink and log in again (one minute).
+- **Login shows the wrong account name** → TikTok logs in whoever is already
+  signed in that browser; use Switch account (or log out first) and pick the
+  matching one, or the wrong account's videos land under the wrong label.
+- **List looks short / missing videos** → private, deleted or under-review
+  videos are never returned by TikTok; only public videos appear.
+- **Numbers shift slightly between downloads** → TikTok updates counts live;
+  small changes are normal.
+- **Cover image link expired** → cover links last ~6 hours; press Refresh to
+  get fresh ones. The video link always works.
+- **Page looks plain / unstyled** → the wrong helper program owns the address;
+  ask your helper to restart the dashboard and reload the page.

@@ -1,0 +1,4 @@
+# Local dashboard runtime — never commit these.
+tokens/
+csvs/
+__pycache__/

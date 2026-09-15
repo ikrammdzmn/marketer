@@ -11,6 +11,10 @@ no framework**. Keep it that way.
 - `style.css` — extras only; layout via Tailwind classes.
 - `data/accounts.json` — allowlist of 10 managed TikTok accounts (array of
   `{name, username, note}` objects; matching is exact on `name` only).
+- `data/catalog.json` — user-authored friendly names: `{campaigns: {ID: {label, note}},
+  products: {ID: {name, note}}}` (4 campaigns + 18 products from the 09-08 bulk file,
+  labels blank until named). Display-only — matching stays exact on raw file values;
+  blank label/name falls back to raw name/ID. Served as static JSON (no saver endpoint).
 - `data/targets.json` — SOP targets `{topN, minImpr, maxCPM}` (null = auto from
   file); edited in Manage accounts, saved via POST /api/targets.
 - `server.py` — local-only server (stdlib, 127.0.0.1): static files + POST
@@ -65,6 +69,14 @@ files). Serve on a fresh port per test; always stop background servers.
    per ingest) — thresholds live in code, never hardcode file numbers.
    SOP bars (`topBar`/`cpmBar`): manual `targets.json` values win, else auto from
    top-N; source tagged `yours`/`auto` in UI text.
+   Bulk product-campaigns dialect (`sample-data/creative data for product campaigns ... ~ ...xlsx`,
+   31.5k rows): headers are `Video title/Video ID/Campaign name/Campaign ID/Product ID`
+   (no ROI column — derived Revenue÷Cost), catalogue rows use `Video ID='N/A'` (join falls
+   back to creative-text+account), filename uses `~`+hours for the period. `rowsOfWorkbook`
+   normalises both dialects to one row shape (`campaign` blank for single-campaign files);
+   never branch downstream code on dialect except the file-list badge. Compare join key is
+   `keyOf(postId, account, creative)`. Bundled picker (`bundlePick`) lists candidates with
+   period + cached dialect badge, newest pre-ticked, max 7.
 4. **Editing**: copy exact strings from Read output for edit anchors, never retype.
    After each edit, grep the touched identifiers and re-read the region — CSS appends
    and plan.md lines have been clobbered before by overlapping matches.

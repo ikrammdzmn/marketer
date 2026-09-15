@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TikTok Accounts Dashboard (local)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Inter',system-ui,sans-serif}
+#tbl th,#tbl td{border:1px solid #e2e8f0;padding:6px 8px;text-align:left;vertical-align:top;font-size:13px}
+#tbl th{background:#f1f5f9;font-weight:600;white-space:nowrap}
+#tbl tbody tr:hover{background:#f8fafc}
+#calPop{display:none;position:absolute;z-index:10}
+.cal table{border-collapse:collapse;font-size:13px}
+.cal th,.cal td{border:0;padding:0}
+.cal td button{width:30px;height:28px;margin:1px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:6px;cursor:pointer}
+.cal td button.dim{color:#b6c2cf;background:#eef1f4}
+.cal td button:disabled{opacity:.55;cursor:not-allowed}
+.cal td button.sel{background:#0d9488;color:#fff;border-color:#0d9488}
+.cal td button.inr{background:#c9efec;border-color:#c9efec}
+</style>
+</head>
+<body class="bg-gray-100 text-gray-900 min-h-screen">
+<div class="max-w-7xl mx-auto px-4 py-6">
+
+<header class="flex flex-wrap items-center justify-between gap-3 mb-4">
+<div>
+<h1 class="text-2xl font-bold">TikTok Accounts Dashboard</h1>
+<p class="text-sm text-gray-500">Local only — 127.0.0.1. Tokens never leave this laptop.</p>
+</div>
+<span id="status" class="text-sm text-gray-500">Loading accounts…</span>
+</header>
+
+<section class="bg-white rounded-lg shadow p-4 mb-4">
+<div class="flex flex-wrap items-center gap-2">
+<span class="text-sm font-medium">Account:</span>
+<div class="relative inline-block">
+<button id="accBtn" onclick="toggleAcc()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white hover:bg-gray-50">…</button>
+<div id="accList" style="display:none;width:max-content;max-width:90vw" class="absolute z-20 mt-1 bg-white border border-gray-300 rounded-xl shadow-xl p-1 max-h-[300px] overflow-y-auto"></div>
+</div>
+<button onclick="link()" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">Link / Relink</button>
+<button id="refBtn" onclick="refresh()" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Refresh from TikTok</button>
+<button onclick="exp()" class="px-3 py-1.5 rounded bg-green-600 text-white text-sm hover:bg-green-700">Export CSV</button>
+<span id="spin" style="display:none" class="text-sm text-gray-500">⏳ loading…</span>
+</div>
+<div id="profile" class="mt-3 text-sm"></div>
+<div class="mt-3 relative">Range:
+<button id="rangeBtn" onclick="toggleCal()" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">All time 📅</button>
+<div id="calPop" class="bg-white border border-gray-300 rounded-xl shadow-xl p-3 mt-1">
+<div class="flex gap-3">
+<div id="calPresets" class="flex flex-col gap-1">
+<button onclick="preset('all')" class="px-2 py-1 rounded text-left text-sm hover:bg-gray-100">All time</button>
+<button onclick="preset('today')" class="px-2 py-1 rounded text-left text-sm hover:bg-gray-100">Today</button>
+<button onclick="preset('yesterday')" class="px-2 py-1 rounded text-left text-sm hover:bg-gray-100">Yesterday</button>
+<button onclick="preset('last7')" class="px-2 py-1 rounded text-left text-sm hover:bg-gray-100">Last 7 days</button>
+<button onclick="preset('last30')" class="px-2 py-1 rounded text-left text-sm hover:bg-gray-100">Last 30 days</button>
+<button onclick="preset('last3m')" class="px-2 py-1 rounded text-left text-sm hover:bg-gray-100">Last 3 months</button>
+<button onclick="preset('last6m')" class="px-2 py-1 rounded text-left text-sm hover:bg-gray-100">Last 6 months</button>
+<button onclick="preset('last12m')" class="px-2 py-1 rounded text-left text-sm hover:bg-gray-100">Last 12 months</button>
+<input type="month" id="monthPick" onchange="monthGo()" class="border border-gray-300 rounded-lg px-2 py-1 text-sm mt-1" style="width:130px">
+</div>
+<div>
+<div class="text-center mb-1 flex gap-1 justify-center">
+<button onclick="navCal(-12)" class="px-2 py-0.5 rounded border text-sm">«</button>
+<button onclick="navCal(-1)" class="px-2 py-0.5 rounded border text-sm">‹</button>
+<button onclick="toggleCal()" class="px-2 py-0.5 rounded border text-sm">✕</button>
+<button onclick="navCal(1)" class="px-2 py-0.5 rounded border text-sm">›</button>
+<button onclick="navCal(12)" class="px-2 py-0.5 rounded border text-sm">»</button>
+</div>
+<div class="flex gap-3"><div class="cal" id="cal0"></div><div class="cal" id="cal1"></div></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section class="bg-white rounded-lg shadow p-4 mb-4">
+<div class="flex items-center justify-between mb-2">
+<h2 class="font-semibold">Videos <span id="count" class="text-sm font-normal text-gray-500"></span></h2>
+</div>
+<div id="colToggles" class="flex flex-wrap items-center gap-3 mb-2 text-sm text-gray-600">
+</div>
+<div class="overflow-x-auto"><table id="tbl" style="display:none" class="w-full">
+<thead><tr><th>#</th><th>Title</th><th>Video ID</th><th>Posted (MYT)</th><th>Views</th><th>Likes</th>
+<th>Comments</th><th>Shares</th><th>Links</th></tr></thead>
+<tbody id="rows"></tbody>
+</table></div>
+</section>
+
+</div>
+<script>
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,
+c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function rel(ts){const s=Math.floor(Date.now()/1000)-ts;
+if(s<60)return"just now";
+const m=Math.floor(s/60);if(m<60)return m+(m===1?" minute ago":" minutes ago");
+const h=Math.floor(m/60);if(h<24)return h+(h===1?" hour ago":" hours ago");
+const d=Math.floor(h/24);if(d<30)return d+(d===1?" day ago":" days ago");
+const mo=Math.floor(d/30),r=d%30;
+if(mo<12){const a=mo+(mo===1?" month":" months");
+return r===0?a+" ago":a+" "+r+(r===1?" day ago":" days ago");}
+const y=Math.floor(mo/12),rm=mo%12;const b=y+(y===1?" year":" years");
+return rm===0?b+" ago":b+" "+rm+(rm===1?" month ago":" months ago");}
+let ACCDATA=[],CUR="";
+function pillFor(a){const st=a.relink?["relink","background:#fef3c7;color:#92400e"]:
+(a.linked?["linked","background:#dcfce7;color:#15803d"]:["not linked","background:#fee2e2;color:#b91c1c"]);
+return "<span style='"+st[1]+";border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0'>"+st[0]+"</span>";}
+async function accounts(){
+const r=await fetch("/api/accounts");const d=await r.json();
+ACCDATA=d.accounts;LINKMAP={};let linked=0;
+d.accounts.forEach(a=>{LINKMAP[a.name]=a;if(a.linked)linked++;});
+const q=new URLSearchParams(location.search).get("linked");
+CUR=(q&&LINKMAP[q])?q:(d.accounts.length?d.accounts[0].name:"");
+document.getElementById("status").textContent=linked+"/"+d.accounts.length+" linked. "+
+"Link each account once (TikTok login + Authorize), then select + Refresh.";
+paintAccBtn();load();}
+let LINKMAP={};
+function paintAccBtn(){const a=LINKMAP[CUR],btn=document.getElementById("accBtn");
+if(!a){btn.textContent="…";return;}
+btn.innerHTML="<b>"+esc(CUR)+"</b> <span class='text-gray-400 font-normal'>@"+esc(a.username)+"</span> "+pillFor(a);}
+function toggleAcc(){const l=document.getElementById("accList");
+const open=l.style.display==="block";
+if(open){l.style.display="none";return;}
+l.innerHTML="";
+ACCDATA.forEach(a=>{const b=document.createElement("button");
+b.className="flex items-center justify-between gap-2 w-full text-left text-sm px-2 py-1.5 rounded-lg hover:bg-gray-100";
+b.innerHTML="<span>"+esc(a.name)+" <span class='text-gray-400'>@"+esc(a.username)+"</span></span>"+pillFor(a);
+b.onclick=function(){CUR=a.name;paintAccBtn();l.style.display="none";load();};
+l.appendChild(b);});
+l.style.display="block";}
+function paintPill(){paintAccBtn();}
+let ALL=[];
+let DSET=new Set();
+function rebuildSet(){DSET=new Set();ALL.forEach(x=>{if(x.create_time)DSET.add(dayKey(x.create_time));});}
+function dayKey(ts){const d=new Date((ts+8*3600)*1000);
+return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0");}
+let R={s:null,e:null},VY=0,VM=0;
+function pad(n){return String(n).padStart(2,"0");}
+function shiftKey(key,delta){const a=key.split("-");
+const t=Date.UTC(+a[0],+a[1]-1,+a[2])+delta*86400*1000;
+const d=new Date(t);return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate());}
+function monthLen(y,m){return new Date(Date.UTC(y,m+1,0)).getUTCDate();}
+function labelRange(){document.getElementById("rangeBtn").textContent=
+!R.s?"All time 📅":(R.e&&R.e!==R.s?R.s+" - "+R.e:R.s)+" 📅";}
+function setRange(s,e){R={s:s,e:e||s};labelRange();applyFilter();}
+function preset(p){const t=dayKey(Math.floor(Date.now()/1000));
+if(p==="all"){R={s:null,e:null};labelRange();applyFilter();return;}
+if(p==="today")setRange(t,t);
+else if(p==="yesterday"){const y=shiftKey(t,-1);setRange(y,y);}
+else if(p==="last7")setRange(shiftKey(t,-6),t);
+else if(p==="last30")setRange(shiftKey(t,-29),t);
+else if(p==="last3m")setRange(shiftKey(t,-91),t);
+else if(p==="last6m")setRange(shiftKey(t,-182),t);
+else if(p==="last12m")setRange(shiftKey(t,-364),t);}
+function monthGo(){const m=document.getElementById("monthPick").value;if(!m)return;
+const a=m.split("-"),n=monthLen(+a[0],+a[1]-1);
+setRange(m+"-01",m+"-"+pad(n));}
+function toggleCal(){const p=document.getElementById("calPop");
+const open=p.style.display==="block";
+p.style.display=open?"none":"block";
+if(!open){const t=dayKey(Math.floor(Date.now()/1000)).split("-");
+VY=+t[0];VM=+t[1]-1;drawCal();}}
+function navCal(n){VM+=n;while(VM<0){VM+=12;VY--;}while(VM>11){VM-=12;VY++;}
+drawCal();}
+function pickDay(key){if(!R.s||R.e){R={s:key,e:null};labelRange();drawCal();}
+else{if(key<R.s)R={s:key,e:R.s};else R.e=key;setRange(R.s,R.e);drawCal();}}
+function drawCal(){const today=dayKey(Math.floor(Date.now()/1000));
+function btn(key,label,adj){let cls=adj?"dim":"";
+if(key>today||!DSET.has(key))return "<td><button class='"+cls+"' disabled>"+label+"</button></td>";
+if(R.s){const e=R.e||R.s;
+if(key===R.s||key===e)cls="sel";else if(key>R.s&&key<e)cls="inr";}
+return "<td><button class='"+cls+"' onclick=\"pickDay('"+key+"')\">"+label+"</button></td>";}
+for(let k=0;k<2;k++){
+let y=VY,m=VM+k;while(m>11){m-=12;y++;}
+const first=new Date(Date.UTC(y,m,1)).getUTCDay(),n=monthLen(y,m);
+let h="<h4 class='text-center font-semibold text-sm my-1'>"+y+"-"+pad(m+1)+"</h4><table><tr><th>Su</th><th>Mo</th><th>Tu</th><th>We</th><th>Th</th><th>Fr</th><th>Sa</th></tr><tr>";
+let cell=0;
+for(let i=0;i<first;i++){const pm=m===0?11:m-1,py=m===0?y-1:y;
+const dd=monthLen(py,pm)-first+1+i;
+h+=btn(py+"-"+pad(pm+1)+"-"+pad(dd),dd,true);cell++;}
+for(let d=1;d<=n;d++){h+=btn(y+"-"+pad(m+1)+"-"+pad(d),d,false);
+cell++;if(cell%7===0&&d<n)h+="</tr><tr>";}
+let nx=1;while(cell%7!==0){const nm=m===11?0:m+1,ny=m===11?y+1:y;
+h+=btn(ny+"-"+pad(nm+1)+"-"+pad(nx),nx,true);nx++;cell++;}
+h+="</tr></table>";
+document.getElementById("cal"+k).innerHTML=h;}}
+function inFilter(x){if(!R.s||!x.create_time)return true;
+const k=dayKey(x.create_time),e=R.e||R.s;
+return k>=R.s&&k<=e;}
+let FILTERED=[];
+function applyFilter(){FILTERED=ALL.filter(inFilter);renderRows();}
+const COLS=[["num","#"],["title","Title"],["id","Video ID"],["posted","Posted"],["views","Views"],
+["likes","Likes"],["comments","Comments"],["shares","Shares"],["links","Links"]];
+function colPrefs(){try{return JSON.parse(localStorage.getItem("dash-cols")||"{}");}catch(e){return{};}}
+function savePrefs(){const p={};COLS.forEach((c,i)=>{
+const b=document.querySelector("#colToggles input[data-col='"+i+"']");if(b)p[c[0]]=b.checked;});
+try{localStorage.setItem("dash-cols",JSON.stringify(p));}catch(e){}}
+function syncMaster(){const boxes=[...document.querySelectorAll("#colToggles input[data-col]")];
+const m=document.getElementById("colAll");if(!m)return;
+m.checked=boxes.length>0&&boxes.every(b=>b.checked);}
+function buildToggles(){const box=document.getElementById("colToggles"),prefs=colPrefs();
+const mLab=document.createElement("label");mLab.className="flex items-center gap-1 font-medium";
+const m=document.createElement("input");m.type="checkbox";m.id="colAll";
+mLab.appendChild(m);mLab.appendChild(document.createTextNode("All"));
+box.appendChild(mLab);
+m.onchange=function(){document.querySelectorAll("#colToggles input[data-col]").forEach(b=>{
+b.checked=m.checked||b.dataset.col==="2";});
+savePrefs();applyCols();};
+COLS.forEach((c,i)=>{const show=prefs[c[0]]!==false;
+const lab=document.createElement("label");lab.className="flex items-center gap-1";
+const cb=document.createElement("input");cb.type="checkbox";cb.checked=show;
+cb.dataset.col=i;
+cb.onchange=function(){const boxes=[...box.querySelectorAll("input[data-col]")];
+if(!boxes.some(b=>b.checked)){cb.checked=true;
+document.getElementById("status").textContent="At least one column must stay shown (or use All to hide all).";return;}
+savePrefs();syncMaster();applyCols();};
+lab.appendChild(cb);lab.appendChild(document.createTextNode(c[1]));
+box.appendChild(lab);});syncMaster();}
+function applyCols(){const boxes=[...document.querySelectorAll("#colToggles input[data-col]")];
+const tbl=document.getElementById("tbl");
+tbl.querySelectorAll("tr").forEach(tr=>{
+boxes.forEach(b=>{const cell=tr.children[+b.dataset.col];
+if(cell)cell.style.display=b.checked?"":"none";});});}
+function renderRows(){const tb=document.getElementById("rows");tb.innerHTML="";
+if(!ALL.length){document.getElementById("tbl").style.display="none";
+document.getElementById("count").textContent="No cache — press Refresh.";return;}
+document.getElementById("tbl").style.display="";
+document.getElementById("count").textContent=
+FILTERED.length+" of "+ALL.length+" videos"+(FILTERED.length!==ALL.length?" (filtered)":"")+".";
+FILTERED.forEach((x,i)=>{
+const abs=x.create_time?new Date(x.create_time*1000).toLocaleString("en-MY",
+{timeZone:"Asia/Kuala_Lumpur",hour12:false}):"";
+const when=x.create_time?rel(x.create_time):"";
+const tr=document.createElement("tr");
+tr.innerHTML="<td>"+(i+1)+"</td><td>"+esc(x.title)+"</td><td>"+esc(x.id)+"</td><td title='"+esc(abs)+
+"'>"+esc(when)+"</td><td>"+esc(x.view_count)+
+"</td><td>"+esc(x.like_count)+"</td><td>"+esc(x.comment_count)+"</td><td>"+esc(x.share_count)+
+"</td><td><a class='text-blue-600 hover:underline' href='"+esc(x.share_url)+"' target='_blank'>open</a> · "+
+"<a class='text-blue-600 hover:underline' href='"+esc(x.cover_image_url)+"' target='_blank'>cover</a></td>";
+tb.appendChild(tr);});applyCols();}
+async function load(){
+const a=CUR;if(!a)return;
+const[p,v]=await Promise.all([
+fetch("/api/profile?account="+encodeURIComponent(a)).then(r=>r.json()),
+fetch("/api/videos?account="+encodeURIComponent(a)).then(r=>r.json())]);
+let ph="";
+if(p.cached){const u=p.profile;
+ph="<span class='inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold'>@"+esc(u.username)+"</span> "+
+"<span class='text-sm'>followers <b>"+esc(u.follower_count)+
+"</b> · following "+esc(u.following_count)+" · total likes "+esc(u.likes_count)+
+" · videos "+esc(u.video_count)+"</span>"+(u.is_verified?" <span class='text-xs text-sky-600'>verified ✓</span>":"")+
+(u.bio_description?"<br><span class='text-gray-500'>Bio: "+esc(u.bio_description)+"</span>":"");}
+else ph=p.linked?"<span class='inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs'>Linked, no cache — press Refresh.</span>"
+:"<span class='inline-block px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs'>Not linked — press Link / Relink.</span>";
+document.getElementById("profile").innerHTML=ph;
+ALL=(v.cached&&v.videos)||[];rebuildSet();applyFilter();}
+function link(){const a=CUR;
+location.href="/authorize?account="+encodeURIComponent(a);}
+async function refresh(){const a=CUR;
+const btn=document.getElementById("refBtn"),spin=document.getElementById("spin");
+btn.disabled=true;spin.style.display="inline";
+document.getElementById("status").textContent="Pulling "+a+" from TikTok…";
+try{const r=await fetch("/refresh?account="+encodeURIComponent(a));
+const d=await r.json();
+if(d.relink){document.getElementById("status").textContent="Relink needed: "+d.error;}
+else if(d.ok){document.getElementById("status").textContent="Done: "+d.count+" videos.";await load();}
+else document.getElementById("status").textContent="Error: "+(d.error||"unknown");}
+finally{btn.disabled=false;spin.style.display="none";}}
+function csvCell(v){v=String(v==null?"":v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function exp(){const a=CUR;
+const rows=[["account","id","title","posted_myt","posted_utc","view_count","like_count",
+"comment_count","share_count","cover_image_url","share_url"]];
+FILTERED.forEach(x=>{const myt=x.create_time?new Date(x.create_time*1000).toLocaleString("en-MY",
+{timeZone:"Asia/Kuala_Lumpur",hour12:false}):"";
+const utc=x.create_time?new Date(x.create_time*1000).toISOString().slice(0,19).replace("T"," "):"";
+rows.push([a,x.id,x.title,myt,utc,x.view_count,x.like_count,x.comment_count,
+x.share_count,x.cover_image_url,x.share_url]);});
+const blob=new Blob([rows.map(r=>r.map(csvCell).join(",")).join("\n")],{type:"text/csv"});
+const u=URL.createObjectURL(blob);const l=document.createElement("a");
+l.href=u;l.download=a+"_videos_filtered.csv";l.click();URL.revokeObjectURL(u);}
+buildToggles();
+document.addEventListener("click",function(e){
+const pop=document.getElementById("calPop");
+if(pop.style.display==="block"&&!e.target.closest("#calPop")&&!e.target.closest("#rangeBtn"))pop.style.display="none";
+const al=document.getElementById("accList");
+if(al.style.display==="block"&&!e.target.closest("#accList")&&!e.target.closest("#accBtn"))al.style.display="none";});
+accounts();
+</script>
+</body>
+</html>

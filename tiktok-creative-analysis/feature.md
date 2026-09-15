@@ -10,7 +10,10 @@ accounts make money. No installation, no uploads — everything stays on your ow
    No IDE or Live Server needed. Alternative: run `python server.py` yourself.
 2. Open your browser and go to: `http://localhost:8000`
 3. Click **Load bundled file** (picks the newest Excel in `source-file/` by itself)
-   or drag your Excel file into the dotted box.
+   or drag your Excel file into the dotted box. To compare weeks or days, drag
+   **several** files at once (up to 7), or click **Choose bundled files…**, tick
+   what you want (newest is pre-ticked), then **Load selected**.
+   Each file shows below with its date range and type badge — click **remove** to drop one, **Clear** to start over.
 
 The latest version is also saved on GitHub (`ikrammdzmn/marketer`) so it is never lost.
 
@@ -55,6 +58,35 @@ The **Insight** column gives each video one verdict — hover it for the why:
 - 📉 **Drops @50%** — viewers leave at that point: fix that segment.
 - 🧺 **Small basket** — profitable but tiny orders: push bundles.
 - 📇 **Catalogue** — TikTok promo, not a creative.
+
+**Compare files table** — when 2+ files are loaded, a new section appears below Top
+creatives. It matches each video across the oldest (baseline) and newest (latest)
+files and shows the change: `NEW` (only in latest), `LOST` (gone from latest),
+`KEPT` (in both), plus the difference in revenue, orders, cost, ROI, views and CPM,
+and whether its status moved (e.g. `Exploring → Performing`). Faint grey rows are
+tiny wobbles (under RM1), safe to ignore. Use the **Movement** dropdown for NEW /
+LOST only, sort by biggest revenue change, and **Export compare CSV** to keep it.
+Above the files sits the mode switch: **Latest − Baseline** (for overlapping weeks —
+summing those would double-count) or **Combine days** (adds up non-overlapping daily
+files into one week total, shown in the normal tables). A warning line tells you which
+one fits your files. Mixed file types show a note — campaign is blank for single-campaign files.
+
+## Campaign (bulk files)
+
+Files exported as **product campaigns** (bulk, many campaigns in one file) show an extra
+**Campaign** filter and column everywhere: filter the whole page to one campaign
+(e.g. `[HIMCOFFEE MAIN 1]`), see each video's campaign in the tables, and spot videos
+that moved campaigns in the compare table. Single-campaign files show `–` there —
+that is normal, not missing data. A **Product** column sits next to it everywhere,
+showing which product each video sold (also nameable in `catalog.json`).
+
+**Naming your campaigns & products:** TikTok's names are cryptic (`[him cocomax]
+20260602153651`, bare ID numbers). Open `data/catalog.json` in the folder and type
+friendly names next to each ID (`"label": "Cocomax"`, `"name": "HIMCoffee"`). The page
+picks them up on reload and shows them in the filter and tables instead of the raw
+IDs (hover a cell to still see the original). IDs you haven't named yet are counted
+in a small amber note under the Campaign filter — that note disappears once
+everything is named.
 
 ## General notes (shown on the page)
 
