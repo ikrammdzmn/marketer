@@ -4,22 +4,26 @@
 > Detailed GMV auto plan lives in `gmvmax-auto/masterplan.md` (not duplicated here).
 
 ## 1. Repo map (what lives where)
-- `tiktok-creative-analysis/` — Static creative analytics (single + bulk product-campaigns dialects, multi-file compare ≤7, insight engine + SOP bars). Pure HTML/CSS/vanilla JS, no build. Authoritative `data/accounts.json` (10 × {name,username,note}, exact-match on name); `data/catalog.json` (4 campaigns + 18 products, labels blank until user names); `data/targets.json` (SOP topN/minImpr/maxCPM, null = auto). Local `server.py` (127.0.0.1) + `start-server.bat`; loader auto-picks newest `source-file/*.xlsx`. Statuses in its `plan.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
+- `tiktok-creative-analysis/` — Static creative analytics (single + bulk dialects, multi-file compare ≤7, insight engine + verdict filter + `?insight` links, SOP bars, filename-chip picker). Pure HTML/CSS/vanilla JS, no build (`app.js?v=22`). Authoritative `data/accounts.json` (20 entries × {name,username,accountId,note,active,live,topAffiliate,updatedAt}, exact-match on name); `data/catalog.json` (4 campaigns + 18 products, user-named); `data/targets.json` (SOP topN/minImpr/maxCPM, null = auto). Local `server.py` (127.0.0.1, accounts+targets savers) + `start-server.bat`; loader auto-picks newest `source-file/*.xlsx`. Statuses in its `plan.md`; releases in `CHANGELOG.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
 - `tiktok-account/` — Display API dashboard (own videos + post times). Python stdlib + Tailwind, localhost 8080. `tester.py` FROZEN. Statuses in its `plan.md`. Agent note: `NEON_NOTE.md`.
 - `tiktok-strategy/` — Himwellness Growth OS playbook (`himwellness-playbook.html` + `full-strategy.md`). Business guardrails live here: ROI ≥7.0, CPA ≤RM21.18, 1 campaign/SKU, TTAM feeder role, dayparting windows, payday surge. Offline, localStorage.
 - `tiktok-event/` — HIMCOFFEE RACI MASTER (`index.html`, vanilla single-file, local-only, no build). Timeline 2026–2030 + RACI Worksheet + 5T/3M Blueprint + workload + CSV + local PIN seats. Reference: `raci_campaign_dashboard.tsx` (React+Firebase, FROZEN) + `tiktok-prd` (PRD v1.0.0). Statuses in its `plan.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
 - `gmvmax/` — Knowledge only: `gmvmax.md` (algo realities) + `product/*.xlsx`. No code goes here.
 - `gmvmax-auto/` — NEW: auto budget-adjust service (plan locked, P0 not started). See `masterplan.md`. Future code: auth/collector/decider/actor/notify/dashboard + migrations.
 - `docs/` — `terms.html` + `privacy.html` (GitHub Pages, TikTok app review). `tiktok*.txt` at root = domain verification. Never move/rename without updating TikTok app form.
-- `antigravity-aistudio.md` — IDE transfer guide, not product code.
+- `1-MASTER/` — this file + `MASTER-CHANGELOG.md` (repo rollup) + `MASTER-AGENTS.md` (shared conventions) + `antigravity-aistudio.md` (IDE transfer guide, not product code).
 
-## 2. Current status (2026-09-17)
-- `tiktok-account` dashboard ready local-only; 10 accounts not all linked; Production app unapproved (sandbox proven).
-- `tiktok-creative-analysis` DONE local-only (UI + accounts/targets savers verified over HTTP), committed in `3ee528a`. Pending user: name `data/catalog.json` labels (all blank — raw IDs show till named). Backlog: exploration exit signals (`plan.md` §6). Open offer: silence cross-dialect "campaign moved" flag when one side is blank.
+## 2. Current status (2026-09-17, evening)
+
+- `tiktok-account` dashboard ready local-only; 10 accounts not all linked; Production app unapproved (sandbox proven). Committed `3ee528a`.
+- `tiktok-creative-analysis` v9–v22 local-only, verified over HTTP, UNCOMMITTED: Hide Ineligible, insight guide/popup/filter/`?insight`, N/A Product Card-campaign, Unknown split, picker chips, accountId/Active/Live/T-Aff + save stamps + Hide inactive, manager numbers/drag/groups/sections. `catalog.json` fully user-named. Backlog: exploration exit signals (`plan.md` §6). Releases → `tiktok-creative-analysis/CHANGELOG.md`.
 - `tiktok-strategy` playbook content complete (static).
-- `tiktok-event` DONE local-only (Option A `index.html` + docs verified over HTTP, 2026-09-17). Untracked; commit only when asked. Backlog: structured due-dates, C/I columns, shared Firebase seats, mobile cards.
-- `gmvmax-auto` plan only: `masterplan.md` + `NEON_NOTE.md` staged, not committed (see `git status`). P0 explicitly NOT started.
-- Git: branch `main`, staged = `antigravity-aistudio.md`, `gmvmax-auto/masterplan.md`, `tiktok-account/NEON_NOTE.md`, one verification txt deleted. Commit only when asked.
+- `tiktok-event` built 17 Sep (vanilla RACI board + docs), UNTRACKED. Backlog: structured due-dates, C/I columns, shared Firebase seats, mobile cards.
+- `gmvmax-auto` plan only (`masterplan.md` committed `1d9854e`). P0 explicitly NOT started.
+- Git: branch `main`. HEAD `f8c8c05` (17 Sep 13:44, accidental junk message —
+  template committed verbatim) holds v8–v14 + 1-MASTER creation + tiktok-event.
+  UNCOMMITTED on top: v15–v22 + 20-entry accounts.json + doc refreshes. Commit
+  only when asked.
 
 ## 3. Relations each AGENTS.md must know
 - **Accounts source:** `tiktok-creative-analysis/data/accounts.json` is authoritative. `tiktok-account/dashboard` reads it live — never duplicate the list. `tiktok-creative-analysis/data/catalog.json` (friendly campaign/product labels) and `data/targets.json` (SOP bars) are creative-analysis-only, display-local, not shared. `gmvmax-auto` will resolve campaigns against shop/account names from the same source of truth via `core` schema later.
@@ -42,4 +46,4 @@
 ## 5. Where to work next (pointer, not a start)
 - GMV auto detail: `gmvmax-auto/masterplan.md` §9 phases (P0 first, on explicit go).
 - Neon rollout: `tiktok-account/NEON_NOTE.md` (dual-write, then cutover).
-- New-session handoff order: `BIGMASTERPLAN.md` → folder plan → `gmvmax/gmvmax.md` if touching GMV logic.
+- New-session handoff order: `1-MASTER/MASTER-PLAN.md` → folder plan → `gmvmax/gmvmax.md` if touching GMV logic.

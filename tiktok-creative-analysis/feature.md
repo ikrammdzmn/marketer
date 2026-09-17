@@ -40,7 +40,7 @@ Rows, Cost (MYR), Revenue (MYR), Orders, Avg ROI, Avg AOV, Impressions, Avg CPM.
 **Chart** — top 10 accounts by revenue at a glance.
 
 **Per-account summary** — one row per TikTok account: cost, revenue, orders, ROI, AOV, CPM,
-and whether it is one of your 10 managed accounts (shown as `Name (@username)`). **Click any row** to open a popup
+and whether it is one of your managed accounts (shown as `Name (@username)`). **Click any row** to open a popup
 with that account's videos, its own mini-totals, and a **Show more** button to see all
 of them (50 at a time so the page stays fast).
 
@@ -112,8 +112,9 @@ stay visibly tied to their campaign.
 ## Finding things
 
 - **Account** — type in the search box (suggestions appear as you type; you can also
-  type a @username), then pick from the dropdown. Your 10 managed accounts are grouped
-  at the top as `Name (@username)` — a few carry a `no orders yet` note; all other
+  type a @username), then pick from the dropdown. Your managed accounts sit in two
+  groups: **Internal Account**, then **Top Affiliate** below it (tick T-Aff in
+  Manage accounts to move one there) — all other
    accounts are grouped below. `Product Card` is TikTok's default catalogue promo
    (no creative, no account) — it appears as its own row. Real videos with no
    account name appear as a separate `Unknown account` row, with normal verdicts.
@@ -129,23 +130,33 @@ stay visibly tied to their campaign.
 - **Insight** — show only videos with one verdict (e.g. 🚀 Boost to see every boost
   candidate, 🛑 Review for the kill list). Works together with all other filters.
 - **Min ROI / Min orders / Posted within (days) / Only 1000+ impressions / Exclude Product Card / Hide
-  Ineligible / Only allowlist accounts** — tick or fill to cut the noise. Tick **Exclude Product Card**
+  Ineligible / Hide inactive / Only allowlist accounts** — tick or fill to cut the noise. Tick **Exclude Product Card**
   to keep every number creative-only (catalogue sales vanish from totals and exports). Tick **Hide
   Ineligible** (on by default) to drop dead rows — videos TikTok still lists with no views, no cost
   and no orders, including deactivated SKUs — from every number, table and export (untick to see them again).
+  Tick **Hide inactive** (on by default) to drop every row from accounts you unticked Active on in
+  Manage accounts (untick to audit them — nothing is deleted).
   **Posted within** keeps only recent videos (rows without a date are hidden while it is set).
 - **Allowlist coverage** (collapsed line under the account table) — click to expand and
-  see which of your 10 managed accounts have no data in the loaded file, with
+  see which of your managed accounts have no data in the loaded file, with
   suggestions when the name looks like a typo.
 
 ## Managing your accounts
 
-Click **Manage accounts** (top right) to edit the list: fix a name, add a @username
-or a note, remove an old account, or add a new one with **＋ Add account**. The
+Click **Manage accounts** (top right) to edit the list: fix a name, add a @username,
+an account ID or a note, tick **Active** / **Live** / **Top**, remove an old account, or add
+a new one with **＋ Add account**. Rows are numbered and grouped under
+**Internal Account** / **Top Affiliate** headers below — ticking T-Aff (or dragging
+a row across) moves it live, and new rows land in Internal. Unticking **Active**
+sends a row to a third **Inactive** section at the very bottom (a dormant top keeps
+its T-Aff, so re-ticking Active restores it as a top). Drag the ⠿ handle to reorder
+— Saving keeps the shown order (it flows into the dropdown and tables). Live accounts show 🔴 LIVE, top affiliates ⭐ TOP AFFILIATE, and inactive ones ⏸
+inactive next to their names everywhere. Each row also shows when it was last
+changed (`Last updated: 17/9/26 (45 minutes ago)`; `–` until its first save). The
 **SOP targets** box sets your Top-N, minimum impressions, and max CPM (blank =
 auto from the file). **Save** writes everything to file (dated backups kept) and
 the page reloads straight away. Names must match the Excel file exactly, or that
-account's rows won't be recognised — usernames and notes are just labels. If saving
+account's rows won't be recognised — usernames, IDs and notes are just labels. If saving
 ever fails, use **Download JSON** instead.
 
 ## Saving results

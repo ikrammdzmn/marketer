@@ -230,14 +230,18 @@
     return fetch('data/accounts.json?v=' + Date.now())
     .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function (arr) {
-      // accounts.json: array of {name, username, note} (legacy plain strings tolerated).
-      // Matching is ALWAYS exact on name; username/note are display-only.
+      // accounts.json: array of {name, username, accountId, note, active, live}
+      // (legacy plain strings tolerated). Matching is ALWAYS exact on name;
+      // everything else is display-only.
       var list = Array.isArray(arr) ? arr : [];
       state.allowlist = list.map(function (e) { return typeof e === 'string' ? e : String(e.name || ''); }).filter(Boolean);
       state.allowMeta = {};
       list.forEach(function (e) {
         if (e && typeof e === 'object' && e.name) {
-          state.allowMeta[String(e.name)] = { username: String(e.username || ''), note: String(e.note || '') };
+          state.allowMeta[String(e.name)] = { username: String(e.username || ''), note: String(e.note || ''),
+            accountId: String(e.accountId || ''), active: toBool(e.active, true), live: toBool(e.live, false),
+            topAffiliate: toBool(e.topAffiliate, false),
+            updatedAt: (typeof e.updatedAt === 'string' && e.updatedAt) ? e.updatedAt : null };
         }
       });
       buildAccountOptions();
@@ -296,10 +300,48 @@
       ' unnamed — name them in data/catalog.json to show friendly labels.';
   }
 
-  /* Allowlist display helpers: ' (@username)' suffix + ' — note' suffix */
+  /* Allowlist display helpers: ' (@username)' suffix + ' — note' suffix + ID/Active/Live flags */
+  function toBool(v, dflt) {
+    if (v === undefined || v === null || v === '') return dflt;
+    if (v === true || v === 1 || v === '1') return true;
+    if (typeof v === 'string') {
+      var s = v.toLowerCase().trim();
+      if (s === 'true' || s === 'yes') return true;
+      if (s === 'false' || s === 'no' || s === '0') return false;
+    }
+    return !!v;
+  }
   function allowUser(a) { var m = state.allowMeta[a]; return (m && m.username) ? ' (@' + m.username + ')' : ''; }
   function allowNote(a) { var m = state.allowMeta[a]; return (m && m.note) ? m.note : ''; }
-  function allowLabel(a) { var n = allowNote(a); return a + allowUser(a) + (n ? ' — ' + n : ''); }
+  function allowId(a) { var m = state.allowMeta[a]; return (m && m.accountId) ? ' · ID ' + m.accountId : ''; }
+  function allowFlags(a) {
+    var m = state.allowMeta[a];
+    if (!m) return '';
+    return (m.live ? ' · 🔴 LIVE' : '') + (m.active ? '' : ' · ⏸ inactive') + (m.topAffiliate ? ' · ⭐ TOP AFFILIATE' : '');
+  }
+  function allowLabel(a) { var n = allowNote(a); return a + allowUser(a) + (n ? ' — ' + n : '') + allowFlags(a); }
+  /* Save-stamp: 'Last updated: 17/9/26 (45 minutes ago)' — server-local time, null = '–'. */
+  function fmtAgo(ts) {
+    if (!ts) return '–';
+    var t = new Date(String(ts)).getTime();
+    if (!isFinite(t)) return '–';
+    var d = new Date(t);
+    var date = d.getDate() + '/' + (d.getMonth() + 1) + '/' + String(d.getFullYear()).slice(2);
+    var mins = Math.max(0, Math.floor((Date.now() - t) / 60000));
+    var ago;
+    if (mins < 1) ago = 'just now';
+    else if (mins < 60) ago = mins + (mins === 1 ? ' minute ago' : ' minutes ago');
+    else if (mins < 1440) { var h = Math.floor(mins / 60); ago = h + (h === 1 ? ' hour ago' : ' hours ago'); }
+    else { var dys = Math.floor(mins / 1440); ago = dys + (dys === 1 ? ' day ago' : ' days ago'); }
+    return 'Last updated: ' + date + ' (' + ago + ')';
+  }
+  function allowUpdated(a) { var m = state.allowMeta[a]; return (m && m.updatedAt) ? ' · ' + fmtAgo(m.updatedAt) : ''; }
+  /* Inactive allowlisted account? Non-allowlisted accounts are never inactive. */
+  function isInactiveAcc(a) {
+    if (state.allowlist.indexOf(a) === -1) return false;
+    var m = state.allowMeta[a];
+    return !!(m && m.active === false);
+  }
 
   /* ---------- loading ---------- */
   function setStatus(msg) { $('loadStatus').textContent = msg; }
@@ -582,6 +624,7 @@
     var acc = $('fAccount').value, q = $('fSearch').value.trim().toLowerCase();
     var mv = $('cmpMove').value, noCard = $('fNoCard').checked;
     var hideInel = $('fNoInel').checked;
+    var hideInact = $('fNoInactive').checked;
     var cpEl = $('fCamp'), cp = cpEl ? cpEl.value : '';
     var out = state.cmpRows.filter(function (r) {
       if (acc && r.account !== acc) return false;
@@ -590,6 +633,7 @@
       if (noCard && r.account === 'Product Card') return false;
       if (hideInel && (r.aStatus === 'Ineligible' || r.aStatus === '—') &&
         (r.bStatus === 'Ineligible' || r.bStatus === '—')) return false;
+      if (hideInact && isInactiveAcc(r.account)) return false;
       if (q && String(r.creative).toLowerCase().indexOf(q) === -1 &&
           String(r.postId).toLowerCase().indexOf(q) === -1) return false;
       return true;
@@ -876,8 +920,9 @@
       box.innerHTML = '<div class="suggest-empty">No account found for &lsquo;' + esc(raw) + '&rsquo;.</div>';
     } else {
       box.innerHTML = matches.slice(0, 8).map(function (a) {
-        var tag = state.allowlist.indexOf(a) !== -1 ? '<span class="suggest-tag">allowlisted</span>' : '';
-        return '<button type="button" class="suggest-item" data-acc="' + esc(a) + '"><span>' + esc(a) + esc(allowUser(a)) + '</span>' + tag + '</button>';
+        var m = state.allowMeta[a];
+        var tag = (m && m.topAffiliate) ? '<span class="suggest-tag">top affiliate</span>' : (state.allowlist.indexOf(a) !== -1 ? '<span class="suggest-tag">allowlisted</span>' : '');
+        return '<button type="button" class="suggest-item" data-acc="' + esc(a) + '"><span>' + esc(a) + esc(allowUser(a)) + esc(allowFlags(a)) + '</span>' + tag + '</button>';
       }).join('');
     }
     box.hidden = false;
@@ -921,18 +966,28 @@
     }
   });
 
-  /* Account dropdown: Allowlisted optgroup + Other-accounts optgroup */
+  /* Account dropdown: Internal Account + Top Affiliate + Other-accounts optgroups */
   function buildAccountOptions() {
     var sel = $('fAccount'), cur = sel.value;
     while (sel.options.length > 1) sel.remove(1);
-    var g1 = document.createElement('optgroup');
-    g1.label = 'Allowlisted (' + state.allowlist.length + ')';
-    state.allowlist.forEach(function (a) {
+    var mkOpt = function (a) {
       var o = document.createElement('option');
       o.value = a; o.textContent = allowLabel(a);
-      g1.appendChild(o);
-    });
-    sel.appendChild(g1);
+      return o;
+    };
+    var isTop = function (a) { var m = state.allowMeta[a]; return !!(m && m.topAffiliate); };
+    var gi = document.createElement('optgroup');
+    var internals = state.allowlist.filter(function (a) { return !isTop(a); });
+    gi.label = 'Internal Account (' + internals.length + ')';
+    internals.forEach(function (a) { gi.appendChild(mkOpt(a)); });
+    sel.appendChild(gi);
+    var tops = state.allowlist.filter(isTop);
+    if (tops.length) {
+      var gt = document.createElement('optgroup');
+      gt.label = 'Top Affiliate (' + tops.length + ')';
+      tops.forEach(function (a) { gt.appendChild(mkOpt(a)); });
+      sel.appendChild(gt);
+    }
     var others = (state.others || []).filter(function (a) { return state.allowlist.indexOf(a) === -1; });
     if (others.length) {
       var g2 = document.createElement('optgroup');
@@ -972,7 +1027,7 @@
   }
 
   /* ---------- filtering + render ---------- */
-  ['fAccount', 'fStatus', 'fSec', 'fType', 'fCamp', 'fSearch', 'fMinRoi', 'fMinOrders', 'fMaxAge', 'fSort', 'fAllowlist', 'fMin1k', 'fNoCard', 'fNoInel', 'fInsight']
+  ['fAccount', 'fStatus', 'fSec', 'fType', 'fCamp', 'fSearch', 'fMinRoi', 'fMinOrders', 'fMaxAge', 'fSort', 'fAllowlist', 'fMin1k', 'fNoCard', 'fNoInel', 'fNoInactive', 'fInsight']
     .forEach(function (id) {
       $(id).addEventListener('input', applyFilters);
       $(id).addEventListener('change', applyFilters);
@@ -1007,6 +1062,7 @@
     var only1k = $('fMin1k').checked;
     var noCard = $('fNoCard').checked;
     var hideInel = $('fNoInel').checked;
+    var hideInact = $('fNoInactive').checked;
     if (isNaN(minRoi)) minRoi = -Infinity;
     if (isNaN(minOrd)) minOrd = -Infinity;
     var out = state.rows.filter(function (r) {
@@ -1015,6 +1071,7 @@
       if (only1k && r.impr < 1000) return false;
       if (noCard && r.account === 'Product Card') return false;
       if (hideInel && st !== 'Ineligible' && String(r.status) === 'Ineligible') return false;
+      if (hideInact && isInactiveAcc(r.account)) return false;
       if (st && String(r.status) !== st) return false;
       if (se && String(r.sec) !== se) return false;
       if (ins && insBase(r) !== ins) return false;
@@ -1078,7 +1135,7 @@
     if (!list.length) { tb.innerHTML = '<tr><td colspan="9" class="empty-note">No rows match.</td></tr>'; return; }
     tb.innerHTML = list.slice(0, 50).map(function (a) {
       var allow = state.allowlist.indexOf(a.account) !== -1;
-      return '<tr data-acc="' + esc(a.account) + '" title="Click for creative details"><td>' + esc(a.account) + esc(allowUser(a.account)) + '</td><td>' + (allow ? 'yes' : '–') + '</td><td>' + fmt(a.rows) +
+      return '<tr data-acc="' + esc(a.account) + '" title="Click for creative details"><td>' + esc(a.account) + esc(allowUser(a.account)) + esc(allowFlags(a.account)) + '</td><td>' + (allow ? 'yes' : '–') + '</td><td>' + fmt(a.rows) +
         '</td><td>' + fmt(a.cost, 2) + '</td><td>' + fmt(a.rev, 2) + '</td><td>' + fmt(a.ord) +
         '</td><td>' + a.roi.toFixed(2) + '</td><td>' + a.aov.toFixed(2) + '</td><td>' + a.cpm.toFixed(2) + '</td></tr>';
     }).join('');
@@ -1127,7 +1184,7 @@
         return 'Did you mean <button class="hint-btn" data-acc="' + esc(b.h) + '">' + esc(b.h) +
           '</button> (' + fmt(b.n) + ' rows)?';
       }).join(' ');
-      html += '<div class="cov-miss">&#9888; <strong>' + esc(a) + '</strong>' + esc(allowUser(a)) + ' — 0 rows in this file, excluded from totals. ' + hints + '</div>';
+      html += '<div class="cov-miss">&#9888; <strong>' + esc(a) + '</strong>' + esc(allowUser(a)) + esc(allowFlags(a)) + ' — 0 rows in this file, excluded from totals. ' + hints + '</div>';
       missing++;
     });
     box.innerHTML = html;
@@ -1161,6 +1218,7 @@
     if ($('fMin1k').checked) bits.push('1000+ impressions');
     if ($('fNoCard').checked) bits.push('Product Card excluded');
     if ($('fNoInel').checked) bits.push('Ineligible hidden');
+    if ($('fNoInactive').checked) bits.push('inactive hidden');
     if ($('fAllowlist').checked) bits.push('allowlist only');
     if ($('fSort').value) bits.push('sorted by ' + $('fSort').value);
     return bits.length ? 'Active filters: ' + bits.join(' · ') : 'No filters — all creatives for this account';
@@ -1190,7 +1248,7 @@
     rows.forEach(function (r) { cost += r.cost; rev += r.revenue; ord += r.orders; impr += r.impr; });
     var allow = state.allowlist.indexOf(account) !== -1;
     var note = allowNote(account);
-    $('acctModalTitle').textContent = account + (allow ? ' ✓ allowlisted' + allowUser(account) + (note ? ' — ' + note : '') : '');
+    $('acctModalTitle').textContent = account + (allow ? ' ✓ allowlisted' + allowUser(account) + (note ? ' — ' + note : '') + allowId(account) + allowFlags(account) + allowUpdated(account) : '');
     $('acctModalCtx').textContent = filterContext();
     $('acctModalKpis').innerHTML =
       kpiMini('Creatives', fmt(rows.length)) + kpiMini('Cost (MYR)', fmt(cost, 2)) +
@@ -1319,33 +1377,77 @@
   }
 
   /* ---------- account manager (local server.py saver) ---------- */
-  function mgrRow(name, username, note) {
-    return '<div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0.5rem;align-items:center" data-mrow>' +
+  function mgrRow(name, username, accountId, note, active, live, topAffiliate, stamp) {
+    return '<div style="display:grid;grid-template-columns:auto auto 2fr 1.2fr 1.2fr 2fr auto auto auto auto auto;gap:0.5rem;align-items:center" data-mrow>' +
+      '<span class="row-num text-sm text-gray-500 dark:text-gray-400" style="min-width:1.5rem;text-align:right"></span>' +
+      '<span class="drag-handle" draggable="true" title="Drag to reorder">⠿</span>' +
       '<input data-f="name" class="filter-input" value="' + esc(name) + '" placeholder="Exact account name">' +
       '<input data-f="username" class="filter-input" value="' + esc(username) + '" placeholder="username (no @)">' +
+      '<input data-f="accountId" class="filter-input" value="' + esc(accountId) + '" placeholder="account ID (optional)">' +
       '<input data-f="note" class="filter-input" value="' + esc(note) + '" placeholder="note (optional)">' +
+      '<label class="text-sm flex items-center gap-1"><input data-f="active" type="checkbox"' + (active ? ' checked' : '') + '> Active</label>' +
+      '<label class="text-sm flex items-center gap-1"><input data-f="live" type="checkbox"' + (live ? ' checked' : '') + '> Live</label>' +
+      '<label class="text-sm flex items-center gap-1" title="Top affiliate"><input data-f="topAffiliate" type="checkbox"' + (topAffiliate ? ' checked' : '') + '> T-Aff</label>' +
+      '<span class="text-xs text-gray-500 dark:text-gray-400" style="white-space:nowrap">' + esc(stamp || '–') + '</span>' +
       '<button type="button" data-mdel class="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm" title="Remove">✕</button></div>';
+  }
+  function mgrGroupHtml(title, key, rowsHtml) {
+    return '<div class="text-sm font-semibold mt-3 mb-1">' + esc(title) + ' (<span data-gcount="' + key + '">0</span>)</div>' +
+      '<div data-mgroup="' + key + '" style="display:flex;flex-direction:column;gap:0.5rem">' + rowsHtml + '</div>';
   }
   function renderMgr() {
     $('mgrStatus').textContent = '';
     $('mgrTopN').value = (state.targets && state.targets.topN) || 20;
     $('mgrMinImpr').value = (state.targets && typeof state.targets.minImpr === 'number') ? state.targets.minImpr : '';
     $('mgrMaxCPM').value = (state.targets && typeof state.targets.maxCPM === 'number') ? state.targets.maxCPM : '';
-    $('mgrRows').innerHTML = state.allowlist.map(function (a) {
-      var m = state.allowMeta[a] || { username: '', note: '' };
-      return mgrRow(a, m.username, m.note);
-    }).join('');
+    var internals = [], tops = [], dormant = [];
+    state.allowlist.forEach(function (a) {
+      var m = state.allowMeta[a] || { username: '', accountId: '', note: '', active: true, live: false, topAffiliate: false, updatedAt: null };
+      var html = mgrRow(a, m.username, m.accountId, m.note, m.active !== false, m.live === true, m.topAffiliate === true, fmtAgo(m.updatedAt));
+      if (m.active === false) dormant.push(html);
+      else if (m.topAffiliate === true) tops.push(html); else internals.push(html);
+    });
+    $('mgrRows').innerHTML = mgrGroupHtml('Internal Account', 'internal', internals.join('')) +
+      mgrGroupHtml('Top Affiliate', 'top', tops.join('')) +
+      mgrGroupHtml('Inactive', 'inactive', dormant.join(''));
+    renumberMgr();
   }
   function collectMgr() {
     var out = [], bad = -1;
     Array.prototype.forEach.call($('mgrRows').querySelectorAll('[data-mrow]'), function (row, i) {
       var g = function (f) { return row.querySelector('[data-f="' + f + '"]').value.trim(); };
-      var name = g('name'), username = g('username'), note = g('note');
-      if (!name && !username && !note) return; // skip blank rows
+      var c = function (f) { return row.querySelector('[data-f="' + f + '"]').checked; };
+      var name = g('name'), username = g('username'), accountId = g('accountId'), note = g('note');
+      if (!name && !username && !accountId && !note) return; // skip blank rows
       if (!name) { bad = i + 1; return; }
-      out.push({ name: name, username: username, note: note });
+      out.push({ name: name, username: username, accountId: accountId, note: note, active: c('active'), live: c('live'), topAffiliate: c('topAffiliate') });
     });
     return { rows: out, bad: bad };
+  }
+  /* Manager row order: numbered badges + drag-to-reorder (save follows DOM order). */
+  function renumberMgr() {
+    var box = $('mgrRows');
+    Array.prototype.forEach.call(box.querySelectorAll('[data-mrow]'), function (row, i) {
+      var n = row.querySelector('.row-num');
+      if (n) n.textContent = (i + 1) + '.';
+    });
+    ['internal', 'top', 'inactive'].forEach(function (k) {
+      var g = box.querySelector('[data-mgroup="' + k + '"]');
+      var s = box.querySelector('[data-gcount="' + k + '"]');
+      if (g && s) s.textContent = g.querySelectorAll('[data-mrow]').length;
+    });
+  }
+  var mgrDragSrc = null;
+  function mgrRowFromEvent(e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-mrow]') : null;
+    return t;
+  }
+  /* Drop position from mouse height: bottom half = after the row (reaches end of list). */
+  function dndAfter(clientY, top, height) { return (clientY - top) > height / 2; }
+  function mgrClearDrop() {
+    Array.prototype.forEach.call($('mgrRows').querySelectorAll('.drag-before,.drag-after,.drag-src'), function (r) {
+      r.classList.remove('drag-before'); r.classList.remove('drag-after'); r.classList.remove('drag-src');
+    });
   }
   function collectTargets() {
     var tn = parseInt($('mgrTopN').value, 10);
@@ -1417,13 +1519,99 @@
   $('manageAccts').addEventListener('click', openMgr);
   $('mgrClose').addEventListener('click', closeMgr);
   $('mgrAdd').addEventListener('click', function () {
-    $('mgrRows').insertAdjacentHTML('beforeend', mgrRow('', '', ''));
+    var g = $('mgrRows').querySelector('[data-mgroup="internal"]');
+    if (g) g.insertAdjacentHTML('beforeend', mgrRow('', '', '', '', true, false, false, '–'));
+    else $('mgrRows').insertAdjacentHTML('beforeend', mgrRow('', '', '', '', true, false, false, '–'));
+    renumberMgr();
   });
   $('mgrRows').addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-mdel]') : null;
     if (!b) return;
     var row = b.closest('[data-mrow]');
-    if (row) row.remove();
+    if (row) { row.remove(); renumberMgr(); }
+  });
+  $('mgrRows').addEventListener('dragstart', function (e) {
+    var h = e.target && e.target.closest ? e.target.closest('.drag-handle') : null;
+    var row = h && h.closest ? h.closest('[data-mrow]') : null;
+    if (!row) return;
+    mgrDragSrc = row;
+    row.classList.add('drag-src');
+    if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', ''); } catch (err) {} }
+  });
+  $('mgrRows').addEventListener('dragover', function (e) {
+    if (!mgrDragSrc) return;
+    e.preventDefault(); // keep the container a valid drop zone (lets rows land at the end)
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    var row = mgrRowFromEvent(e);
+    var before = $('mgrRows').querySelector('.drag-before'), after = $('mgrRows').querySelector('.drag-after');
+    if (before) before.classList.remove('drag-before');
+    if (after) after.classList.remove('drag-after');
+    if (!row || row === mgrDragSrc || !row.getBoundingClientRect) return;
+    var r = row.getBoundingClientRect();
+    row.classList.add(dndAfter(e.clientY, r.top, r.height) ? 'drag-after' : 'drag-before');
+  });
+  /* Dropping a row into a group re-ticks it to match that group. Inactive wins
+     for grouping; a dormant top keeps its T-Aff so reactivating restores it. */
+  function mgrRetick(row) {
+    if (!row || !row.closest) return;
+    var g = row.closest('[data-mgroup]');
+    if (!g) return;
+    var k = g.getAttribute('data-mgroup');
+    var top = row.querySelector('[data-f="topAffiliate"]');
+    var act = row.querySelector('[data-f="active"]');
+    if (k === 'inactive') {
+      if (act) act.checked = false;
+    } else {
+      if (act) act.checked = true;
+      if (top) top.checked = (k === 'top');
+    }
+  }
+  $('mgrRows').addEventListener('drop', function (e) {
+    if (!mgrDragSrc) return;
+    e.preventDefault();
+    var row = mgrRowFromEvent(e);
+    if (row && row !== mgrDragSrc) {
+      if (row.getBoundingClientRect && dndAfter(e.clientY, row.getBoundingClientRect().top, row.getBoundingClientRect().height)) {
+        row.parentNode.insertBefore(mgrDragSrc, row.nextSibling);
+      } else {
+        row.parentNode.insertBefore(mgrDragSrc, row);
+      }
+      mgrRetick(mgrDragSrc);
+      renumberMgr();
+    } else if (!row) {
+      var g = (e.target && e.target.closest) ? e.target.closest('[data-mgroup]') : null;
+      if (!g) g = $('mgrRows').querySelector('[data-mgroup="inactive"]');
+      if (g) {
+        g.appendChild(mgrDragSrc);
+        mgrRetick(mgrDragSrc);
+      } else {
+        $('mgrRows').appendChild(mgrDragSrc);
+      }
+      renumberMgr();
+    }
+    mgrDragSrc = null;
+    mgrClearDrop();
+  });
+  /* Ticking T-Aff or Active moves the row into its live group immediately. */
+  $('mgrRows').addEventListener('change', function (e) {
+    var cb = (e.target && e.target.matches && e.target.matches('[data-f="topAffiliate"],[data-f="active"]')) ? e.target : null;
+    if (!cb) return;
+    var row = cb.closest ? cb.closest('[data-mrow]') : null;
+    if (!row) return;
+    var top = row.querySelector('[data-f="topAffiliate"]');
+    var act = row.querySelector('[data-f="active"]');
+    var want = (act && !act.checked) ? 'inactive' : ((top && top.checked) ? 'top' : 'internal');
+    var cur = row.closest ? row.closest('[data-mgroup]') : null;
+    if (cur && cur.getAttribute('data-mgroup') !== want) {
+      var dest = $('mgrRows').querySelector('[data-mgroup="' + want + '"]');
+      if (dest) { dest.appendChild(row); renumberMgr(); }
+    } else {
+      renumberMgr();
+    }
+  });
+  $('mgrRows').addEventListener('dragend', function () {
+    mgrDragSrc = null;
+    mgrClearDrop();
   });
   $('mgrDownload').addEventListener('click', function () {
     var c = collectMgr();

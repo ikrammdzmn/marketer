@@ -4,6 +4,64 @@ Newest first, in plain words. `plan.md` is the live checklist; this file is the
 release record. The `app.js?v=N` tag is a cache-buster counter (it keeps rising:
 v15, v16, …) — the headings below are releases in the order they shipped.
 
+## v22 — 17 Sep 2026 — Hide inactive tick
+
+New default-on tick drops every row from accounts unticked Active in Manage
+accounts — KPIs, tables, popup, preview, exports and compare. Non-managed
+accounts are never hidden; untick the tick to audit dormant accounts (nothing is
+deleted). The Active tick finally does what it says.
+
+## v21 — 17 Sep 2026 — Inactive section
+
+A third Manager section at the bottom: unticking Active moves a row to
+**Inactive** live (dragging across re-ticks to match, same as tops). Active state
+wins grouping, so a dormant top affiliate sits in Inactive but keeps its T-Aff —
+re-ticking Active restores it straight back to Top Affiliate. The filter dropdown
+is unchanged (inactive accounts stay selectable, ⏸ flagged).
+
+## v20 — 17 Sep 2026 — Per-account last-updated stamp
+
+Manage accounts rows now show `Last updated: 17/9/26 (45 minutes ago)` (also in
+the account popup title). The saver stamps only rows whose content actually
+changed — reordering alone doesn't restamp, new rows stamp at creation, and rows
+never saved show `–`. Server-local time.
+
+## v19 — 17 Sep 2026 — Manager section headers
+
+Manage accounts now groups rows under live **Internal Account** / **Top Affiliate**
+headers (counts shown, Top below Internal — the header you asked for). Ticking
+T-Aff moves the row instantly; dragging across groups re-ticks it to match; new
+rows land in Internal. Same numbering, same drag, Save keeps everything.
+
+## v18 — 17 Sep 2026 — T-Aff rename + account sections
+
+The Manager tick is now **T-Aff**, and the account dropdown splits managed
+accounts into **Internal Account** with **Top Affiliate** below it (ticking T-Aff
+moves one there; the section hides when empty). Search suggestions tag tops too.
+
+## v17 — 17 Sep 2026 — Top affiliate tick
+
+One more tick per account in Manage accounts: **Top** marks top affiliates with a
+⭐ TOP AFFILIATE flag next to their names everywhere. Saver validates + preserves
+it like the other fields.
+
+## v16 — 17 Sep 2026 — Manager row numbers + drag reorder
+
+Manage accounts rows are numbered and can be rearranged by dragging the ⠿
+handle — drop on a row's top half to land above it, bottom half for below
+(reaching the end of the list), or on empty space to move last; a blue line
+marks the landing spot and the dragged row ghosts. Saving keeps the shown order
+everywhere (dropdown, tables, file). The
+manager modal itself is now wider to fit the extra columns.
+
+## v15 — 17 Sep 2026 — Account ID + Active/Live ticks
+
+Each managed account can now carry an account ID plus **Active** and **Live**
+ticks, edited in Manage accounts and preserved by the saver (old files gain
+defaults on load). Live accounts show 🔴 LIVE and inactive ones ⏸ inactive next
+to their names in the dropdown, suggestions, per-account table and popup; the
+popup title also shows the account ID.
+
 ## v14 — 17 Sep 2026 — Picker filename chips
 
 The bundled file picker reads more from file names, still without opening any file:

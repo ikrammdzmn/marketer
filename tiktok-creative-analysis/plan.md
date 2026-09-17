@@ -45,6 +45,14 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Blank-account split: true catalogue rows (Product-card type / no video / no campaign) stay `Product Card`; blank-account real videos → user-approved `Unknown account` row with normal verdicts (bulk file: 2,708 videos incl. 63 orders / RM6,988 revenue unveiled; single-file behaviour unchanged)
   - [x] Insight verdict filter: `fInsight` dropdown (All + 8 verdicts) filters KPIs/tables/modal/preview/exports by verdict; `?insight=Label` now also sets the filter so the link shows the videos, not just the rule
   - [x] Picker filename chips (no file read): single date for 1-day files, `from → to · N days` for ranges, product chip from `Product {ID}` (friendly name), instant `bulk` badge from `product campaigns` in the name
+  - [x] Account metadata: `accountId` + `Active`/`Live` ticks per account (saver validates + preserves; legacy entries gain defaults); markers in dropdown/suggestions/account table/modal (`🔴 LIVE`, `⏸ inactive`, `· ID xxx`)
+  - [x] Manager row numbers + drag-to-reorder (⠿ handle; Save keeps the shown order everywhere)
+  - [x] `Top affiliate` tick per account (saver preserves; `⭐ TOP AFFILIATE` marker with the other flags)
+  - [x] Manager tick renamed `T-Aff`; account dropdown split into `Internal Account` + `Top Affiliate` sections (tops below internals; hidden when none); suggestions tag tops `top affiliate`
+  - [x] Manager modal groups rows under live `Internal Account` / `Top Affiliate` headers (counts shown; ticking T-Aff or dragging across groups moves the row + re-ticks instantly; + Add lands in Internal)
+  - [x] Third `Inactive` section at the bottom (unticking Active moves one there live; active state wins grouping; dormant tops keep T-Aff for clean reactivation; filter dropdown unchanged)
+  - [x] `Hide inactive` tick (default on): drops rows of Active-unticked accounts from KPIs/tables/modal/preview/exports + compare (non-allowlisted accounts never hidden; untick to audit them)
+  - [x] Per-account save stamp: `updatedAt` set by the saver only on changed/new rows (reorder alone doesn't restamp; inbound values ignored); shown as `Last updated: 17/9/26 (45 minutes ago)` in Manager + popup title (`–` until first stamp)
   - [x] Account dropdown grouped: Allowlisted (10) / Other accounts in file optgroups
   - [x] Account search box beside dropdown (narrows options, Enter picks first match)
   - [x] Search suggestions popup (top 8, allowlisted tagged) + "No account found" note

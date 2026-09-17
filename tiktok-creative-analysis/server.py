@@ -5,8 +5,11 @@ Usage:
     python server.py [port]        # default port 8000, binds 127.0.0.1 only
 
 - Serves this folder over HTTP (same as `python -m http.server`).
-- POST /api/accounts with a JSON array of {name, username, note} validates,
-  backs up data/accounts.json, then writes it.
+- POST /api/accounts with a JSON array of
+  {name, username, accountId, note, active, live, topAffiliate} validates, backs up
+  data/accounts.json, then writes it. accountId/note display-only; active/live/
+  topAffiliate booleans (1/0 and true/false strings tolerated); updatedAt is
+  server-stamped per changed/new row (server-local time).
 - POST /api/targets with {topN, minImpr, maxCPM} validates, backs up
   data/targets.json, then writes it. Null minImpr/maxCPM = auto from file.
   Nothing else is writable.
@@ -28,12 +31,53 @@ MAX_ENTRIES = 100
 MAX_BACKUPS = 10
 
 
-def validate(arr):
-    """Return an error string, or None. Normalises entries in place."""
+def _as_bool(v, default, tag, field):
+    """Lenient boolean: True/False, 1/0, true/false/yes/no strings. Returns (val, err)."""
+    if v is None:
+        return default, None
+    if isinstance(v, bool):
+        return v, None
+    if isinstance(v, (int, float)) and v in (0, 1):
+        return bool(v), None
+    if isinstance(v, str):
+        s = v.strip().lower()
+        if s in ("true", "1", "yes"):
+            return True, None
+        if s in ("false", "0", "no"):
+            return False, None
+    return None, "%s: %s must be true/false" % (tag, field)
+
+
+def _now_iso():
+    """Server-local timestamp (runs on the owner's MYT laptop)."""
+    return time.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _same_content(a, b):
+    """True if the user-editable fields match (updatedAt itself excluded)."""
+    for k in ("name", "username", "accountId", "note", "active", "live", "topAffiliate"):
+        if a.get(k) != b.get(k):
+            return False
+    return True
+
+
+def validate(arr, old=None):
+    """Return an error string, or None. Normalises entries in place.
+
+    updatedAt is server-stamped, never client-supplied (inbound values
+    ignored): rows whose content changed, or are new, get now; untouched rows
+    keep their old stamp (or null). `old` is the previous file content.
+    """
     if not isinstance(arr, list):
         return "body must be a JSON array"
     if len(arr) > MAX_ENTRIES:
         return "too many entries (max %d)" % MAX_ENTRIES
+    oldmap = {}
+    if isinstance(old, list):
+        for o in old:
+            if isinstance(o, dict) and o.get("name"):
+                oldmap[o["name"]] = o
+    now = _now_iso()
     seen = set()
     for i, e in enumerate(arr):
         tag = "entry %d" % (i + 1)
@@ -41,18 +85,41 @@ def validate(arr):
             return tag + " must be an object"
         name = e.get("name", "")
         username = e.get("username", "")
+        accountId = e.get("accountId", "")
         note = e.get("note", "")
         if not isinstance(name, str) or not name.strip():
             return tag + " needs a name"
         if not isinstance(username, str) or not isinstance(note, str):
             return tag + ": username/note must be strings"
+        if not isinstance(accountId, str):
+            return tag + ": accountId must be a string"
         if len(name) > 120 or len(username) > 60 or len(note) > 200:
             return tag + ": field too long (name<=120, username<=60, note<=200)"
+        if len(accountId) > 64:
+            return tag + ": accountId too long (<=64)"
+        active, err = _as_bool(e.get("active", True), True, tag, "active")
+        if err:
+            return err
+        live, err = _as_bool(e.get("live", False), False, tag, "live")
+        if err:
+            return err
+        topAffiliate, err = _as_bool(e.get("topAffiliate", False), False, tag, "topAffiliate")
+        if err:
+            return err
         name = name.strip()
         if name in seen:
             return "duplicate name: " + name
         seen.add(name)
-        arr[i] = {"name": name, "username": username.strip(), "note": note.strip()}
+        norm = {"name": name, "username": username.strip(),
+                "accountId": accountId.strip(), "note": note.strip(),
+                "active": active, "live": live, "topAffiliate": topAffiliate}
+        prev = oldmap.get(name)
+        if prev is not None and _same_content(norm, prev):
+            stamp = prev.get("updatedAt")
+            norm["updatedAt"] = stamp if isinstance(stamp, str) and stamp else None
+        else:
+            norm["updatedAt"] = now
+        arr[i] = norm
     return None
 
 
@@ -147,7 +214,14 @@ class Handler(SimpleHTTPRequestHandler):
             except OSError as e:
                 return self._json(500, {"ok": False, "error": "write failed: %s" % e})
             return self._json(200, {"ok": True, "targets": norm, "backup": backup_name})
-        err = validate(body)
+        old = None
+        if os.path.exists(ACCOUNTS):
+            try:
+                with open(ACCOUNTS, "r", encoding="utf-8") as f:
+                    old = json.load(f)
+            except Exception:
+                old = None
+        err = validate(body, old)
         if err:
             return self._json(400, {"ok": False, "error": err})
         try:

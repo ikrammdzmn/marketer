@@ -9,8 +9,10 @@ no framework**. Keep it that way.
   0.20.3, Chart.js 4.4.1). Anti-flash dark-mode script in `<head>`.
 - `app.js` — all logic, single vanilla IIFE. No modules, no transpiling.
 - `style.css` — extras only; layout via Tailwind classes.
-- `data/accounts.json` — allowlist of 10 managed TikTok accounts (array of
-  `{name, username, note}` objects; matching is exact on `name` only).
+- `data/accounts.json` — allowlist of managed TikTok accounts (array of
+  `{name, username, accountId, note, active, live, topAffiliate, updatedAt}` objects;
+  matching is exact on `name` only; username/accountId/note display-only,
+  active/live/top shown as markers; updatedAt server-stamped, null until saved).
 - `data/catalog.json` — user-authored friendly names: `{campaigns: {ID: {label, note}},
   products: {ID: {name, note}}}` (4 campaigns + 18 products from the 09-08 bulk file,
   labels blank until named). Display-only — matching stays exact on raw file values;
@@ -18,7 +20,8 @@ no framework**. Keep it that way.
 - `data/targets.json` — SOP targets `{topN, minImpr, maxCPM}` (null = auto from
   file); edited in Manage accounts, saved via POST /api/targets.
 - `server.py` — local-only server (stdlib, 127.0.0.1): static files + POST
-  /api/accounts (validates ≤100 entries, timestamped backup, LF). Never expose.
+  /api/accounts (validates ≤100 entries incl. accountId/active/live/topAffiliate,
+  timestamped backup, LF). Never expose.
 - `start-server.bat` — double-click launcher (python check, opens browser, runs
   server.py). No IDE / Live Server needed.
 - `.gitignore` — keeps saver backups (`data/accounts.backup-*.json`) and
@@ -48,10 +51,12 @@ files). Serve on a fresh port per test; always stop background servers.
 ## Rules
 
 1. **Never hand-edit `source-file/*.xlsx`** or invent account names. The user's entries
-   in `accounts.json` are authoritative — 9 of 10 match the xlsx exactly;
-   `Dr Samhan Official4` intentionally has 0 rows (kept, with username);
+   in `accounts.json` are authoritative (20 entries, user adds/reorders/saves
+   mid-session — re-read before save-related work; test rows like `Sir Ching`
+   appear; `Dr Samhan Official4` intentionally has 0 rows);
    the coverage-hints feature bridges near-misses (e.g. `DrSamhanOfficial4`).
-   Matching is exact on `name` only — `username`/`note` are display-only.
+    Matching is exact on `name` only — `username`/`accountId`/`note` are display-only
+    (`active`/`live` shown as markers).
     `Product Card` is the user's authorised name for TikTok's true catalogue rows
     (blank account + Product-card type / no video / no campaign). `Unknown account`
     is the user-approved name for blank-account real videos (bulk file: 2,708 videos,
@@ -70,7 +75,9 @@ files). Serve on a fresh port per test; always stop background servers.
     Single-file blanks (no campaign column) stay `Product Card` as before.
     the `Exclude Product Card` tick (default off) filters them everywhere. The
     `Hide Ineligible` tick (default on, `fNoInel`) drops `Ineligible` rows everywhere
-    incl. compare (status-movers stay; explicit Status=`Ineligible` bypasses it).
+    incl. compare (status-movers stay; explicit Status=`Ineligible` bypasses it). The
+    `Hide inactive` tick (default on, `fNoInactive`) drops rows of Active-unticked
+    accounts everywhere incl. compare (`isInactiveAcc`; non-allowlisted never hidden).
    Insight engine (`insightOf`): verdicts from file-adaptive benchmarks
    (median CPM, top-20 min impressions, median 2s rate/AOV, p90 ROI, recomputed
    per ingest) — thresholds live in code, never hardcode file numbers. Guide

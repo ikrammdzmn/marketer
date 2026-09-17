@@ -9,6 +9,22 @@ Rule: whoever ships a folder release adds one line here the same session.
 - `tiktok-creative-analysis` v9–v14: Hide Ineligible tick, insight guide + chip
   popup + `?insight` link, N/A → `Product Card - campaign`, Unknown-account split,
   Insight verdict filter, picker filename chips → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v15: account ID + Active/Live ticks (saver preserves;
+  🔴 LIVE / ⏸ inactive markers + ID in popup) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v16: manager row numbers + drag-to-reorder (Save keeps
+  the shown order) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v17: Top affiliate tick (⭐ TOP AFFILIATE marker)
+  → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v18: T-Aff rename + Internal Account / Top Affiliate
+  dropdown sections → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v19: Manager section headers (live grouping, tick/drag
+  moves rows) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v20: per-account last-updated stamp (saver stamps
+  changed rows only) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v21: Inactive manager section (live moves, dormant
+  tops keep T-Aff) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v22: Hide inactive tick (Active-unticked rows leave
+  every number) → `tiktok-creative-analysis/CHANGELOG.md`
 - `tiktok-event` built (new folder, untracked): HIMCOFFEE RACI board, Option A
   vanilla single-file local-only — Timeline + Worksheet + 5T/3M + RACI + PIN seats
   + CSV, verified + docs → `tiktok-event/plan.md`

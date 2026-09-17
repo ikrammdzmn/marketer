@@ -1,57 +1,202 @@
 [
   {
-    "name": "DrSamhanWellness",
-    "username": "drsamhanwellness",
-    "note": ""
-  },
-  {
     "name": "HIMCoffee",
     "username": "himcoffeedrsamhan",
-    "note": ""
+    "accountId": "7534954290880872456",
+    "note": "",
+    "active": true,
+    "live": true,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:54:53"
   },
   {
     "name": "Dr Samhan",
     "username": "affiliatedrsamhan1",
-    "note": "no orders yet"
-  },
-  {
-    "name": "Affiliate Dr Samhan3",
-    "username": "affiliatedrsamhan3",
-    "note": "no orders yet"
-  },
-  {
-    "name": "Affiliate Dr Samhan4",
-    "username": "affiliatedrsamhan4",
-    "note": ""
-  },
-  {
-    "name": "Affiliate Dr Samhan6",
-    "username": "affiliatedrsamhan6",
-    "note": "no orders yet"
-  },
-  {
-    "name": "Dr Samhan Official",
-    "username": "drsamhanofficial",
-    "note": ""
+    "accountId": "7506439305527771143",
+    "note": "no orders yet",
+    "active": true,
+    "live": true,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:54:53"
   },
   {
     "name": "Dr Samhan Official3",
     "username": "drsamhanofficial3",
-    "note": ""
-  },
-  {
-    "name": "Dr Samhan Official4",
-    "username": "drsamhanofficial4",
-    "note": ""
+    "accountId": "7638889204189265941",
+    "note": "",
+    "active": true,
+    "live": true,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:54:53"
   },
   {
     "name": "Dr. Samhan",
     "username": "dr.samhan",
-    "note": ""
+    "accountId": "7235542515297009665",
+    "note": "",
+    "active": true,
+    "live": true,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:54:53"
+  },
+  {
+    "name": "Affiliate Dr Samhan4",
+    "username": "affiliatedrsamhan4",
+    "accountId": "7457838393997656080",
+    "note": "",
+    "active": true,
+    "live": true,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:54:53"
+  },
+  {
+    "name": "Affiliate Dr Samhan3",
+    "username": "affiliatedrsamhan3",
+    "accountId": "7406737648896835585",
+    "note": "no orders yet",
+    "active": true,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:54:53"
+  },
+  {
+    "name": "DrSamhanWellness",
+    "username": "drsamhanwellness",
+    "accountId": "7345686756198514690",
+    "note": "",
+    "active": true,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:54:53"
+  },
+  {
+    "name": "Affiliate Dr Samhan6",
+    "username": "affiliatedrsamhan6",
+    "accountId": "7614768306609471489",
+    "note": "no orders yet",
+    "active": true,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:54:53"
+  },
+  {
+    "name": "Dr Samhan Official",
+    "username": "drsamhanofficial",
+    "accountId": "7634070793240133639",
+    "note": "",
+    "active": true,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:54:53"
+  },
+  {
+    "name": "Dr Samhan Official4",
+    "username": "drsamhanofficial4",
+    "accountId": "7534954437115314183",
+    "note": "",
+    "active": true,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:54:53"
+  },
+  {
+    "name": "Affiliate Dr Samhan",
+    "username": "affiliatedrsamhan",
+    "accountId": "7647005415519191061",
+    "note": "",
+    "active": false,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:55:13"
+  },
+  {
+    "name": "anotheraffiliate1",
+    "username": "anotheraffiliate1",
+    "accountId": "7641461490507186196",
+    "note": "",
+    "active": false,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:55:13"
+  },
+  {
+    "name": "affiliatedrsamhan5",
+    "username": "affiliatedrsamhan5",
+    "accountId": "7519783051975622674",
+    "note": "",
+    "active": false,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:55:13"
+  },
+  {
+    "name": "affiliatedrsamhan2",
+    "username": "affiliatedrsamhan2",
+    "accountId": "7512303477381496849",
+    "note": "",
+    "active": false,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:55:13"
   },
   {
     "name": "Sir Ching",
     "username": "am396389",
-    "note": "dummy"
+    "accountId": "",
+    "note": "dummy",
+    "active": false,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T15:55:13"
+  },
+  {
+    "name": "mallegacy00",
+    "username": "mallegacy00",
+    "accountId": "",
+    "note": "",
+    "active": true,
+    "live": false,
+    "topAffiliate": true,
+    "updatedAt": "2026-09-17T15:53:53"
+  },
+  {
+    "name": "vinca.lover",
+    "username": "vinca.lover",
+    "accountId": "7368628935708443669",
+    "note": "",
+    "active": true,
+    "live": false,
+    "topAffiliate": true,
+    "updatedAt": "2026-09-17T15:54:08"
+  },
+  {
+    "name": "mrjalanking7",
+    "username": "mrjalanking7",
+    "accountId": "",
+    "note": "",
+    "active": true,
+    "live": false,
+    "topAffiliate": true,
+    "updatedAt": "2026-09-17T15:54:08"
+  },
+  {
+    "name": "Abang Hakim",
+    "username": "boss_akim",
+    "accountId": "",
+    "note": "",
+    "active": true,
+    "live": false,
+    "topAffiliate": true,
+    "updatedAt": "2026-09-17T15:54:08"
+  },
+  {
+    "name": "Suhana",
+    "username": "nursuhanabakar99",
+    "accountId": "",
+    "note": "",
+    "active": true,
+    "live": false,
+    "topAffiliate": true,
+    "updatedAt": "2026-09-17T15:54:08"
   }
 ]
