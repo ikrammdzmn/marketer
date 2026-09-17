@@ -22,7 +22,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 </style>
 </head>
 <body class="bg-gray-100 text-gray-900 min-h-screen">
-<div class="max-w-7xl mx-auto px-4 py-6">
+<div class="mx-auto px-3 py-6" style="max-width:1760px">
 
 <header class="flex flex-wrap items-center justify-between gap-3 mb-4">
 <div>
@@ -40,13 +40,24 @@ body{font-family:'Inter',system-ui,sans-serif}
 <div id="accList" style="display:none;width:max-content;max-width:90vw" class="absolute z-20 mt-1 bg-white border border-gray-300 rounded-xl shadow-xl p-1 max-h-[300px] overflow-y-auto"></div>
 </div>
 <button onclick="link()" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">Link / Relink</button>
+<button id="unlinkBtn" onclick="unlink()" style="display:none" class="px-3 py-1.5 rounded border border-red-300 text-red-600 text-sm hover:bg-red-50">Unlink</button>
 <button id="refBtn" onclick="refresh()" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Refresh from TikTok</button>
+<span class="text-sm text-gray-500">Limit:</span>
+<select id="limitSel" onchange="limitChanged()" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm bg-white">
+<option value="all">All</option>
+<option value="30">30</option>
+<option value="50">50</option>
+<option value="100">100</option>
+<option value="custom">Custom…</option>
+</select>
+<input id="limitNum" type="number" min="1" max="10000" value="30" style="display:none;width:70px" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
 <button onclick="exp()" class="px-3 py-1.5 rounded bg-green-600 text-white text-sm hover:bg-green-700">Export CSV</button>
 <span id="spin" style="display:none" class="text-sm text-gray-500">⏳ loading…</span>
 </div>
 <div id="profile" class="mt-3 text-sm"></div>
 <div class="mt-3 relative">Range:
 <button id="rangeBtn" onclick="toggleCal()" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">All time 📅</button>
+<button id="clearBtn" onclick="clearRange()" style="display:none" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">Clear</button>
 <div id="calPop" class="bg-white border border-gray-300 rounded-xl shadow-xl p-3 mt-1">
 <div class="flex gap-3">
 <div id="calPresets" class="flex flex-col gap-1">
@@ -68,7 +79,7 @@ body{font-family:'Inter',system-ui,sans-serif}
 <button onclick="navCal(1)" class="px-2 py-0.5 rounded border text-sm">›</button>
 <button onclick="navCal(12)" class="px-2 py-0.5 rounded border text-sm">»</button>
 </div>
-<div class="flex gap-3"><div class="cal" id="cal0"></div><div class="cal" id="cal1"></div></div>
+<div class="flex gap-3" onmouseleave="hoverDay(null)"><div class="cal" id="cal0"></div><div class="cal" id="cal1"></div></div>
 </div>
 </div>
 </div>
@@ -103,9 +114,11 @@ return r===0?a+" ago":a+" "+r+(r===1?" day ago":" days ago");}
 const y=Math.floor(mo/12),rm=mo%12;const b=y+(y===1?" year":" years");
 return rm===0?b+" ago":b+" "+rm+(rm===1?" month ago":" months ago");}
 let ACCDATA=[],CUR="";
-function pillFor(a){const st=a.relink?["relink","background:#fef3c7;color:#92400e"]:
-(a.linked?["linked","background:#dcfce7;color:#15803d"]:["not linked","background:#fee2e2;color:#b91c1c"]);
-return "<span style='"+st[1]+";border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0'>"+st[0]+"</span>";}
+function pillFor(a){const st=a.mismatch?["mismatch","background:#fef3c7;color:#92400e"]:
+(a.relink?["relink","background:#fef3c7;color:#92400e"]:
+(a.linked?["linked","background:#dcfce7;color:#15803d"]:["not linked","background:#fee2e2;color:#b91c1c"]));
+const tip=a.mismatch&&a.linked_as?(" title='Linked as @"+esc(a.linked_as)+" — expected @"+esc(a.username)+"'"):"";
+return "<span"+tip+" style='"+st[1]+";border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0'>"+st[0]+"</span>";}
 async function accounts(){
 const r=await fetch("/api/accounts");const d=await r.json();
 ACCDATA=d.accounts;LINKMAP={};let linked=0;
@@ -118,7 +131,8 @@ paintAccBtn();load();}
 let LINKMAP={};
 function paintAccBtn(){const a=LINKMAP[CUR],btn=document.getElementById("accBtn");
 if(!a){btn.textContent="…";return;}
-btn.innerHTML="<b>"+esc(CUR)+"</b> <span class='text-gray-400 font-normal'>@"+esc(a.username)+"</span> "+pillFor(a);}
+btn.innerHTML="<b>"+esc(CUR)+"</b> <span class='text-gray-400 font-normal'>@"+esc(a.username)+"</span> "+pillFor(a);
+document.getElementById("unlinkBtn").style.display=a.linked?"":"none";}
 function toggleAcc(){const l=document.getElementById("accList");
 const open=l.style.display==="block";
 if(open){l.style.display="none";return;}
@@ -135,15 +149,19 @@ let DSET=new Set();
 function rebuildSet(){DSET=new Set();ALL.forEach(x=>{if(x.create_time)DSET.add(dayKey(x.create_time));});}
 function dayKey(ts){const d=new Date((ts+8*3600)*1000);
 return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0");}
-let R={s:null,e:null},VY=0,VM=0;
+let R={s:null,e:null},VY=0,VM=0,HOV=null;
 function pad(n){return String(n).padStart(2,"0");}
 function shiftKey(key,delta){const a=key.split("-");
 const t=Date.UTC(+a[0],+a[1]-1,+a[2])+delta*86400*1000;
 const d=new Date(t);return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate());}
 function monthLen(y,m){return new Date(Date.UTC(y,m+1,0)).getUTCDate();}
-function labelRange(){document.getElementById("rangeBtn").textContent=
-!R.s?"All time 📅":(R.e&&R.e!==R.s?R.s+" - "+R.e:R.s)+" 📅";}
-function setRange(s,e){R={s:s,e:e||s};labelRange();applyFilter();}
+function labelRange(){const b=document.getElementById("rangeBtn");
+document.getElementById("clearBtn").style.display=R.s?"":"none";
+if(!R.s){b.textContent="All time 📅";return;}
+if(!R.e&&HOV&&HOV!==R.s){const lo=R.s<HOV?R.s:HOV,hi=R.s<HOV?HOV:R.s;
+b.textContent=lo+" → "+hi+" 📅";return;}
+b.textContent=(!R.e||R.e===R.s?R.s:R.s+" - "+R.e)+" 📅";}
+function setRange(s,e){R={s:s,e:e||s};HOV=null;labelRange();applyFilter();}
 function preset(p){const t=dayKey(Math.floor(Date.now()/1000));
 if(p==="all"){R={s:null,e:null};labelRange();applyFilter();return;}
 if(p==="today")setRange(t,t);
@@ -159,18 +177,23 @@ setRange(m+"-01",m+"-"+pad(n));}
 function toggleCal(){const p=document.getElementById("calPop");
 const open=p.style.display==="block";
 p.style.display=open?"none":"block";
-if(!open){const t=dayKey(Math.floor(Date.now()/1000)).split("-");
+if(!open){HOV=null;const t=dayKey(Math.floor(Date.now()/1000)).split("-");
 VY=+t[0];VM=+t[1]-1;drawCal();}}
 function navCal(n){VM+=n;while(VM<0){VM+=12;VY--;}while(VM>11){VM-=12;VY++;}
 drawCal();}
-function pickDay(key){if(!R.s||R.e){R={s:key,e:null};labelRange();drawCal();}
+function pickDay(key){HOV=null;
+if(!R.s||R.e){R={s:key,e:null};labelRange();applyFilter();drawCal();}
 else{if(key<R.s)R={s:key,e:R.s};else R.e=key;setRange(R.s,R.e);drawCal();}}
+function clearRange(){R={s:null,e:null};HOV=null;labelRange();applyFilter();drawCal();}
+function hoverDay(key){if(HOV===key)return;HOV=key;
+if(R.s&&!R.e){labelRange();drawCal();}}
 function drawCal(){const today=dayKey(Math.floor(Date.now()/1000));
 function btn(key,label,adj){let cls=adj?"dim":"";
 if(key>today||!DSET.has(key))return "<td><button class='"+cls+"' disabled>"+label+"</button></td>";
-if(R.s){const e=R.e||R.s;
-if(key===R.s||key===e)cls="sel";else if(key>R.s&&key<e)cls="inr";}
-return "<td><button class='"+cls+"' onclick=\"pickDay('"+key+"')\">"+label+"</button></td>";}
+if(R.s){const pe=R.e||(HOV&&HOV!==R.s?HOV:R.s);
+const lo=R.s<pe?R.s:pe,hi=R.s<pe?pe:R.s;
+if(key===R.s||key===pe)cls="sel";else if(key>lo&&key<hi)cls="inr";}
+return "<td><button class='"+cls+"' onclick=\"pickDay('"+key+"')\" onmouseover=\"hoverDay('"+key+"')\">"+label+"</button></td>";}
 for(let k=0;k<2;k++){
 let y=VY,m=VM+k;while(m>11){m-=12;y++;}
 const first=new Date(Date.UTC(y,m,1)).getUTCDay(),n=monthLen(y,m);
@@ -233,8 +256,13 @@ const abs=x.create_time?new Date(x.create_time*1000).toLocaleString("en-MY",
 {timeZone:"Asia/Kuala_Lumpur",hour12:false}):"";
 const when=x.create_time?rel(x.create_time):"";
 const tr=document.createElement("tr");
-tr.innerHTML="<td>"+(i+1)+"</td><td>"+esc(x.title)+"</td><td>"+esc(x.id)+"</td><td title='"+esc(abs)+
-"'>"+esc(when)+"</td><td>"+esc(x.view_count)+
+const thumb=x.cover_image_url?"<a href='"+esc(x.cover_image_url)+"' target='_blank' style='flex-shrink:0'>"+
+"<img src='"+esc(x.cover_image_url)+"' loading='lazy' decoding='async' width='40' height='40' "+
+"alt='' onerror=\"this.style.display='none'\" "+
+"style='width:40px;height:40px;object-fit:cover;border-radius:6px;display:block'></a>":"";
+tr.innerHTML="<td>"+(i+1)+"</td><td><div style='display:flex;gap:8px;align-items:center'>"+thumb+
+"<span>"+esc(x.title)+"</span></div></td><td>"+esc(x.id)+"</td><td><div style='white-space:nowrap'>"+esc(abs)+
+" MYT</div><div class='text-gray-400' style='font-size:11px'>"+esc(when)+"</div></td><td>"+esc(x.view_count)+
 "</td><td>"+esc(x.like_count)+"</td><td>"+esc(x.comment_count)+"</td><td>"+esc(x.share_count)+
 "</td><td><a class='text-blue-600 hover:underline' href='"+esc(x.share_url)+"' target='_blank'>open</a> · "+
 "<a class='text-blue-600 hover:underline' href='"+esc(x.cover_image_url)+"' target='_blank'>cover</a></td>";
@@ -257,17 +285,38 @@ document.getElementById("profile").innerHTML=ph;
 ALL=(v.cached&&v.videos)||[];rebuildSet();applyFilter();}
 function link(){const a=CUR;
 location.href="/authorize?account="+encodeURIComponent(a);}
+async function unlink(){const a=CUR;
+if(!confirm("Unlink "+a+"? Saved videos stay on screen; Refresh will need a fresh Link."))return;
+const r=await fetch("/unlink?account="+encodeURIComponent(a));
+const d=await r.json();
+if(d.ok){document.getElementById("status").textContent="Unlinked "+a+".";await accounts();}
+else document.getElementById("status").textContent="Unlink failed: "+(d.error||"unknown");}
 async function refresh(){const a=CUR;
 const btn=document.getElementById("refBtn"),spin=document.getElementById("spin");
 btn.disabled=true;spin.style.display="inline";
-document.getElementById("status").textContent="Pulling "+a+" from TikTok…";
-try{const r=await fetch("/refresh?account="+encodeURIComponent(a));
+const lim0=refreshLimit();
+const inRange=(R.s?(" ("+R.s+" to "+(R.e||R.s)+")"):" (full history — big accounts take minutes)")+(lim0?(" [newest "+lim0+"]"):"");
+document.getElementById("status").textContent="Pulling "+a+" from TikTok"+inRange+"…";
+try{let url="/refresh?account="+encodeURIComponent(a);
+if(R.s)url+="&since="+encodeURIComponent(R.s)+"&until="+encodeURIComponent(R.e||R.s);
+const lim=lim0;if(lim)url+="&limit="+encodeURIComponent(lim);
+const r=await fetch(url);
 const d=await r.json();
 if(d.relink){document.getElementById("status").textContent="Relink needed: "+d.error;}
-else if(d.ok){document.getElementById("status").textContent="Done: "+d.count+" videos.";await load();}
-else document.getElementById("status").textContent="Error: "+(d.error||"unknown");}
+else if(d.ok){let msg="Done: "+d.count+" videos cached";
+if(d.limited)msg+=" (limit pull: "+d.fetched+" newest fetched in "+d.pages+" pages — merged, older cache kept)";
+else if(d.ranged)msg+=" (range pull: "+d.fetched+" fetched in "+d.pages+" pages — merged, older cache kept)";
+else msg+=" ("+d.pages+" pages, throttled)";
+msg+=".";document.getElementById("status").textContent=msg;await load();}
+else document.getElementById("status").textContent="Error: "+(d.error||"unknown")+" — wait a minute and press Refresh again.";}
 finally{btn.disabled=false;spin.style.display="none";}}
 function csvCell(v){v=String(v==null?"":v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function limitChanged(){document.getElementById("limitNum").style.display=
+document.getElementById("limitSel").value==="custom"?"":"none";}
+function refreshLimit(){const s=document.getElementById("limitSel").value;
+if(s==="custom"){const n=parseInt(document.getElementById("limitNum").value,10);
+return n>0?String(Math.min(n,10000)):"";}
+return s==="all"?"":s;}
 function exp(){const a=CUR;
 const rows=[["account","id","title","posted_myt","posted_utc","view_count","like_count",
 "comment_count","share_count","cover_image_url","share_url"]];

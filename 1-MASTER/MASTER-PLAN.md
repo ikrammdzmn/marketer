@@ -5,7 +5,7 @@
 
 ## 1. Repo map (what lives where)
 - `tiktok-creative-analysis/` — Static creative analytics (single + bulk dialects, multi-file compare ≤7, insight engine + verdict filter + `?insight` links, SOP bars, filename-chip picker). Pure HTML/CSS/vanilla JS, no build (`app.js?v=22`). Authoritative `data/accounts.json` (20 entries × {name,username,accountId,note,active,live,topAffiliate,updatedAt}, exact-match on name); `data/catalog.json` (4 campaigns + 18 products, user-named); `data/targets.json` (SOP topN/minImpr/maxCPM, null = auto). Local `server.py` (127.0.0.1, accounts+targets savers) + `start-server.bat`; loader auto-picks newest `source-file/*.xlsx`. Statuses in its `plan.md`; releases in `CHANGELOG.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
-- `tiktok-account/` — Display API dashboard (own videos + post times). Python stdlib + Tailwind, localhost 8080. `tester.py` FROZEN. Statuses in its `plan.md`. Agent note: `NEON_NOTE.md`.
+- `tiktok-account/` — Display API dashboard (own videos + post times). Python stdlib + Tailwind, localhost 8080. `tester.py` FROZEN. 17 Sep: 429 throttle/retry, range + limit pulls (merged cache), unlink, calendar UX, thumbnails, link-mismatch guard. Statuses in its `plan.md`; releases in `CHANGELOG.md`. Agent note: `NEON_NOTE.md`.
 - `tiktok-strategy/` — Himwellness Growth OS playbook (`himwellness-playbook.html` + `full-strategy.md`). Business guardrails live here: ROI ≥7.0, CPA ≤RM21.18, 1 campaign/SKU, TTAM feeder role, dayparting windows, payday surge. Offline, localStorage.
 - `tiktok-event/` — HIMCOFFEE RACI MASTER (`index.html`, vanilla single-file, local-only, no build). Timeline 2026–2030 + RACI Worksheet + 5T/3M Blueprint + workload + CSV + local PIN seats. Reference: `raci_campaign_dashboard.tsx` (React+Firebase, FROZEN) + `tiktok-prd` (PRD v1.0.0). Statuses in its `plan.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
 - `gmvmax/` — Knowledge only: `gmvmax.md` (algo realities) + `product/*.xlsx`. No code goes here.
@@ -15,7 +15,7 @@
 
 ## 2. Current status (2026-09-17, evening)
 
-- `tiktok-account` dashboard ready local-only; 10 accounts not all linked; Production app unapproved (sandbox proven). Committed `3ee528a`.
+- `tiktok-account` dashboard ready local-only; 20-entry accounts.json (live-read); 429-hardened range/limit pulls; link-mismatch guard live; accounts not all linked; Production app unapproved (demo video still the next big step). Committed `3ee528a`.
 - `tiktok-creative-analysis` v9–v22 local-only, verified over HTTP, UNCOMMITTED: Hide Ineligible, insight guide/popup/filter/`?insight`, N/A Product Card-campaign, Unknown split, picker chips, accountId/Active/Live/T-Aff + save stamps + Hide inactive, manager numbers/drag/groups/sections. `catalog.json` fully user-named. Backlog: exploration exit signals (`plan.md` §6). Releases → `tiktok-creative-analysis/CHANGELOG.md`.
 - `tiktok-strategy` playbook content complete (static).
 - `tiktok-event` built 17 Sep (vanilla RACI board + docs), UNTRACKED. Backlog: structured due-dates, C/I columns, shared Firebase seats, mobile cards.

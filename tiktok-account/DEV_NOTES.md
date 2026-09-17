@@ -2,6 +2,10 @@
 
 > Read this first. It carries the vibe, not just the facts.
 
+DO NOT DELETE THIS PART
+
+Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
 ## Window 2026-09-15 — Sandbox OAuth marathon → tester → dashboard (latest)
 
 Vibe: marathon debug loop, same terse user, even more screenshots. User drove
@@ -95,14 +99,14 @@ Mood to match next: short confirmations, exact URLs, no lectures. User says
 ## Bugs found & fixed (and the lesson from each)
 
 1. **Pages source `/docs` hid the tool** — `.../marketer/tiktok-creative-analysis/
-   index.html` 404'd because Pages only served `docs/`. _Lesson: source=`/docs`
+index.html` 404'd because Pages only served `docs/`. _Lesson: source=`/docs`
    publishes ONLY docs/; source=`/(root)` publishes the whole repo. Switching
    source moves every public URL (terms went `/marketer/terms.html` →
    `/marketer/docs/terms.html`) — update ALL pasted URLs (TikTok form) on switch.
    Diagnose by mapping file path → served URL before touching settings._
 2. **Bare-domain verification on a project site** — `tiktok*.txt` at repo root
    serves at `/marketer/tiktok*.txt`, never at `https://ikrammdzmn.github.io/
-   tiktok*.txt`, so verifying the bare domain always fails. _Lesson: on
+tiktok*.txt`, so verifying the bare domain always fails. _Lesson: on
    `user.github.io/repo` Pages, always verify the URL-prefix property WITH the
    repo path; `Domain`/DNS type is impossible on github.io. Confirm liveness with
    a real fetch of the exact served URL before arguing with the console._
@@ -172,3 +176,113 @@ Mood to match next: short confirmations, exact URLs, no lectures. User says
 - Verification files: confirm via live fetch of the exact served path first.
 - Dashboard owns 8080; one server process at a time; fresh code per attempt.
 - Tester (`tester.py`) is the untouched fallback — new work goes in `dashboard/`.
+
+## Window 2026-09-17 — scale-hardening + linking safety (latest)
+
+Vibe: calm, surgical, high-trust loop. No screenshots this time, no marathon —
+the user came with one crisp bug report ("429 on old accounts like dr.samhan")
+and then steered feature-by-feature in single sentences: throttle? go. date
+range? go. unlink? add it. limit 30/custom? plan first, then go. Thumbnails?
+just answer, then option A. Table too narrow? widen. App-review readiness?
+opinion. Bug forecast? list. Why token dupes? explain. Wrong-slot link?
+guard it. Warn or block? which is better — picked warn. Every "go" was earned
+by a words-only feasibility answer first; the AGENTS.md rule 3 rhythm
+(words → go → code → verify → short confirm) is exactly our dynamic now.
+Energy: owner-operator tidying the shop before TikTok app review, mixing
+English + Malay patience ("ok gooooood" era is over; now it's "ok go").
+Match it: short replies, exact next action, zero lectures.
+
+What happened, in order:
+1. **429 root-caused**: `pull_and_cache` fired ~36 back-to-back `video/list`
+   pages (719 videos, DrSamhanWellness) with no delay + no retry → TikTok
+   throttled. Fix: `PAGE_DELAY=1.0` between pages, `post_json`/`get_json`
+   retry 429/5xx (5 tries, honors `Retry-After`, error bodies surfaced),
+   transient URLError retried too.
+2. **Range preload**: TikTok has NO server-side date filter (cursor+max only),
+   so implemented early-stop (newest-first → stop past `since_ts`, skip newer
+   than `until_ts`) + range pulls MERGE into cache. UI: calendar range sent
+   as `since/until` (MYT days) on Refresh.
+3. **Unlink button**: red button, visible only when linked; `GET /unlink`
+   deletes the token file, cache kept viewable.
+4. **Fetch limit**: Limit box (All/30/50/100/custom ≤10000) → `max_videos`
+   newest-N cap, also merged. 30 ≈ 2 pages ≈ 2s.
+5. **Calendar UX**: hover range preview (`HOV` + `onmouseover`, label shows
+   `start → hovered`), single-click selects one day immediately (first click
+   now also `applyFilter`s), Clear button (visible only when R.s set).
+6. **Posted column**: exact MYT datetime primary + grey relative below
+   (was relative-only with hover title).
+7. **Thumbnails (Option A)**: 40px `loading=lazy` cover inside Title cell,
+   click opens full cover, `onerror` hides expired (~6h) images, text-only
+   fallback. Rejected: separate column (width), oEmbed/scrape/embed (slow,
+   fragile, off-API-only-rule).
+8. **Width**: container `max-w-7xl` → 1760px (user saw wasted side space).
+9. **App-review opinion**: strengths (official API, minimal scopes, live
+   terms/privacy, unlink=data control) vs gaps (demo video #1, per-scope
+   justification, reviewer test path for a localhost tool, production parity,
+   rotate burned secret, free dummy sandbox slot). User has NOT yet recorded
+   the demo video — still the next big step.
+10. **Bug forecast + token-dupe postmortem**: `safe()` collisions
+    (`Dr_Samhan.json` + `Dr__Samhan.json` both exist) + no cleanup. Then the
+    live incident: user linked @affiliatedrsamhan1 into the "Dr. Samhan"
+    (@dr.samhan) slot — both slots held the same login.
+11. **Mismatch guard (warn-with-override)**: `/callback` fetches `user/info`
+    pre-save, compares actual vs expected username (case-insensitive);
+    mismatch renders a 409 stop page (try again / jump to matching slot /
+    checkbox save-anyway via new `POST /confirm-link`); duplicates flagged;
+    tokens store `linked_as`+`mismatch` (preserved across refreshes);
+    `/api/accounts` exposes both; pill has 3rd amber state with hover tip.
+    User chose warn over hard block (renames, dummies, review test logins).
+
+Unique discoveries this window:
+- `accounts.json` grew 10 → 20 entries (names/usernames/accountIds edited
+  17 Sep; `Dr. Samhan`=`dr.samhan`, `Dr Samhan`=`affiliatedrsamhan1`).
+  Dashboard reads it live — renames orphan token/cache files (see bug 20).
+- Still single-threaded `HTTPServer`: big pulls block all other requests;
+  Refresh button lock mitigates, background jobs NOT built.
+- Merged cache never forgets deletions (only full All-time pulls replace);
+  profile `video_count` vs table count will diverge — said out loud to user.
+- `page > 500` = silent 10k-video ceiling, still in place.
+- Plan-mode windows happened mid-session (read-only stretches): answered
+  thumbnail/oEmbed questions + wrote implementation plans without touching
+  code. If user says "just answer, do not edit", obey literally.
+
+## Bugs found & fixed (and the lesson from each)
+
+18. **429 on big accounts** — tight pagination loop, no throttle/retry.
+    _Lesson: every external paginated loop gets delay + bounded retry +
+    partial-progress preservation from day one; rate limits are a `when`,
+    not an `if`._
+19. **My own no-op edit + collapsed newline** (`/export` line joined onto the
+    `if` line; a same-text old/new "succeeded"). _Lesson: never send an edit
+    with identical old/new; after every edit re-read the region — caught via
+    Read, fixed immediately._
+20. **Token-file dupes + wrong-slot link** — lossy `safe()` + save-without-
+    verify + no cleanup. _Lesson: filenames derived from user labels need
+    collision handling; any OAuth "save" must verify identity pre-write and
+    keep the evidence (`linked_as`) forever. Unlink should eventually offer
+    orphan cleanup._
+21. **Single-day needed double-click** — first calendar click never applied
+    the filter. _Lesson: every selection gesture must produce a visible
+    result immediately; a click that only arms state feels broken._
+22. **Relative-only timestamps** — user couldn't see actual post time.
+    _Lesson: relative times are decoration; absolute datetime is data. Show
+    both, data first._
+23. **Plan.md clobber (Unlink line overwritten by guard tick)** — same
+    overlapping-anchor class of mistake as bug 16. _Lesson: append-only
+    discipline on checklists; re-read the file after each tick when lines
+    sit adjacent._
+
+## Standing patterns to preserve (amends)
+
+- Words → go → code → verify → short confirm. "Add X to the plan first"
+  means edit plan.md only, then wait.
+- "Just answer, do not edit" is absolute (plan-mode or not).
+- Verify ritual now: `py_compile` + `node --check` extracted JS + unit
+  script (mocked API) + scratch-port smoke + kill servers + grep touched
+  identifiers. Temp scripts in opencode temp dir.
+- Temp servers keep escaping `p.wait()` — always `Get-Process python` check
+  + `Stop-Process -Force` after smokes.
+- Docs per change: `feature.md` (user words), `plan.md` tick, folder
+  `CHANGELOG.md` + `MASTER-CHANGELOG.md` line, MASTER-PLAN status if scope
+  moved. (This window: created `tiktok-account/CHANGELOG.md`; rewrote
+  `feature.md` as full showcase.)

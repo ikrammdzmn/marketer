@@ -17,9 +17,14 @@ owner's laptop (`127.0.0.1` only, never published as-is).
 - `tester.py` — one-run-per-account fallback (stdlib, PKCE-hex, form token
   exchange). FROZEN — do not modify; new work goes in `dashboard/`.
 - `dashboard/` — the main app: `dashboard.py` (stdlib server, per-account
-  pending OAuth, silent refresh, cached table APIs), `dashboard.html`
-  (Tailwind UI: pill account picker, calendar range filter, column toggles,
-  relative MYT times), `tokens/` + `csvs/` (gitignored runtime), `.gitignore`.
+  pending OAuth, link-mismatch guard on `/callback` + `POST /confirm-link`
+  override, silent refresh, throttled/retried pagination with range
+  (`since/until`) + newest-N (`limit`) early-stop and merged cache,
+  `GET /unlink`, cached table APIs), `dashboard.html`
+  (Tailwind UI: pill account picker incl. amber mismatch state, calendar
+  range filter with hover preview + Clear + single-click day, Limit box,
+  column toggles, MYT datetime + relative Posted times, lazy title-cell
+  thumbnails), `tokens/` + `csvs/` (gitignored runtime), `.gitignore`.
 - `.gitignore` — `csvs/`, `.local_secrets.json`, `__pycache__/`.
 - `.local_secrets.EXAMPLE.json` — keys template (real file never in git).
 - `../docs/terms.html` + `../docs/privacy.html` (repo root) — TikTok app-review
@@ -71,3 +76,11 @@ servers. Secrets (Sandbox key, tokens) via env or untracked files only.
    pre-approval (`client_key` error); codes single-use; one server process.
 6. **Don't touch `tiktok-creative-analysis/`** from this folder's work unless
    asked — that tool has its own AGENTS.md and invariants.
+7. **Linking verifies identity** — `/callback` compares the logged-in
+   `@username` against the slot's `accounts.json` username (case-insensitive)
+   and stops on mismatch (warn-with-override, never silent). Tokens carry
+   `linked_as` + `mismatch`, preserved across refreshes. Never save a token
+   without knowing who it belongs to.
+8. **Pagination is throttled by design** — 1s page gap, 429/5xx retry (5x,
+   honors `Retry-After`). Range/limit pulls merge into cache; only full
+   pulls replace. Server is single-threaded: big pulls block other requests.

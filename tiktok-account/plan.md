@@ -37,5 +37,24 @@ Status: DASHBOARD READY (local only; link each account once, then select + Refre
   silent refresh, cached table + profile header + Refresh + Export;
   accounts from `accounts.json`; own `dashboard/csvs/` + `tokens/` (gitignored);
   smoke: `/` 200, `/api/accounts` 10. Tester kept as fallback (`--port 8081`).
+- [x] Throttle fix (429): 1s page gap + Retry-After backoff on 429/5xx (5 tries);  range Refresh (`since/until` from calendar, early-stop newest-first, merged
+  cache) so 700–2000-video accounts pull safely.
+- [x] Unlink button (linked accounts only) + `/unlink` endpoint; deletes the
+  token file, keeps cached videos viewable.
+- [x] Link-mismatch guard (warn-with-override): `/callback` verifies the
+  logged-in `@username` against the slot, blocks silent mislinks with a stop
+  page (try again / jump to matching slot / checkbox save-anyway), flags
+  duplicates, stores `linked_as`+`mismatch`, amber pill state.
+- [x] Calendar hover preview: after start-day click, hovering previews the
+  range (highlight + button label) before the end-day click.
+- [x] Calendar Clear button + single-click selects one day at once (no more
+  double-clicking the same day).
+- [x] Title-cell thumbnails (40px, lazy-load, click opens full cover,
+  auto-hide when the ~6h cover link expires).
+- [x] Fetch limit: Limit box next to Refresh — All / 30 / 50 / 100 / custom;
+  Refresh fetches newest N only, merged into cache (30 ≈ 2 pages, ~2s).
+  Composes with range filter.
+- [ ] Table page-size (planned, if wanted): show N rows at a time in browser
+  (e.g. 30/page with Next/Prev) for fast rendering on 2000-video accounts.
 - [ ] Link all 10 real accounts end-to-end (one Authorize each)
 - [ ] 10 real accounts end-to-end: authorize → all pages → CSVs with post times

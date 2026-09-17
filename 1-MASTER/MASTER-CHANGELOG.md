@@ -6,6 +6,12 @@ Rule: whoever ships a folder release adds one line here the same session.
 
 ## 17 Sep 2026
 
+- `tiktok-account`: scale-hardening + linking safety — 429 throttle/retry fix,
+  range Refresh + fetch-limit box (merged cache), Unlink button, calendar hover
+  preview + Clear + single-click day, MYT-datetime Posted column, lazy title
+  thumbnails, wider page, link-mismatch guard (warn-with-override, amber pill);
+  `feature.md` rewritten as user showcase → `tiktok-account/CHANGELOG.md`
+
 - `tiktok-creative-analysis` v9–v14: Hide Ineligible tick, insight guide + chip
   popup + `?insight` link, N/A → `Product Card - campaign`, Unknown-account split,
   Insight verdict filter, picker filename chips → `tiktok-creative-analysis/CHANGELOG.md`

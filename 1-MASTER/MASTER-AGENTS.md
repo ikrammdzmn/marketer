@@ -70,7 +70,7 @@ additional prompt Do not delete this part
 
 - `tiktok-creative-analysis/` — static creative analytics (multi-file compare,
   bulk dialect, insight engine, SOP bars, `?insight` links, picker chips).
-- `tiktok-account/` — Display API dashboard (`dashboard/`; `tester.py` FROZEN).
+- `tiktok-account/` — Display API dashboard (`dashboard/`; `tester.py` FROZEN; link-mismatch guard + throttled/merged pulls; releases in `CHANGELOG.md`).
 - `tiktok-strategy/` — Growth OS playbook (guardrails owner, §6 above).
 - `tiktok-event/` — RACI board, vanilla single-file (`raci_campaign_dashboard.tsx`
   FROZEN as spec source; localStorage only; PIN is courtesy, not security).

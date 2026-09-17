@@ -21,6 +21,7 @@ import secrets
 import time
 import urllib.parse
 import urllib.request
+import urllib.error
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -55,6 +56,11 @@ MYT = datetime.timezone(datetime.timedelta(hours=8))
 # state -> {account, verifier}; per-account pending OAuth (concurrent-safe).
 PENDING = {}
 PORT = 8080
+
+# Throttle: TikTok 429s big accounts when pages fire back-to-back.
+# 1s gap + retry with backoff keeps 700-2000 video accounts working.
+PAGE_DELAY = 1.0
+MAX_RETRIES = 5
 
 
 def safe(name):
@@ -96,20 +102,63 @@ def post_form(url, payload):
         return json.load(r)
 
 
+def _retry_wait(err, attempt):
+    try:
+        ra = err.headers.get("Retry-After") if getattr(err, "headers", None) else None
+        if ra:
+            return max(1.0, min(120.0, float(str(ra).split(",")[0].strip())))
+    except (TypeError, ValueError):
+        pass
+    return min(60.0, 2.0 ** attempt)
+
+
+def _http_body(err):
+    try:
+        return err.read().decode("utf-8", "replace")[:300]
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def post_json(url, payload, token):
     data = json.dumps(payload).encode()
-    req = urllib.request.Request(url, data=data, method="POST",
-                                 headers={"Content-Type": "application/json",
-                                          "Authorization": "Bearer " + token})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)
+    for attempt in range(MAX_RETRIES + 1):
+        req = urllib.request.Request(url, data=data, method="POST",
+                                     headers={"Content-Type": "application/json",
+                                              "Authorization": "Bearer " + token})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            body = _http_body(e)
+            if (e.code == 429 or 500 <= e.code < 600) and attempt < MAX_RETRIES:
+                time.sleep(_retry_wait(e, attempt))
+                continue
+            raise Exception("HTTP Error %s: %s" % (e.code, body or e.reason))
+        except (urllib.error.URLError, TimeoutError) as e:
+            if attempt < MAX_RETRIES:
+                time.sleep(min(60.0, 2.0 ** attempt))
+                continue
+            raise
 
 
 def get_json(url, token):
-    req = urllib.request.Request(url, method="GET")
-    req.add_header("Authorization", "Bearer " + token)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)
+    for attempt in range(MAX_RETRIES + 1):
+        req = urllib.request.Request(url, method="GET")
+        req.add_header("Authorization", "Bearer " + token)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            body = _http_body(e)
+            if (e.code == 429 or 500 <= e.code < 600) and attempt < MAX_RETRIES:
+                time.sleep(_retry_wait(e, attempt))
+                continue
+            raise Exception("HTTP Error %s: %s" % (e.code, body or e.reason))
+        except (urllib.error.URLError, TimeoutError) as e:
+            if attempt < MAX_RETRIES:
+                time.sleep(min(60.0, 2.0 ** attempt))
+                continue
+            raise
 
 
 def token_file(account):
@@ -124,7 +173,7 @@ def load_token(account):
         return json.load(f)
 
 
-def save_token(account, tok):
+def save_token(account, tok, extra=None):
     os.makedirs(TOKENS_DIR, exist_ok=True)
     now = time.time()
     access = tok.get("access_token", "") or (tok.get("data") or {}).get("access_token", "")
@@ -139,11 +188,68 @@ def save_token(account, tok):
         "refresh_expires_at": now + int(tok.get("refresh_expires_in", 31536000)) - 60,
         "open_id": tok.get("open_id", ""),
         "scope": tok.get("scope", ""),
+        "linked_as": (extra or {}).get("linked_as", prev.get("linked_as", "")),
+        "mismatch": (extra or {}).get("mismatch", prev.get("mismatch", False)),
         "updated_at": now,
     }
     with open(token_file(account), "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
     return data
+
+
+def expected_username(account):
+    """Expected TikTok @username for a slot from accounts.json (" if unset)."""
+    try:
+        for a in load_accounts():
+            if a.get("name", "") == account:
+                return (a.get("username", "") or "").strip()
+    except Exception:  # noqa: BLE001 - accounts readable in practice
+        pass
+    return ""
+
+
+def actual_identity(access):
+    """Who just logged in: (username, display_name) via user/info."""
+    me = get_json(USER_INFO_URL, access)
+    md = me.get("data") or {}
+    user = md.get("user") or md
+    return ((user.get("username") or "").strip(),
+            (user.get("display_name") or "").strip())
+
+
+def slot_for_username(username, exclude=""):
+    """Slot name whose expected username matches (case-insensitive)."""
+    if not username:
+        return ""
+    try:
+        for a in load_accounts():
+            if a.get("name", "") != exclude and \
+                    (a.get("username", "") or "").strip().lower() == username.lower():
+                return a.get("name", "")
+    except Exception:  # noqa: BLE001
+        pass
+    return ""
+
+
+def linked_slot_for_username(username, exclude=""):
+    """Slot already holding a token linked_as username (case-insensitive)."""
+    if not username or not os.path.isdir(TOKENS_DIR):
+        return ""
+    for fn in os.listdir(TOKENS_DIR):
+        if not fn.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(TOKENS_DIR, fn), encoding="utf-8") as f:
+                t = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if (t.get("linked_as") or "").strip().lower() != username.lower():
+            continue
+        for a in load_accounts():
+            if token_file(a.get("name", "")) == os.path.join(TOKENS_DIR, fn) \
+                    and a.get("name", "") != exclude:
+                return a.get("name", "")
+    return ""
 
 
 class RelinkNeeded(Exception):
@@ -192,30 +298,89 @@ def cache_paths(account):
             os.path.join(CSVS_DIR, s + "_profile.json"))
 
 
-def pull_and_cache(account, access):
+def _day_to_ts(day, end=False):
+    """YYYY-MM-DD (MYT calendar day) -> unix ts. end=True gives 23:59:59."""
+    try:
+        y, m, d = (int(x) for x in str(day).split("-"))
+        dt = datetime.datetime(y, m, d, 23, 59, 59) if end else datetime.datetime(y, m, d)
+        return int(dt.replace(tzinfo=MYT).timestamp())
+    except (TypeError, ValueError):
+        return None
+
+
+def pull_and_cache(account, access, since_ts=None, until_ts=None, max_videos=None):
+    """Paginate video/list with throttle + 429 retry.
+
+    since_ts/until_ts are unix timestamps (create_time bounds). TikTok has
+    no server-side date filter, but the list comes back newest-first, so we
+    early-stop once items are older than since_ts. max_videos caps the fetch
+    to the newest N videos. Range/limit pulls MERGE into the existing cache
+    instead of replacing it; full pulls replace.
+    Returns (user, merged, info).
+    """
     me = get_json(USER_INFO_URL, access)
     md = me.get("data") or {}
     user = md.get("user") or md
+    jp, _cp, _pp = cache_paths(account)
+    existing = []
+    if os.path.exists(jp):
+        try:
+            with open(jp, encoding="utf-8") as f:
+                existing = (json.load(f) or {}).get("videos") or []
+        except (OSError, ValueError):
+            existing = []
+    ranged = since_ts is not None or until_ts is not None
+    limited = max_videos is not None and max_videos > 0
     out, cursor, page = [], 0, 0
+    stopped_early, complete = False, False
     while True:
         resp = post_json(VIDEO_LIST_URL, {"max_count": 20, "cursor": cursor}, access)
         d = resp.get("data") or {}
-        out.extend(d.get("videos") or [])
+        batch = d.get("videos") or []
+        for v in batch:
+            try:
+                ct = int(v.get("create_time", 0))
+            except (TypeError, ValueError):
+                ct = 0
+            if until_ts is not None and ct and ct > until_ts:
+                continue  # newer than window: skip but keep paging
+            if since_ts is not None and ct and ct < since_ts:
+                stopped_early = True  # older than window: done (newest-first)
+                break
+            out.append(v)
+            if limited and len(out) >= max_videos:
+                stopped_early = True  # reached newest-N cap
+                break
         page += 1
-        if not d.get("has_more") or page > 500:
+        if stopped_early or not d.get("has_more") or page > 500:
+            complete = not d.get("has_more") or stopped_early or page > 500
             break
         cursor = d.get("cursor", 0)
+        time.sleep(PAGE_DELAY)
+    if ranged or limited:
+        by_id = {}
+        for v in existing:
+            if v.get("id"):
+                by_id[v["id"]] = v
+        for v in out:
+            if v.get("id"):
+                by_id[v["id"]] = v
+        merged = sorted(by_id.values(),
+                        key=lambda v: int(v.get("create_time") or 0),
+                        reverse=True)
+    else:
+        merged = out
     os.makedirs(CSVS_DIR, exist_ok=True)
     jp, cp, pp = cache_paths(account)
     with open(jp, "w", encoding="utf-8") as f:
         json.dump({"account": account, "cached_at": time.time(),
-                   "count": len(out), "videos": out}, f, ensure_ascii=False)
+                   "count": len(merged), "videos": merged}, f, ensure_ascii=False)
     with open(cp, "w", newline="", encoding="utf-8-sig") as f:
         w = csv.writer(f)
         w.writerow(["account", "id", "title", "posted_myt", "posted_utc",
                     "view_count", "like_count", "comment_count",
                     "share_count", "cover_image_url", "share_url"])
-        for v in out:
+        for v in merged:
             myt, utc = to_myt(v.get("create_time"))
             w.writerow([account, v.get("id"), v.get("title"), myt, utc,
                         v.get("view_count"), v.get("like_count"),
@@ -223,7 +388,10 @@ def pull_and_cache(account, access):
                         v.get("cover_image_url"), v.get("share_url")])
     with open(pp, "w", encoding="utf-8") as f:
         json.dump(user, f, ensure_ascii=False, indent=2)
-    return user, out
+    return user, merged, {"fetched": len(out), "pages": page,
+                          "ranged": ranged, "limited": limited,
+                          "stopped_early": stopped_early,
+                          "complete": complete}
 
 
 class H(BaseHTTPRequestHandler):
@@ -267,7 +435,9 @@ class H(BaseHTTPRequestHandler):
                 if t and time.time() >= t.get("refresh_expires_at", 0):
                     relink = True
                 rows.append({"name": name, "username": a.get("username", ""),
-                             "linked": bool(t), "relink": relink})
+                              "linked": bool(t), "relink": relink,
+                              "linked_as": (t or {}).get("linked_as", ""),
+                              "mismatch": bool((t or {}).get("mismatch", False))})
             self._json({"accounts": rows})
             return
         if parsed.path == "/authorize":
@@ -317,13 +487,46 @@ class H(BaseHTTPRequestHandler):
                     "redirect_uri": redirect_uri(),
                     "code_verifier": pend["verifier"],
                 })
-                save_token(pend["account"], tok)
+                access = tok.get("access_token", "") or (tok.get("data") or {}).get("access_token", "")
+                if not access:
+                    raise ValueError("exchange gave no token")
+                actual, display = actual_identity(access)
             except Exception as e:  # noqa: BLE001
                 self._html("Token exchange failed: " + html.escape(str(e)[:300]), 500)
                 return
-            self.send_response(302)
-            self.send_header("Location", "/?linked=" + urllib.parse.quote(pend["account"]))
-            self.end_headers()
+            expected = expected_username(pend["account"])
+            if not expected or not actual or actual.lower() == expected.lower():
+                save_token(pend["account"], tok,
+                           {"linked_as": actual, "mismatch": False})
+                self.send_response(302)
+                self.send_header("Location", "/?linked=" + urllib.parse.quote(pend["account"]))
+                self.end_headers()
+                return
+            # Mismatch: save nothing. Park the token for an explicit override.
+            cstate = secrets.token_urlsafe(16)
+            PENDING[cstate] = {"confirm": True, "account": pend["account"],
+                               "tok": tok, "actual": actual, "display": display,
+                               "expected": expected}
+            dup = linked_slot_for_username(actual, pend["account"])
+            alt = slot_for_username(actual, pend["account"])
+            body = "<h3>Wrong account?</h3><p>Slot <b>" + html.escape(pend["account"]) \
+                + "</b> expects <b>@" + html.escape(expected) + "</b>, but you logged in as <b>@" \
+                + html.escape(actual) + "</b>" \
+                + (html.escape(" (" + display + ")") if display else "") + ". Nothing was saved.</p>"
+            if dup:
+                body += "<p><b>@" + html.escape(actual) + "</b> is already linked under slot <b>" \
+                    + html.escape(dup) + "</b> — saving here will duplicate it.</p>"
+            if alt:
+                body += "<p><a href=\"/authorize?account=" + urllib.parse.quote(alt) \
+                    + "\">Link @" + html.escape(actual) + " to its matching slot (" \
+                    + html.escape(alt) + ") instead</a></p>"
+            body += "<form method=\"POST\" action=\"/confirm-link\">" \
+                "<input type=\"hidden\" name=\"state\" value=\"" + html.escape(cstate) + "\">" \
+                "<label><input type=\"checkbox\" name=\"ack\" value=\"on\"> " \
+                "I know this doesn't match — save anyway</label><br><br>" \
+                "<button type=\"submit\">Save anyway</button></form>" \
+                "<p><a href=\"/\">Cancel — back to accounts (fresh login needed)</a></p>"
+            self._html(body, 409)
             return
         if parsed.path in ("/api/profile", "/api/videos"):
             name = qs.get("account", [""])[0]
@@ -349,19 +552,44 @@ class H(BaseHTTPRequestHandler):
             return
         if parsed.path == "/refresh":
             name = qs.get("account", [""])[0]
+            since_ts = _day_to_ts(qs.get("since", [""])[0]) if qs.get("since", [""])[0] else None
+            until_raw = qs.get("until", [""])[0]
+            until_ts = _day_to_ts(until_raw, end=True) if until_raw else None
+            max_videos = None
+            if qs.get("limit", [""])[0]:
+                try:
+                    max_videos = int(qs.get("limit", [""])[0])
+                    if max_videos <= 0:
+                        max_videos = None
+                except (TypeError, ValueError):
+                    max_videos = None
             try:
                 access = ensure_access(name)
             except RelinkNeeded as e:
                 self._json({"relink": True, "error": str(e)[:200]}, 401)
                 return
             try:
-                user, videos = pull_and_cache(name, access)
+                user, videos, info = pull_and_cache(name, access, since_ts, until_ts, max_videos)
             except Exception as e:  # noqa: BLE001
                 self._json({"error": str(e)[:300]}, 500)
                 return
             self._json({"ok": True, "count": len(videos),
+                        "fetched": info.get("fetched", len(videos)),
+                        "pages": info.get("pages", 0),
+                        "ranged": info.get("ranged", False),
+                        "limited": info.get("limited", False),
+                        "stopped_early": info.get("stopped_early", False),
                         "followers": user.get("follower_count"),
                         "username": user.get("username")})
+            return
+        if parsed.path == "/unlink":
+            name = qs.get("account", [""])[0]
+            p = token_file(name)
+            if os.path.exists(p):
+                os.remove(p)
+                self._json({"ok": True, "account": name})
+            else:
+                self._json({"ok": False, "error": "not linked"}, 404)
             return
         if parsed.path == "/export":
             name = qs.get("account", [""])[0]
@@ -378,6 +606,30 @@ class H(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(b)))
             self.end_headers()
             self.wfile.write(b)
+            return
+        self._html("Not found", 404)
+
+    def do_POST(self):  # noqa: C901 - tiny router
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == "/confirm-link":
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+            except (TypeError, ValueError):
+                n = 0
+            form = urllib.parse.parse_qs(self.rfile.read(max(0, n)).decode("utf-8", "replace"))
+            pend = PENDING.pop(form.get("state", [""])[0], None)
+            if not pend or not pend.get("confirm"):
+                self._html("State mismatch. Start again from / (Link button).", 400)
+                return
+            if form.get("ack", [""])[0] != "on":
+                self._html("Tick the acknowledgment checkbox to save anyway, "
+                           "or <a href=\"/\">cancel back to accounts</a>.", 400)
+                return
+            save_token(pend["account"], pend["tok"],
+                       {"linked_as": pend.get("actual", ""), "mismatch": True})
+            self.send_response(302)
+            self.send_header("Location", "/?linked=" + urllib.parse.quote(pend["account"]))
+            self.end_headers()
             return
         self._html("Not found", 404)
 
