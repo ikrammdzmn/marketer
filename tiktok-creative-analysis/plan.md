@@ -39,6 +39,12 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Allowlist coverage notes (webpage only): 0-row accounts flagged with did-you-mean hints, collapsible (default collapsed)
   - [x] Exploration secondary status: column + filter + CSV export
   - [x] 1000+ impressions tick (green ✓ in Impr. cell) + "Only 1000+ impressions" filter
+  - [x] `Hide Ineligible` tick (default on): hides dead `Ineligible` rows (0 views/cost/orders, incl. deactivated SKUs) from KPIs/tables/chart/modal/preview/exports + compare (status-movers stay visible; picking Status=`Ineligible` explicitly bypasses it)
+  - [x] Insight guide + popup + deep-link: collapsible guide under the bench bar (live file-adaptive thresholds per verdict), click any verdict chip for a per-video popup (verdict + numbers), `?insight=Label` expands the guide and jumps to that verdict
+  - [x] `N/A` products show as `Product Card - {campaign}` (per-campaign catalogue label via friendly campaign name) in tables/modal/preview/CSV/compare; amber unnamed-count skips `N/A`
+  - [x] Blank-account split: true catalogue rows (Product-card type / no video / no campaign) stay `Product Card`; blank-account real videos → user-approved `Unknown account` row with normal verdicts (bulk file: 2,708 videos incl. 63 orders / RM6,988 revenue unveiled; single-file behaviour unchanged)
+  - [x] Insight verdict filter: `fInsight` dropdown (All + 8 verdicts) filters KPIs/tables/modal/preview/exports by verdict; `?insight=Label` now also sets the filter so the link shows the videos, not just the rule
+  - [x] Picker filename chips (no file read): single date for 1-day files, `from → to · N days` for ranges, product chip from `Product {ID}` (friendly name), instant `bulk` badge from `product campaigns` in the name
   - [x] Account dropdown grouped: Allowlisted (10) / Other accounts in file optgroups
   - [x] Account search box beside dropdown (narrows options, Enter picks first match)
   - [x] Search suggestions popup (top 8, allowlisted tagged) + "No account found" note

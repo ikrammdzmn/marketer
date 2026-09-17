@@ -13,7 +13,9 @@ accounts make money. No installation, no uploads — everything stays on your ow
    or drag your Excel file into the dotted box. To compare weeks or days, drag
    **several** files at once (up to 7), or click **Choose bundled files…**, tick
    what you want (newest is pre-ticked), then **Load selected**.
-   Each file shows below with its date range and type badge — click **remove** to drop one, **Clear** to start over.
+    Each file shows below with its date range and type badge — click **remove** to drop one, **Clear** to start over.
+    In the picker, one-day files show a single date, ranges show `from → to` plus day
+    count, single files carry their product name, and bulk files are badged from the name.
 
 The latest version is also saved on GitHub (`ikrammdzmn/marketer`) so it is never lost.
 
@@ -59,6 +61,13 @@ The **Insight** column gives each video one verdict — hover it for the why:
 - 🧺 **Small basket** — profitable but tiny orders: push bundles.
 - 📇 **Catalogue** — TikTok promo, not a creative.
 
+Click any verdict chip to open its explanation for that exact video, with the video's
+own numbers shown. The collapsible **Insight guide** line under the benchmark bar lists
+all verdicts with the current file's thresholds — link straight to one with
+`index.html?insight=Boost` (e.g. `?insight=Hook weak`): the guide opens on that
+verdict AND the tables filter to its videos (reload keeps the link — just reload
+your file after).
+
 **Compare files table** — when 2+ files are loaded, a new section appears below Top
 creatives. It matches each video across the oldest (baseline) and newest (latest)
 files and shows the change: `NEW` (only in latest), `LOST` (gone from latest),
@@ -86,7 +95,9 @@ friendly names next to each ID (`"label": "Cocomax"`, `"name": "HIMCoffee"`). Th
 picks them up on reload and shows them in the filter and tables instead of the raw
 IDs (hover a cell to still see the original). IDs you haven't named yet are counted
 in a small amber note under the Campaign filter — that note disappears once
-everything is named.
+everything is named. Rows with no product (`N/A`) appear as
+`Product Card - {campaign}` (e.g. `Product Card - [Kombo]`), so catalogue promos
+stay visibly tied to their campaign.
 
 ## General notes (shown on the page)
 
@@ -103,8 +114,9 @@ everything is named.
 - **Account** — type in the search box (suggestions appear as you type; you can also
   type a @username), then pick from the dropdown. Your 10 managed accounts are grouped
   at the top as `Name (@username)` — a few carry a `no orders yet` note; all other
-  accounts are grouped below. `Product Card` is TikTok's default catalogue promo
-  (no creative, no account) — it appears as its own row.
+   accounts are grouped below. `Product Card` is TikTok's default catalogue promo
+   (no creative, no account) — it appears as its own row. Real videos with no
+   account name appear as a separate `Unknown account` row, with normal verdicts.
 - **Search creative / Post ID** — type words to find video captions, or **paste full
   Post ID numbers** (one or many, even a whole column copied from Excel) to jump
   straight to those videos.
@@ -114,9 +126,13 @@ everything is named.
   `Performing` or `Outstanding`, sorted by ROI, surfaces winners. Note:
   `Outstanding` means winners *within their own campaign*, not the top videos
   overall — a `Performing` video can out-earn them all, so always sort by ROI.
-- **Min ROI / Min orders / Posted within (days) / Only 1000+ impressions / Exclude Product Card / Only
-  allowlist accounts** — tick or fill to cut the noise. Tick **Exclude Product Card**
-  to keep every number creative-only (catalogue sales vanish from totals and exports).
+- **Insight** — show only videos with one verdict (e.g. 🚀 Boost to see every boost
+  candidate, 🛑 Review for the kill list). Works together with all other filters.
+- **Min ROI / Min orders / Posted within (days) / Only 1000+ impressions / Exclude Product Card / Hide
+  Ineligible / Only allowlist accounts** — tick or fill to cut the noise. Tick **Exclude Product Card**
+  to keep every number creative-only (catalogue sales vanish from totals and exports). Tick **Hide
+  Ineligible** (on by default) to drop dead rows — videos TikTok still lists with no views, no cost
+  and no orders, including deactivated SKUs — from every number, table and export (untick to see them again).
   **Posted within** keeps only recent videos (rows without a date are hidden while it is set).
 - **Allowlist coverage** (collapsed line under the account table) — click to expand and
   see which of your 10 managed accounts have no data in the loaded file, with

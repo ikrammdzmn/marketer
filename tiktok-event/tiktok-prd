@@ -1,0 +1,69 @@
+PRODUCT REQUIREMENTS DOCUMENT (PRD)
+Project Name: HIMCOFFEE RACI MASTER (Operational Planning & Strategy Board)
+Version: 1.0.0
+Platform: Web Application (Cloud-based)
+Last Updated: Julai 2026
+
+1. RINGKASAN EKSEKUTIF (Executive Summary)
+   Himcoffee RACI Master adalah sebuah ekosistem perisian awan (cloud ecosystem) berpusat yang dibina khusus untuk mengurus, memantau, dan menyusun strategi kempen pemasaran Himcoffee dari tahun 2026 hingga 2030.
+   Sistem ini mengintegrasikan pengurusan jadual (Timeline), kerangka strategi perniagaan (5T & 3M), dan matriks penugasan (RACI Worksheet) secara masa nyata (real-time). Ia direka untuk menghapuskan pengurusan tugas manual yang berselerak, menawarkan paparan kalendar holistik, pengesanan beban kerja (workload tracking), serta lapisan keselamatan berasaskan PIN bagi mengekalkan integriti data korporat.
+2. OBJEKTIF PRODUK (Product Goals)
+   Sentralisasi Maklumat: Menyatukan semua perancangan kempen, sasaran jualan, dan tugasan operasi di dalam satu pangkalan data awan tunggal.
+   Kebertanggungjawaban (Accountability): Memastikan setiap fasa kempen mempunyai individu yang bertanggungjawab (Responsible) dan memantau (Accountable) yang jelas menerusi format RACI.
+   Ketelusan Strategi: Menerapkan metodologi 5T (Target, Tempoh, Timeline, Team, Tracking) dan 3M (Market, Medium, Message) ke dalam setiap perancangan kempen.
+   Kolaborasi Masa Nyata: Membenarkan pasukan berkolaborasi serentak tanpa risiko pertindihan atau kehilangan data.
+3. PENGGUNA SASARAN & PERANAN (Target Audience & Roles)
+   Sistem ini menggunakan kawalan capaian (Access Control) yang terbahagi kepada dua peranan utama:
+   Peranan (Role)
+   Akses & Kebenaran (Permissions)
+   Kuota Slot
+   Editor (Admin/PIC)
+   Memerlukan log masuk menggunakan PIN Keselamatan. Boleh mencipta kempen baharu, menyunting Strategi 5T & 3M, menambah/memadam tasks, menyusun semula kedudukan tugasan, dan membuang akses Editor lain.
+   Maksimum 10 orang serentak.
+   Guest (View-Only)
+   Bebas log masuk (Akses awam). Hanya boleh melihat (read-only) Master Timeline, RACI Worksheet, dan Strategi Blueprint. Dilarang daripada membuat sebarang manipulasi data. Butang aksi digantikan dengan status "🔒 Locked".
+   Tiada had.
+
+4. CIRI-CIRI UTAMA SISTEM (Core Features)
+   4.1. Modul Keselamatan & Penyegerakan Awan (Cloud Security & Sync)
+   Real-time Database: Dikuasakan oleh Firebase Firestore. Setiap input, pengeditan, atau susunan semula (reorder) akan disimpan secara automatik (auto-save) dan dipantulkan ke skrin pengguna lain serta-merta tanpa perlu muat semula halaman (refresh).
+   First-Run Setup: Konfigurasi perintis di mana pengguna pertama perlu menetapkan Nama dan "Master PIN" (minimum 4 digit) sebelum sistem dikunci sepenuhnya.
+   Seat Management: Pemantauan Editor yang aktif. Mana-mana Editor boleh "Keluarkan" (Release) Editor lain jika had 10 slot telah dipenuhi.
+   4.2. Master Timeline Dashboard (Papan Pemuka Induk)
+   Mega Year Selector: Pertukaran paparan pantas antara kitaran operasi perniagaan tahunan dari 2026 hingga 2030.
+   Monthly Overview Cards: 12 bulan operasi dipaparkan dalam bentuk kad. Setiap bulan menyenaraikan kempen-kempen yang didaftarkan.
+   Progress Bar: Kad kempen menunjukkan bar kemajuan (progress bar) secara peratusan (%) berdasarkan jumlah tugasan yang telah dilabelkan sebagai "Completed".
+   Yearly KPI Tracker: Peratusan KPI automatik di bahagian atas yang mengira kadar penyiapan keseluruhan kempen untuk tahun aktif tersebut.
+   4.3. Modul RACI Worksheet (Lembaran Kerja Operasi)
+   Halaman kerja utama di mana pengurusan mikro kempen berlaku.
+   Senarai Kempen Dinamik: Panel di sebelah kiri untuk navigasi pantas antara kempen dalam bulan yang sama.
+   PIC Workload Tracker: Modul automatik yang mengira berapa banyak "Tasks" yang sedang dipikul oleh seseorang individu (berdasarkan lajur Responsible) pada bulan tersebut. Menghalang masalah burnout atau pengagihan tugas yang tidak seimbang.
+   Eksport Data: Keupayaan memuat turun jadual RACI kempen aktif terus ke format fail .csv (Excel).
+   4.4. Strategy Blueprint Board (5T & 3M)
+   Kawasan interaktif untuk mendokumentasikan hala tuju kempen sebelum gerak kerja bermula.
+   Metrik Operasi 5T: Medan untuk menetapkan Target (Jualan/Unit), Tempoh, Timeline, Team terlibat, dan alat Tracking.
+   Strategi Pemasaran 3M: Medan untuk menetapkan sasaran Market (Demografi), Medium (Saluran), dan Message (Hook/Copywriting).
+   4.5. RACI Task Management (Jadual Fasa Kempen)
+   Setiap kempen dibahagikan kepada 3 fasa: Pre-Campaign, Launch (Hari Event), dan Post-Campaign.
+   Phase Level Dating: Penetapan tarikh rasmi (Due Date) pada pengepala (header) setiap fasa secara berasingan.
+   Smart Dropdown Reorder: Nombor turutan tugasan boleh diklik (dropdown) untuk "melompat" / menukar kedudukan tugasan secara terus (contoh: Pindah dari No.8 terus ke No.1) dalam fasa yang sama.
+   Numbered List Rendering: Menyokong pemisahan nama secara pintar. Memasukkan pelbagai nama (menggunakan butang Enter) pada lajur "Responsible" dan "Accountable" akan menukarkannya kepada format senarai bernombor (1., 2., 3.) untuk kekemasan visual.
+   Status Tracking: Dropdown status tugasan (Pending, In Progress, Completed) beserta lencana warna kondisional.
+5. SPESIFIKASI TEKNIKAL (Technical Requirements)
+   5.1. Teknologi Komponen
+   Frontend Framework: React.js (Hooks: useState, useEffect, useMemo).
+   Styling: Tailwind CSS (Utility-first CSS, responsif untuk Desktop dan Tablet).
+   Iconography: Lucide-React (untuk iconography moden minimalis).
+   Backend & Database: Google Firebase (Authentication & Firestore NoSQL).
+   5.2. Senibina Pangkalan Data (Firestore Architecture)
+   Koleksi Akses: public/data/config/settings (Menyimpan editorPin dan tatasusunan senarai pengguna dalam editors).
+   Koleksi Dokumen Data: public/data/months*data/{year}*{monthName}.
+   Setiap dokumen mengandungi medan campaigns (Tatasusunan objek kempen).
+   Skema Objek Kempen: id, title, date, type, tasks[], phaseDates{}, target, tempoh, timeline, team, tracking, market, medium, message.
+6. LOGIK KEADAAN & ALIRAN (State & Flow Logic)
+   Semasa aplikasi dimuatkan, ia menyambung (authenticate) ke Firebase secara awanama (Anonymous) jika tiada token khusus.
+   onSnapshot memantau (listen) konfigurasi PIN. Jika PIN tidak ditemui, Pop-up Set-Up akan dilancarkan.
+   Pengguna menavigasi tanpa PIN akan jatuh ke status isEditor = false.
+   Jika pengguna log masuk dengan PIN, isEditor berubah menjadi true, membuang lencana Locked dan memaparkan alat pengeditan (Pensil, Tong Sampah, Dropdown).
+   Segala mutasi pada tatasusunan (array mutations) untuk penyusunan tugasan akan diproses secara lokal (in-memory) kemudian diganti secara pukal (overwrite) ke pangkalan data menggunakan ID tahun dan bulan.
+   Disediakan untuk kegunaan pengurusan dalaman Himcoffee. Sebarang perubahan pada perincian dokumen tertakluk pada pengemaskinian versi seterusnya.

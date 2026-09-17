@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HIMCOFFEE RACI MASTER — Operational Planning & Strategy Board</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Inter',system-ui,sans-serif}
+.scrollbar-hide::-webkit-scrollbar{display:none}
+.scrollbar-hide{scrollbar-width:none}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.animate-fadeIn{animation:fadeIn .25s ease}
+@keyframes scaleUp{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.animate-scaleUp{animation:scaleUp .2s ease}
+#toast{transition:opacity .3s, transform .3s}
+.numlist{list-style:decimal;padding-left:1rem;font-weight:700}
+</style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen antialiased pb-20">
+<div class="min-h-screen">
+
+<!-- HEADER -->
+<header class="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-40 shadow-sm">
+  <div class="max-w-7xl mx-auto flex flex-col lg:flex-row justify-between lg:items-center gap-4">
+    <div class="flex items-center gap-3.5">
+      <div class="bg-slate-900 text-white p-2.5 rounded-xl text-xl">☕</div>
+      <div>
+        <h1 class="text-lg md:text-xl font-black text-slate-900 tracking-tight">HIMCOFFEE RACI MASTER</h1>
+        <p class="text-[11px] font-medium text-slate-500 tracking-wide uppercase">Operational Planning &amp; Strategy Board · Local only</p>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <button onclick="openSeats()" class="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg text-xs font-bold border border-slate-200 transition">👥 <span id="seatCount">0/10</span> Editors</button>
+      <span id="authBadge"></span>
+      <span class="px-3 py-2 rounded-lg border bg-emerald-50 border-emerald-200 text-[10px] font-bold text-emerald-700 uppercase tracking-wider">● Local saved</span>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 md:px-6 pt-6">
+  <!-- GUEST BANNER -->
+  <div id="guestBanner" class="mb-6 bg-slate-800 p-4 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm" hidden>
+    <div class="flex items-center gap-3.5">
+      <div class="bg-slate-700 p-2 rounded-lg">🛡️</div>
+      <div>
+        <h3 class="text-xs font-bold text-white tracking-wide uppercase">Guest mode (view only)</h3>
+        <p class="text-[11px] text-slate-300 mt-0.5">Editing is locked. Unlock with the team PIN to claim an editor seat (max 10, this browser only).</p>
+      </div>
+    </div>
+    <button onclick="openUnlock()" class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg text-[11px] font-bold transition">🔑 Unlock Edit Mode</button>
+  </div>
+
+  <!-- TABS -->
+  <div class="flex border-b border-slate-200 mb-6">
+    <button id="tabTimeline" onclick="setTab('timeline')" class="px-6 py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors">📅 Master Timeline</button>
+    <button id="tabMonthly" onclick="setTab('monthly')" class="px-6 py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors">📊 RACI Worksheet</button>
+  </div>
+
+  <!-- LEGEND -->
+  <div class="mb-6 bg-white border border-slate-200 rounded-2xl p-4 text-[11px] text-slate-600 flex flex-wrap gap-x-5 gap-y-2 shadow-sm">
+    <span><b class="text-slate-800">Legend:</b></span>
+    <span><span class="inline-block px-2 py-0.5 rounded-md font-bold bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200">Double Digit</span> jualan 1.1–12.12</span>
+    <span><span class="inline-block px-2 py-0.5 rounded-md font-bold bg-rose-50 text-rose-700 border border-rose-200">Mega Perayaan</span> CNY / Raya / Deepavali / Xmas</span>
+    <span><span class="inline-block px-2 py-0.5 rounded-md font-bold bg-sky-50 text-sky-700 border border-sky-200">Brand Event</span> anniversary / personal branding</span>
+    <span><span class="inline-block px-2 py-0.5 rounded-md font-bold bg-amber-50 text-amber-700 border border-amber-200">Payday</span> 24hb–hujung bulan</span>
+    <span><span class="inline-block px-2 py-0.5 rounded-md font-bold bg-teal-50 text-teal-700 border border-teal-200">Micro-Event</span> lain-lain</span>
+    <span class="w-full sm:w-auto">Status: <b class="text-slate-500">Pending</b> · <b class="text-yellow-700">In Progress</b> · <b class="text-emerald-700">Completed</b> — bar % = Completed ÷ Total. TIP: tekan <b>Enter</b> dalam lajur R/A untuk senarai bernombor.</span>
+  </div>
+
+  <!-- YEAR SELECTOR -->
+  <div class="mb-8 flex flex-col md:flex-row justify-between items-center bg-white border border-slate-200 rounded-2xl p-2 shadow-sm">
+    <div class="flex items-center gap-3 px-4 py-2">
+      <span>📅</span><span class="font-bold text-slate-700 uppercase tracking-wider text-xs">Pilih Tahun Operasi</span>
+    </div>
+    <div id="yearBtns" class="flex bg-slate-50 p-1 rounded-xl gap-1 w-full md:w-auto overflow-x-auto"></div>
+  </div>
+
+  <!-- TIMELINE VIEW -->
+  <div id="timelineView" class="space-y-6 animate-fadeIn">
+    <div class="flex justify-between items-end mb-4 px-2">
+      <div><h2 id="timelineTitle" class="text-xl font-extrabold text-slate-800 tracking-tight">Timeline 2026</h2>
+      <p class="text-xs text-slate-500 mt-1">Peratusan kerja mengikut agihan peranan bulanan. Klik Buka untuk RACI worksheet.</p></div>
+      <div class="text-right"><span class="text-[10px] text-slate-400 font-bold block uppercase tracking-widest">KPI Prestasi</span>
+      <div id="yearKpi" class="text-xl font-black text-emerald-600">0%</div></div>
+    </div>
+    <div id="monthGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+  </div>
+
+  <!-- MONTHLY VIEW -->
+  <div id="monthlyView" class="animate-fadeIn space-y-6" hidden>
+    <div id="monthPills" class="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide"></div>
+    <div class="grid grid-cols-1 xl:grid-cols-4 gap-6">
+      <div class="xl:col-span-1">
+        <div class="bg-slate-50/50 rounded-2xl border border-slate-200 p-4">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-xs uppercase text-slate-500 tracking-wider">Senarai Kempen</h3>
+            <button onclick="openAddCampaign()" class="p-1.5 rounded-md bg-white text-emerald-600 border border-slate-200 hover:bg-emerald-50" title="Add Campaign">＋</button>
+          </div>
+          <div id="campaignList" class="space-y-2.5"></div>
+        </div>
+        <div class="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm mt-5">
+          <h4 class="font-bold text-[11px] text-slate-500 uppercase tracking-wider mb-4">👥 Beban Kerja PIC (<span id="workloadMonth">Januari</span>)</h4>
+          <div id="workloadBars" class="space-y-3.5 max-h-[300px] overflow-y-auto pr-2"></div>
+          <div class="pt-3 flex gap-2">
+            <button onclick="resetAll()" class="text-[11px] font-bold text-slate-500 hover:text-rose-600 border border-slate-200 rounded-lg px-3 py-1.5">Reset all 2026–2030</button>
+          </div>
+        </div>
+      </div>
+      <div class="xl:col-span-3 space-y-6" id="detailCol"></div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- CAMPAIGN MODAL -->
+<div id="campaignModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm items-center justify-center p-4" style="display:none">
+  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-xl animate-scaleUp mx-auto">
+    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
+      <h3 id="campaignModalTitle" class="font-black text-slate-800 text-sm tracking-wide">CREATE NEW CAMPAIGN</h3>
+      <button onclick="closeCampaignModal()" class="text-slate-400 hover:text-slate-700">✕</button>
+    </div>
+    <form onsubmit="saveCampaignModal(event)" class="p-6 space-y-4">
+      <div class="flex gap-4">
+        <div class="flex-1"><label class="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">Year</label><select id="cfYear" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold"></select></div>
+        <div class="flex-1" id="cfMonthWrap"><label class="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">Month</label><select id="cfMonth" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold"></select></div>
+      </div>
+      <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">Campaign Title</label><input required id="cfTitle" type="text" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold"></div>
+      <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">Duration / Date</label><input id="cfDate" type="text" placeholder="e.g. 24-31 Ogos 2026" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold"></div>
+      <div><label class="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">Category</label><select id="cfType" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs font-bold">
+        <option>Double Digit</option><option>Seasonal / Micro-Event</option><option>Seasonal / Mega Perayaan</option><option>Seasonal / Brand Event</option><option>Seasonal / Personal Branding</option><option>Payday &amp; Month End</option>
+      </select></div>
+      <p id="cfError" class="text-xs text-rose-600 font-bold bg-rose-50 p-2 rounded-lg" hidden></p>
+      <div class="pt-2 flex justify-end gap-3">
+        <button type="button" onclick="closeCampaignModal()" class="px-5 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-bold text-slate-600">Cancel</button>
+        <button type="submit" class="px-5 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4" style="display:none">
+  <div class="bg-white rounded-3xl p-8 text-center max-w-sm w-full shadow-2xl animate-scaleUp mx-auto">
+    <div class="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">⚠️</div>
+    <h3 id="confirmTitle" class="font-black text-slate-900 mb-2 text-base"></h3>
+    <p id="confirmMsg" class="text-xs text-slate-500 mb-8 leading-relaxed px-4"></p>
+    <div class="flex justify-center gap-3">
+      <button onclick="closeConfirm()" class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs font-bold text-slate-600">Cancel</button>
+      <button id="confirmBtn" class="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black">Confirm Action</button>
+    </div>
+  </div>
+</div>
+
+<!-- UNLOCK MODAL -->
+<div id="pinModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4" style="display:none">
+  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl mx-auto">
+    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
+      <h3 class="font-black text-sm text-slate-800">🔑 UNLOCK EDIT ACCESS</h3>
+      <button onclick="closeUnlock()">✕</button>
+    </div>
+    <form onsubmit="claimSeat(event)" class="p-6 space-y-4">
+      <p class="text-xs text-slate-500">Masukkan Nama &amp; PIN pasukan (local, pelayar ini sahaja). Max 10 editor.</p>
+      <input required id="pinName" type="text" placeholder="Nama Anda (PIC)" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs font-bold outline-none focus:border-emerald-500">
+      <input required id="pinCode" type="password" maxlength="8" placeholder="Security PIN" class="w-full text-center tracking-[0.3em] bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm font-black outline-none focus:border-emerald-500">
+      <p id="pinError" class="text-[11px] text-center text-rose-600 bg-rose-50 p-2.5 rounded-lg font-bold" hidden></p>
+      <button class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-black">Confirm &amp; Unlock 🔓</button>
+    </form>
+  </div>
+</div>
+
+<!-- SETUP PIN MODAL -->
+<div id="setupModal" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm items-center justify-center p-4" style="display:none">
+  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-scaleUp mx-auto">
+    <div class="px-6 py-5 border-b border-emerald-100 bg-emerald-50"><h3 class="font-black text-sm text-emerald-800">🛡️ SETUP LOCAL SECURITY PIN</h3></div>
+    <form onsubmit="setupPin(event)" class="p-6 space-y-4">
+      <p class="text-xs text-slate-500">Belum ada PIN di pelayar ini. Cipta PIN (min 4 digit) untuk kunci mod edit.</p>
+      <input required id="setupName" type="text" placeholder="Nama Pentadbir Utama" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs font-bold outline-none focus:border-emerald-500">
+      <input required id="setupCode" type="password" placeholder="Create Security PIN" class="w-full text-center tracking-[0.3em] bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-sm font-black outline-none focus:border-emerald-500">
+      <button class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black">Tetapkan PIN &amp; Tuntut Slot #1 🔓</button>
+      <button type="button" onclick="closeSetup()" class="w-full py-3 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-xl text-xs font-bold">Skip &amp; Go to Guest Mode</button>
+    </form>
+  </div>
+</div>
+
+<!-- SEATS MODAL -->
+<div id="seatsModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm items-center justify-center p-4" style="display:none">
+  <div class="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl mx-auto">
+    <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center">
+      <h3 class="font-black text-sm text-slate-800">👥 ACTIVE EDITOR SEATS (<span id="seatTitle">0/10</span>)</h3>
+      <button onclick="closeSeats()">✕</button>
+    </div>
+    <div class="p-6"><div id="seatList" class="space-y-2.5 max-h-60 overflow-y-auto mb-5 pr-1"></div>
+    <button onclick="closeSeats()" class="w-full py-2.5 bg-slate-800 text-white rounded-xl text-xs font-bold">Tutup Panel</button></div>
+  </div>
+</div>
+
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] bg-slate-900 text-white text-xs font-bold px-5 py-3 rounded-xl shadow-xl opacity-0 pointer-events-none">Saved ✓</div>
+
+<script>
+(function(){
+'use strict';
+var MONTHS=["Januari","Februari","Mac","April","Mei","Jun","Julai","Ogos","September","Oktober","November","Disember"];
+var YEARS=["2026","2027","2028","2029","2030"];
+var PHASES=["PRE-CAMPAIGN","LAUNCH (HARI EVENT)","POST-CAMPAIGN"];
+var K_DATA="him_event_data_v1", K_AUTH="him_event_pin_v1", K_UID="him_event_uid_v1", K_UI="him_event_ui_v1";
+
+function stdTemplate(){return [
+ {id:1,phase:"PRE-CAMPAIGN",item:"Setup a Target KPI & Budget",dueDate:"-",r:"Hafizie",a:"Dr Samhan",status:"Pending",note:""},
+ {id:2,phase:"PRE-CAMPAIGN",item:"Brainstorm Gameplay Content and Live",dueDate:"-",r:"Rafhanah\nShahirah",a:"Hafizie",status:"Pending",note:""},
+ {id:3,phase:"PRE-CAMPAIGN",item:"Draft 20 Konten Seeding Dr Samhan",dueDate:"-",r:"Rafhanah",a:"Hafizie",status:"Pending",note:""},
+ {id:4,phase:"PRE-CAMPAIGN",item:"Shooting Dr Samhan",dueDate:"-",r:"Rafhanah",a:"Dr Samhan",status:"Pending",note:""},
+ {id:5,phase:"PRE-CAMPAIGN",item:"Create Special Package",dueDate:"-",r:"Hafizie",a:"Dr Samhan",status:"Pending",note:""},
+ {id:6,phase:"PRE-CAMPAIGN",item:"Posting 20 Content Seeding (1 July to 4 July)",dueDate:"-",r:"Rafhanah",a:"Dr Samhan",status:"Pending",note:""},
+ {id:7,phase:"PRE-CAMPAIGN",item:"Draft Poster Theme for Catalog",dueDate:"-",r:"Ikram\nZaim",a:"Hafizie",status:"Pending",note:""},
+ {id:8,phase:"PRE-CAMPAIGN",item:"Upload Catalog Poster di Tiktok dan Shopee 3 Julai - 4 pm",dueDate:"-",r:"Ikram\nZaim",a:"Hafizie",status:"Pending",note:""},
+ {id:9,phase:"LAUNCH (HARI EVENT)",item:"On iklan berbayar (TikTok/FB Ads)",dueDate:"-",r:"Ikram\nZaim",a:"Hafizie",status:"Pending",note:""},
+ {id:10,phase:"LAUNCH (HARI EVENT)",item:"Live streaming 6 jam + susunan jadual OT host",dueDate:"-",r:"Live Team",a:"ENA",status:"Pending",note:""},
+ {id:11,phase:"POST-CAMPAIGN",item:"Pengumpulan data jualan, kos ads & ROI",dueDate:"-",r:"Hafizie",a:"Dr Samhan",status:"Pending",note:""},
+ {id:12,phase:"POST-CAMPAIGN",item:"Sesi Post Mortem & Minit Meeting",dueDate:"-",r:"Semua Team",a:"Hafizie\nCOO",status:"Pending",note:""}
+];}
+var BLUEPRINT={target:"RM 100,000 Sales / 5,000 Units Sold",tempoh:"5 Hari (Hari Gaji & Hujung Bulan)",timeline:"Fasa Pre-Seeding (3 Hari) | Fasa Launching (1 Hari) | Fasa Post-Mortem (1 Hari)",team:"Creative, Ads Specialist, Sales Closing, Live Stream Host",tracking:"Google Sheet KPI & Dashboard TikTok/FB Ads Manager",market:"Lelaki berumur 25-45 tahun (Coffee Lovers & Coffee Addicts)",medium:"FB Ads, TikTok Ads, Email Newsletter & Broadcast WhatsApp",message:"Himcoffee: Rasa kopi premium peneman bertenaga sepanjang hari bekerja."};
+var RAW={Januari:[["jan-1","Double Digit (Penutup Disember - Januari)","Fasa penutup Disember","Double Digit"],["jan-2","Israk dan Mikraj","17 Januari 2026","Seasonal / Micro-Event"],["jan-3","Payday & Month End","24-31 Januari 2026","Payday & Month End"]],Februari:[["feb-1","Double Digit 2.2","2 Februari 2026","Double Digit"],["feb-2","Chinese New Year","17 Februari 2026","Seasonal / Mega Perayaan"],["feb-3","Payday & Month End","24-28 Februari 2026","Payday & Month End"]],Mac:[["mac-1","Double Digit 1.3 - 3.3","1-3 Mac 2026","Double Digit"],["mac-2","Women's Day","8 Mac 2026","Seasonal / Micro-Event"],["mac-3","Payday & Month End","24-31 Mac 2026","Payday & Month End"]],April:[["apr-1","Double Digit 1.4 - 4.4","1-4 April 2026","Double Digit"],["apr-2","Anniversary Himcoffee","16 April 2026","Seasonal / Brand Event"],["apr-3","Payday & Month End","24-30 April 2026","Payday & Month End"]],Mei:[["mei-1","Double Digit 1.5 - 5.5","1-5 Mei 2026","Double Digit"],["mei-2","Mother's Day","10 Mei 2026","Seasonal / Micro-Event"],["mei-3","Raya Haji","21 Mei 2026","Seasonal / Mega Perayaan"],["mei-4","Payday & Month End","24-31 Mei 2026","Payday & Month End"]],Jun:[["jun-1","Double Digit","4 June - 7 June","Double Digit"],["jun-2","Birthday Dr Samhan","2-6 Jun 2026","Seasonal / Personal Branding"],["jun-3","Awal Muharram & Father's Day","17 & 21 Jun 2026","Seasonal / Micro-Event"],["jun-4","Payday & Month End","24-30 Jun 2026","Payday & Month End"]],Julai:[["jul-1","Creators Carnival","16 Julai","Seasonal / Brand Event"],["jul-2","Payday Julai","24 Julai - 27 Julai","Payday & Month End"],["jul-3","Month End","28 Julai - 31 Julai","Payday & Month End"],["jul-4","Double Digit 7.7","7 Julai","Double Digit"],["jul-5","Maal Hijrah","17 Julai","Seasonal / Micro-Event"]],Ogos:[["ogo-1","Double Digit 8.8","8 Ogos 2026","Double Digit"],["ogo-2","Hari Kebangsaan","31 Ogos 2026","Seasonal / Mega Perayaan"],["ogo-3","Payday & Month End","24-31 Ogos 2026","Payday & Month End"]],September:[["sep-1","Double Digit 9.9","9 September 2026","Double Digit"],["sep-2","Hari Malaysia","16 September 2026","Seasonal / Brand Event"],["sep-3","Payday & Month End","24-30 September 2026","Payday & Month End"]],Oktober:[["okt-1","Double Digit 10.10","10 Oktober 2026","Double Digit"],["okt-2","Halloween","31 Oktober 2026","Seasonal / Mega Perayaan"],["okt-3","Payday & Month End","24-31 Oktober 2026","Payday & Month End"]],November:[["nov-1","Double Digit 11.11","11 November 2026","Double Digit"],["nov-2","Deepavali","8 November 2026","Seasonal / Mega Perayaan"],["nov-3","Payday & Month End","24-30 November 2026","Payday & Month End"]],Disember:[["dis-1","Double Digit 12.12","12 Disember 2026","Double Digit"],["dis-2","Christmas","25 Disember 2026","Seasonal / Mega Perayaan"],["dis-3","Payday & Year End Grand Finale","24-31 Disember 2026","Payday & Month End"]]};
+
+function clone(o){return JSON.parse(JSON.stringify(o));}
+function uid(){return "id-"+Date.now().toString(36)+"-"+Math.floor(Math.random()*1e6).toString(36);}
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function toast(m){var t=$("toast");t.textContent=m;t.style.opacity="1";t.style.transform="translate(-50%,-6px)";setTimeout(function(){t.style.opacity="0";t.style.transform="translate(-50%,0)";},1600);}
+
+function seedData(){var d={};YEARS.forEach(function(y){d[y]={};MONTHS.forEach(function(m){if(y==="2026"){d[y][m]=RAW[m].map(function(r){var c={id:r[0],title:r[1],date:r[2],type:r[3],tasks:stdTemplate(),phaseDates:{},updatedAt:"",updatedBy:""};Object.keys(BLUEPRINT).forEach(function(k){c[k]=BLUEPRINT[k];});return c;});}else{d[y][m]=[];}});});return d;}
+function loadJSON(k,f){try{var v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}}
+var DB=loadJSON(K_DATA,null); if(!DB||!DB["2026"]){DB=seedData();persist();}
+var AUTH=loadJSON(K_AUTH,{pin:"",editors:[]});
+var MYUID=localStorage.getItem(K_UID)||""; if(!MYUID){MYUID=uid();localStorage.setItem(K_UID,MYUID);}
+var UI=loadJSON(K_UI,{tab:"timeline",year:"2026",month:"Januari",sel:"jan-1",q:"",st:"",pic:""});
+var editTaskId=null, editForm={}, isEditingStrategy=false, stratForm={}, editingPhase=null, phaseVal="", campMode="add", campEditId=null, pendingConfirm=null;
+
+function persist(){localStorage.setItem(K_DATA,JSON.stringify(DB));}
+function persistAuth(){localStorage.setItem(K_AUTH,JSON.stringify(AUTH));}
+function persistUI(){localStorage.setItem(K_UI,JSON.stringify(UI));}
+function isEditor(){return AUTH.editors.some(function(e){return e.uid===MYUID;});}
+function myName(){var e=AUTH.editors.filter(function(x){return x.uid===MYUID;})[0];return e?e.name:"";}
+function curList(){return (DB[UI.year]&&DB[UI.year][UI.month])||[];}
+function curCamp(){var l=curList();for(var i=0;i<l.length;i++)if(l[i].id===UI.sel)return l[i];return l[0]||null;}
+function badge(t){t=String(t||"").toLowerCase();if(t.indexOf("double digit")>=0)return "bg-fuchsia-50 text-fuchsia-700 border border-fuchsia-200";if(t.indexOf("mega perayaan")>=0)return "bg-rose-50 text-rose-700 border border-rose-200";if(t.indexOf("brand event")>=0||t.indexOf("personal branding")>=0)return "bg-sky-50 text-sky-700 border border-sky-200";if(t.indexOf("payday")>=0)return "bg-amber-50 text-amber-700 border border-amber-200";return "bg-teal-50 text-teal-700 border border-teal-200";}
+function prog(c){var t=(c.tasks||[]).length,d=(c.tasks||[]).filter(function(x){return x.status==="Completed";}).length;return t?Math.round(d/t*100):0;}
+function numList(text){var items=String(text||"").split(/\n|\//).map(function(s){return s.trim();}).filter(Boolean);if(!items.length)return "<span>-</span>";if(items.length===1)return "<span class='font-bold'>"+esc(items[0])+"</span>";return "<ol class='numlist text-slate-600'>"+items.map(function(x){return "<li>"+esc(x)+"</li>";}).join("")+"</ol>";}
+function stamp(c){c.updatedAt=new Date().toLocaleString("ms-MY");c.updatedBy=myName()||"Editor";}
+function needEdit(){if(isEditor())return true;openUnlock();return false;}
+
+/* ---------- render shell ---------- */
+function render(){
+  persistUI();
+  var ed=isEditor();
+  $("seatCount").textContent=AUTH.editors.length+"/10 Editors";
+  $("seatTitle").textContent=AUTH.editors.length+"/10";
+  $("authBadge").innerHTML=ed
+    ?"<span class='px-3.5 py-2 rounded-lg text-xs font-bold border bg-emerald-50 text-emerald-700 border-emerald-200'>🔓 "+esc(myName())+" <button onclick='leaveSeat()' class='ml-1 underline' title='Leave seat'>leave</button></span>"
+    :"<button onclick='openUnlock()' class='px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold'>🔒 Guest Mode</button>";
+  $("guestBanner").hidden=ed;
+  var tl=$("tabTimeline"), mo=$("tabMonthly");
+  tl.className="px-6 py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors "+(UI.tab==="timeline"?"border-emerald-600 text-emerald-700":"border-transparent text-slate-500 hover:text-slate-700");
+  mo.className="px-6 py-3 text-sm font-bold flex items-center gap-2 border-b-2 transition-colors "+(UI.tab==="monthly"?"border-emerald-600 text-emerald-700":"border-transparent text-slate-500 hover:text-slate-700");
+  $("yearBtns").innerHTML=YEARS.map(function(y){return "<button onclick=\"setYear('"+y+"')\" class='flex-1 md:flex-none px-6 py-2 text-sm font-bold rounded-lg transition-all "+(UI.year===y?"bg-white text-emerald-700 shadow-sm border border-slate-200/60":"bg-transparent text-slate-500 hover:text-slate-800")+"'>"+y+"</button>";}).join("");
+  $("timelineView").hidden=UI.tab!=="timeline";
+  $("monthlyView").hidden=UI.tab!=="monthly";
+  if(UI.tab==="timeline")renderTimeline();else renderMonthly();
+}
+function renderTimeline(){
+  var tot=0,done=0;MONTHS.forEach(function(m){(DB[UI.year][m]||[]).forEach(function(c){(c.tasks||[]).forEach(function(t){tot++;if(t.status==="Completed")done++;});});});
+  var kpi=tot?Math.round(done/tot*100):0;
+  $("timelineTitle").textContent="Timeline "+UI.year;$("yearKpi").textContent=kpi+"%";
+  $("monthGrid").innerHTML=MONTHS.map(function(m,i){
+    var list=DB[UI.year][m]||[];
+    var cards=list.length?list.map(function(c){return cardHTML(c,m,false);}).join(""):"<p class='text-[11px] text-slate-400 italic text-center py-6 bg-white rounded-xl border border-slate-100 border-dashed'>Tiada rekod kempen.</p>";
+    return "<div class='bg-slate-50/50 border border-slate-200 rounded-2xl p-5'><div class='flex justify-between items-center mb-4'><h3 class='font-extrabold text-slate-800 text-sm uppercase'>"+(i+1)+". "+m+"</h3>"+(isEditor()?"<button onclick=\"openAddCampaign('"+m+"')\" class='text-[10px] font-bold text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 px-2 py-1 rounded bg-white border border-slate-200'>Tambah</button>":"")+"</div><div class='space-y-3'>"+cards+"</div></div>";
+  }).join("");
+}
+function cardHTML(c,mCtx,selectable){
+  var p=prog(c), sel=(UI.tab==="monthly"&&UI.month===mCtx&&UI.sel===c.id);
+  return "<div onclick=\""+(selectable?"pickCamp('"+c.id+"')":"")+"\" class='w-full text-left p-4 rounded-2xl transition border bg-white "+(sel?"ring-2 ring-emerald-500 border-transparent shadow-md":"border-slate-100 hover:border-slate-200 hover:shadow-sm "+(selectable?"cursor-pointer":""))+"'>"
+  +"<div class='flex justify-between items-start gap-2 mb-2'><span class='text-[10px] uppercase px-2 py-0.5 rounded-md font-bold tracking-wider "+badge(c.type)+"'>"+esc(String(c.type||"").split("/")[0])+"</span>"
+  +(UI.tab==="monthly"?"<span class='flex gap-1'><button onclick=\"event.stopPropagation();openEditCampaign('"+c.id+"')\" class='text-slate-400 hover:text-emerald-600 p-1' title='Edit'>✎</button>"+(isEditor()?"<button onclick=\"event.stopPropagation();askDeleteCampaign('"+c.id+"')\" class='text-slate-400 hover:text-rose-600 p-1' title='Delete'>🗑</button>":"")+"</span>":"")
+  +"</div><h4 class='text-[13px] font-extrabold text-slate-800 mb-1.5'>"+esc(c.title)+"</h4>"
+  +"<p class='text-[11px] text-slate-500 font-medium mb-3'>📅 "+esc(c.date||c.tempoh||"-")+"</p>"
+  +"<div class='flex items-center gap-3 justify-between mt-3 pt-3 border-t border-slate-50'><div class='w-full h-1 bg-slate-100 rounded-full overflow-hidden'><div class='bg-emerald-500 h-full' style='width:"+p+"%'></div></div>"
+  +(UI.tab==="timeline"?"<button onclick=\"jumpTo('"+mCtx+"','"+c.id+"')\" class='text-[10px] font-bold text-slate-500 hover:text-emerald-600 uppercase'>Buka ›</button>":"<span class='text-[10px] font-bold text-slate-400'>"+p+"%</span>")
+  +"</div></div>";
+}
+
+/* ---------- monthly ---------- */
+function workload(){var map={};curList().forEach(function(c){(c.tasks||[]).forEach(function(t){String(t.r||"").split(/\n|\//).map(function(s){return s.trim();}).filter(Boolean).forEach(function(n){map[n]=(map[n]||0)+1;});});});return Object.keys(map).map(function(k){return {name:k,count:map[k]};}).sort(function(a,b){return b.count-a.count;});}
+function renderMonthly(){
+  $("monthPills").innerHTML=MONTHS.map(function(m){return "<button onclick=\"setMonth('"+m+"')\" class='px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap "+(UI.month===m?"bg-slate-800 text-white shadow-sm":"bg-white border border-slate-200 text-slate-600 hover:bg-slate-50")+"'>"+m+"</button>";}).join("");
+  var list=curList();
+  $("campaignList").innerHTML=list.length?list.map(function(c){return cardHTML(c,UI.month,true);}).join(""):"<p class='text-xs text-slate-400 text-center py-6 italic border border-dashed border-slate-200 rounded-xl bg-white'>Tiada rekod. Klik ＋ untuk tambah.</p>";
+  $("workloadMonth").textContent=UI.month;
+  var wl=workload(), tot=list.reduce(function(a,c){return a+(c.tasks||[]).length;},0);
+  $("workloadBars").innerHTML=wl.length?wl.map(function(w){return "<div class='space-y-1.5'><div class='flex justify-between text-xs'><span class='font-bold text-slate-700'>"+esc(w.name)+"</span><span class='text-slate-400'>"+w.count+" Tasks</span></div><div class='w-full h-1 bg-slate-100 rounded-full overflow-hidden'><div class='bg-emerald-500 h-full rounded-full' style='width:"+Math.round(w.count/(tot||1)*100)+"%'></div></div></div>";}).join(""):"<p class='text-xs text-slate-400 italic'>Data belum tersedia.</p>";
+  renderDetail();
+}
+function filteredTasks(c){
+  var q=UI.q.toLowerCase(), st=UI.st, pic=UI.pic;
+  return (c.tasks||[]).filter(function(t){
+    if(q&&!(String(t.item||"").toLowerCase().includes(q)||String(t.r||"").toLowerCase().includes(q)||String(t.a||"").toLowerCase().includes(q)||String(t.phase||"").toLowerCase().includes(q)))return false;
+    if(st&&t.status!==st)return false;
+    if(pic&&String(t.r||"").split(/\n|\//).map(function(s){return s.trim();}).indexOf(pic)<0)return false;
+    return true;
+  });
+}
+function renderDetail(){
+  var c=curCamp(), box=$("detailCol");
+  if(!c){box.innerHTML="<div class='text-center py-20 bg-white rounded-2xl border border-slate-200 shadow-sm'><div class='text-4xl mb-4'>☕</div><h3 class='font-extrabold text-slate-400 text-sm'>SILA PILIH KEMPEN AKTIF</h3><p class='text-xs text-slate-400 mt-2'>Bulan ini tiada kempen. Klik ＋ di Senarai Kempen untuk mula.</p></div>";return;}
+  var wlNames=workload().map(function(w){return w.name;});
+  var bp=isEditingStrategy?stratEditHTML(c):stratViewHTML(c);
+  box.innerHTML=""
+  +"<div class='bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden'><div class='p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/30'><div><h3 class='font-extrabold text-sm'>Strategy Blueprint</h3><p class='text-[10px] text-slate-500 uppercase tracking-widest mt-1'>Framework 5T &amp; 3M</p></div>"
+  +(isEditor()?(isEditingStrategy?"<div class='flex gap-2'><button onclick='cancelStrat()' class='text-xs font-bold text-slate-500 px-4 py-2 rounded-lg border'>Cancel</button><button onclick='saveStrat()' class='text-xs font-bold text-white bg-slate-800 px-4 py-2 rounded-lg'>✓ Save</button></div>":"<button onclick='startStrat()' class='text-xs font-bold text-slate-600 px-4 py-2 rounded-lg border'>✎ Edit</button>"):"<button onclick='openUnlock()' class='text-[10px] font-bold text-slate-500 px-3 py-1.5 rounded-lg border'>🔒 VIEW ONLY</button>")
+  +"</div><div class='p-5'>"+bp+"</div></div>"
+  +"<div class='bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm'><div class='p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between gap-4'><div><span class='text-[9px] font-black px-2.5 py-0.5 rounded-md "+badge(c.type)+"'>"+esc(c.type||"")+"</span><h3 class='text-lg font-black text-slate-900 mt-2'>"+esc(c.title)+"</h3><p class='text-[11px] text-slate-400 mt-1'>Kemas kini: "+esc(c.updatedAt||"—")+(c.updatedBy?" oleh "+esc(c.updatedBy):"")+"</p></div>"
+  +"<div class='flex flex-wrap gap-2 items-center'><input value='"+esc(UI.q)+"' oninput=\"setQ(this.value)\" placeholder='Cari tugasan...' class='bg-slate-50 border border-slate-200 rounded-lg py-2 px-3 text-xs w-44 outline-none focus:border-emerald-500'>"
+  +"<select onchange=\"setST(this.value)\" class='bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 text-xs'><option value=''>Semua status</option>"+["Pending","In Progress","Completed"].map(function(s){return "<option "+(UI.st===s?"selected":"")+">"+s+"</option>";}).join("")+"</select>"
+  +"<select onchange=\"setPIC(this.value)\" class='bg-slate-50 border border-slate-200 rounded-lg py-2 px-2 text-xs max-w-[140px]'><option value=''>Semua PIC</option>"+wlNames.map(function(n){return "<option "+(UI.pic===n?"selected":"")+">"+esc(n)+"</option>";}).join("")+"</select>"
+  +"<button onclick='exportCSV(false)' class='p-2 bg-white border border-slate-200 rounded-lg' title='Eksport kempen ke CSV'>⬇</button>"
+  +"<button onclick='exportCSV(true)' class='p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold' title='Eksport sebulan ke CSV'>Month</button>"
+  +"</div></div><div class='overflow-x-auto'><table class='w-full text-left whitespace-nowrap'><thead><tr class='bg-slate-50 border-b border-slate-200 text-[10px] text-slate-500 uppercase font-bold tracking-widest'><th class='p-4 w-10 text-center'>No</th><th class='p-4 min-w-[280px]'>Action Items</th><th class='p-4 w-36 text-emerald-700 bg-emerald-50/50'>🗓️ Tarikh (Due)</th><th class='p-4 w-36'>Responsible (R)</th><th class='p-4 w-36'>Accountable (A)</th><th class='p-4 w-28 text-center'>Status</th><th class='p-4 w-44'>Notes</th><th class='p-4 text-center sticky right-0 bg-slate-50 border-l border-slate-200'>"+(isEditor()?"Tindakan":"🔒")+"</th></tr></thead><tbody class='divide-y divide-slate-100 text-xs font-medium'>"
+  +PHASES.map(function(ph){return phaseRowsHTML(c,ph);}).join("")
+  +"</tbody></table></div></div>";
+  var qi=document.querySelector("#detailCol input"); // keep focus at end not forced
+}
+function stratViewHTML(c){
+  function cell(l,v){return "<div class='border-l-2 border-slate-200 pl-3'><span class='text-[9px] font-bold text-slate-400 block uppercase'>"+l+"</span><p class='text-xs font-bold text-slate-800 mt-1'>"+esc(v||"-")+"</p></div>";}
+  return "<div class='grid grid-cols-1 md:grid-cols-2 gap-8'><div><h4 class='font-bold text-[10px] text-slate-400 uppercase mb-4'>5T Operational Plan</h4><div class='grid grid-cols-2 gap-4'>"+cell("Target",c.target)+cell("Tempoh",c.tempoh||c.date)+cell("Timeline",c.timeline)+cell("Team",c.team)+cell("Tracking",c.tracking)+"</div></div>"
+  +"<div><h4 class='font-bold text-[10px] text-slate-400 uppercase mb-4'>3M Marketing Funnel</h4><div class='space-y-4'>"+cell("Market Strategy",c.market)+cell("Medium Strategy",c.medium)+cell("Message Strategy",c.message)+"</div></div></div>";
+}
+function stratEditHTML(){
+  var f=[["target","Target (Sales/Units)"],["tempoh","Tempoh (Duration)"],["itemTimeline","Timeline (Fasa Utama)"],["team","Team (PIC Terlibat)"],["tracking","Tracking (Ukur KPI)"]];
+  var g=[["market","Market (Audience)"],["medium","Medium (Saluran)"],["message","Message (Hook)"]];
+  function inp(k,l){return "<div><label class='text-[10px] font-bold text-slate-500 block uppercase mb-1.5'>"+l+"</label><input value='"+esc(stratForm[k]||"")+"' oninput=\"stratForm['"+k+"']=this.value\" class='w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs font-semibold outline-none focus:border-emerald-500'></div>";}
+  function ta(k,l){return "<div><label class='text-[10px] font-bold text-slate-500 block uppercase mb-1.5'>"+l+"</label><textarea rows='3' oninput=\"stratForm['"+k+"']=this.value\" class='w-full bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs font-semibold outline-none focus:border-emerald-500'>"+esc(stratForm[k]||"")+"</textarea></div>";}
+  return "<div class='grid grid-cols-1 md:grid-cols-2 gap-8'><div class='space-y-4'><h4 class='font-bold text-slate-400 uppercase border-b pb-2'>5T</h4>"+f.map(function(x){return inp(x[0],x[1]);}).join("")+"</div><div class='space-y-4'><h4 class='font-bold text-slate-400 uppercase border-b pb-2'>3M</h4>"+g.map(function(x){return ta(x[0],x[1]);}).join("")+"</div></div>";
+}
+function phaseRowsHTML(c,ph){
+  var tasks=filteredTasks(c).filter(function(t){return t.phase===ph;});
+  var pd=(c.phaseDates&&c.phaseDates[ph])||"";
+  var head="<tr class='bg-slate-50/50'><td colspan='2' class='p-3.5 font-bold text-[10px] uppercase tracking-widest border-y border-slate-200'>"+ph.replace(" (HARI EVENT)","")+" PHASE</td><td class='p-3.5 border-y border-slate-200'>"
+  +(editingPhase===ph&&isEditor()?"<div class='flex gap-1.5 max-w-[220px]'><input id='phaseInp' value='"+esc(phaseVal)+"' placeholder='Cth: 1-5 Ogos' class='w-full border border-emerald-300 rounded-md p-1.5 text-xs outline-none bg-white'><button onclick=\"savePhase('"+c.id+"','"+ph+"')\" class='p-1.5 bg-emerald-600 text-white rounded-md'>✓</button><button onclick='cancelPhase()' class='p-1.5 bg-slate-200 rounded-md'>✕</button></div>"
+  :"<div class='flex items-center gap-2'><span class='bg-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold border border-slate-200 shadow-sm'>📅 "+esc(pd||"Tetapkan Tarikh")+"</span>"+(isEditor()?"<button onclick=\"editPhase('"+ph+"','"+esc(pd).replace(/'/g,"&#39;")+"')\" class='text-slate-400 hover:text-emerald-600' title='Edit tarikh fasa'>✎</button>":"")+"</div>")
+  +"</td><td colspan='4' class='border-y border-slate-200'></td><td class='text-center border-y border-slate-200 sticky right-0 bg-slate-50/50 border-l'>"+(isEditor()?"<button onclick=\"addTask('"+ph+"')\" class='bg-white p-1 rounded-md border border-slate-200 hover:text-emerald-600' title='Add task'>＋</button>":"<button onclick='openUnlock()' class='text-slate-300' title='Unlock to add'>🔒</button>")+"</td></tr>";
+  if(!tasks.length)return head+"<tr><td colspan='8' class='text-slate-400 p-5 text-center italic text-xs'>Tiada tugasan dalam fasa ini.</td></tr>";
+  return head+tasks.map(function(t,idx){return taskRowHTML(c,t,idx,tasks.length);}).join("");
+}
+function taskRowHTML(c,t,idx,n){
+  var ed=isEditor(), editing=editTaskId===t.id;
+  var badgeCls=t.status==="Completed"?"bg-emerald-50 text-emerald-700 border-emerald-200":t.status==="In Progress"?"bg-yellow-50 text-yellow-700 border-yellow-200":"bg-slate-100 text-slate-500 border-slate-200";
+  var noCell=ed?"<select onchange=\"moveTask('"+c.id+"','"+t.id+"',parseInt(this.value))\" class='bg-white border border-slate-200 text-[11px] rounded-md px-2 py-1 font-bold cursor-pointer' title='Tukar kedudukan'>"+Array.from({length:n},function(_,i){return "<option value='"+i+"' "+(i===idx?"selected":"")+">"+(i+1)+"</option>";}).join("")+"</select>":"<span class='text-slate-400'>"+(idx+1)+"</span>";
+  return "<tr class='hover:bg-slate-50/50 align-top'>"
+  +"<td class='p-4 text-center'>"+noCell+"</td>"
+  +"<td class='p-4' style='white-space:normal;min-width:280px'>"+(editing?"<textarea rows='2' oninput=\"editForm.item=this.value\" class='w-full border rounded-lg p-2 text-xs'>"+esc(editForm.item)+"</textarea>":"<span class='font-bold text-slate-700'>"+esc(t.item)+"</span>")+"</td>"
+  +"<td class='p-4 bg-emerald-50/30 border-x border-slate-50'>"+(editing?"<input value='"+esc(editForm.dueDate)+"' oninput=\"editForm.dueDate=this.value\" placeholder='Cth: 1-3 Ogos' class='w-full border border-emerald-200 rounded-lg p-1.5 text-xs bg-white'>":"<span class='text-emerald-800 font-bold'>📅 "+esc(t.dueDate&&t.dueDate!=="-"?t.dueDate:"TBD")+"</span>")+"</td>"
+  +"<td class='p-4'>"+(editing?"<textarea rows='2' oninput=\"editForm.r=this.value\" class='w-full border rounded-lg p-2 text-xs'>"+esc(editForm.r)+"</textarea>":numList(t.r))+"</td>"
+  +"<td class='p-4'>"+(editing?"<textarea rows='2' oninput=\"editForm.a=this.value\" class='w-full border rounded-lg p-2 text-xs'>"+esc(editForm.a)+"</textarea>":numList(t.a))+"</td>"
+  +"<td class='p-4 text-center'>"+(editing?"<select onchange='editForm.status=this.value' class='border rounded-lg p-2 text-[11px] font-bold bg-white'><option "+(editForm.status==="Completed"?"selected":"")+">Completed</option><option "+(editForm.status==="In Progress"?"selected":"")+">In Progress</option><option "+(editForm.status==="Pending"?"selected":"")+">Pending</option></select>":"<span class='px-2.5 py-1 rounded-md text-[9px] font-black tracking-widest border uppercase "+badgeCls+"'>"+esc(t.status)+"</span>")+"</td>"
+  +"<td class='p-4'>"+(editing?"<textarea rows='2' oninput=\"editForm.note=this.value\" class='w-full border rounded-lg p-2 text-xs'>"+esc(editForm.note||"")+"</textarea>":"<span class='text-slate-500 italic block truncate max-w-[155px]' title='"+esc(t.note||"")+"'>"+esc(t.note||"-")+"</span>")+"</td>"
+  +"<td class='p-4 text-center sticky right-0 bg-white border-l border-slate-100'>"+(editing?"<div class='flex gap-1.5 justify-center'><button onclick=\"saveTask('"+c.id+"','"+t.id+"')\" class='p-2 text-white bg-slate-800 rounded-md' title='Simpan'>✓</button><button onclick='cancelTask()' class='p-2 border border-slate-200 rounded-md' title='Batal'>✕</button></div>"
+  :(!ed?"<button onclick='openUnlock()' class='text-slate-300' title='Unlock to edit'>🔒</button>":"<button onclick=\"startTask('"+t.id+"')\" class='p-1.5 text-slate-400 hover:text-emerald-600' title='Edit'>✎</button> <button onclick=\"askDeleteTask('"+c.id+"','"+t.id+"')\" class='p-1.5 text-slate-400 hover:text-rose-600' title='Delete'>🗑</button>"))+"</td></tr>";
+}
+
+/* ---------- actions ---------- */
+window.setTab=function(t){UI.tab=t;persist();render();};
+window.setYear=function(y){UI.year=y;var l=DB[y][UI.month]||[];UI.sel=l.length?l[0].id:null;render();};
+window.setMonth=function(m){UI.month=m;var l=DB[UI.year][m]||[];UI.sel=l.length?l[0].id:null;UI.pic="";render();};
+window.pickCamp=function(id){UI.sel=id;render();};
+window.jumpTo=function(m,id){UI.year=UI.year;UI.month=m;UI.sel=id;UI.tab="monthly";render();};
+window.setQ=function(v){UI.q=v;var c=curCamp();if(c)renderDetail();};
+window.setST=function(v){UI.st=v;renderDetail();};
+window.setPIC=function(v){UI.pic=v;renderDetail();};
+
+/* strategy */
+window.startStrat=function(){if(!needEdit())return;var c=curCamp();if(!c)return;stratForm={target:c.target||"",tempoh:c.tempoh||c.date||"",itemTimeline:c.timeline||"",team:c.team||"",tracking:c.tracking||"",market:c.market||"",medium:c.medium||"",message:c.message||""};isEditingStrategy=true;renderDetail();};
+window.cancelStrat=function(){isEditingStrategy=false;renderDetail();};
+window.saveStrat=function(){var c=curCamp();if(!c||!isEditor())return;var l=curList().map(function(x){if(x.id===c.id){x.target=stratForm.target;x.tempoh=stratForm.tempoh;x.date=stratForm.tempoh;x.timeline=stratForm.itemTimeline;x.team=stratForm.team;x.tracking=stratForm.tracking;x.market=stratForm.market;x.medium=stratForm.medium;x.message=stratForm.message;stamp(x);}return x;});DB[UI.year][UI.month]=l;persist();isEditingStrategy=false;toast("Strategy saved ✓");render();};
+
+/* tasks */
+window.addTask=function(ph){if(!needEdit())return;var c=curCamp();if(!c)return;c.tasks.push({id:uid(),phase:ph,item:"New Task Description",dueDate:"-",r:"TBD",a:"TBD",status:"Pending",note:""});stamp(c);persist();toast("Task added ✓");render();};
+window.startTask=function(id){if(!needEdit())return;var c=curCamp(),t=(c.tasks||[]).filter(function(x){return x.id===id;})[0];if(!t)return;editTaskId=id;editForm={item:t.item,dueDate:t.dueDate||"-",r:t.r,a:t.a,note:t.note||"",status:t.status};renderDetail();};
+window.cancelTask=function(){editTaskId=null;renderDetail();};
+window.saveTask=function(cid,tid){var l=curList().map(function(c){if(c.id===cid){c.tasks=(c.tasks||[]).map(function(t){if(t.id===tid){Object.keys(editForm).forEach(function(k){t[k]=editForm[k];});}return t;});stamp(c);}return c;});DB[UI.year][UI.month]=l;persist();editTaskId=null;toast("Task saved ✓");render();};
+window.moveTask=function(cid,tid,ni){if(!isEditor())return needEdit();var l=curList().map(function(c){if(c.id===cid){var all=(c.tasks||[]).slice();var tgt=all.filter(function(t){return t.id===tid;})[0];if(!tgt)return c;var ph=tgt.phase,pt=all.filter(function(t){return t.phase===ph;});var oi=pt.findIndex(function(t){return t.id===tid;});pt.splice(oi,1);pt.splice(Math.max(0,Math.min(ni,pt.length)),0,tgt);var pre=ph==="PRE-CAMPAIGN"?pt:all.filter(function(t){return t.phase==="PRE-CAMPAIGN";});var lau=ph==="LAUNCH (HARI EVENT)"?pt:all.filter(function(t){return t.phase==="LAUNCH (HARI EVENT)";});var post=ph==="POST-CAMPAIGN"?pt:all.filter(function(t){return t.phase==="POST-CAMPAIGN";});c.tasks=pre.concat(lau,post);stamp(c);}return c;});DB[UI.year][UI.month]=l;persist();render();};
+window.askDeleteTask=function(cid,tid){if(!needEdit())return;askConfirm("Delete RACI Task?","Adakah anda pasti mahu memadam tugasan ini?",function(){DB[UI.year][UI.month]=curList().map(function(c){if(c.id===cid)c.tasks=(c.tasks||[]).filter(function(t){return t.id!==tid;}),stamp(c);return c;});persist();toast("Task deleted");render();});};
+
+/* phase dates */
+window.editPhase=function(ph,val){if(!needEdit())return;editingPhase=ph;phaseVal=val||"";renderDetail();var i=$("phaseInp");if(i){i.focus();}};
+window.cancelPhase=function(){editingPhase=null;renderDetail();};
+window.savePhase=function(cid,ph){var l=curList().map(function(c){if(c.id===cid){c.phaseDates=c.phaseDates||{};c.phaseDates[ph]=($("phaseInp")?$("phaseInp").value:phaseVal);stamp(c);}return c;});DB[UI.year][UI.month]=l;persist();editingPhase=null;toast("Phase date saved ✓");render();};
+
+/* campaigns */
+function fillCF(){var ys=$("cfYear"),ms=$("cfMonth");ys.innerHTML=YEARS.map(function(y){return "<option "+(UI.year===y?"selected":"")+">"+y+"</option>";}).join("");ms.innerHTML=MONTHS.map(function(m){return "<option "+(UI.month===m?"selected":"")+">"+m+"</option>";}).join("");}
+window.openAddCampaign=function(m){if(!needEdit())return;campMode="add";campEditId=null;$("campaignModalTitle").textContent="CREATE NEW CAMPAIGN";fillCF();if(m)$("cfMonth").value=m;$("cfTitle").value="";$("cfDate").value="";$("cfType").selectedIndex=0;$("cfError").hidden=true;show("campaignModal");};
+window.openEditCampaign=function(id){if(!needEdit())return;var l=curList(),c=l.filter(function(x){return x.id===id;})[0];if(!c)return;campMode="edit";campEditId=id;$("campaignModalTitle").textContent="EDIT CAMPAIGN INFO";fillCF();$("cfTitle").value=c.title;$("cfDate").value=c.date||c.tempoh||"";$("cfType").value=c.type;$("cfError").hidden=true;show("campaignModal");};
+window.closeCampaignModal=function(){hide("campaignModal");};
+window.saveCampaignModal=function(e){e.preventDefault();var title=$("cfTitle").value.trim();if(!title){var er=$("cfError");er.textContent="Please enter a campaign title.";er.hidden=false;return;}var y=$("cfYear").value,m=$("cfMonth").value;
+ if(campMode==="add"){var nc={id:m.substring(0,3).toLowerCase()+"-"+Date.now(),title:title,date:$("cfDate").value,type:$("cfType").value,tasks:stdTemplate(),phaseDates:{},updatedAt:new Date().toLocaleString("ms-MY"),updatedBy:myName()};Object.keys(BLUEPRINT).forEach(function(k){nc[k]=BLUEPRINT[k];});DB[y][m]=(DB[y][m]||[]).concat([nc]);UI.year=y;UI.month=m;UI.sel=nc.id;}
+ else{DB[y][m]=(DB[y][m]||[]).map(function(c){if(c.id===campEditId){c.title=title;c.date=$("cfDate").value;c.tempoh=$("cfDate").value;c.type=$("cfType").value;stamp(c);}return c;});}
+ persist();hide("campaignModal");toast("Campaign saved ✓");render();};
+window.askDeleteCampaign=function(id){if(!needEdit())return;askConfirm("Padam Kempen?","Adakah anda pasti? Rekod ini tidak boleh dipulihkan.",function(){DB[UI.year][UI.month]=curList().filter(function(c){return c.id!==id;});var l=curList();UI.sel=l.length?l[0].id:null;persist();render();});};
+window.resetAll=function(){if(!needEdit())return;askConfirm("Reset All Data?","Set semula SEMUA data 2026-2030 ke tetapan asal? Tindakan ini memadam suntingan local.",function(){DB=seedData();persist();UI.year="2026";UI.month="Januari";UI.sel="jan-1";render();toast("Reset done ✓");});};
+
+/* CSV */
+function csvEsc(v){v=String(v==null?"":v).replace(/\r?\n/g," ");if(/[",]/.test(v))return '"'+v.replace(/"/g,'""')+'"';return '"'+v+'"';}
+window.exportCSV=function(month){var c=curCamp();if(!c&&!month)return;var rows=[["Phase","Tugasan (Action Item)","Due Date","Responsible (R)","Accountable (A)","Status","Remarks"]];var list=month?curList():[c];list.forEach(function(x){(x.tasks||[]).forEach(function(t){rows.push([x.title+" | "+t.phase,t.item,t.dueDate||"-",t.r,t.a,t.status,t.note||""]);});});var csv=rows.map(function(r){return r.map(csvEsc).join(",");}).join("\n");var blob=new Blob([csv],{type:"text/csv;charset=utf-8"});var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=(month?"RACI_"+UI.month+"_ALL":"RACI_"+UI.month+"_"+(c.title||"export").replace(/\s+/g,"_"))+".csv";document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);};
+
+/* auth (local) */
+function show(id){var e=$(id);e.style.display="flex";}
+function hide(id){var e=$(id);e.style.display="none";}
+window.openUnlock=function(){if(!AUTH.pin){show("setupModal");return;}$("pinError").hidden=true;show("pinModal");setTimeout(function(){$("pinName").focus();},50);};
+window.closeUnlock=function(){hide("pinModal");};
+window.openSeats=function(){var box=$("seatList");box.innerHTML=AUTH.editors.length?AUTH.editors.map(function(e,i){return "<div class='flex justify-between items-center p-3 rounded-xl border "+(e.uid===MYUID?"bg-emerald-50 border-emerald-200":"bg-white border-slate-100 shadow-sm")+"'><div class='flex items-center gap-3'><span class='w-6 h-6 rounded-lg bg-slate-100 text-[10px] font-bold flex justify-center items-center'>"+(i+1)+"</span><p class='text-xs font-black'>"+esc(e.name)+(e.uid===MYUID?" <span class='text-[9px] text-emerald-600 bg-emerald-100 px-1.5 rounded-md ml-1'>You</span>":"")+"</p></div>"+(isEditor()?"<button onclick=\"kickSeat('"+e.uid+"')\" class='text-slate-400 hover:text-rose-600 p-1.5' title='Remove'>🗑</button>":"")+"</div>";}).join(""):"<p class='text-center text-xs text-slate-400 italic py-6 border border-dashed rounded-xl bg-slate-50'>No active editors. Setup PIN dahulu.</p>";show("seatsModal");};
+window.closeSeats=function(){hide("seatsModal");};
+window.closeSetup=function(){hide("setupModal");};
+window.setupPin=function(e){e.preventDefault();var n=$("setupName").value.trim(),p=$("setupCode").value;if(p.length<4||!n){toast("Form not complete");return;}AUTH={pin:p,editors:[{uid:MYUID,name:n,claimedAt:Date.now()}]};persistAuth();hide("setupModal");toast("PIN set ✓");render();};
+window.claimSeat=function(e){e.preventDefault();var n=$("pinName").value.trim(),p=$("pinCode").value,er=$("pinError");er.hidden=true;if(p!==AUTH.pin){er.textContent="Invalid PIN!";er.hidden=false;return;}if(!n){er.textContent="Please enter a name.";er.hidden=false;return;}if(!AUTH.editors.some(function(x){return x.uid===MYUID;})&&AUTH.editors.length>=10){er.textContent="Editor slots are full!";er.hidden=false;return;}if(!AUTH.editors.some(function(x){return x.uid===MYUID;}))AUTH.editors.push({uid:MYUID,name:n,claimedAt:Date.now()});persistAuth();hide("pinModal");$("pinName").value="";$("pinCode").value="";toast("Unlocked ✓");render();};
+window.kickSeat=function(u){if(!isEditor())return;askConfirm("Tamat Sesi Editor?","Buang editor ini dari senarai akses?",function(){AUTH.editors=AUTH.editors.filter(function(x){return x.uid!==u;});persistAuth();render();openSeats();});};
+window.leaveSeat=function(){window.kickSeat(MYUID);};
+
+/* confirm */
+function askConfirm(t,m,fn){$("confirmTitle").textContent=t;$("confirmMsg").textContent=m;pendingConfirm=fn;show("confirmModal");}
+window.closeConfirm=function(){hide("confirmModal");pendingConfirm=null;};
+$("confirmBtn").addEventListener("click",function(){hide("confirmModal");if(pendingConfirm)pendingConfirm();pendingConfirm=null;});
+
+/* init */
+if(!AUTH.pin){show("setupModal");}
+render();
+})();
+</script>
+</body>
+</html>

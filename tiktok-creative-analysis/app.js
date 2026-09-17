@@ -87,6 +87,47 @@
     el.textContent = 'Top-' + B.topN + ' bar: ≥' + fmt(B.topBar) + ' impr (' + B.topSrc +
       ') · CPM ≤' + B.cpmBar.toFixed(2) + ' (' + B.cpmSrc + ')';
   }
+  /* Insight guide: one row per verdict with live file-adaptive thresholds. */
+  function guideRows() {
+    var B = state.bench || { topN: 20, topBar: 0, topSrc: 'auto', cpmBar: 0, cpmSrc: 'auto', medV2: 0, medAOV: 0, p90roi: 0, medRev: 0 };
+    var live = state.rows.length > 0;
+    var na = live ? '' : ' (load a file for live numbers)';
+    return [
+      { slug: 'Catalogue', chip: '📇', cls: 'chip-c', label: 'Catalogue',
+        rule: 'Account-less catalogue row (Product-card type, no video, or no campaign) — not a creative. Blank-account real videos get an Unknown account row + normal verdicts.',
+        fix: 'Tick Exclude Product Card for creative-only numbers.' },
+      { slug: 'Template', chip: '⭐', cls: 'chip-s', label: 'Template',
+        rule: 'Top-decile ROI (≥' + B.p90roi.toFixed(2) + ') with revenue ≥ median (RM' + fmt(B.medRev, 2) + ').' + na,
+        fix: 'Copy its hook and retention curve.' },
+      { slug: 'Review', chip: '🛑', cls: 'chip-r', label: 'Review',
+        rule: 'Spent ≥RM5 with 0 orders. Per-video CPM vs bar called out when above.',
+        fix: 'Consider excluding.' },
+      { slug: 'Boost', chip: '🚀', cls: 'chip-b', label: 'Boost',
+        rule: 'Performing/Outstanding + ROI≥3 + spend<RM50 + CPM at/below bar (' + B.cpmBar.toFixed(2) + ' ' + B.cpmSrc + ').' + na,
+        fix: 'Candidate to boost toward ' + fmt(B.topBar) + ' impressions (' + B.topSrc + ').' },
+      { slug: 'Learning', chip: '👀', cls: 'chip-l', label: 'Learning',
+        rule: 'Under 1,000 impressions — too early to judge.',
+        fix: 'Watch toward ' + fmt(B.topBar) + ' (' + B.topSrc + ').' + na },
+      { slug: 'Hook', chip: '🪝', cls: 'chip-h', label: 'Hook weak',
+        rule: '2s view rate below file median (' + (B.medV2 * 100).toFixed(1) + '%).' + na,
+        fix: 'Re-shoot the opening.' },
+      { slug: 'Drops', chip: '📉', cls: 'chip-d', label: 'Drops @%',
+        rule: 'Biggest retention drop ≥40% at that point (2s→25%→50%→75%→100%).',
+        fix: 'Fix that segment.' },
+      { slug: 'Basket', chip: '🧺', cls: 'chip-k', label: 'Small basket',
+        rule: 'Profitable but AOV below median (RM' + fmt(B.medAOV, 2) + ').' + na,
+        fix: 'Push bundles.' }
+    ];
+  }
+  function renderInsightGuide() {
+    var el = $('insightGuide');
+    if (!el) return;
+    el.innerHTML = guideRows().map(function (g) {
+      return '<div id="ins-' + g.slug + '" class="text-sm"><span class="chip ' + g.cls + '">' +
+        g.chip + ' ' + esc(g.label) + '</span> <span>' + esc(g.rule) + '</span> <span class="text-gray-500 dark:text-gray-400">' +
+        esc(g.fix) + '</span></div>';
+    }).join('');
+  }
   function syncTopNUI() {
     var sel = $('fTopN');
     if (sel) sel.value = String((state.targets && state.targets.topN) || 20);
@@ -149,11 +190,18 @@
   function insightCell(r) {
     var ins = insightOf(r);
     if (!ins.chip) return '<td>—</td>';
-    return '<td><span class="chip ' + ins.cls + '" title="' + esc(ins.detail) + '">' + ins.chip + ' ' + esc(ins.label) + '</span></td>';
+    return '<td><span class="chip ' + ins.cls + '" data-ins="' + esc(keyOf(r.postId, r.account, r.creative)) +
+      '" title="' + esc(ins.detail) + ' — click to explain" style="cursor:pointer">' + ins.chip + ' ' + esc(ins.label) + '</span></td>';
   }
   function insightText(r) {
     var ins = insightOf(r);
     return ins.label + (ins.detail ? ' — ' + ins.detail : '');
+  }
+  /* Base verdict for filtering: collapses dynamic 'Drops @50%' labels to 'Drops'. */
+  function insBase(r) {
+    var l = insightOf(r).label;
+    if (l.indexOf('Drops @') === 0) return 'Drops';
+    return l;
   }
   /* Exploration secondary status as a pill badge (icon + label) */
   var SEC_BADGE = {
@@ -222,8 +270,11 @@
   }
   function prodName(row) {
     var p = (state.catalog && state.catalog.products) || {};
-    var e = p[String((row && row.productId) || '')];
+    var pid = String((row && row.productId) || '');
+    var e = p[pid];
     if (e && e.name) return e.name;
+    // Catalogue rows carry Product ID 'N/A' — show them as the campaign's Product Card.
+    if (pid.toUpperCase() === 'N/A' && row && row.campaign) return 'Product Card - ' + campLabel(row);
     return (row && row.productId) || '–';
   }
   // Unmapped-ID hint: which campaign/product IDs in the loaded files have no friendly name yet.
@@ -236,7 +287,7 @@
     state.files.forEach(function (f) {
       f.rows.forEach(function (r) {
         if (r.campaignId && !(c[r.campaignId] && c[r.campaignId].label)) uc[r.campaignId] = r.campaign || r.campaignId;
-        if (r.productId && !(p[r.productId] && p[r.productId].name)) up[r.productId] = 1;
+        if (r.productId && String(r.productId).toUpperCase() !== 'N/A' && !(p[r.productId] && p[r.productId].name)) up[r.productId] = 1;
       });
     });
     var nc = Object.keys(uc).length, np = Object.keys(up).length;
@@ -348,15 +399,21 @@
       var orders = int(r['SKU orders']);
       var revenue = num(r['Gross revenue']);
       var rawAcc = String(r['TikTok account'] === null || r['TikTok account'] === undefined ? '' : r['TikTok account']).trim();
-      var account = (rawAcc === '' || rawAcc === '0' || rawAcc === '-') ? 'Product Card' : rawAcc;
       var pid = (r['Post ID'] !== '' && r['Post ID'] !== undefined) ? r['Post ID'] : r['Video ID'];
       var cr = (r['Creative'] !== '' && r['Creative'] !== undefined) ? r['Creative'] : r['Video title'];
+      var camp = String(r['Campaign name'] === null || r['Campaign name'] === undefined ? '' : r['Campaign name']);
+      // Blank account: true catalogue rows (Product-card type, no video, or no
+      // campaign context) stay 'Product Card'; blank-account real videos become 'Unknown account'.
+      var noAcc = (rawAcc === '' || rawAcc === '0' || rawAcc === '-');
+      var noVid = (pid === '' || pid === undefined || String(pid).toUpperCase() === 'N/A');
+      var account = !noAcc ? rawAcc :
+        (String(r['Creative type']) === 'Product card' || noVid || camp === '' ? 'Product Card' : 'Unknown account');
       var roiRaw = (r['ROI'] !== '' && r['ROI'] !== undefined) ? num(r['ROI']) : NaN;
       return {
         postId: pid,
         creative: cr,
         account: account,
-        campaign: String(r['Campaign name'] === null || r['Campaign name'] === undefined ? '' : r['Campaign name']),
+        campaign: camp,
         campaignId: String(r['Campaign ID'] === null || r['Campaign ID'] === undefined ? '' : r['Campaign ID']),
         productId: String(r['Product ID'] === null || r['Product ID'] === undefined ? '' : r['Product ID']),
         type: r['Creative type'],
@@ -524,12 +581,15 @@
   function cmpFiltered() {
     var acc = $('fAccount').value, q = $('fSearch').value.trim().toLowerCase();
     var mv = $('cmpMove').value, noCard = $('fNoCard').checked;
+    var hideInel = $('fNoInel').checked;
     var cpEl = $('fCamp'), cp = cpEl ? cpEl.value : '';
     var out = state.cmpRows.filter(function (r) {
       if (acc && r.account !== acc) return false;
       if (mv && r.move !== mv) return false;
       if (cp && String(r.campaign || '') !== cp) return false;
       if (noCard && r.account === 'Product Card') return false;
+      if (hideInel && (r.aStatus === 'Ineligible' || r.aStatus === '—') &&
+        (r.bStatus === 'Ineligible' || r.bStatus === '—')) return false;
       if (q && String(r.creative).toLowerCase().indexOf(q) === -1 &&
           String(r.postId).toLowerCase().indexOf(q) === -1) return false;
       return true;
@@ -562,7 +622,8 @@
       var sd = (r.aStatus === r.bStatus) ? esc(r.bStatus) : esc(r.aStatus) + ' → ' + esc(r.bStatus);
       var camp = r.campMoved ? esc(lab(r.aCamp, r.aCampId)) + ' → ' + esc(lab(r.bCamp, r.bCampId)) : esc(lab(r.campaign, r.campId));
       var pe = prd[String(r.prodId || '')];
-      var prod = (pe && pe.name) ? pe.name : (r.prodId || '–');
+      var prod = (pe && pe.name) ? pe.name :
+        (String(r.prodId || '').toUpperCase() === 'N/A' && r.campaign ? 'Product Card - ' + lab(r.campaign, r.campId) : (r.prodId || '–'));
       var style = r.noise ? ' style="opacity:.45"' : '';
       return '<tr' + style + '><td>' + badge + '</td><td>' + esc(cr) + '</td><td>' + esc(r.account) +
         '</td><td>' + camp + '</td><td title="' + esc(r.prodId || '') + '">' + esc(prod) + '</td><td class="mono">' + esc(r.postId) + '</td><td>' + fmt(r.aRev, 2) + '</td><td>' + fmt(r.bRev, 2) +
@@ -677,6 +738,30 @@
         .catch(function (e) { setStatus('Bundled load failed: ' + e.message); });
     });
   });
+  /* Picker chips, all from the filename (no file read): span, product, bulk badge. */
+  function spanMeta(n) {
+    var p = periodOfName(n);
+    if (!p) return '<span class="text-gray-500">no date in name</span>';
+    if (p.from === p.to) return esc(p.from);
+    return esc(p.from) + ' → ' + esc(p.to) + ' · ' + p.days + ' days';
+  }
+  function prodOfName(n) {
+    var m = /Product\s+(\d+)/i.exec(n || '');
+    return m ? m[1] : '';
+  }
+  function bulkOfName(n) { return /product.?campaigns/i.test(n || ''); }
+  function pickerMeta(n) {
+    var parts = [spanMeta(n)];
+    var pid = prodOfName(n);
+    if (pid) {
+      var prd = (state.catalog && state.catalog.products) || {};
+      var e = prd[pid];
+      parts.push(esc((e && e.name) ? e.name : pid));
+    }
+    if (bulkOfName(n) && state.dialectCache[n] !== 'bulk') parts.push('<span class="suggest-tag">bulk</span>');
+    if (state.dialectCache[n]) parts.push('<span class="suggest-tag">' + esc(state.dialectCache[n]) + '</span>');
+    return parts.join(' · ');
+  }
   var loadAllBtn = $('loadAllBundled');
   if (loadAllBtn) loadAllBtn.addEventListener('click', function () {
     var box = $('bundlePick');
@@ -686,15 +771,13 @@
     findBundledCandidates().then(function (names) {
       var sorted = names.slice().sort();
       box.innerHTML = sorted.map(function (n, i) {
-        var p = periodOfName(n);
-        var meta = p ? ' · ' + p.from + ' → ' + p.to : ' · <span class="text-gray-500">no date in name</span>';
-        var dia = state.dialectCache[n] ? ' · <span class="suggest-tag">' + esc(state.dialectCache[n]) + '</span>' : '';
+        var meta = pickerMeta(n);
         var checked = (i === sorted.length - 1) ? ' checked' : '';
         return '<label class="flex flex-wrap items-center gap-2 py-0.5"><input type="checkbox" data-bpick value="' + esc(n) + '"' + checked + ' class="w-4 h-4">' +
-          '<span>📄 <strong>' + esc(n) + '</strong><span class="text-gray-500"> (' + meta + dia + ')</span></span></label>';
+          '<span>📄 <strong>' + esc(n) + '</strong><span class="text-gray-500"> (' + meta + ')</span></span></label>';
       }).join('') +
       '<div class="flex flex-wrap items-center gap-2 mt-2"><button id="bundleLoad" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Load selected (max 7)</button>' +
-      '<span class="text-xs text-gray-500">Newest is pre-ticked. Type badge appears after a file has been read once.</span></div>';
+      '<span class="text-xs text-gray-500">Newest is pre-ticked. Span, product and bulk chips come from file names; the type badge confirms after first read.</span></div>';
       $('bundleLoad').addEventListener('click', function () {
         var sel = Array.prototype.map.call(box.querySelectorAll('[data-bpick]:checked'), function (c) { return c.value; });
         if (!sel.length) { setStatus('Tick at least one bundled file.'); return; }
@@ -889,7 +972,7 @@
   }
 
   /* ---------- filtering + render ---------- */
-  ['fAccount', 'fStatus', 'fSec', 'fType', 'fCamp', 'fSearch', 'fMinRoi', 'fMinOrders', 'fMaxAge', 'fSort', 'fAllowlist', 'fMin1k', 'fNoCard']
+  ['fAccount', 'fStatus', 'fSec', 'fType', 'fCamp', 'fSearch', 'fMinRoi', 'fMinOrders', 'fMaxAge', 'fSort', 'fAllowlist', 'fMin1k', 'fNoCard', 'fNoInel', 'fInsight']
     .forEach(function (id) {
       $(id).addEventListener('input', applyFilters);
       $(id).addEventListener('change', applyFilters);
@@ -907,6 +990,7 @@
   function filtered(forceAccount) {
     var acc = forceAccount !== undefined ? forceAccount : $('fAccount').value, st = $('fStatus').value, ty = $('fType').value;
     var se = $('fSec').value, cp = $('fCamp').value;
+    var ins = $('fInsight').value;
     // Pasted Post IDs (all-digit tokens, comma/space/newline separated) -> exact ID match.
     // Anything else -> creative-text keyword search. Excel-safe: 19-digit IDs exceed
     // 2^53, so both sides compare as Numbers (identical IEEE754 rounding both ways).
@@ -922,6 +1006,7 @@
     var onlyAllow = $('fAllowlist').checked;
     var only1k = $('fMin1k').checked;
     var noCard = $('fNoCard').checked;
+    var hideInel = $('fNoInel').checked;
     if (isNaN(minRoi)) minRoi = -Infinity;
     if (isNaN(minOrd)) minOrd = -Infinity;
     var out = state.rows.filter(function (r) {
@@ -929,8 +1014,10 @@
       if (onlyAllow && state.allowlist.indexOf(r.account) === -1) return false;
       if (only1k && r.impr < 1000) return false;
       if (noCard && r.account === 'Product Card') return false;
+      if (hideInel && st !== 'Ineligible' && String(r.status) === 'Ineligible') return false;
       if (st && String(r.status) !== st) return false;
       if (se && String(r.sec) !== se) return false;
+      if (ins && insBase(r) !== ins) return false;
       if (ty && String(r.type) !== ty) return false;
       if (cp && String(r.campaign || '') !== cp) return false;
       if (r.roi < minRoi || r.orders < minOrd) return false;
@@ -955,6 +1042,7 @@
 
   function applyFilters() {
     renderBench();
+    renderInsightGuide();
     var rows = filtered();
     var cost = 0, rev = 0, ord = 0, impr = 0;
     rows.forEach(function (r) { cost += r.cost; rev += r.revenue; ord += r.orders; impr += r.impr; });
@@ -971,6 +1059,7 @@
     renderTop(rows);
     renderChart(rows);
     renderCompare();
+    applyInsightLink();
   }
 
   function renderAcct(rows) {
@@ -1061,6 +1150,7 @@
     var bits = [];
     if ($('fStatus').value) bits.push('Status=' + $('fStatus').value);
     if ($('fSec').value) bits.push('2nd=' + $('fSec').value);
+    if ($('fInsight').value) bits.push('Insight=' + $('fInsight').value);
     if ($('fType').value) bits.push('Type=' + $('fType').value);
     if ($('fCamp').value) bits.push('Campaign=' + $('fCamp').value);
     var sq = $('fSearch').value.trim();
@@ -1070,6 +1160,7 @@
     if ($('fMaxAge').value) bits.push('posted≤' + $('fMaxAge').value + 'd');
     if ($('fMin1k').checked) bits.push('1000+ impressions');
     if ($('fNoCard').checked) bits.push('Product Card excluded');
+    if ($('fNoInel').checked) bits.push('Ineligible hidden');
     if ($('fAllowlist').checked) bits.push('allowlist only');
     if ($('fSort').value) bits.push('sorted by ' + $('fSort').value);
     return bits.length ? 'Active filters: ' + bits.join(' · ') : 'No filters — all creatives for this account';
@@ -1137,7 +1228,61 @@
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && !$('acctModal').hidden) closeAccountModal();
     if (e.key === 'Escape' && !$('mgrModal').hidden) closeMgr();
+    if (e.key === 'Escape' && !$('insModal').hidden) closeInsightModal();
   });
+  /* Insight popup: click any verdict chip for the per-video explanation. */
+  function openInsightModal(row) {
+    var ins = insightOf(row);
+    if (!ins.chip) return;
+    var cr = String(row.creative || '');
+    $('insModalTitle').textContent = ins.chip + ' ' + ins.label;
+    $('insModalCtx').textContent = (cr.length > 80 ? cr.slice(0, 80) + '…' : cr) + ' · ' + row.account;
+    $('insModalWhy').textContent = ins.detail;
+    $('insModalKpis').innerHTML =
+      kpiMini('Cost (MYR)', fmt(row.cost, 2)) + kpiMini('Orders', fmt(row.orders)) +
+      kpiMini('Revenue (MYR)', fmt(row.revenue, 2)) + kpiMini('ROI', row.roi.toFixed(2)) +
+      kpiMini('AOV (MYR)', row.aov.toFixed(2)) + kpiMini('Impr.', fmt(row.impr)) +
+      kpiMini('CPM', row.cpm.toFixed(2)) + kpiMini('2s rate', (row.v2 * 100).toFixed(1) + '%');
+    $('insModal').hidden = false;
+    document.body.style.overflow = 'hidden';
+    $('insModalClose').focus();
+  }
+  function closeInsightModal() {
+    $('insModal').hidden = true;
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-ins]') : null;
+    if (!t) return;
+    var k = t.getAttribute('data-ins');
+    var row = null;
+    state.rows.some(function (r) { if (keyOf(r.postId, r.account, r.creative) === k) { row = r; return true; } return false; });
+    if (row) openInsightModal(row);
+  });
+  $('insModalClose').addEventListener('click', closeInsightModal);
+  $('insModal').addEventListener('click', function (e) {
+    if (e.target === $('insModal')) closeInsightModal();
+  });
+  /* ?insight=Label deep-link: expand the guide, filter to that verdict, jump to it (once). */
+  var insightLinkDone = false;
+  function applyInsightLink() {
+    if (insightLinkDone) return;
+    insightLinkDone = true;
+    var m = /[?&]insight(=([^&#]*))?/i.exec(location.search || '');
+    if (!m) return;
+    var box = $('insightGuideBox');
+    if (box) box.open = true;
+    var q = m[2] === undefined ? '' : decodeURIComponent(m[2].replace(/\+/g, ' ')).trim().toLowerCase();
+    if (!q) return;
+    var hit = guideRows().filter(function (g) { return g.slug.toLowerCase() === q || g.label.toLowerCase() === q; })[0];
+    if (hit) {
+      var el = document.getElementById('ins-' + hit.slug);
+      if (el) el.scrollIntoView();
+      var sel = $('fInsight');
+      var v = (hit.slug === 'Drops') ? 'Drops' : hit.label;
+      if (sel && sel.value !== v) { sel.value = v; applyFilters(); }
+    }
+  }
 
   function renderTop(rows) {
     $('rowCount').textContent = '— ' + fmt(rows.length) + ' match';
@@ -1352,7 +1497,8 @@
     var lines = [head.join(',')].concat(rows.map(function (r) {
       var ce = cat[String(r.campId || '')], pe = prd[String(r.prodId || '')];
       var cl = (ce && ce.label) ? ce.label : (r.campaign || '');
-      var pn = (pe && pe.name) ? pe.name : (r.prodId || '');
+      var pn = (pe && pe.name) ? pe.name :
+        (String(r.prodId || '').toUpperCase() === 'N/A' && r.campaign ? 'Product Card - ' + cl : (r.prodId || ''));
       return [q(r.move), q(r.creative), q(r.account), q(cl), r.campMoved ? 'yes' : 'no', q(pn), q(r.postId),
         r.aRev.toFixed(2), r.bRev.toFixed(2), r.dRev.toFixed(2),
         r.aOrd, r.bOrd, r.dOrd,

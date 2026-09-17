@@ -107,8 +107,11 @@ blank on purpose. They committed nothing this window; the pile is big (see below
 - `data/catalog.json`: user-authored {campaigns:{ID:{label,note}}, products:{ID:{name,note}}}
   (4 + 18 IDs from the 09-08 bulk file, ALL blank until user names them — prefilled
   guesses were reverted per rule 1). Display-only; filter values stay raw names.
-- Blank accounts (`''`/`'0'`/`'-'`) normalise to user-named `Product Card`
-  (catalogue promo, was ~29% of revenue); `Exclude Product Card` tick, default off.
+- Blank accounts (`''`/`'0'`/`'-'`): true catalogue rows (Product-card type / no
+  video / no campaign) normalise to user-named `Product Card`; blank-account real
+  videos → user-approved `Unknown account` (bulk file hid 2,708 videos / RM6,988
+  revenue under Product Card before the split). `Exclude Product Card` tick, default
+  off. Single-file blanks (no campaign column) stay `Product Card` as before.
 - User learnings (no build yet, parked in plan.md §6): boosting an inactive video
   re-enters Exploring (pool entry is repeatable); the export is pre-filtered to
   catalog-attached creatives, so no per-row yellow-bag flag exists.
