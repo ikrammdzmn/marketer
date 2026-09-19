@@ -4,6 +4,15 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 20 Sep 2026
+
+- `tools/` Sheets MCP GREEN: org-policy lift (both key-creation constraints)
+  + Sheets/Drive APIs on + `GOOGLE_SHEETS_CRED` SET; scratch read/write GREEN
+  on shared `mcp-scratch`; push confirmed `70f1700`; Workspace SA-create 403
+  → human-creates flow; 5 more bugs fixed → `../tools/CHANGELOG.md` + `../tools/DEV_NOTES.md`
+
+- `gmvmax-auto` approval wait = non-issue + secret hygiene: pending approval marked expected, P0 holds file-first; Neon passwords rotated, `GMV_ENC_KEY` regenerated, EXAMPLE sanitized → `gmvmax-auto/CHANGELOG.md`
+
 ## 19 Sep 2026
 
 - `tools/` Sheets MCP wired (sibling, outside git): `spreadsheet-mcp` cloned,
@@ -48,6 +57,44 @@ Rule: whoever ships a folder release adds one line here the same session.
   tops keep T-Aff) → `tiktok-creative-analysis/CHANGELOG.md`
 - `tiktok-creative-analysis` v22: Hide inactive tick (Active-unticked rows leave
   every number) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v23: source-file subfolders + folder `[id]` labels
+  (blank Campaign IDs inherit it, rows never dropped) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v24: bundled fallback repointed at existing subfolder
+  file → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v25: bundled picker via `/api/files` (+HTML fallback,
+  explicit Live Server warning) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v26: picker grouped by folder (collapsible, folder
+  tick, live count, empty folders greyed) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v27: product–campaign tie + no bare IDs (`Unnamed
+  campaign/product` placeholders) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v28: archived catalog section (old files keep names)
+  → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v29: catalog hint tooltip lists the unnamed IDs
+  → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v30: himcoffee folder retagged to campaign ID
+  (verified from bulk export) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v31: blank Product IDs inherit `Product {ID}` from
+  filename → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v32: Trend per creative (day-by-day columns + long
+  CSV) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v33: newest-by-date (not alphabetical) pre-tick +
+  single load → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v34: Trend daily line chart (top 10, gaps for
+  absent) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v35: per-row Shape sparklines (per-row scale)
+  → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v36: Trend solo popup (enlarged chart + Total /
+  Latest / Δ / Days cards) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v37: Post ID column in Trend (click-to-copy)
+  → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v38: click-to-copy Post ID extended to Top +
+  Compare (+hover hint; full recheck) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v39: Trend chart legend shows `Post ID · account`
+  (hover keeps creative title) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v40: ROI / CPM / AOV trend metrics (ratio totals
+  from sums, never summed ratios) → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v41: auto-pick Combine for dated non-overlapping
+  files (manual flip wins; status announces) → `tiktok-creative-analysis/CHANGELOG.md`
 - `tiktok-event` built (new folder, untracked): HIMCOFFEE RACI board, Option A
   vanilla single-file local-only — Timeline + Worksheet + 5T/3M + RACI + PIN seats
   + CSV, verified + docs → `tiktok-event/plan.md`

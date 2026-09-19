@@ -13,7 +13,8 @@
 - `docs/` + `tiktok*.txt` — app-review pages + domain verification, frozen.
 - `opencode.json` — opencode MCP pointer (secret-free, `{env:GOOGLE_SHEETS_CRED}` only).
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, branch `main`) — local MCP runners (`spreadsheet-mcp`,
-  27 Sheets tools, IGNORED clone) + its own `AGENTS.md`/`DEV_NOTES.md`/`feature.md`/`bootstrap.ps1`. Antigravity
+  27 Sheets tools, IGNORED clone) + its own `AGENTS.md`/`DEV_NOTES.md`/`feature.md`/`bootstrap.ps1`. Read/write GREEN
+  20 Sep on shared sheets (Workspace: human creates + shares as Editor). Antigravity
   reads `~/.gemini/config/mcp_config.json`, never `opencode.json` — ask IDE first.
 
 ## Hard rules (all folders)

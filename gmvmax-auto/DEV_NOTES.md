@@ -34,7 +34,8 @@
 - Keys local only: `NEON_URL_DEV/PROD` (pooled, sslmode), `GMV_ENC_KEY` (token_urlsafe(32),
   43 chars), `SHOP_APP_KEY` (13) + `SHOP_APP_SECRET` (40). Presence-verified by lengths.
 - Business API app `TIKTOK GMV MAX`: submitted, **PENDING APPROVAL** at
-  `business-api.tiktok.com/portal/apps`. Description = internal P0 read-only wording.
+  `business-api.tiktok.com/portal/apps` — NON-ISSUE 20 Sep: this wait is expected,
+  P0 holds on file-first, no action. Description = internal P0 read-only wording.
   Redirect `http://localhost:8082/callback` (see Bugs: IP form rejected). Scopes = All on
   Ad account management + Ads management + Reporting (covers GMV Max GETs; write scopes
   come with approval but P0 never POSTs). Sandbox ad account button locked until approval
@@ -78,7 +79,8 @@
    `Test-Path + key-names/lengths`, never values.
 
 ## What next-you should do first
-1. Check Business API approval status (owner reports). If approved: create Sandbox Ad
+1. WAIT (non-issue, 20 Sep): Business API approval still pending → hold P0 on
+   file-first. Check approval status only when owner reports. If approved: create Sandbox Ad
    Account (name `gmvmax-sandbox`, MY/MYR/Asia_Kuala_Lumpur), record sandbox vs prod
    keys/redirects per `APP_CHECKLIST.md`, note read-only vs write scope.
 2. Then wire P0 GETs in `collector.py` (sandbox base URL): `gmv_max/campaign/get`,

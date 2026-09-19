@@ -9,4 +9,4 @@
 - [ ] Sandbox read-only live → paste NOTHING secret in chat; store in `.local_secrets.json` (gitignored) or env
 - [ ] If any Production secret was pasted in chat before 2026-09-17 → rotate in portal immediately
 
-P0 proceeds read-only either way. Writes (P2) need write-scope approval.
+P0 proceeds read-only either way. Writes (P2) need write-scope approval. Approval-pending = expected non-issue (20 Sep): wait, file-first continues.

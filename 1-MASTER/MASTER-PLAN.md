@@ -4,7 +4,7 @@
 > Detailed GMV auto plan lives in `gmvmax-auto/masterplan.md` (not duplicated here).
 
 ## 1. Repo map (what lives where)
-- `tiktok-creative-analysis/` — Static creative analytics (single + bulk dialects, multi-file compare ≤7, insight engine + verdict filter + `?insight` links, SOP bars, filename-chip picker). Pure HTML/CSS/vanilla JS, no build (`app.js?v=22`). Authoritative `data/accounts.json` (20 entries × {name,username,accountId,note,active,live,topAffiliate,updatedAt}, exact-match on name); `data/catalog.json` (4 campaigns + 18 products, user-named); `data/targets.json` (SOP topN/minImpr/maxCPM, null = auto). Local `server.py` (127.0.0.1, accounts+targets savers) + `start-server.bat`; loader auto-picks newest `source-file/*.xlsx`. Statuses in its `plan.md`; releases in `CHANGELOG.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
+- `tiktok-creative-analysis/` — Static creative analytics (single + bulk dialects, multi-file compare ≤7 with auto-pick Combine/diff, trend per creative: day columns + line chart + sparklines + solo popup + ROI/CPM/AOV metrics, insight engine + verdict filter + `?insight` links, SOP bars, folder-grouped filename-chip picker, click-to-copy Post IDs). Pure HTML/CSS/vanilla JS, no build (`app.js?v=41`). Authoritative `data/accounts.json` (20 entries × {name,username,accountId,note,active,live,topAffiliate,updatedAt}, exact-match on name); `data/catalog.json` (4 campaigns + 18 products, user-named); `data/targets.json` (SOP topN/minImpr/maxCPM, null = auto). Local `server.py` (127.0.0.1, accounts+targets savers) + `start-server.bat`; loader auto-picks newest `source-file/*.xlsx` by end-date. Statuses in its `plan.md`; releases in `CHANGELOG.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
 - `tiktok-account/` — Display API dashboard (own videos + post times). Python stdlib + Tailwind, localhost 8080. `tester.py` FROZEN. 17 Sep: 429 throttle/retry, range + limit pulls (merged cache), unlink, calendar UX, thumbnails, link-mismatch guard. Statuses in its `plan.md`; releases in `CHANGELOG.md`. Agent note: `NEON_NOTE.md`.
 - `tiktok-strategy/` — Himwellness Growth OS playbook (`himwellness-playbook.html` + `full-strategy.md`). Business guardrails live here: ROI ≥7.0, CPA ≤RM21.18, 1 campaign/SKU, TTAM feeder role, dayparting windows, payday surge. Offline, localStorage.
 - `tiktok-event/` — HIMCOFFEE RACI MASTER (`index.html`, vanilla single-file, local-only, no build). Timeline 2026–2030 + RACI Worksheet + 5T/3M Blueprint + workload + CSV + local PIN seats. Reference: `raci_campaign_dashboard.tsx` (React+Firebase, FROZEN) + `tiktok-prd` (PRD v1.0.0). Statuses in its `plan.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
@@ -17,27 +17,32 @@
   `~/.gemini/config/mcp_config.json` also wired (was 0 bytes).
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, `main`) — `spreadsheet-mcp` cloned 19 Sep
   (`uv` 0.12.17, `uv sync` OK), 27 Sheets tools; repo live with docs +
-  `bootstrap.ps1` (commits `3a27f20`, `70f1700`); service-account key pending,
-  scratch read/write test pending. Own `AGENTS.md`/`DEV_NOTES.md`/`feature.md`.
-  Next Sheets work roots in that repo.
+  `bootstrap.ps1` (commits `3a27f20`, `70f1700`, push confirmed 20 Sep);
+  20 Sep: key landed (`GOOGLE_SHEETS_CRED` SET), Sheets + Drive APIs on,
+  scratch read/write GREEN on shared `mcp-scratch` (get → read → write →
+  append → read-back → clear). Workspace rule: SA cannot create sheets
+  (403 expected) — human creates + shares as Editor. Own
+  `AGENTS.md`/`DEV_NOTES.md`/`feature.md`. Next Sheets work roots in that repo.
+  Still open: IDE restart + in-IDE `get_spreadsheet_info`; `gh` not installed.
 - `1-MASTER/` — this file + `MASTER-CHANGELOG.md` (repo rollup) + `MASTER-AGENTS.md` (shared conventions) + `antigravity-aistudio.md` (IDE transfer guide, not product code).
 
 ## 2. Current status (2026-09-19, night)
 
-- `tools/` Sheets MCP wired (sibling, outside git): `spreadsheet-mcp` cloned +
-  `uv sync` OK, `marketer/opencode.json` + Antigravity `mcp_config.json` written,
-  service-account key pending (`GOOGLE_SHEETS_CRED` NOT-SET), scratch read/write
-  test pending. Bugs fixed: uv PATH refresh, `check_setup.py` cp1252 emoji crash,
-  `GOOGLE_SERVICE_ACCOUNT_FILE` var name, git-stderr false error, opencode-vs-
-  Antigravity config split. Detail: `../tools/DEV_NOTES.md`.
+- `tools/` Sheets MCP GREEN (sibling, outside git): key landed + both APIs on,
+  `GOOGLE_SHEETS_CRED` SET, scratch read/write GREEN on shared `mcp-scratch`
+  (Workspace: human-creates + shares, SA reads/writes; SA-create 403 is
+  expected). Org-policy lift needed both key-creation constraints; 6 more
+  wiring bugs fixed (check_setup false-negative, API-disabled 403, Drive URL
+  shape, flaky ls-remote). IDE restart + in-IDE info test still open.
+  Detail: `../tools/DEV_NOTES.md`.
 - `tiktok-account` dashboard ready local-only; 20-entry accounts.json (live-read); 429-hardened range/limit pulls; link-mismatch guard live; accounts not all linked; Production app unapproved (demo video still the next big step). Committed `3ee528a`.
-- `tiktok-creative-analysis` v9–v22 local-only, verified over HTTP, UNCOMMITTED: Hide Ineligible, insight guide/popup/filter/`?insight`, N/A Product Card-campaign, Unknown split, picker chips, accountId/Active/Live/T-Aff + save stamps + Hide inactive, manager numbers/drag/groups/sections. `catalog.json` fully user-named. Backlog: exploration exit signals (`plan.md` §6). Releases → `tiktok-creative-analysis/CHANGELOG.md`.
+- `tiktok-creative-analysis` v23–v41 local-only, verified over HTTP, UNCOMMITTED: source subfolders + folder `[id]` labels, newest-by-date, trend per creative (day columns, line chart, sparklines, solo popup, Post ID column, Post-ID legend, ROI/CPM/AOV metrics with ratio-safe totals), click-to-copy Post IDs everywhere, auto-pick Combine for disjoint dated files. `source-file/` on disk: himcoffee 7× daily 09-13→09-19 + `BULK DATA/` subfolder. `catalog.json` shows worktree edits (user may have started naming — re-read before naming work). Backlog: exploration exit signals (`plan.md` §6). Releases → `tiktok-creative-analysis/CHANGELOG.md`.
 - `tiktok-strategy` playbook content complete (static).
 - `tiktok-event` built 17 Sep (vanilla RACI board + docs), UNTRACKED. Backlog: structured due-dates, C/I columns, shared Firebase seats, mobile cards.
-- `gmvmax-auto` P0 skeleton landed 19 Sep (UNCOMMITTED): Neon `TIKTOK DATA` SG with `production` + persistent `dev`, `001–004` applied (`acct`=2, `gmv`=7 both branches; 004 fixed public-schema + reserved-`window`→`win` bugs), collector stub + 8082 dashboard verified offline-first, keys gitignored (lengths-only check). Business API `TIKTOK GMV MAX` PENDING approval (sandbox locked); Shop Custom app created (MY). Next: sandbox GET wiring → 48×30m snapshots → P0 exit. Detail: `gmvmax-auto/plan.md`, `DEV_NOTES.md`, `CHANGELOG.md`.
-- Git: branch `main`. HEAD `f8c8c05` (17 Sep 13:44, accidental junk message —
-  template committed verbatim) holds v8–v14 + 1-MASTER creation + tiktok-event.
-  UNCOMMITTED on top: v15–v22 + 20-entry accounts.json + doc refreshes. Commit
+- `gmvmax-auto` P0 skeleton landed 19 Sep (UNCOMMITTED): Neon `TIKTOK DATA` SG with `production` + persistent `dev`, `001–004` applied (`acct`=2, `gmv`=7 both branches; 004 fixed public-schema + reserved-`window`→`win` bugs), collector stub + 8082 dashboard verified offline-first, keys gitignored (lengths-only check). Business API `TIKTOK GMV MAX` PENDING approval — expected non-issue 20 Sep, P0 holds file-first (sandbox locked); Shop Custom app created (MY). Next: sandbox GET wiring → 48×30m snapshots → P0 exit. Detail: `gmvmax-auto/plan.md`, `DEV_NOTES.md`, `CHANGELOG.md`.
+- Git: branch `main`. HEAD `1d6c81d`. Worktree holds UNCOMMITTED edits across
+  `1-MASTER/*`, root `AGENTS.md`, `gmvmax-auto/` docs, and creative-analysis
+  code+docs (v23–v37 from earlier windows, v38–v41 this window). Commit
   only when asked.
 
 ## 3. Relations each AGENTS.md must know

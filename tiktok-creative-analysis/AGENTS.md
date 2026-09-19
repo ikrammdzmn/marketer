@@ -104,14 +104,21 @@ files). Serve on a fresh port per test; always stop background servers.
    back to creative-text+account), filename uses `~`+hours for the period. `rowsOfWorkbook`
    normalises both dialects to one row shape (`campaign` blank for single-campaign files);
    never branch downstream code on dialect except the file-list badge. Compare join key is
-   `keyOf(postId, account, creative)`. Trend view (`rebuildTrend`/`renderTrend`,
+   `keyOf(postId, account, creative)`.    Trend view (`rebuildTrend`/`renderTrend`,
    same join key): one row per video, one column per file oldest→newest
-   (`trendHead` short dates), metric switcher + total/latest/Δ sort, `–` for
+   (`trendHead` short dates), metric switcher (rev/ord/cost/impr/roi/cpm/aov —
+   ratio totals recomputed from summed base numbers via per-metric `tot`, never
+   summed ratios) + total/latest/Δ sort, `–` for
    absent, long-format trend CSV, daily line chart above the table
-   (`renderTrendChart`, top 10, gaps for absent), per-row SVG sparklines
+   (`renderTrendChart`, top 10, gaps for absent, legend `Post ID · account`,
+   hover keeps creative title), per-row SVG sparklines
    (`sparkline`, per-row scale, Shape column), solo popup on Shape click
    (`openTrendModal`/`closeTrendModal`, enlarged line + mini cards), Post ID
-   column after Move with click-to-copy (`data-copy` delegation).
+   column after Move with click-to-copy (`data-copy` delegation — Top, Compare
+   AND Trend renderers carry it; never wire one table alone).
+   Compare mode auto-picks on file-set change (`autoPickMode`: dated + disjoint
+   ⇒ combine, else diff; manual radio wins until the set changes; flips announced
+   on the status line via `state.modeMsg`; dateless files always diff).
    Bundled picker (`bundlePick`) lists candidates with
    period + cached dialect badge, newest pre-ticked, max 7. Filename-only picker chips
    (`pickerMeta`): single date vs `from → to · N days`, product chip from `Product {ID}`
@@ -120,7 +127,10 @@ files). Serve on a fresh port per test; always stop background servers.
    `renderCatHint` skips it) — same rule in `prodName`, compare renderer + CSV.
 4. **Editing**: copy exact strings from Read output for edit anchors, never retype.
    After each edit, grep the touched identifiers and re-read the region — CSS appends
-   and plan.md lines have been clobbered before by overlapping matches.
+   and plan.md lines have been clobbered before by overlapping matches. New cell
+   affordance → ALL sibling renderers the same session (`renderTop`/`renderCompare`/
+   `renderTrend`/modal/preview; grep the hook, e.g. `data-copy`) — Trend-only copy
+   shipped a bug report (v38).
    Bump `app.js?v=N` in index.html whenever app.js changes (no build step to hash it).
    Add a `CHANGELOG.md` line per release in the same session (counter keeps rising,
    never renumber).

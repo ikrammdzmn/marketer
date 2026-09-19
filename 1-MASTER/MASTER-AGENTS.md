@@ -46,6 +46,8 @@ additional prompt Do not delete this part
 
 - Copy exact strings from Read output for edit anchors, never retype.
 - After each edit, grep touched identifiers and re-read the region.
+- New cell affordance in one table → apply to every sibling renderer the same
+  session (grep the hook); single-table affordances ship as bug reports (v38).
 - Verify like the folder demands (e.g. `node --check` + HTTP smoke on a fresh
   port); temp scripts live in the opencode temp dir and are deleted after.
 
@@ -85,5 +87,10 @@ additional prompt Do not delete this part
   `marketer/opencode.json` (`mcp` + `command[]` + `{env:}`), Antigravity reads
   `~/.gemini/config/mcp_config.json` (`mcpServers` + `args[]` + `env`).
   Restart IDE after config change. `check_setup.py` needs UTF-8
-  (`chcp 65001`); git stderr progress is not an error; winget `uv` needs a
-  fresh shell before it resolves.
+  (`chcp 65001`) and only checks `./credentials/` — a "No credentials file"
+  from it proves nothing; verify via `auth.get_sheets_service()`. Git stderr
+  progress is not an error; winget `uv` needs a fresh shell; `ls-remote`
+  needs one retry on empty. Workspace: lift BOTH key-creation constraints
+  (managed + legacy), enable BOTH Sheets + Drive APIs via full
+  `/apis/library/` URLs, SA cannot create sheets (403 expected) — human
+  creates + shares as Editor. Status GREEN 20 Sep on shared-sheet read/write.

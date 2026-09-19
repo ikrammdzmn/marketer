@@ -49,7 +49,8 @@ with that account's videos, its own mini-totals, and a **Show more** button to s
 of them (50 at a time so the page stays fast).
 
 **Top creatives table** — the actual videos, best first. First 200 shown; use Export
-for the full list. Above it sits the **benchmark bar** (e.g. `Top-20 bar: ≥574 impr
+for the full list. Click any Post ID to copy it (then paste into Search to isolate
+the video) — note IDs may differ in trailing digits, verify before Ads Manager use. Above it sits the **benchmark bar** (e.g. `Top-20 bar: ≥574 impr
 (auto) · CPM ≤22.16 (auto)`): the minimum impressions of the top videos and their
 median CPM, recomputed from each file. Switch Top 10/15/20/25 to re-bar instantly.
 Set your own numbers in Manage accounts (blank = auto); yours are tagged `yours`. The **Posted** column shows when the video was posted and how
@@ -76,7 +77,8 @@ your file after).
 creatives. It matches each video across the oldest (baseline) and newest (latest)
 files and shows the change: `NEW` (only in latest), `LOST` (gone from latest),
 `KEPT` (in both), plus the difference in revenue, orders, cost, ROI, views and CPM,
-and whether its status moved (e.g. `Exploring → Performing`). Faint grey rows are
+and whether its status moved (e.g. `Exploring → Performing`). Post IDs copy on
+click, same as the Top and Trend tables. Faint grey rows are
 tiny wobbles (under RM1), safe to ignore. Use the **Movement** dropdown for NEW /
 LOST only, sort by biggest revenue change, and **Export compare CSV** to keep it.
 Above the files sits the mode switch: **Latest − Baseline** (for overlapping weeks —
@@ -84,6 +86,10 @@ summing those would double-count) or **Combine days** (adds up non-overlapping d
 files into one week total, shown in the normal tables). A warning line tells you which
 one fits your files. Mixed file types show a note — single-campaign files take
 their campaign tag from their source folder (`name - [id]`).
+The page auto-picks the mode when files load: dated files with no overlap land
+on Combine, overlapping or dateless sets stay on diff — flipping the switch
+yourself always wins until you add or remove a file, and the status line says
+whenever an auto-switch happens.
 
 ## Campaign (bulk files)
 
@@ -104,11 +110,12 @@ reads the `Product {ID}` from the file name instead. Unnamed products show
 
 Below compare sits the **Trend** table: one row per video, one column per loaded
 file from oldest to newest, so you can watch a creative day by day. Switch the
-**Metric** between revenue, orders, cost and impressions; sort by week **Total**,
+**Metric** between revenue, orders, cost, impressions, ROI, CPM and AOV; sort by week **Total**,
 **Latest day**, or the **Δ** between first and latest file. `–` means the video
 wasn't in that file (spot launches and kills down the columns); the Move badge
 marks NEW / LOST / KEPT the same way compare does. A line chart above the table
-draws the top 10 — switch metric and both follow. Every row also carries its own
+draws the top 10 — switch metric and both follow; its lines are labeled by Post
+ID (hover any point for the creative title). Every row also carries its own
 mini shape graph (Shape column, hover for exact day values; shapes are scaled per
 row, so compare shapes within a row and numbers across rows). Rows lead with the
 Post ID (click to copy, then paste into Search to isolate the video) — note IDs

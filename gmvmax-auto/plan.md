@@ -1,6 +1,6 @@
 # GMV Max Auto — P0 plan
 
-Status: P0 skeleton landed (local file-first, 2026-09-19). Neon GREEN (dev+prod 2/7). Business API app PENDING approval; Shop Custom app created. Real GET wiring waits on approval.
+Status: P0 skeleton landed (local file-first, 2026-09-19). Neon GREEN (dev+prod 2/7). Business API app PENDING approval — expected non-issue 20 Sep, P0 holds file-first; Shop Custom app created. Real GET wiring waits on approval.
 
 ## 1. Goal
 
@@ -20,7 +20,7 @@ Read-only visibility: Neon online + TikTok app paperwork moving + collector pull
 
 ### TikTok app application checklist (paperwork, no code dependency)
 
-- [x] New Business API app at `business-api.tiktok.com` (Display app cannot extend) — `TIKTOK GMV MAX` submitted 2026-09-19, PENDING approval; redirect `http://localhost:8082/callback` (IP form rejected); scopes All on Ad account + Ads + Reporting
+- [x] New Business API app at `business-api.tiktok.com` (Display app cannot extend) — `TIKTOK GMV MAX` submitted 2026-09-19, PENDING approval (expected non-issue 20 Sep, wait, file-first continues); redirect `http://localhost:8082/callback` (IP form rejected); scopes All on Ad account + Ads + Reporting
 - [x] Shop Open API Custom app (Partner Center, MY, eCommerce Connectors, `HIMWELLNESS GMV MAX INTERNAL`) created; `SHOP_APP_KEY/SECRET` in gitignored `.local_secrets.json`
 - [ ] Record: sandbox vs prod keys/redirects, scopes requested (read-only first acceptable), advertiser OAuth + shop auth flow — sandbox ad account locked until Business approval
 - [ ] Sandbox approved → note write-scope status (read-only vs write); P0 proceeds read-only either way

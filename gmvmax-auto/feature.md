@@ -31,8 +31,8 @@
 - Real TikTok numbers appear after the TikTok app approval finishes (currently pending).
   Until then the table shows test rows so you can learn the screen.
 
-## Waiting on (nothing for you to do)
-- TikTok Business app approval (submitted, pending). Sandbox test account unlocks after.
+## Waiting on (expected non-issue — nothing for you to do)
+- TikTok Business app approval (submitted, pending 20 Sep — this wait is normal, not a bug). Sandbox test account unlocks after.
 - Shop app is already linked. Database (Singapore) is already live with test/dev split.
 
 ## Coming next (P1/P2, plain words)

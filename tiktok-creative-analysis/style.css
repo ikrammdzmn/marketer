@@ -133,3 +133,7 @@
 [data-mrow].drag-src { opacity: 0.4; }
 [data-mrow].drag-before { box-shadow: 0 -2px 0 #2563eb; }
 [data-mrow].drag-after { box-shadow: 0 2px 0 #2563eb; }
+/* Click-to-copy Post IDs: pointer + hover hint (Top / Compare / Trend tables + solo popup) */
+[data-copy] { cursor: pointer; }
+[data-copy]:hover { text-decoration: underline; color: #2563eb; }
+.dark [data-copy]:hover { color: #93c5fd; }

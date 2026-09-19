@@ -67,6 +67,10 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Per-row sparklines (v35): Shape column with inline SVG per video (per-row scale, gaps for absent, value tooltips)
   - [x] Trend solo popup (v36): click Shape cell for enlarged single-creative chart + Total/Latest/Δ/Days cards (✕/backdrop/Esc close)
   - [x] Trend Post ID column (v37): mono ID right after Move, click-to-copy (table + popup), trailing-digit footnote
+  - [x] Click-to-copy Post ID in Top + Compare (v38): same data-copy handler + tooltip as Trend, hover affordance; rechecked Trend popup (already copied), account popup (no Post ID column), Preview/CSV (plain selectable IDs)
+  - [x] Trend chart legend shows Post IDs (v39): lines labeled `Post ID · account` instead of truncated creative titles; hover tooltip keeps the creative title + value
+  - [x] ROI / CPM / AOV trend metrics (v40): per-file ratio columns in switcher, chart + sparklines follow; Total sort recomputed from summed base numbers
+  - [x] Auto-pick Combine for non-overlapping files (v41): mode chosen on file-set change (dated + disjoint → combine, else diff); manual flip wins until set changes; status line announces switches
   - [x] Date-based newest (v33): pre-tick + single load use dataset end-date, not alphabetical order (lowercase bulk name sorted last)  - [x] Account dropdown grouped: Allowlisted (10) / Other accounts in file optgroups
   - [x] Account search box beside dropdown (narrows options, Enter picks first match)
   - [x] Search suggestions popup (top 8, allowlisted tagged) + "No account found" note

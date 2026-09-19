@@ -33,29 +33,36 @@ in the editor instead of double-clicking it. Guide them to File Explorer +
 double-click / desktop shortcut. They keep old habits (Live Server on its own port was
 the root cause of the whole saver saga). Expect to redirect twice.
 
-## Current mood (this window)
+## Current mood — 19 Sep late window (v38→v41, this session)
 
-Multi-file era. User asked "can the system handle multiple files, compare each video
-by 2 source files" (feasibility first, then "ok go") — so the tool learned:
-multi-slot loader (up to 7, drag-drop/multi-pick/bundled), baseline→latest Δ table
-(NEW/LOST/KEPT), Combine-days sum mode, overlap guard. Then user revealed the bulk
-GMV Max export (different headers + `~`-hours naming) living in sample-data — so we
-built the header adapter, Campaign filter/column, bundled checkbox picker, and
-`data/catalog.json` friendly-name mapping. Same terse loop throughout ("ok go",
-"ok goo"), plan-mode detours respected (words-only, question tool, no code until
-"ok go"). Ended on: user will fill catalog labels themselves — ALL labels ship
-blank on purpose. They committed nothing this window; the pile is big (see below).
+The terse loop matured into real trust. User now alternates between three gears:
+(a) bug-with-screenshot ("Post ID can't copy in Top creatives", "why are KEPT rows
+grey?"), (b) feasibility-first ("can we add ROI/CPM?", "auto-select Combine?" —
+always "just answer, do not edit", then "ok build"), (c) meta questions
+("is this usable by non-builders?", this wrap-up ritual). Replies stayed short
+throughout; every build verified (`node --check` + fresh-port smoke) and announced
+with the `app.js?v=N` to hard-refresh. Energy: end-of-day, get-it-landed, no
+experiments — user validates visually in the browser with the 7 himcoffee dailies
+(09-13→09-19) loaded, pastes screenshots of anything odd. Sync cue for next self:
+lead with the one-line verdict, keep code talk out unless they say go, and never
+ask them to touch terminal/JSON — offer, don't assign.
 
 ## ⏰ NEXT SESSION — remind the user
 
-1. **Name things in `data/catalog.json`** — 4 campaign labels + 18 product names are
-   blank. They said "ok i will update the naming". Raw IDs show until named; the
-   amber `catHint` note counts what's left. Reload page (Ctrl+Shift+R) after saving.
-2. **Commit decision pending** — large uncommitted pile (app.js, index.html, AGENTS,
-   feature, plan, accounts.json, deleted sample-data (1).xlsx, untracked catalog.json
-   - 5 new xlsx in source-file/sample-data). ONLY when asked.
-3. Open offer: silence the cross-dialect "campaign moved" flag when one side is blank
-   (every KEPT row in a mixed session flags `→ [campaign]` — noisy but true).
+1. **Hard refresh for v41** (Ctrl+Shift+R) — `app.js?v=41` current. Auto-Combine is
+   new behaviour: if they load overlapping files and totals look doubled, check
+   the mode switch first (auto only fires on file-set change; their manual flip wins).
+2. **Commit decision still pending — ONLY when asked.** Pile keeps growing:
+   `app.js`, `index.html`, `style.css`, `AGENTS.md`, `feature.md`, `plan.md`,
+   `CHANGELOG.md`, `DEV_NOTES.md` (this file), `data/catalog.json` (worktree shows
+   edits — re-read before any naming work; user may have started naming), plus
+   other windows' edits in `1-MASTER/*`, root `AGENTS.md`, `gmvmax-auto/` docs.
+   HEAD is `1d6c81d`. Never commit secrets; never push unasked.
+3. **Catalog naming** — user said they'd name things themselves. Amber `catHint`
+   counts what's left; reload after saving.
+4. Open offers (parked, don't nag): silence cross-dialect "campaign moved" flag when
+   one side is blank; Post ID column in the account popup (user knows it has none);
+   adjustable RM1 noise threshold.
 
 ## Project snapshot
 
@@ -71,9 +78,11 @@ blank on purpose. They committed nothing this window; the pile is big (see below
 - Serving: `python server.py` (stdlib, 127.0.0.1, static + POST /api/accounts +
   POST /api/targets savers + GET /api/version fingerprint) or double-click
   `start-server.bat`. Plain `http.server` / Live Server / Pages = view-only.
-- `accounts.json`: 10 × `{name, username, note}` (user added `Dr. Samhan` @dr.samhan
-  themselves); 9 of 10 match xlsx; `Dr Samhan Official4` kept (0 rows). User edits
-  this file directly too — re-read before work.
+- `accounts.json`: 20 entries × `{name, username, accountId, note, active, live,
+  topAffiliate, updatedAt}` (exact-match on name; user adds/reorders mid-session —
+  re-read before save-related work). `Dr Samhan Official4` kept (0 rows).
+- `data/catalog.json`: worktree shows edits (user may have started naming) —
+  re-read before naming work. Amber `catHint` counts what's left.
 - `data/targets.json`: `{topN, minImpr, maxCPM}`, null = auto from file. Bench bars
   (`topBar`/`cpmBar`) manual-win-else-auto-top-N, tagged `yours`/`auto`. CPM bar =
   MEDIAN of top-N (user agreed: average twitches on outliers; median↔avg gap is
@@ -88,11 +97,11 @@ blank on purpose. They committed nothing this window; the pile is big (see below
   needs its OWN copy of any new CSS (it doesn't inherit style.css).
 - `docs/privacy.html+terms.html` at repo root: NOT ours, don't touch.
 - Backlog still parked: plan.md §6 (exploration exit signals).
-- Source xlsx rotates weekly (`source-file/` now: 5 daily per-campaign 09-08→09-15 +
-  bulk `creative data for product campaigns 2026-09-08 00 ~ 2026-09-15 05`, 31.5k rows;
-  loader auto-picks newest by filename; period parser accepts bare ranges AND `~`+hours;
-  BUNDLED_FILE fallback repointed at the current file (matters
-  for GitHub Pages, which has no directory listing).
+- Source xlsx (verified 19 Sep late): `source-file/1. himcoffee - [1858977225474178]/`
+  7× daily 09-13→09-19 (Product 1729556489100298210) + `source-file/BULK DATA/`
+  (5 dailies 09-07→09-15 + 09-08→09-15 range pair + bulk `00 ~ 05`); loader
+  auto-picks newest by end-date; period parser accepts bare ranges AND `~`+hours;
+  BUNDLED_FILE fallback carries its folder path (matters for Pages, no listing).
 - TWO dialects, one row shape (`rowsOfWorkbook` normalises; never branch downstream
   except the file-list badge): single (Post ID/Creative/ROI, 118-row sample) vs bulk
   (Video title/Video ID/Campaign name+ID/Product ID, no ROI → derived Rev÷Cost;
@@ -101,9 +110,12 @@ blank on purpose. They committed nothing this window; the pile is big (see below
   both dialects. Bulk catalogue rows do NOT match single-file Product Cards (numeric
   vs TXT keys) — Exclude Product Card for clean mixed compares.
 - Multi-file (max 7): `state.files[]` {label, period, rows, dialect}; main view =
-  latest file (compare mode) or summed rows (combine mode); Δ table = oldest vs
-  newest only (middle files listed, feed nothing — by design). `bundlePick` checkbox
-  picker (newest pre-ticked, dialect badge cached after first read). `app.js?v=8`.
+  latest file (compare mode) or summed rows (combine mode); mode AUTO-PICKS on
+  file-set change (`autoPickMode`: dated + disjoint ⇒ combine, else diff; manual
+  radio wins until set changes; switch announced on status line via `state.modeMsg`).
+  Δ table = oldest vs newest only (middle files listed, feed nothing — by design).
+  `bundlePick` checkbox picker (newest pre-ticked, dialect badge cached after first
+  read). `app.js?v=41`.
 - `data/catalog.json`: user-authored {campaigns:{ID:{label,note}}, products:{ID:{name,note}}}
   (4 + 18 IDs from the 09-08 bulk file, ALL blank until user names them — prefilled
   guesses were reverted per rule 1). Display-only; filter values stay raw names.
@@ -185,6 +197,26 @@ Prior windows 1–10 live below (kept for continuity). This window:
     too) · parallel-shell race (sequential dependents) · deleted repo ate git
     identity (dump config before removal; repo-local identity) · `git mv` + re-verify
     from new dir.
+27. **Click-to-copy shipped in ONE renderer only (v38 bug)** — v37 added `data-copy`
+    to the Trend Post ID cell; Top (`renderTop`) and Compare (`renderCompare`) kept
+    plain `<td class="mono">`, user screenshot-reported "can't copy". _Lesson: a new
+    cell affordance MUST hit every sibling renderer the same session — `renderTop`,
+    `renderCompare`, `renderTrend`, account modal, preview blob. After any affordance
+    edit, grep the hook (e.g. `data-copy`) and confirm every table lights up. Now a
+    standing checklist line (see below)._
+28. **PowerShell ate `$vars` in `node -e`** — a `node -e "...$get_roi..."` one-liner
+    arrived as `= ...` garbage (double-quoted args interpolate `$`). _Lesson:
+    extends #11 — NEVER inline JS with `$` or nested quotes via PowerShell; Write a
+    temp `.js` to the opencode temp dir, run, delete._
+29. **User read latest-file KPIs as 7-day totals (UX gap, not code bug)** — 7 dailies
+    loaded in diff mode, pasted Search for one Post ID showed Rows=1 (19 Sep only),
+    asked "why". _Lesson: when a mode switch changes what headline numbers MEAN,
+    auto-pick the least-surprising mode and ANNOUNCE it on the status line (→ v41
+    `autoPickMode`: dated+disjoint ⇒ combine, else diff; manual flip wins until the
+    file set changes; dateless files can never prove non-overlap ⇒ diff)._
+30. **No-op ternary hid unfinished intent** — `rangesOverlap() ? 'compare' :
+    'compare'` sat in `addFile` (both arms identical). _Lesson: identical ternary
+    arms = unfinished thought; flag on sight, resolve or delete._
 
 ## Standing patterns to preserve
 
@@ -202,6 +234,8 @@ Prior windows 1–10 live below (kept for continuity). This window:
   New filter? FOUR: input markup + listener list + `filtered()` + `filterContext()`.
 - New table column? SIX: thead + empty-note colspan + row renderer (+modal renderer) +
   CSV + preview cols/widths/body (+compare table + compare CSV if applicable).
+- New cell affordance (copy/tooltip/cursor)? ALL sibling renderers the same session
+  (`renderTop`/`renderCompare`/`renderTrend`/modal/preview) — grep the hook after.
 - New file dialect? Normalise in `rowsOfWorkbook` to the one row shape; downstream
   code must not branch on dialect. New ID mapping file? Ship IDs with blank labels
   (rule 1), display-only, filter values stay raw.

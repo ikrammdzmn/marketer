@@ -4,6 +4,33 @@ Newest first, in plain words. `plan.md` is the live checklist; this file is the
 release record. The `app.js?v=N` tag is a cache-buster counter (it keeps rising:
 v15, v16, …) — the headings below are releases in the order they shipped.
 
+## v41 — 19 Sep 2026 — Auto-pick Combine for non-overlapping files
+
+Loading 2+ dated files with no overlap now lands on Combine days automatically
+(true period totals in the main tables); overlapping or dateless sets stay on
+Latest − Baseline. Manual flips always win until the file set changes, and the
+status line announces every auto-switch.
+
+## v40 — 19 Sep 2026 — ROI / CPM / AOV trend metrics
+
+The Trend metric switcher gains ROI, CPM and AOV (per-file values, same chart +
+sparklines + sorting). Total sort for these three is recomputed from summed
+revenue/cost/orders/impressions — never summed ratios.
+
+## v39 — 19 Sep 2026 — Trend chart legend shows Post IDs
+
+The daily line chart above the Trend table labeled its lines with creative
+titles (often identical prefixes, unreadable). Lines are now labeled `Post ID ·
+account` — hovering any point still reveals the creative title with the value.
+
+## v38 — 19 Sep 2026 — Click-to-copy Post ID in Top + Compare
+
+Top creatives and Compare Post IDs copy on click, same as Trend (with the same
+trailing-digit tooltip) — plus a pointer/hover hint so the affordance is
+visible. Rechecked everywhere: Trend table + solo popup already copied; the
+account popup has no Post ID column (nothing to copy there); Preview/CSV carry
+plain selectable IDs.
+
 ## v34 — 19 Sep 2026 — Trend line chart
 
 The Trend section gains a daily line chart above the table: top 10 creatives by
