@@ -9,7 +9,8 @@ Rule: whoever ships a folder release adds one line here the same session.
 - `tiktok-account`: scale-hardening + linking safety — 429 throttle/retry fix,
   range Refresh + fetch-limit box (merged cache), Unlink button, calendar hover
   preview + Clear + single-click day, MYT-datetime Posted column, lazy title
-  thumbnails, wider page, link-mismatch guard (warn-with-override, amber pill);
+  thumbnails, wider page, link-mismatch guard (warn-with-override, amber pill),
+  clean video links (tracking stripped);
   `feature.md` rewritten as user showcase → `tiktok-account/CHANGELOG.md`
 
 - `tiktok-creative-analysis` v9–v14: Hide Ineligible tick, insight guide + chip

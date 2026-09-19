@@ -54,6 +54,9 @@ Status: DASHBOARD READY (local only; link each account once, then select + Refre
 - [x] Fetch limit: Limit box next to Refresh — All / 30 / 50 / 100 / custom;
   Refresh fetches newest N only, merged into cache (30 ≈ 2 pages, ~2s).
   Composes with range filter.
+- [x] Clean video links: `?utm_campaign…&utm_source…` tracking stripped at
+  ingest (table + CSV + export); cover URLs untouched (query = expiry key).
+  Old caches auto-migrate on next table view (no re-pull needed).
 - [ ] Table page-size (planned, if wanted): show N rows at a time in browser
   (e.g. 30/page with Next/Prev) for fast rendering on 2000-video accounts.
 - [ ] Link all 10 real accounts end-to-end (one Authorize each)

@@ -286,3 +286,71 @@ Unique discoveries this window:
   `CHANGELOG.md` + `MASTER-CHANGELOG.md` line, MASTER-PLAN status if scope
   moved. (This window: created `tiktok-account/CHANGELOG.md`; rewrote
   `feature.md` as full showcase.)
+
+## Window 2026-09-17 (late) — second PC + clean links (latest)
+
+Vibe: support-desk interlude, then a two-line fix that grew teeth. User tried
+to clone this exact setup onto a Win10 second PC (Antigravity terminal) and
+hit the classic wall: pasted screenshots vanished. Then back on the project:
+"trim the ?utm… off video links" → built `clean_share`, user proved it
+wasn't enough (stale cache still dirty on click) → added read-time
+migration. Mood stayed light throughout ("huh, its finally works").
+Headspace for next-you: this user now runs TWO PCs (this one = opencode
+chat; other = Win10 + Antigravity + external Windows Terminal + opencode).
+Anything terminal-flavored must be qualified with WHICH pc + WHICH window.
+
+What happened:
+1. **Image-paste saga (other PC)**: pasting screenshots into Antigravity's
+   terminal did nothing. Diagnosis: terminals accept text only; this chat's
+   input converts clipboard pictures into `[Image N]` attachments (that's
+   the proof an image was sent — no chip, no pixels). Fix path walked:
+   `npm install -g opencode-ai` → EPERM cleanup warning (old opencode.exe
+   locking files; kill + retry = clean install) → paste still dead inside
+   IDE terminal → standalone cmd received images but rendered `?????`
+   glyphs (Win10 conhost, no Unicode) → `chcp 65001` + TrueType font patch,
+   Windows Terminal recommended → can't embed WT inside Antigravity (panel
+   is xterm, not swappable) → side-by-side external terminal, or
+   `opencode web` + browser URL. Closed with "huh, its finally works".
+2. **`clean_share`**: strips `?utm_campaign=tt4d_open_api&utm_source=…` (+
+   fragments) from `share_url` at ingest in `pull_and_cache`; covers
+   deliberately untouched (query = expiry signature). Verified 7-case unit
+   + mock e2e (share clean, cover intact).
+3. **Stale-cache report**: user clicked `open`, still saw `?utm…` — old rows
+   cached pre-fix. Instead of demanding re-pulls: `maybe_migrate_cache`
+   runs on every `/api/videos` view (rewrites JSON+CSV only when dirty,
+   idempotent, missing-account safe) + extracted shared `_write_cache()`
+   used by pull + migration. Just viewing the table heals it.
+4. Footnote given: if `?utm…` ever reappears on fresh rows, suspect TikTok
+   re-adding params on navigation (their site does that), not us.
+
+Unique discoveries:
+- `here` = opencode-ai via npm (`C:\Users\PC CUSTOM\...\npm\node_modules\
+  opencode-ai`), PID-confirmed. Other PC = Win10, conhost defaults,
+  Antigravity IDE. opencode TUI needs a Unicode-capable terminal OR
+  `opencode web` + browser for full fidelity.
+- Refactor hazard, live example: extracting `_write_cache` silently dropped
+  the profile (`pp`) write AND left `pp` undefined — caught by re-reading
+  the region before any run (NameError would have hit on next Refresh).
+  Re-reads are not bureaucracy; this is the second save of the session.
+
+## Bugs found & fixed (and the lesson from each)
+
+24. **Stale cache survived a correct fix** — ingest-only cleaning left old
+    rows dirty; user found it in one click. _Lesson: every data-normalizing
+    fix ships with a read-time migration for pre-existing rows, or the fix
+    is only half-shipped. Users never "re-pull to apply"._
+25. **Refactor dropped the profile write + orphaned `pp`** — same session,
+    same file, caught by re-read. _Lesson: any extract-method edit gets a
+    full re-read of BOTH call site and new function before verify; the
+    compiler won't catch a still-referenced-but-undefined name until the
+    code path runs (and this path runs against live tokens)._
+
+## Standing patterns to preserve (amends)
+
+- "Do the dev note ritual" = append window section + bugs/lessons here,
+  tick plan/changelogs for anything built since last ritual. No commit.
+- Two-PC user now: always disambiguate machine + terminal app when helping
+  with setup; `[Image N]` chip = image actually sent.
+- Don't kill unfamiliar Python PIDs (6000 = system Python, left alone);
+  only kill scratch servers you started (C:\Python314 ones), verified by
+  Path before `Stop-Process`.

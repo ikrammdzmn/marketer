@@ -256,6 +256,23 @@ class RelinkNeeded(Exception):
     pass
 
 
+def clean_share(url):
+    """Drop TikTok API tracking query (?utm_campaign=...) from share_url.
+
+    The video address is scheme://host + path only; cover_image_url is
+    NOT touched (its query holds the expiry signature).
+    """
+    if not url or not isinstance(url, str):
+        return url
+    try:
+        p = urllib.parse.urlsplit(url)
+    except ValueError:
+        return url
+    if not p.scheme or not p.netloc:
+        return url
+    return urllib.parse.urlunsplit((p.scheme, p.netloc, p.path, "", ""))
+
+
 def ensure_access(account):
     """Return a live access token, refreshing silently. Raise RelinkNeeded."""
     t = load_token(account)
@@ -370,28 +387,64 @@ def pull_and_cache(account, access, since_ts=None, until_ts=None, max_videos=Non
                         reverse=True)
     else:
         merged = out
-    os.makedirs(CSVS_DIR, exist_ok=True)
-    jp, cp, pp = cache_paths(account)
-    with open(jp, "w", encoding="utf-8") as f:
-        json.dump({"account": account, "cached_at": time.time(),
-                   "count": len(merged), "videos": merged}, f, ensure_ascii=False)
-    with open(cp, "w", newline="", encoding="utf-8-sig") as f:
-        w = csv.writer(f)
-        w.writerow(["account", "id", "title", "posted_myt", "posted_utc",
-                    "view_count", "like_count", "comment_count",
-                    "share_count", "cover_image_url", "share_url"])
-        for v in merged:
-            myt, utc = to_myt(v.get("create_time"))
-            w.writerow([account, v.get("id"), v.get("title"), myt, utc,
-                        v.get("view_count"), v.get("like_count"),
-                        v.get("comment_count"), v.get("share_count"),
-                        v.get("cover_image_url"), v.get("share_url")])
+    for v in merged:
+        if isinstance(v, dict) and v.get("share_url"):
+            v["share_url"] = clean_share(v["share_url"])
+    _write_cache(account, merged)
+    _jp2, _cp2, pp = cache_paths(account)
     with open(pp, "w", encoding="utf-8") as f:
         json.dump(user, f, ensure_ascii=False, indent=2)
     return user, merged, {"fetched": len(out), "pages": page,
                           "ranged": ranged, "limited": limited,
                           "stopped_early": stopped_early,
                           "complete": complete}
+
+
+def _write_cache(account, videos):
+    """Write videos JSON + CSV cache. Returns (json_path, csv_path)."""
+    os.makedirs(CSVS_DIR, exist_ok=True)
+    jp, cp, _pp = cache_paths(account)
+    with open(jp, "w", encoding="utf-8") as f:
+        json.dump({"account": account, "cached_at": time.time(),
+                   "count": len(videos), "videos": videos}, f, ensure_ascii=False)
+    with open(cp, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f)
+        w.writerow(["account", "id", "title", "posted_myt", "posted_utc",
+                    "view_count", "like_count", "comment_count",
+                    "share_count", "cover_image_url", "share_url"])
+        for v in videos:
+            myt, utc = to_myt(v.get("create_time"))
+            w.writerow([account, v.get("id"), v.get("title"), myt, utc,
+                        v.get("view_count"), v.get("like_count"),
+                        v.get("comment_count"), v.get("share_count"),
+                        v.get("cover_image_url"), v.get("share_url")])
+    return jp, cp
+
+
+def maybe_migrate_cache(account):
+    """One-time cleanup for caches saved before link-trimming existed.
+
+    Rewrites JSON + CSV only if a dirty share_url is found. Returns videos.
+    """
+    jp, _cp, _pp = cache_paths(account)
+    if not os.path.exists(jp):
+        return None
+    try:
+        with open(jp, encoding="utf-8") as f:
+            d = json.load(f) or {}
+    except (OSError, ValueError):
+        return None
+    videos = d.get("videos") or []
+    dirty = False
+    for v in videos:
+        if isinstance(v, dict) and v.get("share_url"):
+            clean = clean_share(v["share_url"])
+            if clean != v["share_url"]:
+                v["share_url"] = clean
+                dirty = True
+    if dirty:
+        _write_cache(account, videos)
+    return videos
 
 
 class H(BaseHTTPRequestHandler):
@@ -540,15 +593,13 @@ class H(BaseHTTPRequestHandler):
                     t = load_token(name)
                     self._json({"linked": bool(t), "cached": False})
             else:
-                if os.path.exists(jp):
-                    with open(jp, encoding="utf-8") as f:
-                        d = json.load(f)
-                    self._json({"linked": True, "cached": True,
-                                "count": d.get("count", 0),
-                                "videos": d.get("videos", [])})
-                else:
+                videos = maybe_migrate_cache(name)
+                if videos is None:
                     t = load_token(name)
                     self._json({"linked": bool(t), "cached": False})
+                else:
+                    self._json({"linked": True, "cached": True,
+                                "count": len(videos), "videos": videos})
             return
         if parsed.path == "/refresh":
             name = qs.get("account", [""])[0]

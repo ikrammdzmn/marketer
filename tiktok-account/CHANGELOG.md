@@ -4,7 +4,6 @@ Local-only release record, newest first. One line per shipped change.
 Rollup: `1-MASTER/MASTER-CHANGELOG.md`. Status checklist: `plan.md`.
 
 ## 17 Sep 2026 — scale-hardening + linking safety
-
 - Link-mismatch guard (warn-with-override): `/callback` verifies logged-in
   `@username` vs slot, 409 stop page (retry / jump to matching slot /
   checkbox save-anyway via `POST /confirm-link`), duplicate flagging,
@@ -16,6 +15,8 @@ Rollup: `1-MASTER/MASTER-CHANGELOG.md`. Status checklist: `plan.md`.
 - Calendar: hover range preview, single-click selects one day, Clear button
 - Posted column: MYT datetime primary + grey relative below; 40px lazy
   title-cell thumbnails (expired-cover auto-hide); page widened 1280→1760px
+- Clean video links: tracking query stripped at ingest (covers untouched);
+  pre-existing caches auto-migrate on view (shared `_write_cache` writer)
 - `feature.md` rewritten as full non-technical showcase + guide
 
 ## 15 Sep 2026 and earlier (grouped)

@@ -15,7 +15,8 @@ can use this.
 - **Every public video, newest first.** Each row shows a small photo
   (thumbnail) next to the title, the exact Malaysia date and time it was
   posted (with "3 days ago" written grey underneath), views, likes, comments,
-  shares, plus links to open the video and its full-size photo.
+  shares, plus links to open the video (short clean links, no tracking
+  clutter) and its full-size photo.
 - **Account snapshot on top.** Followers, following, total likes, video
   count, verified tick, bio — for whichever account is selected.
 - **Pick any date range.** Ready-made buttons (Today, Yesterday, Last 7 or
