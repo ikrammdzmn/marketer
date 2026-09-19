@@ -53,7 +53,21 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Third `Inactive` section at the bottom (unticking Active moves one there live; active state wins grouping; dormant tops keep T-Aff for clean reactivation; filter dropdown unchanged)
   - [x] `Hide inactive` tick (default on): drops rows of Active-unticked accounts from KPIs/tables/modal/preview/exports + compare (non-allowlisted accounts never hidden; untick to audit them)
   - [x] Per-account save stamp: `updatedAt` set by the saver only on changed/new rows (reorder alone doesn't restamp; inbound values ignored); shown as `Last updated: 17/9/26 (45 minutes ago)` in Manager + popup title (`–` until first stamp)
-  - [x] Account dropdown grouped: Allowlisted (10) / Other accounts in file optgroups
+  - [x] Source-file subfolders (v23): loose `source-file/*.xlsx` + one level of campaign folders listed together; `name - [id]` folders tag files with that ID label-only (blank Campaign IDs inherit it; single-`[id]` loads pre-set the Campaign facet)
+  - [x] Fallback file fix (v24): last-resort bundled fallback repointed at an existing subfolder file (keeps folder path) after the top-level files moved
+  - [x] Bundled picker via /api/files (v25): server.py JSON listing tried first, HTML listing fallback, explicit warning when neither works (e.g. Live Server)
+  - [x] Picker grouped by folder (v26): collapsible folder headers, folder tick selects all, live selected-count on Load button, empty folders shown greyed
+  - [x] Product–campaign tie + no bare IDs (v27): catalog `campaignId` link field (session-derived fallback), unnamed products grouped by campaign in hint, `Unnamed campaign/product` placeholders everywhere (IDs only in tooltips + CSV)
+  - [x] Archived catalog section (v28): unused campaigns/products moved under `archived`; lookups fall through so old files keep names
+  - [x] Hint tooltip (v29): hovering the amber catalog hint lists the unnamed campaign/product IDs
+  - [x] Himcoffee folder retag (v30): folder `[…298210]` (product ID) renamed to campaign `[HIMCOFFEE MAIN 1]` ID verified from bulk export; fallback path updated
+  - [x] Filename product fill (v31): blank Product IDs inherit `Product {ID}` from the filename (single-campaign files); Product column resolves via catalog
+  - [x] Trend per creative (v32): day-by-day columns across 2–7 files (metric switcher, total/latest/Δ sort, long-format CSV export)
+  - [x] Trend line chart (v34): top-10 daily lines above the trend table (current metric/sort/filters, gaps for absent, legend toggle)
+  - [x] Per-row sparklines (v35): Shape column with inline SVG per video (per-row scale, gaps for absent, value tooltips)
+  - [x] Trend solo popup (v36): click Shape cell for enlarged single-creative chart + Total/Latest/Δ/Days cards (✕/backdrop/Esc close)
+  - [x] Trend Post ID column (v37): mono ID right after Move, click-to-copy (table + popup), trailing-digit footnote
+  - [x] Date-based newest (v33): pre-tick + single load use dataset end-date, not alphabetical order (lowercase bulk name sorted last)  - [x] Account dropdown grouped: Allowlisted (10) / Other accounts in file optgroups
   - [x] Account search box beside dropdown (narrows options, Enter picks first match)
   - [x] Search suggestions popup (top 8, allowlisted tagged) + "No account found" note
   - [x] Search box: keyword search + pasted Post ID exact match (multi-ID, auto-detect)

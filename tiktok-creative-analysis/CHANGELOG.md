@@ -4,6 +4,118 @@ Newest first, in plain words. `plan.md` is the live checklist; this file is the
 release record. The `app.js?v=N` tag is a cache-buster counter (it keeps rising:
 v15, v16, …) — the headings below are releases in the order they shipped.
 
+## v34 — 19 Sep 2026 — Trend line chart
+
+The Trend section gains a daily line chart above the table: top 10 creatives by
+the current sort, current metric on the axis, gaps where a video was absent that
+file, legend click toggles lines. Follows the same filters as the table.
+
+## v35 — 19 Sep 2026 — Per-row sparklines
+
+Every trend row carries its own mini daily-shape graph (Shape column, inline
+SVG, gaps for absent days, exact values on hover). Per-row scale — compare
+shapes within a row, numbers across rows. The top-10 overview chart is
+unchanged.
+
+## v36 — 19 Sep 2026 — Trend solo popup
+
+Clicking a trend row's Shape graph opens an enlarged single-creative popup:
+bigger daily line (current metric, gaps for absent days) plus Total / Latest /
+Δ / Days-present mini cards. Closes via ✕, backdrop click or Escape, same as
+the other popups.
+
+## v37 — 19 Sep 2026 — Post ID column in trend
+
+Trend rows lead with a mono Post ID column (right after Move) instead of
+title-only — consistent with the Top and Compare tables. Clicking any ID copies
+it (pairs with Search's paste-ID mode); the solo popup shows the same copyable
+ID line. Footnote warns 19-digit IDs may differ in trailing digits.
+
+## v33 — 19 Sep 2026 — Newest means newest-by-date
+
+The pre-ticked file (and single Load bundled) picked the last filename
+alphabetically — lowercase `creative…` sorts after `Creative…`, so the older
+bulk file won over newer himcoffee files. Both now use the dataset end-date
+from the filename instead.
+
+## v32 — 19 Sep 2026 — Trend per creative
+
+New section for 2–7 files: one row per video with a column per loaded file
+(oldest → newest), switchable metric (revenue/orders/cost/impressions), sort by
+total/latest-day/Δ, `–` where the video was absent that file, plus a long-format
+trend CSV (one row per video per file) for pivoting. Respects the Account /
+Campaign / Search filters.
+
+## v31 — 19 Sep 2026 — Product ID from filename
+
+Single-campaign exports carry no Product ID column, so the Product column showed
+`–`. Blank product IDs now inherit the `Product {ID}` stated in the filename
+(bulk rows keep their own), resolving to the catalog name like everything else.
+
+## v30 — 19 Sep 2026 — Himcoffee folder retagged to campaign ID
+
+The `1. himcoffee` folder was tagged with the product ID (`…298210`) instead of
+its campaign ID. Verified against the bulk export (24,560 rows tie that product
+to campaign `1858977225474178` = `[HIMCOFFEE MAIN 1]`) and renamed the folder
+accordingly; the fallback path follows it. The `Unnamed campaign` note for those
+files clears on reload since the campaign is already named in the catalog.
+
+## v29 — 19 Sep 2026 — Hint names the unnamed IDs
+
+Hovering the amber catalog hint now lists the actual unnamed campaign/product
+IDs (first 10) in a tooltip, so you know exactly which entries to add instead
+of guessing.
+
+## v28 — 19 Sep 2026 — Archived catalog section
+
+`catalog.json` gains an `archived` section: the 2 unused campaigns and 13
+deactivated products moved out of the active lists. Lookups check active first,
+then archived, so old files showing those IDs keep their friendly names and
+the unnamed hint stays quiet for them.
+
+## v27 — 19 Sep 2026 — Product tied to campaign, no bare IDs
+
+Products now carry their campaign tie: a `campaignId` link field in
+`catalog.json` (pinned by you; otherwise derived per session from the loaded
+files), shown in the product hover title and used to group unnamed products by
+campaign in the amber catalog hint. Bare IDs no longer stand alone anywhere —
+unnamed campaigns show `Unnamed campaign` and unnamed products
+`Unnamed product` (filter, tables, compare, CSV display columns, picker chips);
+raw IDs survive only in hover tooltips and CSV ID columns.
+
+## v26 — 19 Sep 2026 — Bundled picker grouped by folder
+
+Choose bundled files now groups files under collapsible folder headers (loose
+files under Top level; empty campaign folders shown greyed as-is). Ticking a
+folder selects all its files (indeterminate state when partial), the Load
+button shows a live `selected · max 7` count, and the newest file's folder
+starts open. `/api/files` also reports empty folders.
+
+## v25 — 19 Sep 2026 — Bundled picker via /api/files
+
+The picker no longer depends on the server's HTML directory listing: `server.py`
+gains GET /api/files (top-level + one subfolder level as JSON), tried first,
+with the HTML listing as fallback for plain `python -m http.server`. If neither
+works (e.g. Live Server), the picker says so and points at `python server.py`
+instead of silently showing one stale file.
+
+## v24 — 19 Sep 2026 — Fallback file fix
+
+The last-resort bundled fallback still pointed at a top-level file that has
+since moved into a campaign subfolder (picker showed one stale file, Load
+bundled 404'd when the server listing couldn't be read — usually a cached old
+`app.js`). It now points at an existing subfolder file and keeps its folder
+path, so the fallback resolves if it is ever needed.
+
+## v23 — 19 Sep 2026 — Source-file subfolders + folder [id] labels
+
+`source-file/` now reads loose xlsx files and one level of campaign subfolders
+together (e.g. `himcoffee - [123]/file.xlsx`, `bulk/file.xlsx`). A folder named
+`name - [digits]` tags its files with that ID (label only, rows never dropped;
+blank Campaign IDs inherit it for display/compare/CSV). The picker and file list
+show `folder / file` plus `[id]` chips, and loading only from one `[id]` folder
+pre-sets the Campaign facet when that campaign exists.
+
 ## v22 — 17 Sep 2026 — Hide inactive tick
 
 New default-on tick drops every row from accounts unticked Active in Manage

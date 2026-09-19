@@ -9,10 +9,14 @@ accounts make money. No installation, no uploads — everything stays on your ow
    (it opens your browser by itself; keep its black window open while you work).
    No IDE or Live Server needed. Alternative: run `python server.py` yourself.
 2. Open your browser and go to: `http://localhost:8000`
-3. Click **Load bundled file** (picks the newest Excel in `source-file/` by itself)
-   or drag your Excel file into the dotted box. To compare weeks or days, drag
-   **several** files at once (up to 7), or click **Choose bundled files…**, tick
-   what you want (newest is pre-ticked), then **Load selected**.
+3. Click **Load bundled file** (picks the newest Excel in `source-file/` by
+   dataset date) or drag your Excel file into the dotted box. To compare weeks
+   or days, drag **several** files at once (up to 7), or click **Choose bundled
+   files…**: files are grouped under collapsible folder headers (your campaign
+   folders plus Top level) — ticking a folder selects everything inside it, and
+   the button counts as you go (`Load selected (3 · max 7)`). The newest file is
+   pre-ticked with its folder open; tick more, then **Load selected**. Empty
+   campaign folders show greyed until you drop Excel files into them.
     Each file shows below with its date range and type badge — click **remove** to drop one, **Clear** to start over.
     In the picker, one-day files show a single date, ranges show `from → to` plus day
     count, single files carry their product name, and bulk files are badged from the name.
@@ -78,24 +82,51 @@ LOST only, sort by biggest revenue change, and **Export compare CSV** to keep it
 Above the files sits the mode switch: **Latest − Baseline** (for overlapping weeks —
 summing those would double-count) or **Combine days** (adds up non-overlapping daily
 files into one week total, shown in the normal tables). A warning line tells you which
-one fits your files. Mixed file types show a note — campaign is blank for single-campaign files.
+one fits your files. Mixed file types show a note — single-campaign files take
+their campaign tag from their source folder (`name - [id]`).
 
 ## Campaign (bulk files)
 
 Files exported as **product campaigns** (bulk, many campaigns in one file) show an extra
 **Campaign** filter and column everywhere: filter the whole page to one campaign
 (e.g. `[HIMCOFFEE MAIN 1]`), see each video's campaign in the tables, and spot videos
-that moved campaigns in the compare table. Single-campaign files show `–` there —
-that is normal, not missing data. A **Product** column sits next to it everywhere,
-showing which product each video sold (also nameable in `catalog.json`).
+that moved campaigns in the compare table. Single-campaign files inherit their
+campaign tag from the source folder (`name - [id]`); until that ID is named in
+`catalog.json` the filter shows `Unnamed campaign` — that is normal, not missing
+data. A **Product** column sits next to it everywhere, showing which product
+each video sold (also nameable in `catalog.json`; each product can carry a
+`campaignId` linking it to its campaign, otherwise the page ties it from the
+loaded files). Single-campaign exports carry no product column, so the page
+reads the `Product {ID}` from the file name instead. Unnamed products show
+`Unnamed product`.
+
+## Trend per creative (2–7 files)
+
+Below compare sits the **Trend** table: one row per video, one column per loaded
+file from oldest to newest, so you can watch a creative day by day. Switch the
+**Metric** between revenue, orders, cost and impressions; sort by week **Total**,
+**Latest day**, or the **Δ** between first and latest file. `–` means the video
+wasn't in that file (spot launches and kills down the columns); the Move badge
+marks NEW / LOST / KEPT the same way compare does. A line chart above the table
+draws the top 10 — switch metric and both follow. Every row also carries its own
+mini shape graph (Shape column, hover for exact day values; shapes are scaled per
+row, so compare shapes within a row and numbers across rows). Rows lead with the
+Post ID (click to copy, then paste into Search to isolate the video) — note IDs
+may differ in trailing digits, verify before Ads Manager use. Click any Shape
+graph for an enlarged popup of that creative alone, with Total / Latest / Δ /
+Days-present cards (close with ✕, backdrop click or Escape). **Export trend CSV** downloads
+one row per video per file — built for pivoting into your own charts.
 
 **Naming your campaigns & products:** TikTok's names are cryptic (`[him cocomax]
 20260602153651`, bare ID numbers). Open `data/catalog.json` in the folder and type
 friendly names next to each ID (`"label": "Cocomax"`, `"name": "HIMCoffee"`). The page
 picks them up on reload and shows them in the filter and tables instead of the raw
-IDs (hover a cell to still see the original). IDs you haven't named yet are counted
-in a small amber note under the Campaign filter — that note disappears once
-everything is named. Rows with no product (`N/A`) appear as
+IDs (hover a cell to still see the original). Old/deactivated entries live in a
+separate `archived` section at the bottom of the same file — out of your way,
+but past files showing those IDs still get their names. IDs you haven't named yet appear as
+`Unnamed campaign` / `Unnamed product` and are counted in a small amber note under
+the Campaign filter — unnamed products are grouped by their campaign there, so you
+can name things per campaign. That note disappears once everything is named. Rows with no product (`N/A`) appear as
 `Product Card - {campaign}` (e.g. `Product Card - [Kombo]`), so catalogue promos
 stay visibly tied to their campaign.
 

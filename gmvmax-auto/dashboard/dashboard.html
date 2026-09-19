@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GMV Max Auto — P0 Dashboard (local)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 min-h-screen">
+<div class="mx-auto px-3 py-6" style="max-width:1200px">
+<header class="flex flex-wrap items-center justify-between gap-3 mb-4">
+<div>
+<h1 class="text-2xl font-bold">GMV Max Auto — P0 (read-only)</h1>
+<p class="text-sm text-gray-500">Local only · 127.0.0.1 · Closed-window T-2h · No writes in P0</p>
+</div>
+<div class="flex items-center gap-2 text-sm">
+<span id="branch" class="px-2 py-1 rounded bg-gray-200">branch: …</span>
+<span id="fresh" class="text-gray-500">freshness: …</span>
+</div>
+</header>
+<section class="bg-white rounded-lg shadow p-4 mb-4">
+<div class="flex flex-wrap items-center gap-2 mb-3">
+<span class="text-sm font-medium">Campaign:</span>
+<select id="camp" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+<option value="demo-shop:LIVE">demo-shop:LIVE</option>
+<option value="demo-shop:PRODUCT">demo-shop:PRODUCT</option>
+</select>
+<button onclick="load()" class="px-3 py-1.5 text-sm rounded-lg bg-teal-600 text-white">Refresh</button>
+<span class="text-xs text-gray-500">30m/1h · closed-window only (lag 15m–2h)</span>
+</div>
+<table id="tbl" class="w-full"><thead><tr class="text-left text-xs text-gray-500">
+<th class="p-2">slot (MYT)</th><th class="p-2">window</th><th class="p-2">spend</th>
+<th class="p-2">gmv</th><th class="p-2">roi</th><th class="p-2">basis</th>
+</tr></thead><tbody id="rows"></tbody></table>
+</section>
+<section class="bg-white rounded-lg shadow p-4 mb-4 opacity-60">
+<h2 class="font-semibold text-sm mb-1">Rules / Approval queue (P1/P2 — stubbed)</h2>
+<p class="text-xs text-gray-500">Greyed in P0. Manual budget box, Approve/Edit/Reject land in P2.</p>
+</section>
+<section class="bg-white rounded-lg shadow p-4">
+<h2 class="font-semibold text-sm mb-1">Guardrails (visible, P0)</h2>
+<p class="text-xs text-gray-600">ROI ≥ 7.0 · CPA ≤ RM21.18 · scale ≤ 20–25%/24h · no edits 16:00–17:30 · dead zone 02:00–06:00 · calendar-month cap (local kill-switch in P2)</p>
+</section>
+</div>
+<script>
+async function load(){
+  const camp = document.getElementById('camp').value;
+  const r = await fetch('/api/snapshots'); const j = await r.json();
+  document.getElementById('branch').textContent = 'branch: ' + j.branch;
+  const rows = j.rows.filter(x => !camp || x.campaign_id === camp);
+  const tb = document.getElementById('rows'); tb.innerHTML = '';
+  for (const x of rows.slice(-50).reverse()){
+    const tr = document.createElement('tr'); tr.className = 'border-t text-sm';
+    tr.innerHTML = '<td class="p-2">'+x.ts+'</td><td class="p-2">'+x.window+'</td><td class="p-2">'+(x.spend ?? '—')+'</td><td class="p-2">'+(x.gmv ?? '—')+'</td><td class="p-2">'+(x.roi ?? '—')+'</td><td class="p-2 text-gray-500">'+x.roi_basis+'</td>';
+    tb.appendChild(tr);
+  }
+  const h = await (await fetch('/api/health')).json();
+  document.getElementById('fresh').textContent = 'freshness: ' + (h.freshness || 'no snapshots yet — run collector.py');
+}
+load();
+</script>
+</body>
+</html>

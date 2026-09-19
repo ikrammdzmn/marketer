@@ -13,6 +13,9 @@ Usage:
 - POST /api/targets with {topN, minImpr, maxCPM} validates, backs up
   data/targets.json, then writes it. Null minImpr/maxCPM = auto from file.
   Nothing else is writable.
+- GET /api/files lists source-file/*.xlsx plus one subfolder level as JSON
+  {files: ["a.xlsx", "campaign - [123]/b.xlsx"], emptyDirs: ["empty campaign"]}
+  (for servers whose HTML directory listing the page cannot read).
 - Do NOT expose this to a network: it has no auth and is meant for localhost.
 """
 import glob
@@ -25,6 +28,7 @@ from urllib.parse import urlparse
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(ROOT, "data")
+SOURCE_DIR = os.path.join(ROOT, "source-file")
 ACCOUNTS = os.path.join(DATA_DIR, "accounts.json")
 TARGETS = os.path.join(DATA_DIR, "targets.json")
 MAX_ENTRIES = 100
@@ -132,6 +136,40 @@ def prune_backups():
             pass
 
 
+def list_source_files():
+    """(xlsx rel paths, empty subfolder names) under source-file/.
+
+    One subfolder level is scanned. Some static servers (VS Code Live Server
+    etc.) provide no directory listing, which the bundled picker needs —
+    hence this JSON endpoint. Empty campaign folders are reported so the
+    picker can show them as "(empty)" instead of hiding them.
+    """
+    out, empty = [], []
+    try:
+        top = sorted(os.listdir(SOURCE_DIR))
+    except OSError:
+        return out, empty
+    for name in top:
+        full = os.path.join(SOURCE_DIR, name)
+        if os.path.isfile(full) and name.lower().endswith(".xlsx"):
+            out.append(name)
+    for name in top:
+        full = os.path.join(SOURCE_DIR, name)
+        if os.path.isdir(full) and not name.startswith("."):
+            try:
+                subs = sorted(os.listdir(full))
+            except OSError:
+                continue
+            found = False
+            for sub in subs:
+                if sub.lower().endswith(".xlsx") and os.path.isfile(os.path.join(full, sub)):
+                    out.append(name + "/" + sub)
+                    found = True
+            if not found:
+                empty.append(name)
+    return sorted(out), sorted(empty)
+
+
 def validate_targets(obj):
     """Return (normalised dict, None) or (None, error string)."""
     if not isinstance(obj, dict):
@@ -187,8 +225,12 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         # Fingerprint endpoint so the page can tell server.py apart from any
         # plain static server (which answers 404 HTML here instead of JSON).
-        if urlparse(self.path).path == "/api/version":
+        path = urlparse(self.path).path
+        if path == "/api/version":
             return self._json(200, {"ok": True, "server": "server.py", "version": 1})
+        if path == "/api/files":
+            files, empty = list_source_files()
+            return self._json(200, {"ok": True, "files": files, "emptyDirs": empty})
         return super().do_GET()
 
     def do_POST(self):

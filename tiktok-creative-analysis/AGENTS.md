@@ -14,22 +14,32 @@ no framework**. Keep it that way.
   matching is exact on `name` only; username/accountId/note display-only,
   active/live/top shown as markers; updatedAt server-stamped, null until saved).
 - `data/catalog.json` — user-authored friendly names: `{campaigns: {ID: {label, note}},
-  products: {ID: {name, note}}}` (4 campaigns + 18 products from the 09-08 bulk file,
-  labels blank until named). Display-only — matching stays exact on raw file values;
-  blank label/name falls back to raw name/ID. Served as static JSON (no saver endpoint).
+  products: {ID: {name, note, campaignId}}, archived: {campaigns: {...}, products: {...}}}`
+  (deactivated entries live under `archived` — lookups check active first, then
+  archived, so old files keep their names; `campaignId` on a product pins its
+  campaign tie, otherwise the tie is derived per session from the loaded files'
+  most-frequent campaign per product). Display-only — matching stays exact on raw
+  file values; unnamed campaigns show `Unnamed campaign` and unnamed products
+  `Unnamed product` (raw IDs only in hover tooltips + CSV ID columns), blank
+  label/name falls back to raw file name. Served as static JSON (no saver endpoint).
 - `data/targets.json` — SOP targets `{topN, minImpr, maxCPM}` (null = auto from
   file); edited in Manage accounts, saved via POST /api/targets.
 - `server.py` — local-only server (stdlib, 127.0.0.1): static files + POST
   /api/accounts (validates ≤100 entries incl. accountId/active/live/topAffiliate,
-  timestamped backup, LF). Never expose.
+  timestamped backup, LF) + GET /api/files (source-file listing as JSON for the
+  bundled picker) + GET /api/version fingerprint. Never expose.
 - `start-server.bat` — double-click launcher (python check, opens browser, runs
   server.py). No IDE / Live Server needed.
 - `.gitignore` — keeps saver backups (`data/accounts.backup-*.json`) and
   `__pycache__/` out of git.
 - `.gitattributes` — enforces LF text + `*.xlsx` binary (Windows `core.autocrlf`
   would otherwise flip JSON/JS to CRLF against the saver's LF).
-- `source-file/*.xlsx` — input data (≈9.2k rows × 24 cols; TikTok swaps it weekly,
-  loader auto-picks the newest). Read-only.
+- `source-file/*.xlsx` + one level of campaign subfolders (e.g.
+  `himcoffee - [123]/file.xlsx`) — input data, read-only. Loose files and
+  subfolder files list together in the picker (max 7); folder `name - [digits]`
+  tags its files with that ID label-only (blank Campaign IDs inherit it for
+  display/compare/CSV, rows never dropped; single-`[id]` loads pre-set the
+  Campaign facet).
 - `sample-data/` — 2 same-day exports for comparison: (1) full 9,202 rows, 60× `Dr. Samhan`; (2) filtered 118 rows, 117× `Dr. Samhan`.
 - `plan.md` — status checklist. Tick it per change; the user reads this file.
 - `CHANGELOG.md` — release record, newest first. Add a line per release.
@@ -94,7 +104,15 @@ files). Serve on a fresh port per test; always stop background servers.
    back to creative-text+account), filename uses `~`+hours for the period. `rowsOfWorkbook`
    normalises both dialects to one row shape (`campaign` blank for single-campaign files);
    never branch downstream code on dialect except the file-list badge. Compare join key is
-   `keyOf(postId, account, creative)`. Bundled picker (`bundlePick`) lists candidates with
+   `keyOf(postId, account, creative)`. Trend view (`rebuildTrend`/`renderTrend`,
+   same join key): one row per video, one column per file oldest→newest
+   (`trendHead` short dates), metric switcher + total/latest/Δ sort, `–` for
+   absent, long-format trend CSV, daily line chart above the table
+   (`renderTrendChart`, top 10, gaps for absent), per-row SVG sparklines
+   (`sparkline`, per-row scale, Shape column), solo popup on Shape click
+   (`openTrendModal`/`closeTrendModal`, enlarged line + mini cards), Post ID
+   column after Move with click-to-copy (`data-copy` delegation).
+   Bundled picker (`bundlePick`) lists candidates with
    period + cached dialect badge, newest pre-ticked, max 7. Filename-only picker chips
    (`pickerMeta`): single date vs `from → to · N days`, product chip from `Product {ID}`
    (`prodOfName`), instant `bulk` badge from `product campaigns` in the name (`bulkOfName`). Product ID `'N/A'`

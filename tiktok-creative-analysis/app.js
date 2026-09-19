@@ -2,10 +2,10 @@
 (function () {
   'use strict';
 
-  var BUNDLED_FILE = 'source-file/Creative data 2026-09-07 - 2026-09-14 - Product 1729556489100298210.xlsx';
+  var BUNDLED_FILE = 'source-file/1. himcoffee - [1858977225474178]/Creative data 2026-09-19 - 2026-09-19 - Product 1729556489100298210.xlsx';
   var MAX_TABLE_ROWS = 200;
 
-  var state = { rows: [], allowlist: [], allowMeta: {}, bench: null, chart: null,
+  var state = { rows: [], allowlist: [], allowMeta: {}, bench: null, chart: null, trendChart: null, trendSoloChart: null,
     targets: { topN: 20, minImpr: null, maxCPM: null },
     files: [], cmpRows: [], cmpMode: 'compare', cmpInfo: '', dialectCache: {} };
 
@@ -261,43 +261,116 @@
       state.catalog = (o && typeof o === 'object') ? o : { campaigns: {}, products: {} };
       if (!state.catalog.campaigns) state.catalog.campaigns = {};
       if (!state.catalog.products) state.catalog.products = {};
+      if (!state.catalog.archived) state.catalog.archived = {};
+      if (!state.catalog.archived.campaigns) state.catalog.archived.campaigns = {};
+      if (!state.catalog.archived.products) state.catalog.archived.products = {};
       if (state.rows.length) { populateFacets(); renderCatHint(); applyFilters(); }
     })
-    .catch(function () { state.catalog = { campaigns: {}, products: {} }; });
+    .catch(function () { state.catalog = { campaigns: {}, products: {}, archived: { campaigns: {}, products: {} } }; });
   }
   loadCatalog();
+  /* Catalog entry lookup: active section first, `archived` section second, so
+     old/deactivated IDs moved to archived still resolve their friendly names
+     in past files. Returns the entry object or null. */
+  function catCamp(cid) {
+    cid = String(cid || '');
+    if (!cid) return null;
+    var ct = state.catalog || {}, a = ct.archived || {};
+    return (ct.campaigns && ct.campaigns[cid]) || (a.campaigns && a.campaigns[cid]) || null;
+  }
+  /* Merged catalog maps (active + archived, active wins) for renderers that
+     index IDs directly. */
+  function mergedCat() {
+    var ct = state.catalog || {}, a = ct.archived || {}, out = {};
+    Object.keys((a.campaigns) || {}).forEach(function (k) { out[k] = a.campaigns[k]; });
+    Object.keys((ct.campaigns) || {}).forEach(function (k) { out[k] = ct.campaigns[k]; });
+    return out;
+  }
+  function mergedPrd() {
+    var ct = state.catalog || {}, a = ct.archived || {}, out = {};
+    Object.keys((a.products) || {}).forEach(function (k) { out[k] = a.products[k]; });
+    Object.keys((ct.products) || {}).forEach(function (k) { out[k] = ct.products[k]; });
+    return out;
+  }
+  function catProd(pid) {
+    pid = String(pid || '');
+    if (!pid) return null;
+    var ct = state.catalog || {}, a = ct.archived || {};
+    return (ct.products && ct.products[pid]) || (a.products && a.products[pid]) || null;
+  }
+  /* Friendly display names — bare IDs never stand alone in the UI.
+     Campaign: catalog label → raw file name → 'Unnamed campaign' placeholder.
+     Product: catalog name → Product-Card rule → 'Unnamed product' placeholder.
+     Raw IDs survive only in hover tooltips and CSV ID columns. */
   function campLabel(row) {
-    var c = (state.catalog && state.catalog.campaigns) || {};
-    var e = c[String((row && row.campaignId) || '')];
+    var cid = String((row && row.campaignId) || '');
+    var e = catCamp(cid);
     if (e && e.label) return e.label;
-    return (row && row.campaign) || '–';
+    if (row && row.campaign) return row.campaign;
+    return cid ? 'Unnamed campaign' : '–';
   }
   function prodName(row) {
-    var p = (state.catalog && state.catalog.products) || {};
     var pid = String((row && row.productId) || '');
-    var e = p[pid];
+    var e = catProd(pid);
     if (e && e.name) return e.name;
     // Catalogue rows carry Product ID 'N/A' — show them as the campaign's Product Card.
     if (pid.toUpperCase() === 'N/A' && row && row.campaign) return 'Product Card - ' + campLabel(row);
+    if (pid && pid.toUpperCase() !== 'N/A') return 'Unnamed product';
     return (row && row.productId) || '–';
   }
+  /* Product→campaign tie: catalog link field wins; otherwise the campaign the
+     product appears in most across loaded files (recomputed per ingest). */
+  function campLinkOf(pid) {
+    pid = String(pid || '');
+    if (!pid) return '';
+    var e = catProd(pid);
+    if (e && e.campaignId) return String(e.campaignId);
+    return (state.prodLink && state.prodLink[pid]) || '';
+  }
+  /* Product hover title: linked campaign label (when named) + raw product ID. */
+  function prodTitle(r) {
+    var pid = String((r && r.productId) || '');
+    var cid = campLinkOf(pid) || String((r && r.campaignId) || '');
+    var lab = cid && catCamp(cid) && catCamp(cid).label;
+    return (lab ? lab + ' · ' : '') + pid;
+  }
   // Unmapped-ID hint: which campaign/product IDs in the loaded files have no friendly name yet.
+  // Unnamed products are grouped by their tied campaign so naming stays per-campaign.
+  // Archived entries count as named (they keep their labels).
   function renderCatHint() {
     var el = $('catHint');
     if (!el) return;
-    var c = (state.catalog && state.catalog.campaigns) || {};
-    var p = (state.catalog && state.catalog.products) || {};
-    var uc = {}, up = {};
+    var uc = {}, up = {}, upCamp = {}, upCampName = {};
     state.files.forEach(function (f) {
       f.rows.forEach(function (r) {
-        if (r.campaignId && !(c[r.campaignId] && c[r.campaignId].label)) uc[r.campaignId] = r.campaign || r.campaignId;
-        if (r.productId && String(r.productId).toUpperCase() !== 'N/A' && !(p[r.productId] && p[r.productId].name)) up[r.productId] = 1;
+        if (r.campaignId && !(catCamp(r.campaignId) && catCamp(r.campaignId).label)) uc[r.campaignId] = 1;
+        if (r.productId && String(r.productId).toUpperCase() !== 'N/A' && !(catProd(r.productId) && catProd(r.productId).name)) {
+          up[r.productId] = 1;
+          var cid = campLinkOf(r.productId) || String(r.campaignId || '');
+          upCamp[r.productId] = cid;
+          if (cid && r.campaign) upCampName[cid] = r.campaign;
+        }
       });
     });
     var nc = Object.keys(uc).length, np = Object.keys(up).length;
-    el.textContent = (!state.files.length || (!nc && !np)) ? '' :
-      'Catalog: ' + (nc ? nc + ' campaign(s)' : '') + (nc && np ? ' + ' : '') + (np ? np + ' product(s)' : '') +
+    if (!state.files.length || (!nc && !np)) { el.textContent = ''; el.title = ''; return; }
+    var byCamp = {};
+    Object.keys(up).forEach(function (pid) {
+      var cid = upCamp[pid] || '';
+      byCamp[cid] = (byCamp[cid] || 0) + 1;
+    });
+    var grp = Object.keys(byCamp).map(function (cid) {
+      var lab = cid ? campLabel({ campaign: upCampName[cid] || '', campaignId: cid }) : 'no campaign';
+      return byCamp[cid] + ' in ' + lab;
+    }).join(', ');
+    el.textContent = 'Catalog: ' + (nc ? nc + ' campaign(s)' : '') + (nc && np ? ' + ' : '') +
+      (np ? np + ' product(s)' + (grp ? ' (' + grp + ')' : '') : '') +
       ' unnamed — name them in data/catalog.json to show friendly labels.';
+    // Hover lists the actual unnamed IDs so the user knows which entries to add.
+    var missC = Object.keys(uc).slice(0, 10).join(', ');
+    var missP = Object.keys(up).slice(0, 10).join(', ');
+    el.title = (nc ? 'Unnamed campaign IDs: ' + missC + (nc > 10 ? ', …' : '') : '') +
+      ((nc && np) ? '\n' : '') + (np ? 'Unnamed product IDs: ' + missP + (np > 10 ? ', …' : '') : '');
   }
 
   /* Allowlist display helpers: ' (@username)' suffix + ' — note' suffix + ID/Active/Live flags */
@@ -409,7 +482,36 @@
     }
     return null;
   }
-  function fileRank(f) { var p = f.period; return (p && p.to ? p.to : '') + '|' + f.label; }
+  function fileRank(f) { var p = f.period; return (p && p.to ? p.to : '') + '|' + (f.rel || f.label); }
+  /* Newest bundled entry by dataset end-date (alphabetical order lies: lowercase
+     'creative…' sorts after 'Creative…', and folder prefixes distort it). */
+  function entryRank(en) { var p = periodOfName(en.label); return ((p && p.to) || '') + '|' + en.rel; }
+  function newestEntry(entries) {
+    var best = null, bestR = '';
+    entries.forEach(function (en) {
+      var r = entryRank(en);
+      if (!best || r > bestR) { best = en; bestR = r; }
+    });
+    return best;
+  }
+  /* Subfolders under source-file/: folder name format "campaign name - [campaignId]".
+     Only the digits inside [...] are read — the name part is display-only. */
+  function folderIdOf(folder) {
+    var m = /\[(\d+)\]/.exec(String(folder || ''));
+    return m ? m[1] : '';
+  }
+  /* Effective campaign key for the Campaign facet/filter. Bulk rows carry a real
+     campaign name; blank-campaign rows filled with a folder [id] key as '[id]'. */
+  function campKey(r) {
+    if (r && r.campaign) return String(r.campaign);
+    var id = r && r.campaignId ? String(r.campaignId) : '';
+    return id ? '[' + id + ']' : '';
+  }
+  function cmpCampKey(r) {
+    if (r && r.campaign) return String(r.campaign);
+    var id = r && r.campId ? String(r.campId) : '';
+    return id ? '[' + id + ']' : '';
+  }
   function sortedFiles() { return state.files.slice().sort(function (a, b) {
     return fileRank(a) < fileRank(b) ? -1 : fileRank(a) > fileRank(b) ? 1 : 0; }); }
   function rangesOverlap() {
@@ -539,15 +641,64 @@
         aSec: a ? a.sec : '', bSec: b ? b.sec : '',
         noise: Math.abs(bc - ac) < 1 && (bo - ao) === 0 };
     });
-    state.cmpInfo = A.label + ' → ' + B.label;
+    state.cmpInfo = (A.rel || A.label) + ' → ' + (B.rel || B.label);
+  }
+  /* Single-folder [id] auto-pick: when every loaded file comes from the same
+     "[id]" folder, pre-set the Campaign facet to that campaign if it exists in
+     the facet (bracket key for blank-campaign rows, or the real campaign name
+     whose ID matches). Never overrides a user-picked value; mixed/loose loads
+     stay on All. */
+  function maybeAutoPickFolderCamp() {
+    try {
+      var sel = $('fCamp');
+      if (!sel || sel.value) return;
+      if (!state.files.length) return;
+      var id = state.files[0].folderId || '';
+      if (!id) return;
+      for (var i = 1; i < state.files.length; i++) {
+        if ((state.files[i].folderId || '') !== id) return;
+      }
+      var keys = {};
+      state.rows.forEach(function (r) {
+        if (String(r.campaignId || '') === id) keys[campKey(r)] = 1;
+      });
+      var kk = Object.keys(keys);
+      if (kk.length !== 1 || !kk[0]) return;
+      for (var j = 0; j < sel.options.length; j++) {
+        if (sel.options[j].value === kk[0]) { sel.value = kk[0]; return; }
+      }
+    } catch (e) {}
+  }
+  /* Product→campaign frequency map across ALL loaded files (pid → top cid).
+     Backs campLinkOf when the catalog entry sets no explicit campaignId. */
+  function buildProdLink() {
+    var counts = {};
+    state.files.forEach(function (f) {
+      f.rows.forEach(function (r) {
+        var pid = String(r.productId || '');
+        var cid = String(r.campaignId || '');
+        if (!pid || pid.toUpperCase() === 'N/A' || !cid) return;
+        counts[pid] = counts[pid] || {};
+        counts[pid][cid] = (counts[pid][cid] || 0) + 1;
+      });
+    });
+    var link = {};
+    Object.keys(counts).forEach(function (pid) {
+      var best = '', bestN = 0;
+      Object.keys(counts[pid]).forEach(function (cid) {
+        if (counts[pid][cid] > bestN) { bestN = counts[pid][cid]; best = cid; }
+      });
+      if (best) link[pid] = best;
+    });
+    state.prodLink = link;
   }
   function refreshAfterFiles(announce) {
     var fs = sortedFiles();
     if (!fs.length) {
-      state.rows = []; state.cmpRows = [];
+      state.rows = []; state.cmpRows = []; state.trendRows = [];
       setStatus('No file loaded.');
       $('fileMeta').textContent = '';
-      renderFileList(); renderCompareBar(); renderCompare(); renderCatHint();
+    renderFileList(); renderCompareBar(); renderCompare(); renderTrend(); renderCatHint();
       populateFacets(); computeBench(); applyFilters();
       return;
     }
@@ -558,8 +709,11 @@
       state.rows = fs[fs.length - 1].rows;
     }
     rebuildCompare();
+    rebuildTrend();
     var cur = fs[fs.length - 1];
     populateFacets();
+    buildProdLink();
+    maybeAutoPickFolderCamp();
     computeBench();
     setStatus(announce || ('Loaded ' + fmt(state.rows.length) + ' rows from ' +
       (state.cmpMode === 'combine' && fs.length > 1 ? fs.length + ' files combined.' : cur.label + '.')));
@@ -567,11 +721,28 @@
     renderFileList(); renderCompareBar(); renderCompare(); renderCatHint();
     applyFilters();
   }
-  function addFile(label, fileDate, parsed, replaceAll) {
+  function addFile(label, fileDate, parsed, replaceAll, meta) {
     if (replaceAll) state.files = [];
+    var m = meta || {};
+    var rel = m.rel || label;
+    var folder = m.folder || '';
+    var folderId = m.folderId !== undefined ? m.folderId : folderIdOf(folder);
+    // Label-only (option 2): never drop rows. Blank Campaign IDs inherit the
+    // folder [id] for display/compare; rows that already carry an ID keep it.
+    if (folderId) {
+      parsed.rows.forEach(function (r) { if (!r.campaignId) r.campaignId = folderId; });
+    }
+    // Single-campaign exports carry no Product ID column — only the filename
+    // states it ("… Product 1729556….xlsx"). Fill blanks from there so the
+    // Product column resolves instead of showing '–'. Bulk rows keep theirs.
+    var fileProd = prodOfName(label);
+    if (fileProd) {
+      parsed.rows.forEach(function (r) { if (!r.productId) r.productId = fileProd; });
+    }
     // cap 7 files — drop oldest (by rank) when overflowing
-    state.files.push({ label: label, fileDate: fileDate, period: periodOfName(label), rows: parsed.rows, dialect: parsed.dialect || 'single' });
-    state.dialectCache[label] = parsed.dialect || 'single';
+    state.files.push({ label: label, rel: rel, folder: folder, folderId: folderId,
+      fileDate: fileDate, period: periodOfName(label), rows: parsed.rows, dialect: parsed.dialect || 'single' });
+    state.dialectCache[rel] = parsed.dialect || 'single';
     var fs = sortedFiles();
     while (fs.length > 7) { var drop = fs.shift(); state.files.splice(state.files.indexOf(drop), 1); fs = sortedFiles(); }
     // auto-pick intent on 2nd file: overlap -> compare, disjoint -> combine stays user choice (default compare first, hint combine)
@@ -589,10 +760,13 @@
     box.innerHTML = fs.map(function (f, i) {
       var tag = fs.length > 1 ? (i === 0 ? ' <span class="suggest-tag">baseline</span>' : i === fs.length - 1 ? ' <span class="suggest-tag">latest</span>' : '') : '';
       var dia = f.dialect ? ' <span class="suggest-tag">' + esc(f.dialect) + '</span>' : '';
+      var fld = f.folder ? ' <span class="suggest-tag">' + esc(f.folder) + '</span>' : '';
+      var fid = f.folderId ? ' <span class="suggest-tag">[' + esc(f.folderId) + ']</span>' : '';
       var p = f.period ? ' · ' + f.period.from + ' → ' + f.period.to : '';
-      return '<div class="flex flex-wrap items-center gap-2"><span>📄 <strong>' + esc(f.label) + '</strong>' +
-        ' <span class="text-gray-500">(' + fmt(f.rows.length) + ' rows' + p + ')</span>' + dia + tag + '</span>' +
-        '<button type="button" class="hint-btn" data-unload="' + esc(f.label) + '">remove</button></div>';
+      var disp = (f.folder ? f.folder + ' / ' : '') + f.label;
+      return '<div class="flex flex-wrap items-center gap-2"><span>📄 <strong>' + esc(disp) + '</strong>' +
+        ' <span class="text-gray-500">(' + fmt(f.rows.length) + ' rows' + p + ')</span>' + dia + fld + fid + tag + '</span>' +
+        '<button type="button" class="hint-btn" data-unload="' + esc(f.rel || f.label) + '">remove</button></div>';
     }).join('');
   }
   function renderCompareBar() {
@@ -611,7 +785,7 @@
       state.files.forEach(function (f) { dias[f.dialect || 'single'] = 1; });
       var mixed = Object.keys(dias).length > 1;
       var big = state.files.some(function (f) { return f.rows.length > 20000; });
-      mw.textContent = (mixed ? '⚠ mixed file types (single + bulk) — Campaign is blank for single-campaign files. ' : '') +
+      mw.textContent = (mixed ? '⚠ mixed file types (single + bulk) — single-campaign files take their campaign tag from the source folder. ' : '') +
         (big ? '⏳ large file(s) loaded — parsing may take a few seconds.' : '');
     }
   }
@@ -629,7 +803,7 @@
     var out = state.cmpRows.filter(function (r) {
       if (acc && r.account !== acc) return false;
       if (mv && r.move !== mv) return false;
-      if (cp && String(r.campaign || '') !== cp) return false;
+      if (cp && cmpCampKey(r) !== cp) return false;
       if (noCard && r.account === 'Product Card') return false;
       if (hideInel && (r.aStatus === 'Ineligible' || r.aStatus === '—') &&
         (r.bStatus === 'Ineligible' || r.bStatus === '—')) return false;
@@ -655,9 +829,9 @@
     $('cmpMeta').textContent = 'Baseline = oldest, Latest = newest. Δ = Latest − Baseline. Greyed rows = noise (ΔCost < RM1, ΔOrders = 0).';
     var tb = $('cmpTable').querySelector('tbody');
     if (!rows.length) { tb.innerHTML = '<tr><td colspan="24" class="empty-note">No videos match.</td></tr>'; return; }
-    var cat = (state.catalog && state.catalog.campaigns) || {};
-    var prd = (state.catalog && state.catalog.products) || {};
-    var lab = function (nm, id) { var e = cat[String(id || '')]; return (e && e.label) ? e.label : (nm || '–'); };
+    var cat = mergedCat();
+    var prd = mergedPrd();
+    var lab = function (nm, id) { var e = cat[String(id || '')]; return (e && e.label) ? e.label : (nm || (id ? 'Unnamed campaign' : '–')); };
     tb.innerHTML = rows.slice(0, MAX_TABLE_ROWS).map(function (r) {
       var cr = String(r.creative || '');
       if (cr.length > 60) cr = cr.slice(0, 60) + '…';
@@ -679,30 +853,352 @@
     }).join('');
   }
 
+  /* ---------- trend per creative (day-by-day columns across loaded files) ---------- */
+  function fmtDay(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    if (!m) return '–';
+    return (+m[3]) + ' ' + MONTHS[+m[2] - 1];
+  }
+  function trendHead(p) {
+    if (!p || !p.from || !p.to) return '–';
+    return p.from === p.to ? fmtDay(p.from) : fmtDay(p.from) + '→' + fmtDay(p.to);
+  }
+  var TREND_METRICS = {
+    rev: { label: 'Revenue (MYR)', d: 2, get: function (c) { return c.rev; } },
+    ord: { label: 'Orders', d: 0, get: function (c) { return c.ord; } },
+    cost: { label: 'Cost (MYR)', d: 2, get: function (c) { return c.cost; } },
+    impr: { label: 'Impressions', d: 0, get: function (c) { return c.impr; } }
+  };
+  // Join all loaded files by video key; ref fields prefer the latest file carrying the video.
+  function rebuildTrend() {
+    var fs = sortedFiles();
+    state.trendRows = [];
+    if (fs.length < 2) return;
+    var map = {};
+    fs.forEach(function (f) {
+      f.rows.forEach(function (r) {
+        var k = keyOf(r.postId, r.account, r.creative);
+        if (!map[k]) map[k] = { key: k, creative: '', account: '', postId: '', campaign: '', campId: '', prodId: '', cells: [] };
+      });
+    });
+    var done = {};
+    for (var i = fs.length - 1; i >= 0; i--) {
+      fs[i].rows.forEach(function (r) {
+        var k = keyOf(r.postId, r.account, r.creative);
+        if (!done[k]) {
+          done[k] = 1;
+          var e = map[k];
+          e.creative = r.creative; e.account = r.account; e.postId = r.postId;
+          e.campaign = r.campaign || ''; e.campId = r.campaignId || ''; e.prodId = r.productId || '';
+        }
+      });
+    }
+    Object.keys(map).forEach(function (k) {
+      map[k].cells = fs.map(function () { return null; });
+    });
+    fs.forEach(function (f, fi) {
+      f.rows.forEach(function (r) {
+        var e = map[keyOf(r.postId, r.account, r.creative)];
+        e.cells[fi] = { rev: r.revenue, ord: r.orders, cost: r.cost, impr: r.impr, status: String(r.status || '') };
+      });
+    });
+    var n = fs.length;
+    state.trendRows = Object.keys(map).map(function (k) {
+      var e = map[k];
+      var base = !!e.cells[0], last = !!e.cells[n - 1];
+      e.move = !base && last ? 'NEW' : base && !last ? 'LOST' : 'KEPT';
+      return e;
+    });
+  }
+  function trendCampKey(e) { return e.campaign || (e.campId ? '[' + e.campId + ']' : ''); }  function trendFiltered() {
+    var acc = $('fAccount').value, q = $('fSearch').value.trim().toLowerCase();
+    var cpEl = $('fCamp'), cp = cpEl ? cpEl.value : '';
+    var noCard = $('fNoCard').checked;
+    var hideInel = $('fNoInel').checked;
+    var hideInact = $('fNoInactive').checked;
+    return state.trendRows.filter(function (e) {
+      if (acc && e.account !== acc) return false;
+      if (cp && trendCampKey(e) !== cp) return false;
+      if (noCard && e.account === 'Product Card') return false;
+      if (hideInact && isInactiveAcc(e.account)) return false;
+      if (hideInel) {
+        var anyOk = e.cells.some(function (c) { return c && c.status !== 'Ineligible' && c.status !== '—'; });
+        if (!anyOk) return false;
+      }
+      if (q && String(e.creative).toLowerCase().indexOf(q) === -1 &&
+          String(e.postId).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+  }
+  /* Per-row sparkline: inline SVG of one video's daily shape for the current
+     metric. Scaled per row (min–max of its present days; flat rows sit midline),
+     absent days break the line. Pure markup — no per-row Chart.js instances. */
+  function sparkline(cells, get, d, dayLabels) {
+    var W = 90, H = 28, pad = 3, n = cells.length;
+    var idx = [];
+    cells.forEach(function (c, i) { if (c) idx.push(i); });
+    if (!idx.length) return '<span class="text-gray-400">–</span>';
+    var vals = idx.map(function (i) { return get(cells[i]); });
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    var X = function (i) { return n < 2 ? W / 2 : pad + i * (W - 2 * pad) / (n - 1); };
+    var Y = function (v) { return mx === mn ? H / 2 : H - pad - (v - mn) / (mx - mn) * (H - 2 * pad); };
+    var segs = [], cur = [];
+    cells.forEach(function (c, i) {
+      if (c) { cur.push(X(i).toFixed(1) + ',' + Y(get(c)).toFixed(1)); }
+      else if (cur.length) { segs.push(cur); cur = []; }
+    });
+    if (cur.length) segs.push(cur);
+    var dots = idx.map(function (i) {
+      return '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(get(cells[i])).toFixed(1) + '" r="1.8" fill="#3b82f6"/>';
+    }).join('');
+    var lines = segs.filter(function (s) { return s.length > 1; }).map(function (s) {
+      return '<polyline points="' + s.join(' ') + '" fill="none" stroke="#3b82f6" stroke-width="1.5"/>';
+    }).join('');
+    var tip = esc(idx.map(function (i) { return dayLabels[i] + ' ' + fmt(get(cells[i]), d); }).join(' · ') + ' (per-row scale)');
+    return '<svg width="' + W + '" height="' + H + '" style="display:block"><title>' + tip + '</title>' + lines + dots + '</svg>';
+  }
+  function renderTrend() {
+    var sec = $('trendSection');
+    if (!sec) return;
+    var fs = sortedFiles();
+    var show = fs.length > 1;
+    sec.hidden = !show;
+    if (!show) {
+      if (state.trendChart) { state.trendChart.destroy(); state.trendChart = null; }
+      return;
+    }
+    var mkey = ($('trendMetric') && $('trendMetric').value) || 'rev';
+    var M = TREND_METRICS[mkey] || TREND_METRICS.rev;
+    var thead = $('trendTable').querySelector('thead');
+    thead.innerHTML = '<tr><th>Move</th><th>Post ID</th><th>Shape</th><th>Creative</th><th>Account</th><th>Campaign</th><th>Product</th>' +
+      fs.map(function (f) { return '<th title="' + esc(f.rel || f.label) + '">' + esc(trendHead(f.period)) + '</th>'; }).join('') + '</tr>';
+    var rows = trendFiltered();
+    var n = fs.length, i;
+    rows.forEach(function (e) {
+      var tot = 0;
+      for (i = 0; i < n; i++) { if (e.cells[i]) tot += M.get(e.cells[i]); }
+      e._tot = tot;
+      e._latest = e.cells[n - 1] ? M.get(e.cells[n - 1]) : 0;
+      e._delta = e._latest - (e.cells[0] ? M.get(e.cells[0]) : 0);
+    });
+    var s = ($('trendSort') && $('trendSort').value) || 'total_desc';
+    var sk = s === 'latest_desc' ? '_latest' : s === 'delta_desc' ? '_delta' : '_tot';
+    rows.sort(function (a, b) { return b[sk] - a[sk]; });
+    renderTrendChart(fs, rows, M);
+    $('trendCount').textContent = '— ' + fmt(rows.length) + ' videos (' + fs[0].label + ' → ' + fs[fs.length - 1].label + ')';
+    $('trendMeta').textContent = 'Metric: ' + M.label + ' per file, oldest → newest. – = video absent that file. Click a Shape graph to enlarge it. Click a Post ID to copy it (IDs may differ in trailing digits — verify before Ads Manager use). Respects the Account / Campaign / Search filters above.';
+    var tb = $('trendTable').querySelector('tbody');
+    var cols = 7 + n;
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="' + cols + '" class="empty-note">No videos match.</td></tr>'; return; }
+    var dayLabels = fs.map(function (f) { return trendHead(f.period); });
+    tb.innerHTML = rows.slice(0, MAX_TABLE_ROWS).map(function (e) {
+      var cr = String(e.creative || '');
+      if (cr.length > 60) cr = cr.slice(0, 60) + '…';
+      var badge = e.move === 'NEW' ? '<span class="sec sec-performing">● NEW</span>' :
+        e.move === 'LOST' ? '<span class="sec sec-rejected">● LOST</span>' : '<span class="sec sec-flat">KEPT</span>';
+      var tds = e.cells.map(function (c) {
+        if (!c) return '<td class="text-gray-400">–</td>';
+        return '<td>' + fmt(M.get(c), M.d) + '</td>';
+      }).join('');
+      var pid = String(e.postId || '');
+      var pidCell = pid
+        ? '<td class="mono" data-copy="' + esc(pid) + '" title="Click to copy Post ID — verify trailing digits before Ads Manager use">' + esc(pid) + '</td>'
+        : '<td class="text-gray-400">–</td>';
+      return '<tr data-tkey="' + esc(e.key) + '"><td>' + badge + '</td>' + pidCell + '<td data-tsolo title="Click to enlarge this creative\'s chart">' + sparkline(e.cells, M.get, M.d, dayLabels) + '</td><td>' + esc(cr) + '</td><td>' + esc(e.account) +
+        '</td><td>' + esc(campLabel({ campaign: e.campaign, campaignId: e.campId })) +
+        '</td><td title="' + esc(e.prodId || '') + '">' + esc(prodName({ productId: e.prodId, campaign: e.campaign, campaignId: e.campId })) +
+        '</td>' + tds + '</tr>';
+    }).join('');
+  }
+  var TREND_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed',
+    '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5'];
+  // Daily lines for the top 10 trend rows (current sort + metric). Gaps stay
+  // gaps (no fake zeros); legend click toggles creatives (Chart.js default).
+  function renderTrendChart(fs, rows, M) {
+    if (typeof Chart === 'undefined') return;
+    if (state.trendChart) { state.trendChart.destroy(); state.trendChart = null; }
+    if (!fs.length || !rows.length || !$('trendChart')) return;
+    var ctx = $('trendChart').getContext('2d');
+    state.trendChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: fs.map(function (f) { return trendHead(f.period); }),
+        datasets: rows.slice(0, 10).map(function (e, i) {
+          var cr = String(e.creative || '');
+          if (cr.length > 40) cr = cr.slice(0, 40) + '…';
+          var col = TREND_COLORS[i % TREND_COLORS.length];
+          return { label: cr + ' · ' + e.account, data: e.cells.map(function (c) { return c ? Math.round(M.get(c) * 100) / 100 : null; }),
+            borderColor: col, backgroundColor: col, tension: 0.2, spanGaps: false, borderWidth: 2, pointRadius: 3 };
+        })
+      },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+          tooltip: { callbacks: { label: function (cx) { return ' ' + cx.dataset.label + ': ' + fmt(cx.parsed.y, M.d); } } } },
+        scales: { x: { ticks: { font: { size: 10 } } },
+          y: { ticks: { font: { size: 10 }, callback: function (v) { return fmt(v, M.d); } } } } }
+    });
+  }
+  // Long-format CSV: one row per (video, file) — pivots cleanly into daily series.
+  function buildTrendCsv(fs, rows) {
+    var q = function (v) { return '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"'; };
+    var lines = [['Move', 'Creative', 'Account', 'Campaign', 'Campaign ID', 'Product', 'Product ID', 'Post ID',
+      'File', 'Revenue', 'Orders', 'Cost', 'Impressions'].join(',')];
+    rows.forEach(function (e) {
+      var camp = campLabel({ campaign: e.campaign, campaignId: e.campId });
+      var prod = prodName({ productId: e.prodId, campaign: e.campaign, campaignId: e.campId });
+      fs.forEach(function (f, i) {
+        var c = e.cells[i];
+        lines.push([q(e.move), q(e.creative), q(e.account), q(camp), q(e.campId), q(prod), q(e.prodId), q(e.postId),
+          q(f.rel || f.label),
+          c ? c.rev.toFixed(2) : '', c ? c.ord : '', c ? c.cost.toFixed(2) : '', c ? c.impr : ''].join(','));
+      });
+    });
+    return lines.join('\n');
+  }
+  var trendCsvBtn = $('trendCsv');
+  if (trendCsvBtn) trendCsvBtn.addEventListener('click', function () {
+    var fs = sortedFiles();
+    var rows = trendFiltered();
+    if (!rows.length || fs.length < 2) return;
+    download('creatives-trend.csv', buildTrendCsv(fs, rows), 'text/csv');
+  });
+  /* Trend solo popup: click a Shape cell for one creative, enlarged, with its
+     day totals. Current trend metric; gaps stay gaps. */
+  function openTrendModal(key) {
+    if (typeof Chart === 'undefined') return;
+    var e = null;
+    state.trendRows.some(function (r) { if (r.key === key) { e = r; return true; } return false; });
+    if (!e) return;
+    var fs = sortedFiles();
+    if (fs.length < 2) return;
+    var mkey = ($('trendMetric') && $('trendMetric').value) || 'rev';
+    var M = TREND_METRICS[mkey] || TREND_METRICS.rev;
+    var cr = String(e.creative || '');
+    $('trendModalTitle').textContent = cr.length > 90 ? cr.slice(0, 90) + '…' : (cr || 'Untitled video');
+    var mpid = String(e.postId || '');
+    var midEl = $('trendModalId');
+    if (mpid) {
+      midEl.textContent = mpid;
+      midEl.setAttribute('data-copy', mpid);
+      midEl.title = 'Click to copy Post ID — verify trailing digits before Ads Manager use';
+      midEl.style.cursor = 'pointer';
+    } else {
+      midEl.textContent = '–';
+      midEl.removeAttribute('data-copy');
+      midEl.title = '';
+      midEl.style.cursor = '';
+    }
+    $('trendModalCtx').textContent = e.account + ' · ' +
+      campLabel({ campaign: e.campaign, campaignId: e.campId }) + ' · ' +
+      prodName({ productId: e.prodId, campaign: e.campaign, campaignId: e.campId }) +
+      ' · ' + e.move + ' · Metric: ' + M.label;
+    var tot = 0, present = 0;
+    e.cells.forEach(function (c) { if (c) { tot += M.get(c); present++; } });
+    var lv = e.cells[fs.length - 1] ? M.get(e.cells[fs.length - 1]) : 0;
+    var fv = e.cells[0] ? M.get(e.cells[0]) : 0;
+    $('trendModalKpis').innerHTML =
+      kpiMini('Total ' + M.label.split(' ')[0], fmt(tot, M.d)) +
+      kpiMini('Latest day', fmt(lv, M.d)) + kpiMini('Δ latest−first', fmt(lv - fv, M.d)) +
+      kpiMini('Days present', present + '/' + fs.length);
+    if (state.trendSoloChart) { state.trendSoloChart.destroy(); state.trendSoloChart = null; }
+    var ctx = $('trendModalChart').getContext('2d');
+    state.trendSoloChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: fs.map(function (f) { return trendHead(f.period); }),
+        datasets: [{ label: M.label,
+          data: e.cells.map(function (c) { return c ? Math.round(M.get(c) * 100) / 100 : null; }),
+          borderColor: '#2563eb', backgroundColor: '#2563eb',
+          tension: 0.2, spanGaps: false, borderWidth: 3, pointRadius: 5 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: function (cx) { return ' ' + fmt(cx.parsed.y, M.d); } } } },
+        scales: { x: { ticks: { font: { size: 11 } } },
+          y: { ticks: { font: { size: 11 }, callback: function (v) { return fmt(v, M.d); } } } } }
+    });
+    $('trendModal').hidden = false;
+    document.body.style.overflow = 'hidden';
+    $('trendModalClose').focus();
+  }
+  function closeTrendModal() {
+    if (state.trendSoloChart) { state.trendSoloChart.destroy(); state.trendSoloChart = null; }
+    $('trendModal').hidden = true;
+    document.body.style.overflow = '';
+  }
+  $('trendTable').querySelector('tbody').addEventListener('click', function (e) {
+    var cell = e.target.closest ? e.target.closest('[data-tsolo]') : null;
+    if (!cell) return;
+    var tr = cell.closest ? cell.closest('tr[data-tkey]') : null;
+    if (!tr) return;
+    openTrendModal(tr.getAttribute('data-tkey'));
+  });
+  $('trendModalClose').addEventListener('click', closeTrendModal);
+  $('trendModal').addEventListener('click', function (e) {
+    if (e.target === $('trendModal')) closeTrendModal();
+  });
+  /* Click-to-copy for Post IDs (trend cells + solo popup ID line). */
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-copy]') : null;
+    if (!t || t._copyBusy) return;
+    var txt = t.getAttribute('data-copy') || '';
+    if (!txt) return;
+    t._copyBusy = true;
+    var orig = t.textContent;
+    var finish = function () {
+      t.textContent = 'Copied ✓';
+      setTimeout(function () { t.textContent = orig; t._copyBusy = false; }, 1200);
+    };
+    var fallback = function () {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); ta.remove();
+      } catch (err) {}
+      finish();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(finish, fallback); }
+    else fallback();
+  });
+
   function ingest(workbook, fileName, fileDate) {
     // Single-file entry: replaces the slot list (old behaviour preserved).
     var parsed = rowsOfWorkbook(workbook);
     addFile(fileName, fileDate, parsed, true);
   }
 
-  function loadArrayBuffer(buf, label, fileDate, replaceAll) {
+  function loadArrayBuffer(buf, labelOrEntry, fileDate, replaceAll) {
+    var entry = (labelOrEntry && typeof labelOrEntry === 'object') ? labelOrEntry : { label: labelOrEntry, rel: labelOrEntry, folder: '', folderId: '' };
+    var label = entry.label;
     try {
       var wb = XLSX.read(buf, { type: 'array' });
       var parsed = rowsOfWorkbook(wb);
-      addFile(label, fileDate, parsed, replaceAll !== false);
+      addFile(label, fileDate, parsed, replaceAll !== false, entry);
     } catch (e) {
       setStatus('Parse failed (' + label + '): ' + e.message);
     }
   }
   function loadManyBuffers(items) {
-    // items: [{buf, label, fileDate}] — added without clearing between each.
+    // items: [{buf, label, fileDate, rel?, folder?, folderId?}] — added without clearing between each.
     state.files = [];
     items.forEach(function (it, idx) {
       try {
         var wb = XLSX.read(it.buf, { type: 'array' });
         var parsed = rowsOfWorkbook(wb);
-        state.files.push({ label: it.label, fileDate: it.fileDate, period: periodOfName(it.label), rows: parsed.rows, dialect: parsed.dialect || 'single' });
-        state.dialectCache[it.label] = parsed.dialect || 'single';
+        var rel = it.rel || it.label;
+        var folder = it.folder || '';
+        var folderId = it.folderId !== undefined ? it.folderId : folderIdOf(folder);
+        if (folderId) {
+          parsed.rows.forEach(function (r) { if (!r.campaignId) r.campaignId = folderId; });
+        }
+        var fileProd = prodOfName(it.label);
+        if (fileProd) {
+          parsed.rows.forEach(function (r) { if (!r.productId) r.productId = fileProd; });
+        }
+        state.files.push({ label: it.label, rel: rel, folder: folder, folderId: folderId,
+          fileDate: it.fileDate, period: periodOfName(it.label), rows: parsed.rows, dialect: parsed.dialect || 'single' });
+        state.dialectCache[rel] = parsed.dialect || 'single';
       } catch (e) { setStatus('Parse failed (' + it.label + '): ' + e.message); }
     });
     var fs = sortedFiles();
@@ -744,41 +1240,101 @@
     e.target.value = '';
   });
 
-  /* Bundled file: auto-detect the xlsx in source-file/ via the server directory
-     listing (works on server.py / python http.server). Filenames carry the date
-     range, so the last alphabetically = latest. Falls back to BUNDLED_FILE. */
-  function fetchBundledFile(url, label) {
+  /* Bundled files: xlsx at source-file/ top level AND one level down in
+     campaign subfolders (e.g. "himcoffee - [123]/file.xlsx"). Loose files keep
+     working; folders are auto-discovered (no hardcoded list). Folder [id] is a
+     label only — rows are never dropped. Falls back to BUNDLED_FILE. */
+  function parseListing(html) {
+    var files = [], dirs = [], seenF = {}, seenD = {}, m, re = /href="([^"]+)"/gi;
+    while ((m = re.exec(html))) {
+      var raw;
+      try { raw = decodeURIComponent(m[1].split('?')[0].split('#')[0]); } catch (e) { raw = m[1]; }
+      raw = String(raw || '').replace(/^\/+/, '');
+      if (!raw || raw[0] === '?' || raw.indexOf('://') !== -1) continue;
+      if (/\.xlsx$/i.test(raw)) {
+        var base = raw.split('/').filter(Boolean).pop();
+        if (base && !seenF[base]) { seenF[base] = 1; files.push(base); }
+      } else if (/\/$/.test(m[1]) || /\/$/.test(raw)) {
+        var dir = raw.replace(/\/+$/, '').split('/').pop();
+        if (dir && dir !== 'source-file' && dir[0] !== '.' && !seenD[dir]) { seenD[dir] = 1; dirs.push(dir); }
+      }
+    }
+    return { files: files, dirs: dirs };
+  }
+  function entryOf(rel) {
+    var parts = String(rel || '').split('/');
+    var label = parts.pop() || '';
+    var folder = parts.join('/');
+    return { rel: rel, label: label, folder: folder, folderId: folderIdOf(folder) };
+  }
+  function fetchBundledFile(url, entry) {
     return fetch(url + '?v=' + Date.now())
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status + ' — serve via http://localhost:8000, file:// is blocked');
         var lm = r.headers.get('Last-Modified');
         return r.arrayBuffer().then(function (buf) { return { buf: buf, date: lm ? new Date(lm) : new Date() }; });
       })
-      .then(function (o) { loadArrayBuffer(o.buf, label, o.date); });
+      .then(function (o) { loadArrayBuffer(o.buf, entry, o.date); });
   }
   function findBundledCandidates() {
-    return fetch('source-file/?v=' + Date.now())
+    var fallback = BUNDLED_FILE.replace(/^source-file\//, '');
+    // 1) server.py JSON listing, 2) HTML directory listing (plain python
+    // http.server), 3) single-file fallback (picker warns it is incomplete).
+    function fromHtml() {
+      return fetch('source-file/?v=' + Date.now())
+        .then(function (r) {
+          if (!r.ok) throw 0;
+          return r.text();
+        })
+        .then(function (html) {
+          var top = parseListing(html);
+          var out = top.files.map(function (n) { return entryOf(n); });
+          var seen = {};
+          out.forEach(function (e) { seen[e.rel] = 1; });
+          var chains = top.dirs.map(function (dir) {
+            return fetch(encodeURI('source-file/' + dir + '/') + '?v=' + Date.now())
+              .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+              .then(function (sub) {
+                parseListing(sub).files.forEach(function (n) {
+                  var rel = dir + '/' + n;
+                  if (!seen[rel]) { seen[rel] = 1; out.push(entryOf(rel)); }
+                });
+              })
+              .catch(function () {});
+          });
+          return Promise.all(chains).then(function () {
+            if (!out.length) throw 0;
+            out.sort(function (a, b) { return a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0; });
+            state.listFallback = false;
+            // Empty campaign folders (nothing tickable) so the picker can show them as-is.
+            out.emptyDirs = top.dirs.filter(function (d) {
+              return !out.some(function (e) { return e.folder === d; });
+            });
+            return out;
+          });
+        });
+    }
+    return fetch('api/files?v=' + Date.now())
       .then(function (r) {
         if (!r.ok) throw 0;
-        return r.text();
+        return r.json();
       })
-      .then(function (html) {
-        var seen = {}, out = [], m, re = /href="([^"]*?\.xlsx)"/gi;
-        while ((m = re.exec(html))) {
-          var name = decodeURIComponent(m[1].split('/').pop().split('?')[0]);
-          if (name && !seen[name]) { seen[name] = 1; out.push(name); }
-        }
-        if (!out.length) throw 0;
-        out.sort();
+      .then(function (o) {
+        var list = o && o.files;
+        if (!list || !list.length) throw 0;
+        state.listFallback = false;
+        var out = list.map(entryOf);
+        out.emptyDirs = (o && o.emptyDirs) || [];
         return out;
       })
-      .catch(function () { return [BUNDLED_FILE.split('/').pop()]; });
+      .catch(fromHtml)
+      .catch(function () { state.listFallback = true; return [entryOf(fallback)]; });
   }
   $('loadBundled').addEventListener('click', function () {
     setStatus('Fetching bundled file…');
-    findBundledCandidates().then(function (names) {
-      var file = names[names.length - 1];
-      fetchBundledFile(encodeURI('source-file/' + file), file)
+    findBundledCandidates().then(function (entries) {
+      var file = newestEntry(entries) || entries[entries.length - 1];
+      fetchBundledFile(encodeURI('source-file/' + file.rel), file)
         .catch(function (e) { setStatus('Bundled load failed: ' + e.message); });
     });
   });
@@ -794,16 +1350,20 @@
     return m ? m[1] : '';
   }
   function bulkOfName(n) { return /product.?campaigns/i.test(n || ''); }
-  function pickerMeta(n) {
+  function pickerMeta(nOrEntry) {
+    var entry = (nOrEntry && typeof nOrEntry === 'object') ? nOrEntry : entryOf(nOrEntry);
+    var n = entry.label;
     var parts = [spanMeta(n)];
     var pid = prodOfName(n);
     if (pid) {
-      var prd = (state.catalog && state.catalog.products) || {};
-      var e = prd[pid];
-      parts.push(esc((e && e.name) ? e.name : pid));
+      var e = catProd(pid);
+      parts.push(esc((e && e.name) ? e.name : 'Unnamed product'));
     }
-    if (bulkOfName(n) && state.dialectCache[n] !== 'bulk') parts.push('<span class="suggest-tag">bulk</span>');
-    if (state.dialectCache[n]) parts.push('<span class="suggest-tag">' + esc(state.dialectCache[n]) + '</span>');
+    if (entry.folder) parts.push(esc(entry.folder));
+    if (entry.folderId) parts.push('<span class="suggest-tag">[' + esc(entry.folderId) + ']</span>');
+    var ck = entry.rel || n;
+    if (bulkOfName(n) && state.dialectCache[ck] !== 'bulk') parts.push('<span class="suggest-tag">bulk</span>');
+    if (state.dialectCache[ck]) parts.push('<span class="suggest-tag">' + esc(state.dialectCache[ck]) + '</span>');
     return parts.join(' · ');
   }
   var loadAllBtn = $('loadAllBundled');
@@ -812,28 +1372,117 @@
     if (!box.hidden) { box.hidden = true; box.innerHTML = ''; return; }
     box.innerHTML = '<span class="text-gray-500">Listing source-file/…</span>';
     box.hidden = false;
-    findBundledCandidates().then(function (names) {
-      var sorted = names.slice().sort();
-      box.innerHTML = sorted.map(function (n, i) {
-        var meta = pickerMeta(n);
-        var checked = (i === sorted.length - 1) ? ' checked' : '';
-        return '<label class="flex flex-wrap items-center gap-2 py-0.5"><input type="checkbox" data-bpick value="' + esc(n) + '"' + checked + ' class="w-4 h-4">' +
-          '<span>📄 <strong>' + esc(n) + '</strong><span class="text-gray-500"> (' + meta + ')</span></span></label>';
-      }).join('') +
+    findBundledCandidates().then(function (entries) {
+      var sorted = entries.slice().sort(function (a, b) { return a.rel < b.rel ? -1 : a.rel > b.rel ? 1 : 0; });
+      var warn = state.listFallback
+        ? '<div class="text-amber-600 dark:text-amber-400 mb-1">⚠ Could not list source-file/ (showing fallback file only). For the full picker, run <code>python server.py</code> in this folder and open <code>http://localhost:8000</code>.</div>'
+        : '';
+      var newestRel = (newestEntry(sorted) || sorted[sorted.length - 1] || {}).rel || '';
+      // Group by folder: loose files first, then folders alphabetically.
+      var byFolder = {}, groups = [];
+      sorted.forEach(function (en) {
+        var k = en.folder || '';
+        if (!byFolder[k]) { byFolder[k] = []; groups.push(k); }
+        byFolder[k].push(en);
+      });
+      groups.sort(function (a, b) {
+        if (!a) return -1; if (!b) return 1;
+        return a < b ? -1 : a > b ? 1 : 0;
+      });
+      var html = warn + groups.map(function (folder, gi) {
+        var files = byFolder[folder];
+        var fid = folderIdOf(folder);
+        var title = folder
+          ? '📁 <strong>' + esc(folder) + '</strong>' + (fid ? ' <span class="suggest-tag">[' + esc(fid) + ']</span>' : '')
+          : '📁 <strong>Top level</strong>';
+        var open = files.some(function (en) { return en.rel === newestRel; });
+        var rows = files.map(function (en) {
+          var meta = pickerMeta(en);
+          var checked = (en.rel === newestRel) ? ' checked' : '';
+          return '<label class="flex flex-wrap items-center gap-2 py-0.5"><input type="checkbox" data-bpick data-group="g' + gi + '" value="' + esc(en.rel) + '"' + checked + ' class="w-4 h-4">' +
+            '<span>📄 <strong>' + esc(en.label) + '</strong><span class="text-gray-500"> (' + meta + ')</span></span></label>';
+        }).join('');
+        return '<div class="bp-group"><div class="flex flex-wrap items-center gap-2 py-1">' +
+          '<input type="checkbox" data-fpick="g' + gi + '" class="w-4 h-4" title="Select all files in this folder">' +
+          '<button type="button" data-ftoggle="g' + gi + '" class="hover:underline text-left"><span data-chev="g' + gi + '">' + (open ? '▾' : '▸') + '</span> ' + title +
+          ' <span class="text-gray-500">(' + files.length + ' file' + (files.length === 1 ? '' : 's') + ')</span></button></div>' +
+          '<div data-flist="g' + gi + '" class="pl-6"' + (open ? '' : ' hidden') + '>' + rows + '</div></div>';
+      }).join('');
+      // Empty campaign folders: visible but nothing to tick.
+      (entries.emptyDirs || []).forEach(function (d) {
+        if (byFolder[d]) return;
+        var fid = folderIdOf(d);
+        html += '<div class="flex flex-wrap items-center gap-2 py-1 text-gray-500"><span>▸ 📁 <strong>' + esc(d) + '</strong>' +
+          (fid ? ' <span class="suggest-tag">[' + esc(fid) + ']</span>' : '') + ' (empty — no xlsx yet)</span></div>';
+      });
+      box.innerHTML = html +
       '<div class="flex flex-wrap items-center gap-2 mt-2"><button id="bundleLoad" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Load selected (max 7)</button>' +
-      '<span class="text-xs text-gray-500">Newest is pre-ticked. Span, product and bulk chips come from file names; the type badge confirms after first read.</span></div>';
+      '<span class="text-xs text-gray-500">Tick a folder to select all its files. Newest is pre-ticked (its folder starts open). Span, product and bulk chips come from file names; the type badge confirms after first read.</span></div>';
+      var syncBundleUI = function () {
+        Array.prototype.forEach.call(box.querySelectorAll('[data-fpick]'), function (head) {
+          var g = head.getAttribute('data-fpick');
+          var kids = box.querySelectorAll('[data-bpick][data-group="' + g + '"]');
+          var n = 0;
+          Array.prototype.forEach.call(kids, function (k) { if (k.checked) n++; });
+          head.checked = n > 0 && n === kids.length;
+          head.indeterminate = n > 0 && n < kids.length;
+        });
+        var total = box.querySelectorAll('[data-bpick]:checked').length;
+        var btn = $('bundleLoad');
+        if (btn) btn.textContent = 'Load selected (' + total + ' · max 7)';
+      };
+      // Wired once: box persists across opens (only innerHTML is replaced).
+      if (!box._bpWired) {
+        box._bpWired = true;
+        box.addEventListener('click', function (e) {
+          var t = e.target.closest ? e.target.closest('[data-ftoggle]') : null;
+          if (!t) return;
+          var g = t.getAttribute('data-ftoggle');
+          var list = box.querySelector('[data-flist="' + g + '"]');
+          var chev = box.querySelector('[data-chev="' + g + '"]');
+          if (!list) return;
+          list.hidden = !list.hidden;
+          if (chev) chev.textContent = list.hidden ? '▸' : '▾';
+        });
+        box.addEventListener('change', function (e) {
+          var el = e.target;
+          if (el.hasAttribute && el.hasAttribute('data-fpick')) {
+            var g = el.getAttribute('data-fpick');
+            var kids = box.querySelectorAll('[data-bpick][data-group="' + g + '"]');
+            Array.prototype.forEach.call(kids, function (k) { k.checked = el.checked; });
+          }
+          Array.prototype.forEach.call(box.querySelectorAll('[data-fpick]'), function (head) {
+            var gg = head.getAttribute('data-fpick');
+            var kk = box.querySelectorAll('[data-bpick][data-group="' + gg + '"]');
+            var n = 0;
+            Array.prototype.forEach.call(kk, function (k) { if (k.checked) n++; });
+            head.checked = n > 0 && n === kk.length;
+            head.indeterminate = n > 0 && n < kk.length;
+          });
+          var total = box.querySelectorAll('[data-bpick]:checked').length;
+          var btn = $('bundleLoad');
+          if (btn) btn.textContent = 'Load selected (' + total + ' · max 7)';
+        });
+      }
+      syncBundleUI();
       $('bundleLoad').addEventListener('click', function () {
         var sel = Array.prototype.map.call(box.querySelectorAll('[data-bpick]:checked'), function (c) { return c.value; });
         if (!sel.length) { setStatus('Tick at least one bundled file.'); return; }
         sel = sel.slice(-7);
+        var byRel = {};
+        sorted.forEach(function (en) { byRel[en.rel] = en; });
         setStatus('Fetching ' + sel.length + ' bundled file(s)…');
         var results = [], chain = Promise.resolve();
-        sel.forEach(function (file) {
+        sel.forEach(function (rel) {
           chain = chain.then(function () {
-            return fetch(encodeURI('source-file/' + file) + '?v=' + Date.now()).then(function (r) {
+            return fetch(encodeURI('source-file/' + rel) + '?v=' + Date.now()).then(function (r) {
               if (!r.ok) throw new Error('HTTP ' + r.status);
               var lm = r.headers.get('Last-Modified');
-              return r.arrayBuffer().then(function (buf) { results.push({ buf: buf, label: file, fileDate: lm ? new Date(lm) : new Date() }); });
+              return r.arrayBuffer().then(function (buf) {
+                var en = byRel[rel] || entryOf(rel);
+                results.push({ buf: buf, label: en.label, rel: en.rel, folder: en.folder, folderId: en.folderId,
+                  fileDate: lm ? new Date(lm) : new Date() });
+              });
             });
           });
         });
@@ -884,12 +1533,16 @@
     var el = $(id);
     if (el) { el.addEventListener('input', renderCompare); el.addEventListener('change', renderCompare); }
   });
+  ['trendMetric', 'trendSort'].forEach(function (id) {
+    var el = $(id);
+    if (el) { el.addEventListener('input', renderTrend); el.addEventListener('change', renderTrend); }
+  });
   var flBox = $('fileList');
   if (flBox) flBox.addEventListener('click', function (e) {
     var b = e.target.closest ? e.target.closest('[data-unload]') : null;
     if (!b) return;
-    var label = b.getAttribute('data-unload');
-    state.files = state.files.filter(function (f) { return f.label !== label; });
+    var rel = b.getAttribute('data-unload');
+    state.files = state.files.filter(function (f) { return (f.rel || f.label) !== rel; });
     refreshAfterFiles();
   });
 
@@ -1004,21 +1657,30 @@
   }
 
   function populateFacets() {
-    var statuses = {}, types = {}, secs = {}, camps = {}, campIds = {};
-    state.rows.forEach(function (r) { statuses[r.status] = 1; types[r.type] = 1; secs[r.sec] = 1; if (r.campaign) { camps[r.campaign] = 1; campIds[r.campaign] = r.campaignId || ''; } });
+    var statuses = {}, types = {}, secs = {}, camps = {}, campIds = {}, campNames = {};
+    state.rows.forEach(function (r) {
+      statuses[r.status] = 1; types[r.type] = 1; secs[r.sec] = 1;
+      var k = campKey(r);
+      if (k) { camps[k] = 1; if (!campIds[k]) campIds[k] = r.campaignId || ''; if (r.campaign) campNames[k] = r.campaign; }
+    });
     fillSelect('fStatus', Object.keys(statuses));
     fillSelect('fType', Object.keys(types));
     fillSelect('fSec', Object.keys(secs));
-    // Campaign options show the catalog label when named, value stays the raw file name.
+    // Campaign options: friendly label when named, raw file name otherwise.
+    // Bracket keys (blank-campaign rows tagged by folder [id]) show the catalog
+    // label or the 'Unnamed campaign' placeholder — never a bare ID.
     var sel = $('fCamp'), cur = sel.value;
     while (sel.options.length > 1) sel.remove(1);
     Object.keys(camps).sort().forEach(function (n) {
-      var lab = campLabel({ campaign: n, campaignId: campIds[n] });
+      var bracket = n.charAt(0) === '[';
+      var lab = campLabel({ campaign: bracket ? '' : (campNames[n] || n), campaignId: campIds[n] });
       var o = document.createElement('option');
-      o.value = n; o.textContent = (lab && lab !== n) ? lab + ' — ' + n : n;
+      o.value = n; o.textContent = (!bracket && lab && lab !== n) ? lab + ' — ' + n : lab;
       sel.appendChild(o);
     });
+    // Keep a user-picked campaign across reloads only if it still exists.
     sel.value = cur;
+    if (cur && sel.value !== cur) sel.value = '';
     // all distinct file accounts -> "Other" group (allowlist filtered out in builder)
     var seen = {};
     state.rows.forEach(function (r) { if (r.account) seen[r.account] = 1; });
@@ -1076,7 +1738,7 @@
       if (se && String(r.sec) !== se) return false;
       if (ins && insBase(r) !== ins) return false;
       if (ty && String(r.type) !== ty) return false;
-      if (cp && String(r.campaign || '') !== cp) return false;
+      if (cp && campKey(r) !== cp) return false;
       if (r.roi < minRoi || r.orders < minOrd) return false;
       if (!isNaN(maxAge)) { var ad = ageDays(r.timePosted); if (isNaN(ad) || ad > maxAge) return false; }
       if (rawQ) {
@@ -1116,6 +1778,7 @@
     renderTop(rows);
     renderChart(rows);
     renderCompare();
+    renderTrend();
     applyInsightLink();
   }
 
@@ -1203,13 +1866,22 @@
 
   /* Account detail modal: click a per-account row for its creatives */
   var MODAL_STEP = 50;
+  /* Facet key → display name (bracket keys resolve via catalog/placeholder). */
+  function campFacetLabel(key) {
+    if (!key) return '';
+    for (var i = 0; i < state.rows.length; i++) {
+      if (campKey(state.rows[i]) === key) return campLabel(state.rows[i]);
+    }
+    if (key.charAt(0) === '[') return campLabel({ campaign: '', campaignId: key.slice(1, -1) });
+    return key;
+  }
   function filterContext() {
     var bits = [];
     if ($('fStatus').value) bits.push('Status=' + $('fStatus').value);
     if ($('fSec').value) bits.push('2nd=' + $('fSec').value);
     if ($('fInsight').value) bits.push('Insight=' + $('fInsight').value);
     if ($('fType').value) bits.push('Type=' + $('fType').value);
-    if ($('fCamp').value) bits.push('Campaign=' + $('fCamp').value);
+    if ($('fCamp').value) bits.push('Campaign=' + campFacetLabel($('fCamp').value));
     var sq = $('fSearch').value.trim();
     if (sq) bits.push((state.idMode ? 'Post ID=' : 'Search=') + (sq.length > 40 ? sq.slice(0, 40) + '…' : sq));
     if ($('fMinRoi').value) bits.push('ROI>=' + $('fMinRoi').value);
@@ -1231,7 +1903,7 @@
     tb.innerHTML = rows.slice(0, state.modalCount).map(function (r, i) {
       var cr = String(r.creative || '');
       if (cr.length > 90) cr = cr.slice(0, 90) + '…';
-      return '<tr><td>' + (i + 1) + '</td><td>' + esc(cr) + '</td><td title="' + esc(r.campaign || '') + '">' + esc(campLabel(r)) + '</td><td title="' + esc(r.productId || '') + '">' + esc(prodName(r)) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td>' + insightCell(r) + '<td>' + fmtPosted(r.timePosted) +
+      return '<tr><td>' + (i + 1) + '</td><td>' + esc(cr) + '</td><td title="' + esc((r.campaign || r.campaignId) || '') + '">' + esc(campLabel(r)) + '</td><td title="' + esc(prodTitle(r)) + '">' + esc(prodName(r)) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td>' + insightCell(r) + '<td>' + fmtPosted(r.timePosted) +
         '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) + '</td><td>' + fmt(r.revenue, 2) + '</td><td>' + r.roi.toFixed(2) +
         '</td><td>' + r.aov.toFixed(2) +
         '</td><td>' + (r.impr >= 1000 ? '<span class="tick" title="1000+ impressions">✓ </span>' : '') + fmt(r.impr) +
@@ -1287,6 +1959,7 @@
     if (e.key === 'Escape' && !$('acctModal').hidden) closeAccountModal();
     if (e.key === 'Escape' && !$('mgrModal').hidden) closeMgr();
     if (e.key === 'Escape' && !$('insModal').hidden) closeInsightModal();
+    if (e.key === 'Escape' && !$('trendModal').hidden) closeTrendModal();
   });
   /* Insight popup: click any verdict chip for the per-video explanation. */
   function openInsightModal(row) {
@@ -1350,7 +2023,7 @@
       var cr = String(r.creative || '');
       if (cr.length > 90) cr = cr.slice(0, 90) + '…';
       return '<tr><td class="mono">' + esc(r.postId) + '</td><td>' + esc(cr) + '</td><td>' + esc(r.account) +
-        '</td><td title="' + esc(r.campaign || '') + '">' + esc(campLabel(r)) + '</td><td title="' + esc(r.productId || '') + '">' + esc(prodName(r)) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td>' + insightCell(r) + '<td>' + fmtPosted(r.timePosted) + '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) +
+        '</td><td title="' + esc((r.campaign || r.campaignId) || '') + '">' + esc(campLabel(r)) + '</td><td title="' + esc(prodTitle(r)) + '">' + esc(prodName(r)) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td>' + insightCell(r) + '<td>' + fmtPosted(r.timePosted) + '</td><td>' + fmt(r.cost, 2) + '</td><td>' + fmt(r.orders) +
         '</td><td>' + fmt(r.revenue, 2) + '</td><td>' + r.roi.toFixed(2) + '</td><td>' + r.aov.toFixed(2) + '</td><td>' + (r.impr >= 1000 ? '<span class="tick" title="1000+ impressions">✓ </span>' : '') + fmt(r.impr) + '</td><td>' + fmt(r.clicks) + '</td><td>' + r.cpm.toFixed(2) + '</td></tr>';
     }).join('');
   }
@@ -1680,11 +2353,11 @@
       'Base Impr', 'Latest Impr', 'Delta Impr',
       'Base CPM', 'Latest CPM', 'Base Status', 'Latest Status', 'Files'];
     var q = function (v) { return '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"'; };
-    var cat = (state.catalog && state.catalog.campaigns) || {};
-    var prd = (state.catalog && state.catalog.products) || {};
+    var cat = mergedCat();
+    var prd = mergedPrd();
     var lines = [head.join(',')].concat(rows.map(function (r) {
       var ce = cat[String(r.campId || '')], pe = prd[String(r.prodId || '')];
-      var cl = (ce && ce.label) ? ce.label : (r.campaign || '');
+      var cl = (ce && ce.label) ? ce.label : (r.campaign || (r.campId ? 'Unnamed campaign' : ''));
       var pn = (pe && pe.name) ? pe.name :
         (String(r.prodId || '').toUpperCase() === 'N/A' && r.campaign ? 'Product Card - ' + cl : (r.prodId || ''));
       return [q(r.move), q(r.creative), q(r.account), q(cl), r.campMoved ? 'yes' : 'no', q(pn), q(r.postId),

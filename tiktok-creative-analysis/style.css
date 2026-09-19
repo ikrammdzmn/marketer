@@ -82,6 +82,9 @@
 .modal-box.modal-wide { max-width: calc(100vw - 2rem); }
 #acctTable tbody tr[data-acc] { cursor: pointer; }
 #acctTable tbody tr[data-acc]:hover { background: #eff6ff; }
+#trendTable tbody [data-tsolo] { cursor: pointer; }
+#trendTable tbody [data-tsolo]:hover { background: #eff6ff; }
+.dark #trendTable tbody [data-tsolo]:hover { background: #374151; }
 .dark #acctTable tbody tr[data-acc]:hover { background: #374151; }
 .cov-summary { cursor: pointer; color: #4b5563; user-select: none; }
 .dark .cov-summary { color: #d1d5db; }

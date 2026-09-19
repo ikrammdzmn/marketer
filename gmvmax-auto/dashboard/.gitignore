@@ -1,0 +1,3 @@
+# Local dashboard runtime — never commit these.
+.local_secrets.json
+__pycache__/
