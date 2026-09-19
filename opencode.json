@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "google-sheets": {
+      "type": "local",
+      "command": [
+        "uv",
+        "--directory",
+        "C:\\Users\\PC CUSTOM\\Documents\\github\\tools\\spreadsheet-mcp",
+        "run",
+        "spreadsheet-mcp"
+      ],
+      "enabled": true,
+      "environment": {
+        "GOOGLE_SERVICE_ACCOUNT_FILE": "{env:GOOGLE_SHEETS_CRED}"
+      }
+    }
+  }
+}

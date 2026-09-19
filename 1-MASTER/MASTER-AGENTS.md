@@ -75,4 +75,15 @@ additional prompt Do not delete this part
 - `tiktok-event/` — RACI board, vanilla single-file (`raci_campaign_dashboard.tsx`
   FROZEN as spec source; localStorage only; PIN is courtesy, not security).
 - `gmvmax/` — knowledge only, no code.
-- `gmvmax-auto/` — plan only until explicit go (`masterplan.md`).
+- `gmvmax-auto/` — P0 skeleton live (Neon GREEN, apps in flight): stdlib collector (closed-window, `ALLOW_WRITES=0`) + 8082 dashboard + `001–004` migrations (schema-qualified, `win` col). Business app pending, Shop app created. Docs: `DEV_NOTES.md` (handoff) + `feature.md` (user guide). Folder rules §5–7 carry portal lessons (branch TTL, localhost redirect).
+- Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, branch `main`) — local MCP runners. `spreadsheet-mcp`
+  (27 Sheets tools, `uv`, stdio `127.0.0.1` only, IGNORED clone; nested upstream
+  `.git` → `dudegladiator`, never push there). Secrets at
+  `%USERPROFILE%\.config\spreadsheet-mcp\service-account.json`, env
+  `GOOGLE_SHEETS_CRED` → server var `GOOGLE_SERVICE_ACCOUNT_FILE` (never
+  `GOOGLE_APPLICATION_CREDENTIALS`). Two clients, two files: opencode reads
+  `marketer/opencode.json` (`mcp` + `command[]` + `{env:}`), Antigravity reads
+  `~/.gemini/config/mcp_config.json` (`mcpServers` + `args[]` + `env`).
+  Restart IDE after config change. `check_setup.py` needs UTF-8
+  (`chcp 65001`); git stderr progress is not an error; winget `uv` needs a
+  fresh shell before it resolves.

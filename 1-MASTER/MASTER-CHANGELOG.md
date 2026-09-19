@@ -4,7 +4,23 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
-## 17 Sep 2026
+## 19 Sep 2026
+
+- `tools/` Sheets MCP wired (sibling, outside git): `spreadsheet-mcp` cloned,
+  `uv` 0.12.17 + `uv sync` OK; `marketer/opencode.json` (secret-free) +
+  Antigravity `mcp_config.json` (was 0 bytes) written; key pending, scratch
+  read/write test pending; 6 wiring bugs fixed (uv PATH, cp1252 emoji,
+  env-var name, git-stderr, IDE config split, empty mcp_config)
+  → `../tools/CHANGELOG.md` + `../tools/DEV_NOTES.md`
+- `tools/` repo live (private `ikrammdzmn/tools`, `main`): `3a27f20` init
+  (docs + bootstrap, clone ignored) + `70f1700` closeout/handoff; next Sheets
+  work roots in that repo; key + scratch test still open
+
+- `gmvmax-auto` P0 skeleton + Neon GREEN, apps in flight: collector stub + 8082
+  dashboard verified offline-first; `TIKTOK DATA` SG `production` + persistent `dev`,
+  `001–004` applied (`acct`=2, `gmv`=7 both); public-schema + reserved-`window` bugs
+  fixed (`win`); Business API `TIKTOK GMV MAX` pending approval, Shop Custom app created;
+  `DEV_NOTES.md` + `feature.md` + folder changelog → `gmvmax-auto/CHANGELOG.md`
 
 - `tiktok-account`: scale-hardening + linking safety — 429 throttle/retry fix,
   range Refresh + fetch-limit box (merged cache), Unlink button, calendar hover

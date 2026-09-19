@@ -9,17 +9,32 @@
 - `tiktok-strategy/` — Himwellness Growth OS playbook (`himwellness-playbook.html` + `full-strategy.md`). Business guardrails live here: ROI ≥7.0, CPA ≤RM21.18, 1 campaign/SKU, TTAM feeder role, dayparting windows, payday surge. Offline, localStorage.
 - `tiktok-event/` — HIMCOFFEE RACI MASTER (`index.html`, vanilla single-file, local-only, no build). Timeline 2026–2030 + RACI Worksheet + 5T/3M Blueprint + workload + CSV + local PIN seats. Reference: `raci_campaign_dashboard.tsx` (React+Firebase, FROZEN) + `tiktok-prd` (PRD v1.0.0). Statuses in its `plan.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
 - `gmvmax/` — Knowledge only: `gmvmax.md` (algo realities) + `product/*.xlsx`. No code goes here.
-- `gmvmax-auto/` — NEW: auto budget-adjust service (plan locked, P0 not started). See `masterplan.md`. Future code: auth/collector/decider/actor/notify/dashboard + migrations.
+- `gmvmax-auto/` — auto budget-adjust service: P0 skeleton LANDED 19 Sep (Neon GREEN, apps in flight). Code: `collector.py` stub + `dashboard/` 8082 + migrations `001–004`. See `gmvmax-auto/plan.md` + `DEV_NOTES.md` + `feature.md`.
 - `docs/` — `terms.html` + `privacy.html` (GitHub Pages, TikTok app review). `tiktok*.txt` at root = domain verification. Never move/rename without updating TikTok app form.
+- `opencode.json` (NEW, untracked 19 Sep) — opencode MCP pointer: `google-sheets`
+  local via `../tools/spreadsheet-mcp` (`uv run`), secret-free
+  (`{env:GOOGLE_SHEETS_CRED}` only). Antigravity counterpart
+  `~/.gemini/config/mcp_config.json` also wired (was 0 bytes).
+- Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, `main`) — `spreadsheet-mcp` cloned 19 Sep
+  (`uv` 0.12.17, `uv sync` OK), 27 Sheets tools; repo live with docs +
+  `bootstrap.ps1` (commits `3a27f20`, `70f1700`); service-account key pending,
+  scratch read/write test pending. Own `AGENTS.md`/`DEV_NOTES.md`/`feature.md`.
+  Next Sheets work roots in that repo.
 - `1-MASTER/` — this file + `MASTER-CHANGELOG.md` (repo rollup) + `MASTER-AGENTS.md` (shared conventions) + `antigravity-aistudio.md` (IDE transfer guide, not product code).
 
-## 2. Current status (2026-09-17, evening)
+## 2. Current status (2026-09-19, night)
 
+- `tools/` Sheets MCP wired (sibling, outside git): `spreadsheet-mcp` cloned +
+  `uv sync` OK, `marketer/opencode.json` + Antigravity `mcp_config.json` written,
+  service-account key pending (`GOOGLE_SHEETS_CRED` NOT-SET), scratch read/write
+  test pending. Bugs fixed: uv PATH refresh, `check_setup.py` cp1252 emoji crash,
+  `GOOGLE_SERVICE_ACCOUNT_FILE` var name, git-stderr false error, opencode-vs-
+  Antigravity config split. Detail: `../tools/DEV_NOTES.md`.
 - `tiktok-account` dashboard ready local-only; 20-entry accounts.json (live-read); 429-hardened range/limit pulls; link-mismatch guard live; accounts not all linked; Production app unapproved (demo video still the next big step). Committed `3ee528a`.
 - `tiktok-creative-analysis` v9–v22 local-only, verified over HTTP, UNCOMMITTED: Hide Ineligible, insight guide/popup/filter/`?insight`, N/A Product Card-campaign, Unknown split, picker chips, accountId/Active/Live/T-Aff + save stamps + Hide inactive, manager numbers/drag/groups/sections. `catalog.json` fully user-named. Backlog: exploration exit signals (`plan.md` §6). Releases → `tiktok-creative-analysis/CHANGELOG.md`.
 - `tiktok-strategy` playbook content complete (static).
 - `tiktok-event` built 17 Sep (vanilla RACI board + docs), UNTRACKED. Backlog: structured due-dates, C/I columns, shared Firebase seats, mobile cards.
-- `gmvmax-auto` plan only (`masterplan.md` committed `1d9854e`). P0 explicitly NOT started.
+- `gmvmax-auto` P0 skeleton landed 19 Sep (UNCOMMITTED): Neon `TIKTOK DATA` SG with `production` + persistent `dev`, `001–004` applied (`acct`=2, `gmv`=7 both branches; 004 fixed public-schema + reserved-`window`→`win` bugs), collector stub + 8082 dashboard verified offline-first, keys gitignored (lengths-only check). Business API `TIKTOK GMV MAX` PENDING approval (sandbox locked); Shop Custom app created (MY). Next: sandbox GET wiring → 48×30m snapshots → P0 exit. Detail: `gmvmax-auto/plan.md`, `DEV_NOTES.md`, `CHANGELOG.md`.
 - Git: branch `main`. HEAD `f8c8c05` (17 Sep 13:44, accidental junk message —
   template committed verbatim) holds v8–v14 + 1-MASTER creation + tiktok-event.
   UNCOMMITTED on top: v15–v22 + 20-entry accounts.json + doc refreshes. Commit
