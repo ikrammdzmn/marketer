@@ -441,3 +441,41 @@ Unique discoveries this window:
    messages say what changed). _Lesson: next window, offer `git commit
    --amend -m` wording IF owner asks to touch history — never amend
    unasked; just note it here and move on._
+
+## Window 2026-09-20 (afternoon) -- Dashboard reads Sheets for Yesterday Run ticks
+
+Vibe: feature request in 2 words ("tick -> auto update"), chose Option B
+(dashboard reads Sheet live) over Option A (sync writes JSON). Owner wants
+"tick and dashboard auto updates" without re-sync. Added Sheets read path
+to dashboard: `sheets.py` (new), `/api/yesterday-run` endpoint, profile pill
+"Yesterday: N videos * M ticked (P%)" clickable to filter table. Runs via
+`uv --directory ../tools/spreadsheet-mcp run python dashboard/dashboard.py`;
+stdlib fallback disables Sheets features gracefully. `run-dashboard.ps1`
+launcher added. All files ASCII-only, compiles clean.
+
+Bugs found & fixed (this session):
+30. **Sync single-account Dashboard clobber** -- `--account` rewrote Dashboard
+   with 1 row, stale B-F in footer, old rows below never cleared. Fixed with
+   merge-in-place: reads Dashboard!A1:F, preserves other rows by HYPERLINK
+   label, rebuilds padded 6-col footer, clears leftovers. (Lesson: partial
+   writes to Sheets leave ghost data; always pad/clear.)
+31. **Merge stripped hyperlinks** -- default FORMATTED_VALUE read returns link
+   text not formula. Fixed: read col A with `valueRenderOption=FORMULA`,
+   re-link plain labels via `sheet_id_of` fallback. (Lesson: Sheets read
+   render option matters for formulas.)
+32. **Stray date-serial row (46285.618)** -- FORMULA read returns timestamps
+   as serial numbers, merge kept them as "accounts". Fixed: dual read
+   (formatted values + FORMULA col A only), footer detection drops serials.
+   (Lesson: single read mode can't serve both formulas and date formatting.)
+33. **Dashboard HTML non-ASCII** -- em-dashes/ellipsis/hourglass in source
+   broke ASCII rule. Fixed: strip all non-ASCII on write. (Lesson: Tailwind
+   CDN template had Unicode; sanitize on every edit.)
+
+Unique discoveries:
+- Dashboard + Sheets = same uv env as sync (`spreadsheet-mcp`), reuses
+  `GOOGLE_SHEETS_CRED` + `SHEET_ID`. No new deps, no new auth.
+- Stdlib fallback (no uv) works: Sheets features just disabled, core
+  TikTok dashboard unchanged.
+- `run-dashboard.ps1` mirrors `run-sync.ps1` pattern (pause-on-exit,
+  uv fallback, forward-args).
+

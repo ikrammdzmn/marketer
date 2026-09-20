@@ -1,4 +1,26 @@
-﻿# CHANGELOG.md - sync/
+# CHANGELOG.md - sync/
+
+## 2026-09-20 - v16: Dashboard dual-read (stray serial fix)
+- Merge reads values (formatted, dates as strings) + col A with FORMULA
+  (keeps `=HYPERLINK`). v15's single FORMULA read returned old timestamps
+  as date serials (e.g. 46285.618), which the merge then kept as a stray row.
+- `_is_dashboard_footer` also drops bare date-serial numbers in col A.
+  Next single run removes the stray row and re-links all rows.
+
+## 2026-09-20 - v15: keep Dashboard hyperlinks on merge
+- Dashboard read uses `valueRenderOption=FORMULA` (default FORMATTED_VALUE
+  returns link labels as plain text, so the merge wrote them back delinked).
+- Merge re-links plain-label rows via `sheet_id_of` fallback - heals sheets
+  delinked by v14 on the next single run.
+
+## 2026-09-20 - v14: single-account Dashboard merge
+- `--account` runs merge that one row into the existing Dashboard instead of
+  rewriting it with 1 row. Other account rows kept in place (hyperlinks
+  preserved); new accounts appended; footer rebuilt fresh.
+- Footer rows padded to 6 cols (old 1-col writes left stale B-F numbers behind
+  "Updated (MYT)"/timestamp). Leftover rows below the new footer cleared
+  (heals the corrupted 1-row overwrite on next single run).
+- Count line fixed: "1 account" / "1 new video" singular.
 
 ## 2026-09-20 - v13: BOM-proof ID file
 - `.sheet_id.json` stripped to ASCII; reader uses `utf-8-sig` (survives

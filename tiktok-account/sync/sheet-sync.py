@@ -1,4 +1,4 @@
-﻿"""Manual Google Sheets sync for the 10 managed TikTok accounts.
+"""Manual Google Sheets sync for the 10 managed TikTok accounts.
 
 Reads the 7-day (default) window via dashboard.pull_and_cache, then upserts
 into 1 spreadsheet by Video ID:
@@ -133,7 +133,7 @@ def X(req, tries=6):
             if not transient or attempt == tries - 1:
                 raise
             time.sleep(min(60.0, 2.0 ** attempt))
-    raise last
+    raise last  # type: ignore
 
 
 def tab_title(name, username):
@@ -399,24 +399,151 @@ def sheet_id_of(svc, sid, title):
     return _sheet_ids_cache[sid][title]
 
 
-def write_dashboard(svc, sid, dash, summaries, gids, dry):
-    rows = [["Account", "Followers", "Videos 7d", "Views 7d",
-             "ViewsD 7d", "Last post MYT"]]
+def _pad6(row):
+    """Pad any row to exactly 6 Dashboard cols (footer-safe)."""
+    return (list(row) + [""] * 6)[:6]
+
+
+def _dash_label(cell):
+    """Col-A label: unwrap =HYPERLINK("#gid=N","label") or plain text."""
+    s = str(cell or "")
+    if s.startswith("=HYPERLINK("):
+        i = s.find('","')
+        if i != -1:
+            return s[i + 3:-2].replace('""', '"')
+    return s.strip()
+
+
+def _is_dashboard_footer(a):
+    """True for the Updated/timestamp footer rows (even with stale B-F)."""
+    s = str(a or "").strip()
+    if s == "Updated (MYT)":
+        return True
+    if len(s) == 19 and s[4] == "-" and s[7] == "-" and \
+            s[10] == " " and s[13] == ":":
+        return True
+    try:
+        f = float(s.replace(",", ""))
+        if 20000.0 <= f <= 80000.0:
+            # Date serial: an old timestamp cell read back as a number
+            # (FORMULA render). Col A is never legitimately numeric.
+            return True
+    except (TypeError, ValueError):
+        pass
+    return False
+
+
+def _summary_row(s, gids):
+    label = s["sheet"]
+    gid = gids.get(label)
+    cell = ('=HYPERLINK("#gid=%d","%s")' % (gid, label.replace('"', '""'))
+            if gid is not None else label)
+    return [cell, s["followers"], s["videos_7d"],
+            s["views_7d"], s["views_d_7d"], s["last_post"]]
+
+
+def _read_dashboard_grid(svc, sid):
+    """Dashboard values A1:F100 with default (formatted) render.
+
+    Dates come back as displayed strings, so footer detection works.
+    Col A hyperlinks come back as plain labels - pair with
+    _read_dashboard_col_a for the real formulas.
+    """
+    try:
+        resp = X(svc.spreadsheets().values().get(
+            spreadsheetId=sid, range="Dashboard!A1:F100"))
+    except Exception as e:  # noqa: BLE001 - missing tab reads as empty
+        blob = str(getattr(e, "content", "")) + str(e)
+        if "Unable to parse range" in blob:
+            return []
+        raise
+    return resp.get("values", [])
+
+
+def _read_dashboard_col_a(svc, sid):
+    """Dashboard col A with FORMULA render (keeps =HYPERLINK cells)."""
+    try:
+        resp = X(svc.spreadsheets().values().get(
+            spreadsheetId=sid, range="Dashboard!A1:A100",
+            valueRenderOption="FORMULA"))
+    except Exception as e:  # noqa: BLE001 - missing tab reads as empty
+        blob = str(getattr(e, "content", "")) + str(e)
+        if "Unable to parse range" in blob:
+            return []
+        raise
+    return resp.get("values", [])
+
+
+def _link_cell(label, gids, svc, sid, dry):
+    """HYPERLINK cell for a tab label; plain label if gid unknown/dry."""
+    gid = gids.get(label)
+    if gid is None and not dry:
+        try:
+            gid = sheet_id_of(svc, sid, label)
+        except (KeyError, TypeError, AttributeError):
+            gid = None
+    if gid is None:
+        return label
+    return '=HYPERLINK("#gid=%d","%s")' % (gid, label.replace('"', '""'))
+
+
+def write_dashboard(svc, sid, dash, summaries, gids, dry, merge=False):
+    header = ["Account", "Followers", "Videos 7d", "Views 7d",
+              "ViewsD 7d", "Last post MYT"]
+    fresh = {}
     for s in summaries:
-        label = s["sheet"]
-        gid = gids.get(s["sheet"])
-        cell = ('=HYPERLINK("#gid=%d","%s")' % (gid, label.replace('"', '""'))
-                if gid is not None else label)
-        rows.append([cell, s["followers"], s["videos_7d"],
-                     s["views_7d"], s["views_d_7d"], s["last_post"]])
-    rows.append(["", "", "", "", "", ""])  # blank separator (clears stale)
-    rows.append(["Updated (MYT)"])
-    rows.append([datetime.datetime.now(MYT).strftime("%Y-%m-%d %H:%M:%S")])
-    n_acc = len(summaries)
+        fresh[s["sheet"]] = _summary_row(s, gids)
+    if merge:
+        # Single-account run: keep every other account row in place,
+        # replace only the just-synced row. Footer-like rows (including
+        # the corrupted Updated/timestamp rows with stale B-F left by
+        # the old 1-row rewrite, and bare date-serial rows) are dropped
+        # and rebuilt below. Col A comes from the FORMULA read (keeps
+        # =HYPERLINK); other cols from the formatted read (keeps dates).
+        acc_rows, seen = [], set()
+        formulas = _read_dashboard_col_a(svc, sid)
+        for i, r in enumerate(_read_dashboard_grid(svc, sid)[1:]):
+            pad = _pad6(r)
+            fa = (formulas[i + 1] + [""])[0] \
+                if i + 1 < len(formulas) else ""
+            if str(fa or "").strip():
+                pad[0] = fa
+            a = str(pad[0] or "").strip()
+            if not a:
+                continue
+            if _is_dashboard_footer(a):
+                continue
+            label = _dash_label(pad[0])
+            if label in fresh:
+                if label not in seen:
+                    acc_rows.append(fresh[label])
+                    seen.add(label)
+            elif label and label not in seen:
+                # Re-link plain labels (FORMULA read keeps links; this
+                # heals sheets delinked by the earlier merge).
+                if not str(pad[0]).startswith("=HYPERLINK("):
+                    pad[0] = _link_cell(label, gids, svc, sid, dry)
+                acc_rows.append(pad)
+                seen.add(label)
+        for label, row in fresh.items():
+            if label not in seen:
+                acc_rows.append(row)
+                seen.add(label)
+    else:
+        acc_rows = [fresh[s["sheet"]] for s in summaries]
+    rows = [header] + acc_rows + [_pad6([]), _pad6(["Updated (MYT)"]),
+            _pad6([datetime.datetime.now(MYT).strftime("%Y-%m-%d %H:%M:%S")])]
+    n_acc = len(acc_rows)
     if not dry:
         X(svc.spreadsheets().values().update(
             spreadsheetId=sid, range="Dashboard!A1:F%d" % len(rows),
             valueInputOption="USER_ENTERED", body={"values": rows}))
+        # Leftover clear: a shorter rewrite (e.g. old 1-row bug, removed
+        # account) must not leave stale rows below the new footer.
+        if len(rows) < 100:
+            X(svc.spreadsheets().values().clear(
+                spreadsheetId=sid,
+                range="Dashboard!A%d:F100" % (len(rows) + 1), body={}))
         X(svc.spreadsheets().values().clear(
             spreadsheetId=sid, range="Dashboard!G1:G20", body={}))
         dash_id = sheet_id_of(svc, sid, "Dashboard")
@@ -520,6 +647,8 @@ def main():
         win = "last %d day(s)" % days
     dash = _load_dashboard()
     _mcp_src_on_path()
+    
+    # pyrefly: ignore [missing-import]
     from spreadsheet_mcp.auth import get_sheets_service
     svc = get_sheets_service()
     picked = pick_accounts(dash, args.account)
@@ -557,9 +686,12 @@ def main():
         summaries.append(summarize(dash, name, tabs[name], merged, dash_since))
     gids = {t: sheet_id_of(svc, sid, t) for t in tabs.values()
             if not args.dry_run}
-    write_dashboard(svc, sid, dash, summaries, gids, args.dry_run)
-    print(("DRY " if args.dry_run else "") + "Dashboard written (%d accounts)."
-          % len(summaries))
+    merge = bool(args.account)
+    rows = write_dashboard(svc, sid, dash, summaries, gids, args.dry_run,
+                           merge=merge)
+    n_dash = len(rows) - 4  # header + blank + Updated + timestamp
+    print(("DRY " if args.dry_run else "") + "Dashboard written (%d account%s)."
+          % (n_dash, "" if n_dash == 1 else "s"))
     print_summary(results, skipped, len(names), args.dry_run)
 
 
@@ -574,9 +706,9 @@ def print_summary(results, skipped, total, dry):
     print("%d of %d accounts posted in this window (%d videos)."
           % (len(posted), total, videos))
     if dry:
-        print("%d rows would refresh, %d new videos." % (upd, ins))
+        print("%d rows would refresh, %d new video%s." % (upd, ins, "" if ins == 1 else "s"))
     else:
-        print("%d rows refreshed, %d new videos added on top." % (upd, ins))
+        print("%d rows refreshed, %d new video%s added on top." % (upd, ins, "" if ins == 1 else "s"))
     quiet = [n for n, f, _u, _i in results if f == 0]
     if quiet:
         print("No posts in window: %s." % ", ".join(quiet))

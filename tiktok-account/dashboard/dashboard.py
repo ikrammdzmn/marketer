@@ -1,7 +1,7 @@
-"""Local multi-account TikTok dashboard — 127.0.0.1 only, stdlib only.
+"""Local multi-account TikTok dashboard -- 127.0.0.1 only, stdlib only.
 
 One-time link per owned account (10 total), then select-and-view:
-  python dashboard/dashboard.py            # owns port 8080; tester fallback uses --port
+  uv --directory ../tools/spreadsheet-mcp run python dashboard/dashboard.py  # owns port 8080
   -> open http://127.0.0.1:8080/ -> Link each account once (TikTok login +
      Authorize) -> pick from dropdown -> Refresh -> table + Export CSV.
 
@@ -9,6 +9,10 @@ Tokens: dashboard/tokens/<Account>.json (gitignored), auto-refreshed
 (access ~24h, refresh ~1yr). Cache: dashboard/csvs/ (own folder, gitignored).
 Account names are authoritative from
 tiktok-creative-analysis/data/accounts.json (read-only, exact match).
+
+Optional Google Sheets integration (yesterday Run tick count):
+  Requires GOOGLE_SHEETS_CRED + SHEET_ID (or sync/.sheet_id.json).
+  Run via uv env (same as sheet-sync.py). Stdlib fallback works without Sheets.
 """
 import argparse
 import csv
@@ -23,6 +27,14 @@ import urllib.parse
 import urllib.request
 import urllib.error
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+# Optional Sheets integration (lazy import; fails soft if unavailable)
+try:
+    import sheets as sheets_mod
+    SHEETS_AVAILABLE = True
+except Exception:
+    sheets_mod = None
+    SHEETS_AVAILABLE = False
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PARENT = os.path.dirname(HERE)
@@ -292,7 +304,7 @@ def ensure_access(account):
         raise RelinkNeeded("not linked")
     now = time.time()
     if now >= t.get("refresh_expires_at", 0):
-        raise RelinkNeeded("refresh expired — relink " + account)
+        raise RelinkNeeded("refresh expired -- relink " + account)
     if t.get("access_token") and now < t.get("access_expires_at", 0):
         return t["access_token"]
     try:
@@ -306,7 +318,7 @@ def ensure_access(account):
         raise RelinkNeeded("refresh rejected (" + str(e)[:120] + ")")
     new_access = tok.get("access_token", "") or (tok.get("data") or {}).get("access_token", "")
     if not new_access:
-        raise RelinkNeeded("refresh gave no token — relink " + account)
+        raise RelinkNeeded("refresh gave no token -- relink " + account)
     save_token(account, tok)
     return new_access
 
@@ -658,7 +670,7 @@ class H(BaseHTTPRequestHandler):
                 + (html.escape(" (" + display + ")") if display else "") + ". Nothing was saved.</p>"
             if dup:
                 body += "<p><b>@" + html.escape(actual) + "</b> is already linked under slot <b>" \
-                    + html.escape(dup) + "</b> — saving here will duplicate it.</p>"
+                    + html.escape(dup) + "</b> -- saving here will duplicate it.</p>"
             if alt:
                 body += "<p><a href=\"/authorize?account=" + urllib.parse.quote(alt) \
                     + "\">Link @" + html.escape(actual) + " to its matching slot (" \
@@ -666,9 +678,9 @@ class H(BaseHTTPRequestHandler):
             body += "<form method=\"POST\" action=\"/confirm-link\">" \
                 "<input type=\"hidden\" name=\"state\" value=\"" + html.escape(cstate) + "\">" \
                 "<label><input type=\"checkbox\" name=\"ack\" value=\"on\"> " \
-                "I know this doesn't match — save anyway</label><br><br>" \
+                "I know this doesn't match -- save anyway</label><br><br>" \
                 "<button type=\"submit\">Save anyway</button></form>" \
-                "<p><a href=\"/\">Cancel — back to accounts (fresh login needed)</a></p>"
+                "<p><a href=\"/\">Cancel -- back to accounts (fresh login needed)</a></p>"
             self._html(body, 409)
             return
         if parsed.path in ("/api/profile", "/api/videos"):
@@ -741,7 +753,7 @@ class H(BaseHTTPRequestHandler):
             name = qs.get("account", [""])[0]
             _jp, cp, _pp = cache_paths(name)
             if not os.path.exists(cp):
-                self._html("No cache yet — press Refresh first.", 404)
+                self._html("No cache yet -- press Refresh first.", 404)
                 return
             with open(cp, "rb") as f:
                 b = f.read()
@@ -752,6 +764,28 @@ class H(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(b)))
             self.end_headers()
             self.wfile.write(b)
+            return
+        if parsed.path == "/api/yesterday-run":
+            name = qs.get("account", [""])[0]
+            if not name:
+                self._json({"error": "account required", "total": 0, "ticked": 0, "video_ids": []}, 400)
+                return
+            if not SHEETS_AVAILABLE:
+                self._json({"error": "Sheets module not available (run via uv env)", "total": 0, "ticked": 0, "video_ids": []})
+                return
+            # Find tab title from Dashboard or accounts.json
+            tab_title = name
+            try:
+                for a in load_accounts():
+                    if a.get("name", "") == name:
+                        uname = (a.get("username", "") or "").strip()
+                        if uname:
+                            tab_title = ("@" + uname + " / " + name) if not uname.startswith("@") else (uname + " / " + name)
+                        break
+            except Exception:
+                pass
+            res = sheets_mod.get_yesterday_run(name, tab_title)
+            self._json(res)
             return
         self._html("Not found", 404)
 
@@ -796,7 +830,12 @@ def main():
         print("accounts.json error: " + str(e)[:200])
         raise SystemExit(2)
     print("Dashboard: %d accounts from accounts.json" % len(names))
-    print("Open http://127.0.0.1:%d/ — Link each account once, then select + Refresh." % PORT)
+    if SHEETS_AVAILABLE:
+        print("Open http://127.0.0.1:%d/ -- Link each account once, then select + Refresh." % PORT)
+        print("Yesterday Run ticks: ENABLED (Sheets integration active)")
+    else:
+        print("Open http://127.0.0.1:%d/ -- Link each account once, then select + Refresh." % PORT)
+        print("Yesterday Run ticks: DISABLED (run via 'uv --directory ../tools/spreadsheet-mcp run python dashboard/dashboard.py')")
     print("Tester fallback stays available: python tiktok-account/tester.py --account X --port 8081")
     srv = HTTPServer(("127.0.0.1", PORT), H)
     try:

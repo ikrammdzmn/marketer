@@ -1,4 +1,4 @@
-﻿# DEV_NOTES.md - sync/ session handoff (20 Sep 2026, morning MYT)
+# DEV_NOTES.md - sync/ session handoff (20 Sep 2026, morning MYT)
 
 ## Vibe
 
@@ -143,3 +143,39 @@ verified in 2 calls. Short replies, one action per message held.
   itself, fixed before touching live sheets. Live `--all`: 10/10 MIGRATED,
   0 inserted (dedup held), deltas refreshed. Verified header A-N + FALSE/
   blank A-B + validation on all 10 sheets (Dashboard untouched).
+
+## 20 Sep 2026 - v14 single-account Dashboard clobber (afternoon MYT)
+
+- Owner screenshot: after `--account HIMCoffee`, Dashboard row 4-5 showed
+  "Updated (MYT) | 3492 | 25 | 101721" + timestamp with stale B-F numbers,
+  old rows below. Root causes: (1) single run rewrote Dashboard with 1
+  summary row; (2) footer wrote 1-col rows so Sheets kept old B-F values;
+  (3) rows below the short rewrite never cleared.
+- Fixed in `sheet-sync.py`: `write_dashboard(..., merge=)` - single runs
+  read `Dashboard!A1:F100`, keep other rows (match HYPERLINK label), drop
+  footer-like rows even with stale B-F, rebuild padded 6-col footer, clear
+  `A{new+1}:F100`. `--all` unchanged (full rewrite + same clear).
+  Verified: py_compile, ASCII 0, fake-grid merge test (corrupted -> 2 clean
+  rows + padded footer + leftover clear). Owner to live-rerun single.
+
+## 20 Sep 2026 - v15 hyperlink strip (same afternoon)
+
+- Owner: merge works but Account column links gone. Cause: Dashboard read
+  used default FORMATTED_VALUE, so `=HYPERLINK` came back as plain label
+  text and got written back delinked.
+- Fixed: `_read_dashboard_grid` requests `valueRenderOption=FORMULA`;
+  merge re-links plain labels via `_link_cell`/`sheet_id_of` fallback, so
+  the already-delinked sheet heals on the next single run. Verified:
+  py_compile, ASCII 0, fake-grid link test (formula kept, plain relinked).
+
+## 20 Sep 2026 - v16 stray 46285.618 + 7-account Dashboard (same afternoon)
+
+- Owner: stray `46285.618` under the accounts; only 7 accounts listed.
+- Stray = my v15 bug: single FORMULA read returns old timestamp cells as
+  date serials, which the merge kept as an "account" row. Fixed with a
+  dual read (formatted values for data + FORMULA for col A only) and
+  serial-number footer detection. Verified: py_compile, ASCII 0, fake-grid
+  test on the owner's layout (stray dropped, 7/7 relinked, footer padded).
+- 7 not 10 = old damage, not a bug: the pre-merge v14 rewrite overwrote
+  rows 3-5 (Dr Samhan, Official3, Dr. Samhan), merge preserves what exists.
+  Next `--all` run restores all 10 rows.
