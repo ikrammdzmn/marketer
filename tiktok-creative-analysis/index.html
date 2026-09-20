@@ -393,18 +393,19 @@
         </label>
       </div>
     </div>
-    <div class="grid gap-2 mb-2 text-xs font-medium text-gray-500 dark:text-gray-400" style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:0.5rem;">
-      <div>Account name (exact)</div><div>@username</div><div>Note</div><div></div>
+    <div class="grid gap-2 mb-2 text-xs font-medium text-gray-500 dark:text-gray-400" style="display:grid;grid-template-columns:auto auto 2fr 1.2fr 1.2fr 2fr auto auto auto auto auto;gap:0.5rem;">
+      <div></div><div></div><div>Account name (exact)</div><div>@username</div><div>Account ID</div><div>Note</div><div></div><div></div><div></div><div>Last updated</div><div></div>
     </div>
     <div id="mgrRows" class="flex flex-col gap-2 mb-3"></div>
     <div class="flex flex-wrap items-center gap-2">
       <button id="mgrAdd" class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm">＋ Add account</button>
       <button id="mgrSave" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Save</button>
       <button id="mgrDownload" class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm">Download JSON</button>
+      <button id="mgrDownloadCsv" class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm">Download CSV</button>
       <span id="mgrStatus" class="text-sm text-gray-500 dark:text-gray-400"></span>
     </div>
   </div>
 </div>
-<script src="app.js?v=41"></script>
+<script src="app.js?v=42"></script>
 </body>
 </html>

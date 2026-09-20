@@ -13,6 +13,8 @@ no framework**. Keep it that way.
   `{name, username, accountId, note, active, live, topAffiliate, updatedAt}` objects;
   matching is exact on `name` only; username/accountId/note display-only,
   active/live/top shown as markers; updatedAt server-stamped, null until saved).
+  Manager exports: `Download JSON` (save fallback) + `Download CSV` (same rows
+  for Excel, incl. the `Last updated` stamp per account).
 - `data/catalog.json` — user-authored friendly names: `{campaigns: {ID: {label, note}},
   products: {ID: {name, note, campaignId}}, archived: {campaigns: {...}, products: {...}}}`
   (deactivated entries live under `archived` — lookups check active first, then

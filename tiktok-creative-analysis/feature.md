@@ -194,8 +194,9 @@ changed (`Last updated: 17/9/26 (45 minutes ago)`; `–` until its first save). 
 **SOP targets** box sets your Top-N, minimum impressions, and max CPM (blank =
 auto from the file). **Save** writes everything to file (dated backups kept) and
 the page reloads straight away. Names must match the Excel file exactly, or that
-account's rows won't be recognised — usernames, IDs and notes are just labels. If saving
-ever fails, use **Download JSON** instead.
+ account's rows won't be recognised — usernames, IDs and notes are just labels. If saving
+ ever fails, use **Download JSON** instead (or **Download CSV** to open the same
+ list in Excel — it also carries each account's **Last updated** stamp).
 
 ## Saving results
 

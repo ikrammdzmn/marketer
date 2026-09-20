@@ -47,17 +47,36 @@ experiments — user validates visually in the browser with the 7 himcoffee dail
 lead with the one-line verdict, keep code talk out unless they say go, and never
 ask them to touch terminal/JSON — offer, don't assign.
 
+## Current mood — 20 Sep midday (v42, this session)
+
+Tiny two-ask build, same terse loop: user wanted (1) Manage accounts exportable
+as CSV too, (2) Last updated visible. Finding on arrival: the stamp already
+existed per row (`fmtAgo(updatedAt)` in every `mgrRow`, plan.md §55) — only the
+header row never labelled it and no CSV path existed. So v42 = `Download CSV`
+button beside Download JSON (Account name, Username, Account ID, Note, Active /
+Live / Top affiliate as TRUE/FALSE, Last updated raw ISO; stamp looked up from
+`state.allowMeta[name]` — renamed rows show blank until Save restamps them, by
+design matching server.py changed-rows-only stamping) + header row realigned to
+the 11-col row grid with Account ID + Last updated labels + `app.js?v=42`.
+Verified `node --check` + fresh-port 8123 smoke (index/app.js/accounts.json all
+200). No bugs found or fixed this session — first clean build in a while.
+Sync cue: user is happy ("ok good"); next session remind them Ctrl+Shift+R for
+v42. Uncommitted pile grew by exactly these 5 files: app.js, index.html,
+plan.md, CHANGELOG.md, feature.md (+ AGENTS.md one-liner). Still commit-only-
+when-asked.
+
 ## ⏰ NEXT SESSION — remind the user
 
-1. **Hard refresh for v41** (Ctrl+Shift+R) — `app.js?v=41` current. Auto-Combine is
-   new behaviour: if they load overlapping files and totals look doubled, check
+1. **Hard refresh for v42** (Ctrl+Shift+R) — `app.js?v=42` current (Manager CSV
+   export + Last updated header). Auto-Combine is still new behaviour: if they
+   load overlapping files and totals look doubled, check
    the mode switch first (auto only fires on file-set change; their manual flip wins).
 2. **Commit decision still pending — ONLY when asked.** Pile keeps growing:
    `app.js`, `index.html`, `style.css`, `AGENTS.md`, `feature.md`, `plan.md`,
    `CHANGELOG.md`, `DEV_NOTES.md` (this file), `data/catalog.json` (worktree shows
    edits — re-read before any naming work; user may have started naming), plus
    other windows' edits in `1-MASTER/*`, root `AGENTS.md`, `gmvmax-auto/` docs.
-   HEAD is `1d6c81d`. Never commit secrets; never push unasked.
+    HEAD is `cef46f3`. Never commit secrets; never push unasked.
 3. **Catalog naming** — user said they'd name things themselves. Amber `catHint`
    counts what's left; reload after saving.
 4. Open offers (parked, don't nag): silence cross-dialect "campaign moved" flag when

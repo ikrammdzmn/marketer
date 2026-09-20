@@ -23,6 +23,9 @@ Rule: whoever ships a folder release adds one line here the same session.
   → human-creates flow; 5 more bugs fixed → `../tools/CHANGELOG.md` + `../tools/DEV_NOTES.md`
 
 - `gmvmax-auto` approval wait = non-issue + secret hygiene: pending approval marked expected, P0 holds file-first; Neon passwords rotated, `GMV_ENC_KEY` regenerated, EXAMPLE sanitized → `gmvmax-auto/CHANGELOG.md`
+- `tiktok-creative-analysis` v42: Manage accounts CSV export (same rows for
+  Excel incl. Last updated stamp) + header labels the Last updated column
+  → `tiktok-creative-analysis/CHANGELOG.md`
 
 ## 19 Sep 2026
 

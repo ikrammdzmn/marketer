@@ -53,6 +53,7 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Third `Inactive` section at the bottom (unticking Active moves one there live; active state wins grouping; dormant tops keep T-Aff for clean reactivation; filter dropdown unchanged)
   - [x] `Hide inactive` tick (default on): drops rows of Active-unticked accounts from KPIs/tables/modal/preview/exports + compare (non-allowlisted accounts never hidden; untick to audit them)
   - [x] Per-account save stamp: `updatedAt` set by the saver only on changed/new rows (reorder alone doesn't restamp; inbound values ignored); shown as `Last updated: 17/9/26 (45 minutes ago)` in Manager + popup title (`–` until first stamp)
+  - [x] Manager CSV export (v42): `Download CSV` beside `Download JSON` (Account name, Username, Account ID, Note, Active, Live, Top affiliate, Last updated raw stamp); header row labels the `Last updated` column
   - [x] Source-file subfolders (v23): loose `source-file/*.xlsx` + one level of campaign folders listed together; `name - [id]` folders tag files with that ID label-only (blank Campaign IDs inherit it; single-`[id]` loads pre-set the Campaign facet)
   - [x] Fallback file fix (v24): last-resort bundled fallback repointed at an existing subfolder file (keeps folder path) after the top-level files moved
   - [x] Bundled picker via /api/files (v25): server.py JSON listing tried first, HTML listing fallback, explicit warning when neither works (e.g. Live Server)

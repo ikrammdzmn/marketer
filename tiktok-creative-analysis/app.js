@@ -2330,6 +2330,20 @@
     download('accounts.json', JSON.stringify(c.rows, null, 2) + '\n', 'application/json');
     $('mgrStatus').textContent = 'Downloaded ' + c.rows.length + ' entries — replace data/accounts.json with it.';
   });
+  $('mgrDownloadCsv').addEventListener('click', function () {
+    var c = collectMgr();
+    if (c.bad > 0) { $('mgrStatus').textContent = 'Row ' + c.bad + ' needs a name.'; return; }
+    var q = function (v) { return '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"'; };
+    var b = function (v) { return v ? 'TRUE' : 'FALSE'; };
+    var lines = [['Account name', 'Username', 'Account ID', 'Note', 'Active', 'Live', 'Top affiliate', 'Last updated'].join(',')];
+    c.rows.forEach(function (r) {
+      var m = state.allowMeta[r.name];
+      var stamp = (m && m.updatedAt) ? m.updatedAt : '';
+      lines.push([q(r.name), q(r.username), q(r.accountId), q(r.note), b(r.active), b(r.live), b(r.topAffiliate), q(stamp)].join(','));
+    });
+    download('accounts.csv', lines.join('\n') + '\n', 'text/csv');
+    $('mgrStatus').textContent = 'Downloaded ' + c.rows.length + ' entries as CSV (includes Last updated).';
+  });
   $('mgrSave').addEventListener('click', function () {
     var c = collectMgr();
     if (c.bad > 0) { $('mgrStatus').textContent = 'Row ' + c.bad + ' needs a name.'; return; }

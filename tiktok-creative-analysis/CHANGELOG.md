@@ -4,6 +4,13 @@ Newest first, in plain words. `plan.md` is the live checklist; this file is the
 release record. The `app.js?v=N` tag is a cache-buster counter (it keeps rising:
 v15, v16, …) — the headings below are releases in the order they shipped.
 
+## v42 — 20 Sep 2026 — Manage accounts CSV export + Last updated column
+
+The Manage accounts popup gains a **Download CSV** button next to Download JSON:
+Account name, Username, Account ID, Note, Active / Live / Top affiliate
+(TRUE/FALSE) plus the **Last updated** save stamp per row (blank until its first
+save). The popup header row now labels the Last updated column too.
+
 ## v41 — 19 Sep 2026 — Auto-pick Combine for non-overlapping files
 
 Loading 2+ dated files with no overlap now lands on Combine days automatically
