@@ -89,8 +89,9 @@ verified in 2 calls. Short replies, one action per message held.
   -> `run-sync.ps1` (window menu -> scope menu -> dry-run preview -> live run,
   choices echoed + exact command printed + live per-account lines + Enter to
   close). Two ps1 bugs fixed: (1) `param()` must precede ALL statements
-  ($ErrorActionPreference first = CommandNotFound); (2) `$x = Invoke-Engine`swallows native stdout into the variable - call bare, read $LASTEXITCODE
-after, and no`return` in the callee (leaks a stray 0). Forward-args +
+  ($ErrorActionPreference first = CommandNotFound); (2) `$x = Invoke-Engine`
+  swallows native stdout into the variable - call bare, read $LASTEXITCODE
+  after, and no `return` in the callee (leaks a stray 0). Forward-args +
   non-interactive fallback verified live.
 
 ## 20 Sep 2026 - v8 window presets (same morning)
