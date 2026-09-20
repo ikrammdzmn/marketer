@@ -354,3 +354,90 @@ Unique discoveries:
 - Don't kill unfamiliar Python PIDs (6000 = system Python, left alone);
   only kill scratch servers you started (C:\Python314 ones), verified by
   Path before `Stop-Process`.
+
+## Window 2026-09-20 — dashboard liveliness + sync/ born next door (latest)
+
+Vibe: classic terse-owner day, single-sentence steers all the way down:
+"why slow?" → "show the data flow instead" → "as popup?" → "go" → "show
+example" → "go" → two-servers-one-time? → VS Code right-click-run ok? →
+"last fetch timestamp" → "go" → "export csv number column" → ritual. Zero
+"Screenshots this window except one (VS Code context menu). Every feature
+went words-first (plan-mode drafts + live question-tool pick for
+stream-vs-poll and popup placement), then built on "go". Energy: pragmatic
+shop-tidying before daily operations — the owner is shifting from
+link-everything to RUN-everything (daily Sheets rhythm). Match it: short
+replies, exact next action, no lectures.
+
+What happened, in order:
+1. **"Why slow?"** — diagnosed from code, no edits: 20-video pages +
+   1s PAGE_DELAY + single-threaded HTTPServer. Concrete numbers from live
+   caches (Dr__Samhan 2,530 videos ≈ 127 pages ≈ 3–4 min alone; ~10k total
+   ≈ 10+ min for a full all-account sweep) + table renders thousands of
+   rows + thumbnails at once. Prescribed Limit/range fast path (30 ≈ 2s).
+2. **Live Refresh stream** (plan-mode → "go"): `post_json`/`get_json`
+   gained `on_wait`, `pull_and_cache` gained `on_progress`/`on_wait`
+   (best-effort, never break pulls), new `_stream_refresh` NDJSON endpoint
+   (`progress` per page, `waiting` on 429/Retry-After, final `done`/`error`)
+   on the SAME connection — single-thread safe, no poll endpoint needed.
+   Non-stream JSON kept as fallback. Honest limit stated: no % bar, TikTok
+   returns `has_more` only.
+3. **Popup, not div growth**: centered `#refModal` (title + live line +
+   5-line mini-log + Hide-keeps-running + View-table-on-done). Hide never
+   aborts (reader keeps consuming); broken-pipe mid-pull still saves cache.
+4. **Last-fetch timestamp**: cache `cached_at` (always written, never shown)
+   exposed as `fetched_at` on `/api/videos` + both `/refresh` paths via new
+   `cache_fetched_at()` (mtime fallback); profile header + Videos count show
+   `Last fetch: <MYT> (<relative>)` reusing `rel()`; popup done-line logs it.
+5. **Export `#` column**: `exp()` header gains `#` first, rows `i+1` —
+   matches on-screen order (filtered included).
+6. **Two-servers question**: dashboard 8080 vs creative-analysis server.py
+   8000 — different ports, run both at once in TWO terminals (one terminal
+   can't: first server never exits). VS Code "Run Python File in Terminal"
+   reuses ONE integrated terminal → New Terminal for the second file.
+7. **Data-where + commit-safe answers**: csvs/tokens gitignored per-user
+   runtime; committing code never locks other machines out (they relink +
+   Refresh their own caches; accounts.json already shared live-read).
+8. **Sibling session built `sync/`** (NOT this window's code — separate
+   builder, own docs at `sync/DEV_NOTES.md` v1–v9): `sheet-sync.py` daily
+   TikTok→Sheets bridge (11 sheets: Dashboard + 10 tabs `@user / Name`,
+   A-B user customs + checkbox validation, C-N system upsert by Video ID,
+   deltas, HYPERLINK jump links, tab colors, footer timestamp, window
+   presets today/yesterday/since-until/full, `run-sync.ps1` launcher with
+   window→scope→dry-run menus). First `--all --days 7`: 10/10 (242 videos).
+   `.gitignore` extended (sync secrets/logs/__pycache__). UNTRACKED
+   (`?? tiktok-account/sync/`); dashboard work committed `4f9a792` 09:09
+   +0800 by owner mid-window (message is bare `git status` text — see
+   lesson 29). This window ended with owner pasting a `run-sync.ps1`
+   `--today --all` run stopped at the `Dry-run preview first? [y/N]:`
+   prompt — UNANSWERED, run outcome unknown.
+9. **Ritual**: this section + bugs/lessons, feature/plan/CHANGELOG ticks,
+   MASTER-* rollup. No commit (rule).
+
+Unique discoveries this window:
+- `cached_at` has been in every cache JSON since `_write_cache` existed —
+   the timestamp feature was purely exposure, zero migration needed.
+- `4f9a792` proves the owner commits from another surface mid-window;
+   always `git status` before ritual edits — the tree may have moved under
+   you (it did: dashboard files committed while sync/ stayed untracked).
+- `accounts.json` now 20 entries but sync sheets cover "first 10 active" —
+   slot coverage vs full list is next window's question, not this one's
+   assumption.
+
+## Bugs found & fixed (and the lesson from each)
+
+26. **`hour12,false` typo in new `exp()`** — object literal needs the colon;
+   broke ALL dashboard JS. Caught by `node --check` before any browser run.
+   _Lesson: the verify ritual is the safety net, not the re-read — run
+   `node --check` on EVERY html edit even when the diff looks trivial._
+27. **Double-dot typo (`decode()..strip()`) in temp smoke script** — inline
+   `python -c` quoting/typing hazard, same class as bug 16. _Lesson: temp
+   verification scripts go in FILES (`write` tool), never `-c` one-liners;
+   syntax-check the helper before trusting its verdict._
+28. **`head -20` in PowerShell 5.1** — not a cmdlet. _Lesson: this shell gets
+   `Select-Object -First N`, `;`/`if ($?)` chaining, never `&&`/`head` —
+   re-learned every few windows; pin it._
+29. **Owner-composed commit message = raw `git status` text (`4f9a792`)** —
+   not a bug in code but a repo-hygiene incident (MASTER-AGENTS §3 says
+   messages say what changed). _Lesson: next window, offer `git commit
+   --amend -m` wording IF owner asks to touch history — never amend
+   unasked; just note it here and move on._

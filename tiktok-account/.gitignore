@@ -2,3 +2,6 @@
 .local_secrets.json
 csvs/
 __pycache__/
+sync/.sheet_id.json
+sync/logs/
+sync/__pycache__/

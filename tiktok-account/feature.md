@@ -29,8 +29,12 @@ can use this.
   about 2 seconds. Old accounts with thousands of videos no longer choke.
 - **Show / hide columns.** Tick boxes above the table for a compact view.
 - **One-click Excel.** **Export CSV** downloads exactly what you see on
-  screen (same filter, same order) and opens directly in Excel for sharing
-  with your team.
+  screen (same filter, same order, row numbers in the first `#` column)
+  and opens directly in Excel for sharing with your team.
+- **Daily Google Sheet (automatic table).** The `sync/` helper copies the
+  latest videos into one shared spreadsheet every morning (one tab per
+  account + a Dashboard tab with totals). Your helper runs it; you just
+  open the sheet. Details in `sync/feature.md`.
 - **Wrong-login protection.** When linking, the page checks the TikTok
   account you logged in with against the slot and stops you with a clear
   message if they don't match — the wrong account's videos can never
@@ -47,7 +51,7 @@ can use this.
 1. Your helper starts the page; you open `http://127.0.0.1:8080/`.
 2. Pick an account → optionally set dates and/or Limit → press
    **Refresh from TikTok** and watch the popup (page + video count live;
-   Hide just tucks it away, the pull    keeps running). Big accounts
+   Hide just tucks it away, the pull keeps running). Big accounts
    take minutes on a full pull; a Limit/range pull takes seconds.
    Under the profile and next to the video count you'll see
    `Last fetch: <date> MYT (<e.g. 2 hours ago>)` — when TikTok was last asked.

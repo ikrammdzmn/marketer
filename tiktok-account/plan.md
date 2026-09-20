@@ -64,6 +64,13 @@ Status: DASHBOARD READY (local only; link each account once, then select + Refre
 - [x] Last-fetch timestamp: profile header + Videos count show `Last fetch:
   <MYT datetime> (<relative>)` from cache `cached_at` (served via
   `/api/videos` + `/refresh` done); popup done-line logs it too.
+- [x] Export `#` column: CSV download leads with the on-screen row number
+  (same filter, same order).
+- [x] `sync/` daily Sheets bridge (own docs in `sync/`): `sheet-sync.py`
+  upserts 7-day window by Video ID into 11 sheets (Dashboard + 10 tabs),
+  A-B user customs, deltas, jump links, colors, window presets
+  (today/yesterday/since-until/full), `run-sync.ps1` launcher; first
+  `--all --days 7` 10/10 live. Untracked until owner asks to commit.
 - [ ] Table page-size (planned, if wanted): show N rows at a time in browser
   (e.g. 30/page with Next/Prev) for fast rendering on 2000-video accounts.
 - [ ] Link all 10 real accounts end-to-end (one Authorize each)

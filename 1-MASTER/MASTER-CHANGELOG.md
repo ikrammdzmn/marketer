@@ -6,6 +6,17 @@ Rule: whoever ships a folder release adds one line here the same session.
 
 ## 20 Sep 2026
 
+- `tiktok-account` dashboard liveliness (committed `4f9a792`): `/refresh?stream=1`
+  NDJSON progress + centered popup (Hide keeps running), `fetched_at`
+  last-pull stamps (profile + count + popup), `#`-first CSV export
+  → `tiktok-account/CHANGELOG.md`
+- `tiktok-account/sync/` born (new, untracked): daily TikTok→Sheets bridge —
+  7-day upsert by Video ID into 11 sheets (Dashboard + 10 tabs), A-B user
+  customs + checkboxes, deltas, jump links, colors, window presets
+  (today/yesterday/since-until/full), `run-sync.ps1` launcher; first
+  `--all --days 7` 10/10 live (242 videos); secrets gitignored (lengths-only)
+  → `tiktok-account/sync/CHANGELOG.md` + `tiktok-account/sync/DEV_NOTES.md`
+
 - `tools/` Sheets MCP GREEN: org-policy lift (both key-creation constraints)
   + Sheets/Drive APIs on + `GOOGLE_SHEETS_CRED` SET; scratch read/write GREEN
   on shared `mcp-scratch`; push confirmed `70f1700`; Workspace SA-create 403

@@ -20,11 +20,20 @@ owner's laptop (`127.0.0.1` only, never published as-is).
   pending OAuth, link-mismatch guard on `/callback` + `POST /confirm-link`
   override, silent refresh, throttled/retried pagination with range
   (`since/until`) + newest-N (`limit`) early-stop and merged cache,
+  NDJSON live progress (`/refresh?stream=1`, same-connection, non-stream
+  fallback), `fetched_at` last-pull stamp on `/api/videos` + `/refresh`,
   `GET /unlink`, cached table APIs), `dashboard.html`
   (Tailwind UI: pill account picker incl. amber mismatch state, calendar
   range filter with hover preview + Clear + single-click day, Limit box,
+  Refresh progress popup, last-fetch stamps, `#`-first CSV export,
   column toggles, MYT datetime + relative Posted times, lazy title-cell
   thumbnails), `tokens/` + `csvs/` (gitignored runtime), `.gitignore`.
+- `sync/` — daily TikTok→Sheets bridge (own `AGENTS.md`): `sheet-sync.py`
+  reuses dashboard pull/auth by path import (never duplicate, never edit
+  `dashboard/` from here), `run-sync.ps1` launcher (window→scope→dry-run
+  menus), `.sheet_id.json` + `logs/` gitignored. Sheet contract (11 sheets,
+  A-B user customs, C-N system upsert by Video ID, deltas, jump links):
+  lives in `sync/AGENTS.md`, not here.
 - `.gitignore` — `csvs/`, `.local_secrets.json`, `__pycache__/`.
 - `.local_secrets.EXAMPLE.json` — keys template (real file never in git).
 - `../docs/terms.html` + `../docs/privacy.html` (repo root) — TikTok app-review
