@@ -46,8 +46,11 @@ can use this.
 
 1. Your helper starts the page; you open `http://127.0.0.1:8080/`.
 2. Pick an account → optionally set dates and/or Limit → press
-   **Refresh from TikTok** and wait for the spinning to stop (big accounts
-   take minutes on a full pull; a Limit/range pull takes seconds).
+   **Refresh from TikTok** and watch the popup (page + video count live;
+   Hide just tucks it away, the pull    keeps running). Big accounts
+   take minutes on a full pull; a Limit/range pull takes seconds.
+   Under the profile and next to the video count you'll see
+   `Last fetch: <date> MYT (<e.g. 2 hours ago>)` — when TikTok was last asked.
 3. Filter, then press **Export CSV** → open in Excel.
 
 First time per account only: press **Link / Relink**, log in as that TikTok

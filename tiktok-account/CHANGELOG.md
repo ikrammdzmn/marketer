@@ -3,6 +3,15 @@
 Local-only release record, newest first. One line per shipped change.
 Rollup: `1-MASTER/MASTER-CHANGELOG.md`. Status checklist: `plan.md`.
 
+## 19 Sep 2026 — live Refresh progress popup
+- Last-fetch timestamp: profile header + Videos count show `Last fetch:
+  <MYT> (<relative>)` from cache `cached_at` (new `fetched_at` on
+  `/api/videos` + `/refresh` done); popup done-line logs it → `plan.md`
+- `/refresh?stream=1` streams NDJSON progress (per-page page/videos-so-far,
+  retry waits, final done/error) on the same connection (single-thread safe);
+  centered popup shows it live, Hide tucks away without stopping the pull;
+  non-stream JSON path kept as fallback → `plan.md`
+
 ## 17 Sep 2026 — scale-hardening + linking safety
 - Link-mismatch guard (warn-with-override): `/callback` verifies logged-in
   `@username` vs slot, 409 stop page (retry / jump to matching slot /

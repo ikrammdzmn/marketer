@@ -57,6 +57,13 @@ Status: DASHBOARD READY (local only; link each account once, then select + Refre
 - [x] Clean video links: `?utm_campaign…&utm_source…` tracking stripped at
   ingest (table + CSV + export); cover URLs untouched (query = expiry key).
   Old caches auto-migrate on next table view (no re-pull needed).
+- [x] Live Refresh popup: `/refresh?stream=1` streams NDJSON progress
+  (per-page page + videos-so-far, rate-limit waits, final done/error) on the
+  same connection; centered popup shows it live, Hide tucks it away without
+  stopping the pull; old single-JSON path kept as fallback.
+- [x] Last-fetch timestamp: profile header + Videos count show `Last fetch:
+  <MYT datetime> (<relative>)` from cache `cached_at` (served via
+  `/api/videos` + `/refresh` done); popup done-line logs it too.
 - [ ] Table page-size (planned, if wanted): show N rows at a time in browser
   (e.g. 30/page with Next/Prev) for fast rendering on 2000-video accounts.
 - [ ] Link all 10 real accounts end-to-end (one Authorize each)

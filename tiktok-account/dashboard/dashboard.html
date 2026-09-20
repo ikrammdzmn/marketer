@@ -86,6 +86,21 @@ body{font-family:'Inter',system-ui,sans-serif}
 </div>
 </section>
 
+<div id="refModal" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(15,23,42,.45)">
+<div class="bg-white rounded-xl shadow-xl p-5 mx-3" style="max-width:430px;margin:12vh auto">
+<div class="flex items-center justify-between mb-2">
+<h3 id="refModalTitle" class="font-semibold">Refreshing…</h3>
+<button onclick="hideRefModal()" class="px-2 py-0.5 rounded border text-sm" title="Hide (pull keeps running)">✕</button>
+</div>
+<div id="refModalLive" class="text-sm text-gray-700">Starting…</div>
+<div id="refModalLog" class="mt-2 text-xs text-gray-500" style="min-height:64px"></div>
+<div class="mt-3 flex gap-2 justify-end">
+<button onclick="hideRefModal()" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">Hide (keeps running)</button>
+<button id="refModalView" onclick="hideRefModal()" style="display:none" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">View table</button>
+</div>
+</div>
+</div>
+
 <section class="bg-white rounded-lg shadow p-4 mb-4">
 <div class="flex items-center justify-between mb-2">
 <h2 class="font-semibold">Videos <span id="count" class="text-sm font-normal text-gray-500"></span></h2>
@@ -145,6 +160,10 @@ l.appendChild(b);});
 l.style.display="block";}
 function paintPill(){paintAccBtn();}
 let ALL=[];
+let LASTFETCH=null;
+function fetchedAbs(ts){return new Date(ts*1000).toLocaleString("en-MY",
+{timeZone:"Asia/Kuala_Lumpur",hour12:false});}
+function fetchedLine(ts){return ts?("Last fetch: "+fetchedAbs(ts)+" MYT ("+rel(ts)+")"):"No fetch yet — press Refresh.";}
 let DSET=new Set();
 function rebuildSet(){DSET=new Set();ALL.forEach(x=>{if(x.create_time)DSET.add(dayKey(x.create_time));});}
 function dayKey(ts){const d=new Date((ts+8*3600)*1000);
@@ -250,7 +269,7 @@ if(!ALL.length){document.getElementById("tbl").style.display="none";
 document.getElementById("count").textContent="No cache — press Refresh.";return;}
 document.getElementById("tbl").style.display="";
 document.getElementById("count").textContent=
-FILTERED.length+" of "+ALL.length+" videos"+(FILTERED.length!==ALL.length?" (filtered)":"")+".";
+FILTERED.length+" of "+ALL.length+" videos"+(FILTERED.length!==ALL.length?" (filtered)":"")+" · "+fetchedLine(LASTFETCH)+".";
 FILTERED.forEach((x,i)=>{
 const abs=x.create_time?new Date(x.create_time*1000).toLocaleString("en-MY",
 {timeZone:"Asia/Kuala_Lumpur",hour12:false}):"";
@@ -281,8 +300,9 @@ ph="<span class='inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-8
 (u.bio_description?"<br><span class='text-gray-500'>Bio: "+esc(u.bio_description)+"</span>":"");}
 else ph=p.linked?"<span class='inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs'>Linked, no cache — press Refresh.</span>"
 :"<span class='inline-block px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs'>Not linked — press Link / Relink.</span>";
-document.getElementById("profile").innerHTML=ph;
-ALL=(v.cached&&v.videos)||[];rebuildSet();applyFilter();}
+document.getElementById("profile").innerHTML=ph+
+"<br><span class='text-gray-500 text-xs'>"+esc(fetchedLine(v.fetched_at||null))+"</span>";
+ALL=(v.cached&&v.videos)||[];LASTFETCH=v.fetched_at||null;rebuildSet();applyFilter();}
 function link(){const a=CUR;
 location.href="/authorize?account="+encodeURIComponent(a);}
 async function unlink(){const a=CUR;
@@ -291,24 +311,72 @@ const r=await fetch("/unlink?account="+encodeURIComponent(a));
 const d=await r.json();
 if(d.ok){document.getElementById("status").textContent="Unlinked "+a+".";await accounts();}
 else document.getElementById("status").textContent="Unlink failed: "+(d.error||"unknown");}
+function hideRefModal(){document.getElementById("refModal").style.display="none";}
+function openRefModal(a){document.getElementById("refModalTitle").textContent="Refreshing "+a+"…";
+document.getElementById("refModalLive").textContent="Contacting TikTok…";
+document.getElementById("refModalLog").innerHTML="";
+document.getElementById("refModalView").style.display="none";
+document.getElementById("refModal").style.display="block";}
+function refLogLine(t){const log=document.getElementById("refModalLog");
+const d=document.createElement("div");d.textContent=t;log.appendChild(d);
+while(log.children.length>5)log.removeChild(log.firstChild);}
+function refProgress(ev){document.getElementById("refModalLive").textContent=
+"Page "+ev.page+" · "+ev.fetched+" videos so far (throttled ~1s/page)… ⏳";
+refLogLine("page "+ev.page+" · "+ev.fetched+" videos");}
+function refWaiting(ev){document.getElementById("refModalLive").textContent=
+"Waiting on TikTok rate-limit ("+ev.reason+", "+ev.seconds+"s)… ⏳";
+refLogLine("waiting "+ev.seconds+"s ("+ev.reason+")");}
+function refError(ev){const m="Error: "+(ev.error||"unknown")+" — wait a minute and press Refresh again.";
+document.getElementById("refModalLive").textContent=m;
+document.getElementById("status").textContent=m;}
+async function finishRefModal(a,d){
+if(d.relink){const m="Relink needed: "+d.error;
+document.getElementById("refModalLive").textContent=m;
+document.getElementById("status").textContent=m;return;}
+if(d.ok){let msg="Done: "+d.count+" videos cached";
+if(d.limited)msg+=" (limit pull: "+d.fetched+" newest fetched in "+d.pages+" pages — merged, older cache kept)";
+else if(d.ranged)msg+=" (range pull: "+d.fetched+" fetched in "+d.pages+" pages — merged, older cache kept)";
+else msg+=" ("+d.pages+" pages, throttled)";
+msg+=".";
+if(d.fetched_at){LASTFETCH=d.fetched_at;refLogLine(fetchedLine(LASTFETCH));}
+document.getElementById("refModalLive").textContent=msg+" ✅";
+refLogLine(msg);
+document.getElementById("status").textContent=msg;
+document.getElementById("refModalView").style.display="";
+await load();return;}
+refError(d);}
 async function refresh(){const a=CUR;
 const btn=document.getElementById("refBtn"),spin=document.getElementById("spin");
 btn.disabled=true;spin.style.display="inline";
 const lim0=refreshLimit();
 const inRange=(R.s?(" ("+R.s+" to "+(R.e||R.s)+")"):" (full history — big accounts take minutes)")+(lim0?(" [newest "+lim0+"]"):"");
 document.getElementById("status").textContent="Pulling "+a+" from TikTok"+inRange+"…";
-try{let url="/refresh?account="+encodeURIComponent(a);
+openRefModal(a);
+try{let url="/refresh?account="+encodeURIComponent(a)+"&stream=1";
 if(R.s)url+="&since="+encodeURIComponent(R.s)+"&until="+encodeURIComponent(R.e||R.s);
 const lim=lim0;if(lim)url+="&limit="+encodeURIComponent(lim);
 const r=await fetch(url);
-const d=await r.json();
-if(d.relink){document.getElementById("status").textContent="Relink needed: "+d.error;}
-else if(d.ok){let msg="Done: "+d.count+" videos cached";
-if(d.limited)msg+=" (limit pull: "+d.fetched+" newest fetched in "+d.pages+" pages — merged, older cache kept)";
-else if(d.ranged)msg+=" (range pull: "+d.fetched+" fetched in "+d.pages+" pages — merged, older cache kept)";
-else msg+=" ("+d.pages+" pages, throttled)";
-msg+=".";document.getElementById("status").textContent=msg;await load();}
-else document.getElementById("status").textContent="Error: "+(d.error||"unknown")+" — wait a minute and press Refresh again.";}
+const ct=r.headers.get("content-type")||"";
+if(ct.indexOf("ndjson")<0){const d=await r.json();await finishRefModal(a,d);return;}
+const reader=r.body.getReader(),dec=new TextDecoder();let buf="",ended=null;
+for(;;){const n=await reader.read();
+if(n.value)buf+=dec.decode(n.value,{stream:true});
+let idx;
+while((idx=buf.indexOf("\n"))>=0){const line=buf.slice(0,idx).trim();buf=buf.slice(idx+1);
+if(!line)continue;
+let ev;try{ev=JSON.parse(line);}catch(e){continue;}
+if(ev.type==="progress")refProgress(ev);
+else if(ev.type==="waiting")refWaiting(ev);
+else if(ev.type==="done"||ev.relink||ev.ok)ended=ev;
+else if(ev.type==="error"){refError(ev);return;}}
+if(n.done){const tail=buf.trim();buf="";
+if(tail){try{const ev=JSON.parse(tail);
+if(ev.type==="done"||ev.relink||ev.ok)ended=ev;
+else if(ev.type==="error"){refError(ev);return;}}catch(e){}}
+break;}}
+if(ended)await finishRefModal(a,ended);
+else refError({error:"stream ended unexpectedly"});}
+catch(e){refError({error:String((e&&e.message)||e)});}
 finally{btn.disabled=false;spin.style.display="none";}}
 function csvCell(v){v=String(v==null?"":v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
 function limitChanged(){document.getElementById("limitNum").style.display=
@@ -318,12 +386,12 @@ if(s==="custom"){const n=parseInt(document.getElementById("limitNum").value,10);
 return n>0?String(Math.min(n,10000)):"";}
 return s==="all"?"":s;}
 function exp(){const a=CUR;
-const rows=[["account","id","title","posted_myt","posted_utc","view_count","like_count",
+const rows=[["#","account","id","title","posted_myt","posted_utc","view_count","like_count",
 "comment_count","share_count","cover_image_url","share_url"]];
-FILTERED.forEach(x=>{const myt=x.create_time?new Date(x.create_time*1000).toLocaleString("en-MY",
+FILTERED.forEach((x,i)=>{const myt=x.create_time?new Date(x.create_time*1000).toLocaleString("en-MY",
 {timeZone:"Asia/Kuala_Lumpur",hour12:false}):"";
 const utc=x.create_time?new Date(x.create_time*1000).toISOString().slice(0,19).replace("T"," "):"";
-rows.push([a,x.id,x.title,myt,utc,x.view_count,x.like_count,x.comment_count,
+rows.push([i+1,a,x.id,x.title,myt,utc,x.view_count,x.like_count,x.comment_count,
 x.share_count,x.cover_image_url,x.share_url]);});
 const blob=new Blob([rows.map(r=>r.map(csvCell).join(",")).join("\n")],{type:"text/csv"});
 const u=URL.createObjectURL(blob);const l=document.createElement("a");

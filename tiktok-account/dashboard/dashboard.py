@@ -119,7 +119,7 @@ def _http_body(err):
         return ""
 
 
-def post_json(url, payload, token):
+def post_json(url, payload, token, on_wait=None):
     data = json.dumps(payload).encode()
     for attempt in range(MAX_RETRIES + 1):
         req = urllib.request.Request(url, data=data, method="POST",
@@ -131,17 +131,29 @@ def post_json(url, payload, token):
         except urllib.error.HTTPError as e:
             body = _http_body(e)
             if (e.code == 429 or 500 <= e.code < 600) and attempt < MAX_RETRIES:
-                time.sleep(_retry_wait(e, attempt))
+                wait = _retry_wait(e, attempt)
+                if on_wait:
+                    try:
+                        on_wait(wait, "HTTP %s" % e.code)
+                    except Exception:  # noqa: BLE001 - progress must not break pulls
+                        pass
+                time.sleep(wait)
                 continue
             raise Exception("HTTP Error %s: %s" % (e.code, body or e.reason))
         except (urllib.error.URLError, TimeoutError) as e:
             if attempt < MAX_RETRIES:
-                time.sleep(min(60.0, 2.0 ** attempt))
+                wait = min(60.0, 2.0 ** attempt)
+                if on_wait:
+                    try:
+                        on_wait(wait, "network")
+                    except Exception:  # noqa: BLE001
+                        pass
+                time.sleep(wait)
                 continue
             raise
 
 
-def get_json(url, token):
+def get_json(url, token, on_wait=None):
     for attempt in range(MAX_RETRIES + 1):
         req = urllib.request.Request(url, method="GET")
         req.add_header("Authorization", "Bearer " + token)
@@ -325,7 +337,8 @@ def _day_to_ts(day, end=False):
         return None
 
 
-def pull_and_cache(account, access, since_ts=None, until_ts=None, max_videos=None):
+def pull_and_cache(account, access, since_ts=None, until_ts=None, max_videos=None,
+                   on_progress=None, on_wait=None):
     """Paginate video/list with throttle + 429 retry.
 
     since_ts/until_ts are unix timestamps (create_time bounds). TikTok has
@@ -334,8 +347,11 @@ def pull_and_cache(account, access, since_ts=None, until_ts=None, max_videos=Non
     to the newest N videos. Range/limit pulls MERGE into the existing cache
     instead of replacing it; full pulls replace.
     Returns (user, merged, info).
+    on_progress fires after every TikTok page with
+    {"page": N, "fetched": M, "has_more": bool}; on_wait fires before
+    every retry sleep with (seconds, reason). Both are best-effort.
     """
-    me = get_json(USER_INFO_URL, access)
+    me = get_json(USER_INFO_URL, access, on_wait=on_wait)
     md = me.get("data") or {}
     user = md.get("user") or md
     jp, _cp, _pp = cache_paths(account)
@@ -351,7 +367,8 @@ def pull_and_cache(account, access, since_ts=None, until_ts=None, max_videos=Non
     out, cursor, page = [], 0, 0
     stopped_early, complete = False, False
     while True:
-        resp = post_json(VIDEO_LIST_URL, {"max_count": 20, "cursor": cursor}, access)
+        resp = post_json(VIDEO_LIST_URL, {"max_count": 20, "cursor": cursor}, access,
+                         on_wait=on_wait)
         d = resp.get("data") or {}
         batch = d.get("videos") or []
         for v in batch:
@@ -369,6 +386,12 @@ def pull_and_cache(account, access, since_ts=None, until_ts=None, max_videos=Non
                 stopped_early = True  # reached newest-N cap
                 break
         page += 1
+        if on_progress:
+            try:
+                on_progress({"page": page, "fetched": len(out),
+                             "has_more": bool(d.get("has_more")) and not stopped_early})
+            except Exception:  # noqa: BLE001 - progress must not break pulls
+                pass
         if stopped_early or not d.get("has_more") or page > 500:
             complete = not d.get("has_more") or stopped_early or page > 500
             break
@@ -447,6 +470,24 @@ def maybe_migrate_cache(account):
     return videos
 
 
+def cache_fetched_at(account):
+    """Unix ts of the last TikTok pull for an account, or None if never."""
+    jp, _cp, _pp = cache_paths(account)
+    if not os.path.exists(jp):
+        return None
+    try:
+        with open(jp, encoding="utf-8") as f:
+            ts = (json.load(f) or {}).get("cached_at")
+        if ts:
+            return float(ts)
+    except (OSError, ValueError, TypeError):
+        pass
+    try:
+        return os.path.getmtime(jp)
+    except OSError:
+        return None
+
+
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
@@ -466,6 +507,55 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(b)))
         self.end_headers()
         self.wfile.write(b)
+
+    def _stream_refresh(self, name, access, since_ts, until_ts, max_videos):
+        """Stream /refresh progress as NDJSON on the same connection.
+
+        One JSON object per line: {"type":"progress",...} per TikTok page,
+        {"type":"waiting",...} before retry sleeps, then a final
+        {"type":"done",...} (or {"type":"error",...}). Works with the
+        single-threaded server because no second request is needed.
+        """
+        self.send_response(200)
+        self.send_header("Content-Type", "application/x-ndjson; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        closed = []
+
+        def emit(obj):
+            if closed:
+                return
+            try:
+                self.wfile.write((json.dumps(obj, ensure_ascii=False) + "\n").encode())
+                self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                closed.append(True)  # browser left; keep pulling so cache still saves
+
+        def on_progress(p):
+            emit({"type": "progress", "page": p.get("page", 0),
+                  "fetched": p.get("fetched", 0),
+                  "has_more": p.get("has_more", False)})
+
+        def on_wait(seconds, reason):
+            emit({"type": "waiting", "seconds": round(float(seconds), 1),
+                  "reason": str(reason)[:60]})
+
+        try:
+            user, videos, info = pull_and_cache(name, access, since_ts, until_ts,
+                                               max_videos, on_progress=on_progress,
+                                               on_wait=on_wait)
+        except Exception as e:  # noqa: BLE001
+            emit({"type": "error", "error": str(e)[:300]})
+            return
+        emit({"type": "done", "ok": True, "count": len(videos),
+              "fetched": info.get("fetched", len(videos)),
+              "pages": info.get("pages", 0),
+              "ranged": info.get("ranged", False),
+              "limited": info.get("limited", False),
+              "stopped_early": info.get("stopped_early", False),
+              "followers": user.get("follower_count"),
+              "username": user.get("username"),
+              "fetched_at": cache_fetched_at(name)})
 
     def do_GET(self):  # noqa: C901 - small router
         parsed = urllib.parse.urlparse(self.path)
@@ -599,7 +689,8 @@ class H(BaseHTTPRequestHandler):
                     self._json({"linked": bool(t), "cached": False})
                 else:
                     self._json({"linked": True, "cached": True,
-                                "count": len(videos), "videos": videos})
+                                "count": len(videos), "videos": videos,
+                                "fetched_at": cache_fetched_at(name)})
             return
         if parsed.path == "/refresh":
             name = qs.get("account", [""])[0]
@@ -619,6 +710,9 @@ class H(BaseHTTPRequestHandler):
             except RelinkNeeded as e:
                 self._json({"relink": True, "error": str(e)[:200]}, 401)
                 return
+            if qs.get("stream", [""])[0] == "1":
+                self._stream_refresh(name, access, since_ts, until_ts, max_videos)
+                return
             try:
                 user, videos, info = pull_and_cache(name, access, since_ts, until_ts, max_videos)
             except Exception as e:  # noqa: BLE001
@@ -631,7 +725,8 @@ class H(BaseHTTPRequestHandler):
                         "limited": info.get("limited", False),
                         "stopped_early": info.get("stopped_early", False),
                         "followers": user.get("follower_count"),
-                        "username": user.get("username")})
+                        "username": user.get("username"),
+                        "fetched_at": cache_fetched_at(name)})
             return
         if parsed.path == "/unlink":
             name = qs.get("account", [""])[0]
