@@ -1,4 +1,4 @@
-# DEV_NOTES.md - sync/ session handoff (20 Sep 2026, morning MYT)
+﻿# DEV_NOTES.md - sync/ session handoff (20 Sep 2026, morning MYT)
 
 ## Vibe
 

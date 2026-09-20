@@ -1,40 +1,34 @@
-# Changelog -- tiktok-account dashboard
+# Changelog — tiktok-account dashboard
 
 Local-only release record, newest first. One line per shipped change.
 Rollup: `1-MASTER/MASTER-CHANGELOG.md`. Status checklist: `plan.md`.
 
-## 20 Sep 2026 -- live Refresh + Sheets bridge + Yesterday Run ticks
-- Dashboard reads Google Sheets for yesterday's Run checkbox count:
-  new `sheets.py` (reads account tab col A for yesterday MYT),
-  `/api/yesterday-run?account=X` endpoint, profile pill "Yesterday: N videos ? M ticked (P%)"
-  (click -> filters table to yesterday). Runs via `uv --directory ../tools/spreadsheet-mcp`
-  (stdlib fallback works without Sheets).
-- `run-dashboard.ps1` launcher (uv env with Sheets, stdlib fallback).
-- Export `#` column: CSV leads with the on-screen row number -> `plan.md`
-- `sync/` daily TikTok->Sheets bridge (own changelog `sync/CHANGELOG.md`):
+## 20 Sep 2026 — live Refresh + Sheets bridge
+- Export `#` column: CSV leads with the on-screen row number → `plan.md`
+- `sync/` daily TikTok→Sheets bridge (own changelog `sync/CHANGELOG.md`):
   7-day upsert by Video ID into 11 sheets, A-B customs, deltas, jump links,
   colors, window presets, `run-sync.ps1` launcher; first run 10/10 live.
-  Untracked; `.gitignore` extended -> `plan.md`
+  Untracked; `.gitignore` extended → `plan.md`
 - Last-fetch timestamp: profile header + Videos count show `Last fetch:
   <MYT> (<relative>)` from cache `cached_at` (new `fetched_at` on
-  `/api/videos` + `/refresh` done); popup done-line logs it -> `plan.md`
+  `/api/videos` + `/refresh` done); popup done-line logs it → `plan.md`
 - `/refresh?stream=1` streams NDJSON progress (per-page page/videos-so-far,
   retry waits, final done/error) on the same connection (single-thread safe);
   centered popup shows it live, Hide tucks away without stopping the pull;
-  non-stream JSON path kept as fallback -> `plan.md` (committed `4f9a792`)
+  non-stream JSON path kept as fallback → `plan.md` (committed `4f9a792`)
 
-## 17 Sep 2026 -- scale-hardening + linking safety
+## 17 Sep 2026 — scale-hardening + linking safety
 - Link-mismatch guard (warn-with-override): `/callback` verifies logged-in
   `@username` vs slot, 409 stop page (retry / jump to matching slot /
   checkbox save-anyway via `POST /confirm-link`), duplicate flagging,
-  `linked_as`+`mismatch` on tokens, amber pill -> `plan.md`
-- 429 fix: 1s page gap + 429/5xx retry (5x, honors `Retry-After`) -> `plan.md`
+  `linked_as`+`mismatch` on tokens, amber pill → `plan.md`
+- 429 fix: 1s page gap + 429/5xx retry (5x, honors `Retry-After`) → `plan.md`
 - Range Refresh (`since/until` early-stop, merged cache) + Fetch limit box
-  (All/30/50/100/custom newest-N, merged) -> `plan.md`
+  (All/30/50/100/custom newest-N, merged) → `plan.md`
 - Unlink button (linked-only) + `GET /unlink` (token deleted, cache kept)
 - Calendar: hover range preview, single-click selects one day, Clear button
 - Posted column: MYT datetime primary + grey relative below; 40px lazy
-  title-cell thumbnails (expired-cover auto-hide); page widened 1280->1760px
+  title-cell thumbnails (expired-cover auto-hide); page widened 1280→1760px
 - Clean video links: tracking query stripped at ingest (covers untouched);
   pre-existing caches auto-migrate on view (shared `_write_cache` writer)
 - `feature.md` rewritten as full non-technical showcase + guide
@@ -43,6 +37,6 @@ Rollup: `1-MASTER/MASTER-CHANGELOG.md`. Status checklist: `plan.md`.
 
 - Dashboard ready: per-account OAuth, silent refresh, cached table + profile
   header + Refresh + Export, accounts read live from
-  `tiktok-creative-analysis/data/accounts.json` -> `plan.md`
-- `tester.py` sandbox-proven (FROZEN since) -> `plan.md`
-- Terms/privacy pages + domain verification via GitHub Pages -> `SETUP.md`
+  `tiktok-creative-analysis/data/accounts.json` → `plan.md`
+- `tester.py` sandbox-proven (FROZEN since) → `plan.md`
+- Terms/privacy pages + domain verification via GitHub Pages → `SETUP.md`

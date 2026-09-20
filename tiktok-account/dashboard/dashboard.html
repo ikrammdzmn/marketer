@@ -27,16 +27,16 @@ body{font-family:'Inter',system-ui,sans-serif}
 <header class="flex flex-wrap items-center justify-between gap-3 mb-4">
 <div>
 <h1 class="text-2xl font-bold">TikTok Accounts Dashboard</h1>
-<p class="text-sm text-gray-500">Local only -- 127.0.0.1. Tokens never leave this laptop.</p>
+<p class="text-sm text-gray-500">Local only — 127.0.0.1. Tokens never leave this laptop.</p>
 </div>
-<span id="status" class="text-sm text-gray-500">Loading accounts...</span>
+<span id="status" class="text-sm text-gray-500">Loading accounts…</span>
 </header>
 
 <section class="bg-white rounded-lg shadow p-4 mb-4">
 <div class="flex flex-wrap items-center gap-2">
 <span class="text-sm font-medium">Account:</span>
 <div class="relative inline-block">
-<button id="accBtn" onclick="toggleAcc()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white hover:bg-gray-50">...</button>
+<button id="accBtn" onclick="toggleAcc()" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white hover:bg-gray-50">…</button>
 <div id="accList" style="display:none;width:max-content;max-width:90vw" class="absolute z-20 mt-1 bg-white border border-gray-300 rounded-xl shadow-xl p-1 max-h-[300px] overflow-y-auto"></div>
 </div>
 <button onclick="link()" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">Link / Relink</button>
@@ -48,16 +48,15 @@ body{font-family:'Inter',system-ui,sans-serif}
 <option value="30">30</option>
 <option value="50">50</option>
 <option value="100">100</option>
-<option value="custom">Custom...</option>
+<option value="custom">Custom…</option>
 </select>
 <input id="limitNum" type="number" min="1" max="10000" value="30" style="display:none;width:70px" class="border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
 <button onclick="exp()" class="px-3 py-1.5 rounded bg-green-600 text-white text-sm hover:bg-green-700">Export CSV</button>
-<span id="spin" style="display:none" class="text-sm text-gray-500">[loading] loading...</span>
+<span id="spin" style="display:none" class="text-sm text-gray-500">⏳ loading…</span>
 </div>
 <div id="profile" class="mt-3 text-sm"></div>
-<div id="yesterdayPill" class="mt-3" style="display:none"></div>
 <div class="mt-3 relative">Range:
-<button id="rangeBtn" onclick="toggleCal()" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">All time [cal]</button>
+<button id="rangeBtn" onclick="toggleCal()" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">All time 📅</button>
 <button id="clearBtn" onclick="clearRange()" style="display:none" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">Clear</button>
 <div id="calPop" class="bg-white border border-gray-300 rounded-xl shadow-xl p-3 mt-1">
 <div class="flex gap-3">
@@ -74,11 +73,11 @@ body{font-family:'Inter',system-ui,sans-serif}
 </div>
 <div>
 <div class="text-center mb-1 flex gap-1 justify-center">
-<button onclick="navCal(-12)" class="px-2 py-0.5 rounded border text-sm">?</button>
-<button onclick="navCal(-1)" class="px-2 py-0.5 rounded border text-sm">?</button>
-<button onclick="toggleCal()" class="px-2 py-0.5 rounded border text-sm">?</button>
-<button onclick="navCal(1)" class="px-2 py-0.5 rounded border text-sm">?</button>
-<button onclick="navCal(12)" class="px-2 py-0.5 rounded border text-sm">?</button>
+<button onclick="navCal(-12)" class="px-2 py-0.5 rounded border text-sm">«</button>
+<button onclick="navCal(-1)" class="px-2 py-0.5 rounded border text-sm">‹</button>
+<button onclick="toggleCal()" class="px-2 py-0.5 rounded border text-sm">✕</button>
+<button onclick="navCal(1)" class="px-2 py-0.5 rounded border text-sm">›</button>
+<button onclick="navCal(12)" class="px-2 py-0.5 rounded border text-sm">»</button>
 </div>
 <div class="flex gap-3" onmouseleave="hoverDay(null)"><div class="cal" id="cal0"></div><div class="cal" id="cal1"></div></div>
 </div>
@@ -90,10 +89,10 @@ body{font-family:'Inter',system-ui,sans-serif}
 <div id="refModal" style="display:none;position:fixed;inset:0;z-index:50;background:rgba(15,23,42,.45)">
 <div class="bg-white rounded-xl shadow-xl p-5 mx-3" style="max-width:430px;margin:12vh auto">
 <div class="flex items-center justify-between mb-2">
-<h3 id="refModalTitle" class="font-semibold">Refreshing...</h3>
-<button onclick="hideRefModal()" class="px-2 py-0.5 rounded border text-sm" title="Hide (pull keeps running)">?</button>
+<h3 id="refModalTitle" class="font-semibold">Refreshing…</h3>
+<button onclick="hideRefModal()" class="px-2 py-0.5 rounded border text-sm" title="Hide (pull keeps running)">✕</button>
 </div>
-<div id="refModalLive" class="text-sm text-gray-700">Starting...</div>
+<div id="refModalLive" class="text-sm text-gray-700">Starting…</div>
 <div id="refModalLog" class="mt-2 text-xs text-gray-500" style="min-height:64px"></div>
 <div class="mt-3 flex gap-2 justify-end">
 <button onclick="hideRefModal()" class="px-3 py-1.5 rounded border border-gray-300 text-sm hover:bg-gray-100">Hide (keeps running)</button>
@@ -133,7 +132,7 @@ let ACCDATA=[],CUR="";
 function pillFor(a){const st=a.mismatch?["mismatch","background:#fef3c7;color:#92400e"]:
 (a.relink?["relink","background:#fef3c7;color:#92400e"]:
 (a.linked?["linked","background:#dcfce7;color:#15803d"]:["not linked","background:#fee2e2;color:#b91c1c"]));
-const tip=a.mismatch&&a.linked_as?(" title='Linked as @"+esc(a.linked_as)+" -- expected @"+esc(a.username)+"'"):"";
+const tip=a.mismatch&&a.linked_as?(" title='Linked as @"+esc(a.linked_as)+" — expected @"+esc(a.username)+"'"):"";
 return "<span"+tip+" style='"+st[1]+";border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0'>"+st[0]+"</span>";}
 async function accounts(){
 const r=await fetch("/api/accounts");const d=await r.json();
@@ -146,7 +145,7 @@ document.getElementById("status").textContent=linked+"/"+d.accounts.length+" lin
 paintAccBtn();load();}
 let LINKMAP={};
 function paintAccBtn(){const a=LINKMAP[CUR],btn=document.getElementById("accBtn");
-if(!a){btn.textContent="...";return;}
+if(!a){btn.textContent="…";return;}
 btn.innerHTML="<b>"+esc(CUR)+"</b> <span class='text-gray-400 font-normal'>@"+esc(a.username)+"</span> "+pillFor(a);
 document.getElementById("unlinkBtn").style.display=a.linked?"":"none";}
 function toggleAcc(){const l=document.getElementById("accList");
@@ -164,7 +163,7 @@ let ALL=[];
 let LASTFETCH=null;
 function fetchedAbs(ts){return new Date(ts*1000).toLocaleString("en-MY",
 {timeZone:"Asia/Kuala_Lumpur",hour12:false});}
-function fetchedLine(ts){return ts?("Last fetch: "+fetchedAbs(ts)+" MYT ("+rel(ts)+")"):"No fetch yet -- press Refresh.";}
+function fetchedLine(ts){return ts?("Last fetch: "+fetchedAbs(ts)+" MYT ("+rel(ts)+")"):"No fetch yet — press Refresh.";}
 let DSET=new Set();
 function rebuildSet(){DSET=new Set();ALL.forEach(x=>{if(x.create_time)DSET.add(dayKey(x.create_time));});}
 function dayKey(ts){const d=new Date((ts+8*3600)*1000);
@@ -177,10 +176,10 @@ const d=new Date(t);return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad
 function monthLen(y,m){return new Date(Date.UTC(y,m+1,0)).getUTCDate();}
 function labelRange(){const b=document.getElementById("rangeBtn");
 document.getElementById("clearBtn").style.display=R.s?"":"none";
-if(!R.s){b.textContent="All time [cal]";return;}
+if(!R.s){b.textContent="All time 📅";return;}
 if(!R.e&&HOV&&HOV!==R.s){const lo=R.s<HOV?R.s:HOV,hi=R.s<HOV?HOV:R.s;
-b.textContent=lo+" ? "+hi+" [cal]";return;}
-b.textContent=(!R.e||R.e===R.s?R.s:R.s+" - "+R.e)+" [cal]";}
+b.textContent=lo+" → "+hi+" 📅";return;}
+b.textContent=(!R.e||R.e===R.s?R.s:R.s+" - "+R.e)+" 📅";}
 function setRange(s,e){R={s:s,e:e||s};HOV=null;labelRange();applyFilter();}
 function preset(p){const t=dayKey(Math.floor(Date.now()/1000));
 if(p==="all"){R={s:null,e:null};labelRange();applyFilter();return;}
@@ -267,10 +266,10 @@ boxes.forEach(b=>{const cell=tr.children[+b.dataset.col];
 if(cell)cell.style.display=b.checked?"":"none";});});}
 function renderRows(){const tb=document.getElementById("rows");tb.innerHTML="";
 if(!ALL.length){document.getElementById("tbl").style.display="none";
-document.getElementById("count").textContent="No cache -- press Refresh.";return;}
+document.getElementById("count").textContent="No cache — press Refresh.";return;}
 document.getElementById("tbl").style.display="";
 document.getElementById("count").textContent=
-FILTERED.length+" of "+ALL.length+" videos"+(FILTERED.length!==ALL.length?" (filtered)":"")+" ? "+fetchedLine(LASTFETCH)+".";
+FILTERED.length+" of "+ALL.length+" videos"+(FILTERED.length!==ALL.length?" (filtered)":"")+" · "+fetchedLine(LASTFETCH)+".";
 FILTERED.forEach((x,i)=>{
 const abs=x.create_time?new Date(x.create_time*1000).toLocaleString("en-MY",
 {timeZone:"Asia/Kuala_Lumpur",hour12:false}):"";
@@ -284,7 +283,7 @@ tr.innerHTML="<td>"+(i+1)+"</td><td><div style='display:flex;gap:8px;align-items
 "<span>"+esc(x.title)+"</span></div></td><td>"+esc(x.id)+"</td><td><div style='white-space:nowrap'>"+esc(abs)+
 " MYT</div><div class='text-gray-400' style='font-size:11px'>"+esc(when)+"</div></td><td>"+esc(x.view_count)+
 "</td><td>"+esc(x.like_count)+"</td><td>"+esc(x.comment_count)+"</td><td>"+esc(x.share_count)+
-"</td><td><a class='text-blue-600 hover:underline' href='"+esc(x.share_url)+"' target='_blank'>open</a> ? "+
+"</td><td><a class='text-blue-600 hover:underline' href='"+esc(x.share_url)+"' target='_blank'>open</a> · "+
 "<a class='text-blue-600 hover:underline' href='"+esc(x.cover_image_url)+"' target='_blank'>cover</a></td>";
 tb.appendChild(tr);});applyCols();}
 async function load(){
@@ -296,27 +295,14 @@ let ph="";
 if(p.cached){const u=p.profile;
 ph="<span class='inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-semibold'>@"+esc(u.username)+"</span> "+
 "<span class='text-sm'>followers <b>"+esc(u.follower_count)+
-"</b> ? following "+esc(u.following_count)+" ? total likes "+esc(u.likes_count)+
-" ? videos "+esc(u.video_count)+"</span>"+(u.is_verified?" <span class='text-xs text-sky-600'>verified ?</span>":"")+
+"</b> · following "+esc(u.following_count)+" · total likes "+esc(u.likes_count)+
+" · videos "+esc(u.video_count)+"</span>"+(u.is_verified?" <span class='text-xs text-sky-600'>verified ✓</span>":"")+
 (u.bio_description?"<br><span class='text-gray-500'>Bio: "+esc(u.bio_description)+"</span>":"");}
-else ph=p.linked?"<span class='inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs'>Linked, no cache -- press Refresh.</span>"
-:"<span class='inline-block px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs'>Not linked -- press Link / Relink.</span>";
+else ph=p.linked?"<span class='inline-block px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs'>Linked, no cache — press Refresh.</span>"
+:"<span class='inline-block px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-xs'>Not linked — press Link / Relink.</span>";
 document.getElementById("profile").innerHTML=ph+
 "<br><span class='text-gray-500 text-xs'>"+esc(fetchedLine(v.fetched_at||null))+"</span>";
-// Fetch yesterday run ticks from Sheets (if available)
-try{
-const yr=await fetch("/api/yesterday-run?account="+encodeURIComponent(a)).then(r=>r.json());
-renderYesterdayPill(yr);
-}catch(e){document.getElementById("yesterdayPill").style.display="none";}
 ALL=(v.cached&&v.videos)||[];LASTFETCH=v.fetched_at||null;rebuildSet();applyFilter();}
-function renderYesterdayPill(d){
-const box=document.getElementById("yesterdayPill");
-if(!d||d.error||d.total===0){box.style.display="none";return;}
-const pct=d.total?Math.round(d.ticked/d.total*100):0;
-const cls=pct===100?"bg-green-100 text-green-800":(pct>=50?"bg-amber-100 text-amber-800":"bg-red-100 text-red-800");
-const y=dayKey(Math.floor(Date.now()/1000-86400));
-box.innerHTML="<span class='inline-block px-3 py-1.5 rounded-full "+cls+" text-sm font-semibold' style='cursor:pointer' onclick=\"setRange('"+y+"','"+y+"')\" title='Click to filter table to yesterday'>Yesterday: "+d.total+" videos ? "+d.ticked+" ticked ("+pct+"%)</span>";
-box.style.display="block";}
 function link(){const a=CUR;
 location.href="/authorize?account="+encodeURIComponent(a);}
 async function unlink(){const a=CUR;
@@ -326,8 +312,8 @@ const d=await r.json();
 if(d.ok){document.getElementById("status").textContent="Unlinked "+a+".";await accounts();}
 else document.getElementById("status").textContent="Unlink failed: "+(d.error||"unknown");}
 function hideRefModal(){document.getElementById("refModal").style.display="none";}
-function openRefModal(a){document.getElementById("refModalTitle").textContent="Refreshing "+a+"...";
-document.getElementById("refModalLive").textContent="Contacting TikTok...";
+function openRefModal(a){document.getElementById("refModalTitle").textContent="Refreshing "+a+"…";
+document.getElementById("refModalLive").textContent="Contacting TikTok…";
 document.getElementById("refModalLog").innerHTML="";
 document.getElementById("refModalView").style.display="none";
 document.getElementById("refModal").style.display="block";}
@@ -335,12 +321,12 @@ function refLogLine(t){const log=document.getElementById("refModalLog");
 const d=document.createElement("div");d.textContent=t;log.appendChild(d);
 while(log.children.length>5)log.removeChild(log.firstChild);}
 function refProgress(ev){document.getElementById("refModalLive").textContent=
-"Page "+ev.page+" ? "+ev.fetched+" videos so far (throttled ~1s/page)... [loading]";
-refLogLine("page "+ev.page+" ? "+ev.fetched+" videos");}
+"Page "+ev.page+" · "+ev.fetched+" videos so far (throttled ~1s/page)… ⏳";
+refLogLine("page "+ev.page+" · "+ev.fetched+" videos");}
 function refWaiting(ev){document.getElementById("refModalLive").textContent=
-"Waiting on TikTok rate-limit ("+ev.reason+", "+ev.seconds+"s)... [loading]";
+"Waiting on TikTok rate-limit ("+ev.reason+", "+ev.seconds+"s)… ⏳";
 refLogLine("waiting "+ev.seconds+"s ("+ev.reason+")");}
-function refError(ev){const m="Error: "+(ev.error||"unknown")+" -- wait a minute and press Refresh again.";
+function refError(ev){const m="Error: "+(ev.error||"unknown")+" — wait a minute and press Refresh again.";
 document.getElementById("refModalLive").textContent=m;
 document.getElementById("status").textContent=m;}
 async function finishRefModal(a,d){
@@ -348,12 +334,12 @@ if(d.relink){const m="Relink needed: "+d.error;
 document.getElementById("refModalLive").textContent=m;
 document.getElementById("status").textContent=m;return;}
 if(d.ok){let msg="Done: "+d.count+" videos cached";
-if(d.limited)msg+=" (limit pull: "+d.fetched+" newest fetched in "+d.pages+" pages -- merged, older cache kept)";
-else if(d.ranged)msg+=" (range pull: "+d.fetched+" fetched in "+d.pages+" pages -- merged, older cache kept)";
+if(d.limited)msg+=" (limit pull: "+d.fetched+" newest fetched in "+d.pages+" pages — merged, older cache kept)";
+else if(d.ranged)msg+=" (range pull: "+d.fetched+" fetched in "+d.pages+" pages — merged, older cache kept)";
 else msg+=" ("+d.pages+" pages, throttled)";
 msg+=".";
 if(d.fetched_at){LASTFETCH=d.fetched_at;refLogLine(fetchedLine(LASTFETCH));}
-document.getElementById("refModalLive").textContent=msg+" ?";
+document.getElementById("refModalLive").textContent=msg+" ✅";
 refLogLine(msg);
 document.getElementById("status").textContent=msg;
 document.getElementById("refModalView").style.display="";
@@ -363,8 +349,8 @@ async function refresh(){const a=CUR;
 const btn=document.getElementById("refBtn"),spin=document.getElementById("spin");
 btn.disabled=true;spin.style.display="inline";
 const lim0=refreshLimit();
-const inRange=(R.s?(" ("+R.s+" to "+(R.e||R.s)+")"):" (full history -- big accounts take minutes)")+(lim0?(" [newest "+lim0+"]"):"");
-document.getElementById("status").textContent="Pulling "+a+" from TikTok"+inRange+"...";
+const inRange=(R.s?(" ("+R.s+" to "+(R.e||R.s)+")"):" (full history — big accounts take minutes)")+(lim0?(" [newest "+lim0+"]"):"");
+document.getElementById("status").textContent="Pulling "+a+" from TikTok"+inRange+"…";
 openRefModal(a);
 try{let url="/refresh?account="+encodeURIComponent(a)+"&stream=1";
 if(R.s)url+="&since="+encodeURIComponent(R.s)+"&until="+encodeURIComponent(R.e||R.s);

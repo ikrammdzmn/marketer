@@ -1,4 +1,4 @@
-# CHANGELOG.md - sync/
+﻿# CHANGELOG.md - sync/
 
 ## 2026-09-20 - v16: Dashboard dual-read (stray serial fix)
 - Merge reads values (formatted, dates as strings) + col A with FORMULA
