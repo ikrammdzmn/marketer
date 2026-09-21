@@ -67,6 +67,17 @@ function Get-AccountNames {
   }
 }
 
+function Get-EngineVersion {
+  # Single source of truth: SYNC_VERSION in sheet-sync.py. Falls back
+  # to '?' so a missing/unreadable engine never breaks the menu.
+  try {
+    $m = Select-String -LiteralPath $Engine `
+      -Pattern '^SYNC_VERSION = "([^"]+)"' | Select-Object -First 1
+    if ($m -and $m.Matches.Count -gt 0) { return $m.Matches[0].Groups[1].Value }
+  } catch { }
+  return '?'
+}
+
 function Read-Date($prompt, $required) {
   while ($true) {
     $v = (Read-Host $prompt).Trim()
@@ -117,12 +128,14 @@ while ($true) {
 if (-not $skipMenus) {
 # --- 1) window ----------------------------------------------------------------
 Write-Host '=== TikTok -> Sheets sync ==='
+Write-Host ('  run-sync.ps1 | sheet-sync {0}' -f (Get-EngineVersion))
 Write-Host '  1) Today only (intraday top-up)'
 Write-Host '  2) Yesterday only (missed-day catch-up)'
 Write-Host '  3) Last 7 days incl. today (daily routine) [default]'
 Write-Host '  4) Custom dates (gap fill)'
 Write-Host '  5) All-time backfill (once, ~15-30 min, supervised)'
-$choice = (Read-Host 'Window [1-5, Enter=3]').Trim()
+Write-Host '  6) Yesterday ticks refresh (fast, no TikTok pull)'
+$choice = (Read-Host 'Window [1-6, Enter=3]').Trim()
 if (-not $choice) { $choice = '3' }
 
 $windowArgs = @()
@@ -144,6 +157,7 @@ switch ($choice) {
     $windowLabel = if ($until) { "$since..$until" } else { "$since..today" }
   }
   '5' { $windowArgs = @('--full'); $windowLabel = 'ALL TIME'; $confirmFull = $true }
+  '6' { $windowArgs = @('--refresh-ticks'); $windowLabel = 'yesterday ticks refresh' }
   default {
     Write-Host 'Unknown choice, using default: last 7 days.' -ForegroundColor Yellow
     $windowArgs = @('--days', '7'); $windowLabel = 'last 7 days incl. today'

@@ -1,4 +1,4 @@
-﻿# plan.md - sync/ status checklist
+# plan.md - sync/ status checklist
 
 - [x] `sheet-sync.py` - upsert by Video ID (update A-H + deltas I-L, insert new at row 2)
 - [x] `Dashboard` sheet v1 - Account | Followers | Videos 7d | Views 7d | ViewsD 7d | Last post MYT
@@ -22,6 +22,10 @@
   saved (no env needed), ASCII-only ps1
 - [x] `--- What this means ---` footer (posted/total/videos, refresh/new,
   quiet names, relink names, quiet-day callout, dry/live footer)
+- [x] Dashboard v2: "Yesterday Videos" + "Yesterday Ticked" columns (read
+  Run checkbox col A from account tabs for MYT yesterday) - 8-col Dashboard
+- [x] `--refresh-ticks` mode: recompute Dashboard cols G-H with no TikTok
+  pull (launcher menu 6); version footer row (`sheet-sync v18`)
 - [ ] Name any further custom columns (append to `CUSTOM_LEFT`, rerun migrates)
 - [ ] `--full` backfill for stats older than 7d (optional; daily window is enough)
 - [ ] Windows Task Scheduler daily job (same file, when manual gets boring)

@@ -1,4 +1,28 @@
-﻿# CHANGELOG.md - sync/
+# CHANGELOG.md - sync/
+
+## 2026-09-21 - v18: --refresh-ticks mode + version footer
+- New `--refresh-ticks` flag: recomputes Dashboard cols G-H from the
+  account tabs with no TikTok pull and no tab writes (summaries from local
+  cache via `maybe_migrate_cache`). Launcher menu item 6. Takes no window
+  flag; works with `--all` / `--account` / `--dry-run`.
+- Dashboard footer gains a 4th row `sheet-sync v18` (`SYNC_VERSION`
+  constant). Merge drops stale version rows; date-format range unchanged.
+- `_get_yesterday_run_stats` hardened: missing tabs read as zeros instead
+  of aborting the run; stats failure in refresh mode prints a warning and
+  writes zeros rather than blocking.
+- Launcher menu shows `run-sync.ps1 | sheet-sync vNN` banner, read live
+  from the engine's `SYNC_VERSION` (single source of truth).
+
+## 2026-09-20 - v17: Dashboard v2 - Yesterday Videos + Yesterday Ticked
+- Dashboard header extended 6->8 cols: added "Yesterday Videos" (count of
+  videos posted MYT yesterday) and "Yesterday Ticked" (count of those with
+  Run checkbox = TRUE in col A).
+- `_get_yesterday_run_stats()` batch-reads all account tabs A2:E (Run +
+  Posted MYT) after sync, filters MYT yesterday (00:00-23:59), counts
+  total + TRUE checkboxes.
+- `write_dashboard` uses 8 cols, clear range A{new+1}:H100, footer padded
+  to 8. Merge path uses `_pad8` for existing rows.
+- Dry-run previews new cols; works for `--all` and `--account` runs.
 
 ## 2026-09-20 - v16: Dashboard dual-read (stray serial fix)
 - Merge reads values (formatted, dates as strings) + col A with FORMULA

@@ -24,23 +24,29 @@ spreadsheet-mcp venv (google client libs). No npm, no build, no server.
   Fixed per-tab colors (`ACCOUNT_COLORS`, Dashboard gray), re-applied each run.
   Extra personal tabs (e.g. Notes) are ignored by the engine and survive runs
   - except: never name one `Sheet1` (auto-renamed to Dashboard if empty),
-  never reuse an account name, and never store notes in Dashboard col G
-  (cleared G1:G20 every run).
+  never reuse an account name, and never store notes in Dashboard cols G-H
+  (rewritten every run as Yesterday Videos / Yesterday Ticked).
 - Header Row 1 frozen: `Run | Note | Title | Video ID | Posted (MYT) |
   Views | Likes | Comments | Shares | Links | ViewsD | LikesD | CommentsD |
   SharesD` (A-N). Left customs come from `CUSTOM_LEFT`; appending a name
   shifts the system block right with no other code change.
 - Video ID is the upsert key (at `OFF+1`). Cols A-B are user-owned: never
-  read, never written - except the header row, blank A-B on new rows, and
-  CHECKBOX validation re-applied to col A each run.
+  written - except the header row, blank A-B on new rows, and
+  CHECKBOX validation re-applied to col A each run. Col A (Run) is read
+  once per run to count yesterday's ticks for Dashboard cols G-H.
 - New videos insert at row 2, newest first. Existing rows update the system
   block only when metrics move (unchanged rows skipped; deltas mean
   "change at last movement"). Old A-L layouts migrate once automatically
   (`MIGRATED_A_B`: shift right, blank A-B, apply checkboxes).
-- `Dashboard!A1:F` rewritten every run as `USER_ENTERED`: Account column is
-  `HYPERLINK("#gid=...")` jump links labeled with the tab title (Sheet column
-  merged in, G cleared); date cols formatted `yyyy-mm-dd hh:mm:ss`.
-  Plain text in dry-run.
+- `Dashboard!A1:H` rewritten every run as `USER_ENTERED`: Account column is
+  `HYPERLINK("#gid=...")` jump links labeled with the tab title; cols G-H
+  are Yesterday Videos / Yesterday Ticked (MYT yesterday counts from the
+  account tabs: total posted + Run-checkbox TRUE); footer is blank +
+  `Updated (MYT)` + timestamp + `sheet-sync vNN` version row; date cols
+  formatted `yyyy-mm-dd hh:mm:ss`. Plain text in dry-run.
+- `--refresh-ticks` recomputes Dashboard cols G-H only: no TikTok pull,
+  no account-tab writes (summaries from local cache). Takes no window
+  flag; works with `--all` / `--account` / `--dry-run`.
 
 ## Rules
 

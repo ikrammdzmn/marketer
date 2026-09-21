@@ -15,6 +15,8 @@ Run (manual, from the marketer repo root):
 Windows (pick ONE window per run):
   --days N (default 7) | --today | --yesterday |
   --since YYYY-MM-DD [--until YYYY-MM-DD] | --full
+Ticks-only refresh (no TikTok pull, Dashboard cols G-H only):
+  ... sheet-sync.py --all --refresh-ticks [--dry-run]
 Single account / dry run / gap fill:
   ... sheet-sync.py --account "Dr Samhan" --today
   ... sheet-sync.py --all --days 7 --dry-run
@@ -42,6 +44,7 @@ MARKETER = os.path.dirname(PARENT)
 DASHBOARD_PY = os.path.join(PARENT, "dashboard", "dashboard.py")
 SHEET_ID_FILE = os.path.join(HERE, ".sheet_id.json")
 MYT = datetime.timezone(datetime.timedelta(hours=8))
+SYNC_VERSION = "v18"
 
 BASE_HEADER = ["Title", "Video ID", "Posted (MYT)", "Views", "Likes",
                "Comments", "Shares", "Links"]
@@ -404,6 +407,51 @@ def _pad6(row):
     return (list(row) + [""] * 6)[:6]
 
 
+def _pad8(row):
+    """Pad any row to exactly 8 Dashboard cols (footer-safe)."""
+    return (list(row) + [""] * 8)[:8]
+
+
+def _get_yesterday_run_stats(svc, sid, tabs, yesterday_ts, today_ts):
+    """
+    Batch-read all account tabs (col A=Run, col E=Posted MYT).
+    Returns {sheet_title: (yesterday_count, yesterday_ticked)}.
+    """
+    if not tabs:
+        return {}
+    ranges = []
+    for title in tabs.values():
+        ranges.append("%s!A2:E" % _q(title))
+    try:
+        resp = X(svc.spreadsheets().values().batchGet(
+            spreadsheetId=sid, ranges=ranges))
+    except Exception as e:  # noqa: BLE001 - missing tabs read as zeros
+        blob = str(getattr(e, "content", "")) + str(e)
+        if "Unable to parse range" in blob:
+            return {}
+        raise
+    out = {}
+    for title, range_data in zip(tabs.values(), resp.get("valueRanges", [])):
+        vals = range_data.get("values", [])
+        y_count = y_ticked = 0
+        for row in vals:
+            posted = str(row[4] if len(row) > 4 else "").strip()
+            if not posted:
+                continue
+            try:
+                dt = datetime.datetime.strptime(posted[:19], "%Y-%m-%d %H:%M:%S")
+                ts = int(dt.replace(tzinfo=MYT).timestamp())
+            except (ValueError, TypeError):
+                continue
+            if yesterday_ts <= ts < today_ts:
+                y_count += 1
+                run_val = str(row[0] if len(row) > 0 else "").strip().upper()
+                if run_val in ("TRUE", "1", "YES"):
+                    y_ticked += 1
+        out[title] = (y_count, y_ticked)
+    return out
+
+
 def _dash_label(cell):
     """Col-A label: unwrap =HYPERLINK("#gid=N","label") or plain text."""
     s = str(cell or "")
@@ -418,6 +466,9 @@ def _is_dashboard_footer(a):
     """True for the Updated/timestamp footer rows (even with stale B-F)."""
     s = str(a or "").strip()
     if s == "Updated (MYT)":
+        return True
+    if s.lower().startswith("sheet-sync v") or \
+            (s.startswith("v") and len(s) > 1 and s[1].isdigit()):
         return True
     if len(s) == 19 and s[4] == "-" and s[7] == "-" and \
             s[10] == " " and s[13] == ":":
@@ -439,11 +490,12 @@ def _summary_row(s, gids):
     cell = ('=HYPERLINK("#gid=%d","%s")' % (gid, label.replace('"', '""'))
             if gid is not None else label)
     return [cell, s["followers"], s["videos_7d"],
-            s["views_7d"], s["views_d_7d"], s["last_post"]]
+            s["views_7d"], s["views_d_7d"], s["last_post"],
+            s.get("yesterday_videos", 0), s.get("yesterday_ticked", 0)]
 
 
 def _read_dashboard_grid(svc, sid):
-    """Dashboard values A1:F100 with default (formatted) render.
+    """Dashboard values A1:H100 with default (formatted) render.
 
     Dates come back as displayed strings, so footer detection works.
     Col A hyperlinks come back as plain labels - pair with
@@ -451,7 +503,7 @@ def _read_dashboard_grid(svc, sid):
     """
     try:
         resp = X(svc.spreadsheets().values().get(
-            spreadsheetId=sid, range="Dashboard!A1:F100"))
+            spreadsheetId=sid, range="Dashboard!A1:H100"))
     except Exception as e:  # noqa: BLE001 - missing tab reads as empty
         blob = str(getattr(e, "content", "")) + str(e)
         if "Unable to parse range" in blob:
@@ -489,7 +541,7 @@ def _link_cell(label, gids, svc, sid, dry):
 
 def write_dashboard(svc, sid, dash, summaries, gids, dry, merge=False):
     header = ["Account", "Followers", "Videos 7d", "Views 7d",
-              "ViewsD 7d", "Last post MYT"]
+              "ViewsD 7d", "Last post MYT", "Yesterday Videos", "Yesterday Ticked"]
     fresh = {}
     for s in summaries:
         fresh[s["sheet"]] = _summary_row(s, gids)
@@ -503,7 +555,7 @@ def write_dashboard(svc, sid, dash, summaries, gids, dry, merge=False):
         acc_rows, seen = [], set()
         formulas = _read_dashboard_col_a(svc, sid)
         for i, r in enumerate(_read_dashboard_grid(svc, sid)[1:]):
-            pad = _pad6(r)
+            pad = _pad8(r)
             fa = (formulas[i + 1] + [""])[0] \
                 if i + 1 < len(formulas) else ""
             if str(fa or "").strip():
@@ -531,21 +583,20 @@ def write_dashboard(svc, sid, dash, summaries, gids, dry, merge=False):
                 seen.add(label)
     else:
         acc_rows = [fresh[s["sheet"]] for s in summaries]
-    rows = [header] + acc_rows + [_pad6([]), _pad6(["Updated (MYT)"]),
-            _pad6([datetime.datetime.now(MYT).strftime("%Y-%m-%d %H:%M:%S")])]
+    rows = [header] + acc_rows + [_pad8([]), _pad8(["Updated (MYT)"]),
+            _pad8([datetime.datetime.now(MYT).strftime("%Y-%m-%d %H:%M:%S")]),
+            _pad8(["sheet-sync " + SYNC_VERSION])]
     n_acc = len(acc_rows)
     if not dry:
         X(svc.spreadsheets().values().update(
-            spreadsheetId=sid, range="Dashboard!A1:F%d" % len(rows),
+            spreadsheetId=sid, range="Dashboard!A1:H%d" % len(rows),
             valueInputOption="USER_ENTERED", body={"values": rows}))
         # Leftover clear: a shorter rewrite (e.g. old 1-row bug, removed
         # account) must not leave stale rows below the new footer.
         if len(rows) < 100:
             X(svc.spreadsheets().values().clear(
                 spreadsheetId=sid,
-                range="Dashboard!A%d:F100" % (len(rows) + 1), body={}))
-        X(svc.spreadsheets().values().clear(
-            spreadsheetId=sid, range="Dashboard!G1:G20", body={}))
+                range="Dashboard!A%d:H100" % (len(rows) + 1), body={}))
         dash_id = sheet_id_of(svc, sid, "Dashboard")
         fmt = {"numberFormat": {"type": "DATE_TIME",
                                 "pattern": "yyyy-mm-dd hh:mm:ss"}}
@@ -567,7 +618,7 @@ def write_dashboard(svc, sid, dash, summaries, gids, dry, merge=False):
     return rows
 
 
-def summarize(dash, name, title, videos, since_ts):
+def summarize(dash, name, title, videos, since_ts, yesterday_stats=None):
     prof = {}
     _jp, _cp, pp = dash.cache_paths(name)
     if os.path.exists(pp):
@@ -577,13 +628,16 @@ def summarize(dash, name, title, videos, since_ts):
            if (v.get("create_time") or 0) >= (since_ts or 0)]
     myts = [dash.to_myt(v.get("create_time"))[0] for v in win]
     myts = [m for m in myts if m]
+    y_vids, y_ticked = yesterday_stats.get(title, (0, 0)) if yesterday_stats else (0, 0)
     return {"account": name,
             "followers": prof.get("follower_count", ""),
             "videos_7d": len(win),
             "views_7d": sum(int(v.get("view_count") or 0) for v in win),
             "views_d_7d": "",
             "last_post": max(myts) if myts else "",
-            "sheet": title}
+            "sheet": title,
+            "yesterday_videos": y_vids,
+            "yesterday_ticked": y_ticked}
 
 
 def _day_start(day):
@@ -605,6 +659,7 @@ def main():
     ap.add_argument("--since", default="")
     ap.add_argument("--until", default="")
     ap.add_argument("--full", action="store_true")
+    ap.add_argument("--refresh-ticks", action="store_true")
     ap.add_argument("--spreadsheet-id", default="")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -614,6 +669,9 @@ def main():
                          "SHEET_ID env, or create sync/.sheet_id.json")
     specs = [args.today, args.yesterday, args.days is not None,
              bool(args.since or args.until), args.full]
+    if args.refresh_ticks and any(specs):
+        raise SystemExit("--refresh-ticks takes no window flag "
+                         "(--today | --yesterday | --days N | --since/--until | --full)")
     if sum(1 for s in specs if s) > 1:
         raise SystemExit("Pick ONE window: --today | --yesterday | --days N "
                          "| --since/--until | --full")
@@ -622,6 +680,7 @@ def main():
     mid = datetime.datetime.now(MYT).replace(
         hour=0, minute=0, second=0, microsecond=0)
     today_ts = int(mid.timestamp())
+    yesterday_ts = today_ts - 86400
     if args.full:
         since_ts, until_ts, win = None, None, "full history"
     elif args.today:
@@ -664,6 +723,37 @@ def main():
     # Dashboard always summarizes the trailing 7d, whatever the fetch preset.
     dash_since = today_ts - 6 * 86400
     summaries, results, skipped = [], [], []
+    if args.refresh_ticks:
+        # Ticks-only refresh: no TikTok pulls, no tab writes. Summaries
+        # come from local cache; cols G-H come from the account tabs.
+        for name in names:
+            videos = dash.maybe_migrate_cache(name) or []
+            summaries.append(summarize(dash, name, tabs[name], videos,
+                                       dash_since))
+        try:
+            yesterday_stats = _get_yesterday_run_stats(
+                svc, sid, tabs, yesterday_ts, today_ts)
+        except Exception as e:  # noqa: BLE001 - stats must not block
+            print("Yesterday stats unreadable (%s) - writing zeros."
+                  % str(e)[:120])
+            yesterday_stats = {}
+        for s in summaries:
+            y_vids, y_ticked = yesterday_stats.get(s["sheet"], (0, 0))
+            s["yesterday_videos"] = y_vids
+            s["yesterday_ticked"] = y_ticked
+            tag = "DRY " if args.dry_run else ""
+            print("%s%s: yesterday %d videos, %d ticked."
+                  % (tag, s["account"], y_vids, y_ticked))
+        gids = {t: sheet_id_of(svc, sid, t) for t in tabs.values()
+                if not args.dry_run}
+        merge = bool(args.account)
+        rows = write_dashboard(svc, sid, dash, summaries, gids,
+                               args.dry_run, merge=merge)
+        n_dash = len(rows) - 5  # header + blank + Updated + timestamp + version
+        print(("DRY " if args.dry_run else "")
+              + "Dashboard ticks refreshed (%d account%s)."
+              % (n_dash, "" if n_dash == 1 else "s"))
+        return
     for name in names:
         try:
             access = dash.ensure_access(name)
@@ -684,12 +774,20 @@ def main():
             " ".join(notes)))
         results.append((name, len(fresh), upd, ins))
         summaries.append(summarize(dash, name, tabs[name], merged, dash_since))
+    # Fetch yesterday's Run checkbox stats from account tabs (after sync,
+    # so the tabs have the latest data including any new videos from yesterday).
+    yesterday_stats = _get_yesterday_run_stats(svc, sid, tabs, yesterday_ts, today_ts)
+    # Update existing summaries with yesterday stats.
+    for s in summaries:
+        y_vids, y_ticked = yesterday_stats.get(s["sheet"], (0, 0))
+        s["yesterday_videos"] = y_vids
+        s["yesterday_ticked"] = y_ticked
     gids = {t: sheet_id_of(svc, sid, t) for t in tabs.values()
             if not args.dry_run}
     merge = bool(args.account)
     rows = write_dashboard(svc, sid, dash, summaries, gids, args.dry_run,
                            merge=merge)
-    n_dash = len(rows) - 4  # header + blank + Updated + timestamp
+    n_dash = len(rows) - 5  # header + blank + Updated + timestamp + version
     print(("DRY " if args.dry_run else "") + "Dashboard written (%d account%s)."
           % (n_dash, "" if n_dash == 1 else "s"))
     print_summary(results, skipped, len(names), args.dry_run)

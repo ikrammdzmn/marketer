@@ -1,4 +1,4 @@
-﻿# DEV_NOTES.md - sync/ session handoff (20 Sep 2026, morning MYT)
+# DEV_NOTES.md - sync/ session handoff (20 Sep 2026, morning MYT)
 
 ## Vibe
 
@@ -179,3 +179,39 @@ verified in 2 calls. Short replies, one action per message held.
 - 7 not 10 = old damage, not a bug: the pre-merge v14 rewrite overwrote
   rows 3-5 (Dr Samhan, Official3, Dr. Samhan), merge preserves what exists.
   Next `--all` run restores all 10 rows.
+
+## 20 Sep 2026 - v17 Dashboard v2: Yesterday Videos + Yesterday Ticked (evening MYT)
+
+- Owner: wants Google Sheet Dashboard tab to show yesterday's posted count
+  and how many of those have Run checkbox ticked (col A per account tab).
+- Plan: extend Dashboard header 6->8 cols (add "Yesterday Videos",
+  "Yesterday Ticked"); batch-read all account tabs A2:E (Run + Posted MYT)
+  after sync; filter MYT yesterday (00:00-23:59); count total + TRUE
+  checkboxes; write into new cols G-H. Dry-run previews, merge path works.
+- `sheet-sync.py` changes: `_pad8`, `_get_yesterday_run_stats` (batchGet),
+  `summarize` + `_summary_row` extended, `write_dashboard` uses 8 cols,
+  clear range A{new+1}:H100, footer padded to 8. Merge logic uses _pad8.
+  Hardened batchGet with missing-tab tolerance (dry-run on fresh account).
+  Removed `G1:G20` clear (col G is now live Yesterday Videos data).
+- Verified: py_compile, ASCII 0, fake-grid 8-col test (old 6-col rows heal
+  to 8 + relink, stray dropped, footer padded, write A1:H + clear H100),
+  ystats test (3 yesterday videos, 1 TRUE counted; bad dates skipped).
+- Owner runs `--all --days 7` live next: Dashboard gains cols G-H.
+
+## 21 Sep 2026 - v18 refresh-ticks mode + version footer (morning MYT)
+
+- Owner: (1) single run should refresh all accounts' G-H; advised low risk
+  with per-tab fallback + never-fail guard. Owner pivoted: explicit fast
+  refresh command instead. (2) version number below the update timestamp.
+- `--refresh-ticks`: standalone mode, no TikTok pull, no tab writes.
+  Summaries from local cache (`maybe_migrate_cache`), G-H from tabs,
+  full rewrite (`--all`) or merge (`--account`). Window flags rejected.
+  Stats failure warns + writes zeros, never blocks. Launcher menu 6.
+- Footer 4th row `sheet-sync v18` (`SYNC_VERSION`); merge drops stale
+  version rows; `n_dash` now len(rows)-5; date-format range unchanged.
+- Verified: py_compile, ASCII 0, ps1 parses (0 errors), `--help` lists
+  flag, conflict guard errors cleanly, fake-grid version test (row
+  written, stale v17 dropped, 8-col footer, write A1:H6).
+- Launcher shows `run-sync.ps1 | sheet-sync v18` banner under the menu
+  title, read live from engine `SYNC_VERSION` (`Get-EngineVersion`,
+  `?` fallback). ps1 parses, ASCII 0.
