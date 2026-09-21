@@ -215,3 +215,13 @@ verified in 2 calls. Short replies, one action per message held.
 - Launcher shows `run-sync.ps1 | sheet-sync v18` banner under the menu
   title, read live from engine `SYNC_VERSION` (`Get-EngineVersion`,
   `?` fallback). ps1 parses, ASCII 0.
+
+## 21 Sep 2026 - security review + AnyDesk incident (separate thread)
+
+- Full login/auth review: no highs. Lows: Drive scope over-broad,
+  `--spreadsheet-id` process-list echo, OneDrive scope unchecked.
+- Night incident: 00:27 incoming AnyDesk session (Android, unattended,
+  ~25s) + 01:46 self-launch/01:48 dial-out on awake office PC, owner
+  absent both ends. Forensics (scheduler/Run/RustDesk/Parsec/logs) done.
+- All discussion moved to root `marketer/SECURITY.md` (threat model,
+  inventory, registers, timeline, containment, pending checks).
