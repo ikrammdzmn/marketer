@@ -1,6 +1,6 @@
 # GMV Max Auto — P0 plan
 
-Status: P0 skeleton landed (local file-first, 2026-09-19). Neon GREEN (dev+prod 2/7). Business API app PENDING approval — expected non-issue 20 Sep, P0 holds file-first; Shop Custom app created. Real GET wiring waits on approval.
+Status: P0 live prod read-only (21 Sep checkpoint 2: first `prod live` snapshot written, dashboard PROD). Business API app APPROVED, prod OAuth via `prod_auth.py`, report params locked (store_ids + advertiser_id/stat_time_day + cost/orders/gross_revenue/roi). Remaining: campaign info/session list endpoints, ROI-lock, 48x30m snapshots to exit.
 
 ## 1. Goal
 
@@ -29,9 +29,11 @@ Read-only visibility: Neon online + TikTok app paperwork moving + collector pull
 
 - [x] 30m pulls, Closed-window only (act on T-2h slot, never newest; lag 15m–2h) — stub tick verified 2026-09-19
 - [x] Skip 02:00–06:00 MYT pull-actions (customizable later), cache + backoff, 1-shop rate fine (~48/day) — file cache working, real GET wiring waits on sandbox keys
-- [ ] Endpoints: `GET campaign/gmv_max/info`, `GET gmv_max/report/get` (GMV/spend/ROI), session list; NO `POST update` in P0
+- [x] Report GET live (store_ids + advertiser_id/stat_time_day + cost/orders/gross_revenue/roi; scheduled ticks write `prod live`; sandbox has no GMV endpoints)
+- [x] `GET campaign/gmv_max/info` LIVE per seed (budget, roas target, kind via `live_view.py`); session list auto for LIVE-kind seeds
+- [x] Session list wired for LIVE seeds (`session_list` key); returns empty = no max-delivery sessions created (campaign numbers flow normally)
 - [x] Dual-write file + Neon first, dashboard serves memory/file cache (works offline) — file path done, Neon insert best-effort stub
-- [ ] Lock net-vs-gross ROI definition before first rule (May-2026: ROI now includes affiliate/coupons/fees)
+- [x] Net-vs-gross ROI LOCKED 21 Sep (owner: net; `FEE_RATE=0.25`, snapshots store net gmv/roi + gross + fee_rate; strategy thresholds must state basis)
 
 ### Skeleton dashboard (`dashboard/`, clone tiktok-account pattern)
 
@@ -47,6 +49,8 @@ Read-only visibility: Neon online + TikTok app paperwork moving + collector pull
 ## 4. Exit criteria
 
 Neon reachable from dashboard cache → collector writes 48 consecutive 30m snapshots → dashboard shows closed-window GMV/spend/ROI with freshness stamp → app sandbox read-only live.
+
+Live 21 Sep: Windows task `GMVMaxCollector30m` runs `collector_task.bat` every 30m (closed-window T-2h, quiet-hours skip + same-slot dedupe in code). Count grows on its own — check `/api/health` count.
 
 ## 5. Non-goals (P1+)
 

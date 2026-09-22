@@ -33,6 +33,15 @@
 <th class="p-2">gmv</th><th class="p-2">roi</th><th class="p-2">basis</th>
 </tr></thead><tbody id="rows"></tbody></table>
 </section>
+<section class="bg-white rounded-lg shadow p-4 mb-4">
+<h2 class="font-semibold text-sm mb-1">Live per-campaign <span class="px-2 py-0.5 rounded bg-amber-200 text-amber-900 text-xs">UNLAGGED — viewing only</span></h2>
+<p id="livemeta" class="text-xs text-gray-500 mb-2">2h rule suspended here; auto actions stay closed-window. Run live_view.py to refresh.</p>
+<table class="w-full"><thead><tr class="text-left text-xs text-gray-500">
+<th class="p-2">campaign</th><th class="p-2">kind</th><th class="p-2">budget</th>
+<th class="p-2">7d spend</th><th class="p-2">7d net</th><th class="p-2">7d ROI</th><th class="p-2">7d ord</th>
+<th class="p-2">today spend</th><th class="p-2">today net</th><th class="p-2">today ROI</th>
+</tr></thead><tbody id="liverows"></tbody></table>
+</section>
 <section class="bg-white rounded-lg shadow p-4 mb-4 opacity-60">
 <h2 class="font-semibold text-sm mb-1">Rules / Approval queue (P1/P2 — stubbed)</h2>
 <p class="text-xs text-gray-500">Greyed in P0. Manual budget box, Approve/Edit/Reject land in P2.</p>
@@ -56,6 +65,22 @@ async function load(){
   }
   const h = await (await fetch('/api/health')).json();
   document.getElementById('fresh').textContent = 'freshness: ' + (h.freshness || 'no snapshots yet — run collector.py');
+  try {
+    const l = await (await fetch('/api/live')).json();
+    document.getElementById('livemeta').textContent =
+      (l.fetched_at ? 'pulled ' + l.fetched_at + ' · ' + l.window + ' · net basis' : 'no live pull yet — run live_view.py')
+      + ' · 2h rule suspended here; auto actions stay closed-window.';
+    const tb2 = document.getElementById('liverows'); tb2.innerHTML = '';
+    for (const c of (l.campaigns || [])){
+      const t = c.today || {};
+      const tr = document.createElement('tr'); tr.className = 'border-t text-sm';
+      tr.innerHTML = '<td class="p-2">' + c.name + '<br><span class="text-xs text-gray-500">' + c.advertiser + ' · ' + c.id + '</span></td>'
+        + '<td class="p-2">' + c.kind + '</td><td class="p-2">' + (c.budget ?? '—') + '</td>'
+        + '<td class="p-2">' + c.spend_7d + '</td><td class="p-2">' + c.net_7d + '</td><td class="p-2">' + c.net_roi_7d + '</td><td class="p-2">' + c.orders_7d + '</td>'
+        + '<td class="p-2">' + t.spend + '</td><td class="p-2">' + t.net + '</td><td class="p-2">' + t.roi + '</td>';
+      tb2.appendChild(tr);
+    }
+  } catch(e) { document.getElementById('livemeta').textContent = 'live section unreachable'; }
 }
 load();
 </script>

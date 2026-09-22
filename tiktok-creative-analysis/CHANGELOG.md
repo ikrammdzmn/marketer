@@ -4,6 +4,41 @@ Newest first, in plain words. `plan.md` is the live checklist; this file is the
 release record. The `app.js?v=N` tag is a cache-buster counter (it keeps rising:
 v15, v16, …) — the headings below are releases in the order they shipped.
 
+## v47 — 22 Sep 2026 — Dot-only hover on Trend charts (declutter)
+
+The Trend per creative chart (and solo popup) now pop up only when hovering a dot —
+overlapping dots show both lines — instead of listing all 10 lines everywhere.
+Dots keep their slim look but carry a fat invisible hit zone, so they're easy to
+hit. Values, truncation, gap handling and vs-prev moves are unchanged. The 5-line
+status chart keeps its all-at-once hover.
+
+## v46 — 22 Sep 2026 — Trend chart hover previews all lines + moves
+
+The Trend per creative chart now previews all 10 lines at the hovered day in one
+box, each with its move vs the previous file (videos absent that day stay out of
+the box). The enlarged solo popup chart hover shows the value plus its move too.
+
+## v45 — 22 Sep 2026 — Day deltas + rich hover on status-by-day
+
+Each of the 5 status cards now shows its move vs the previous loaded file (green
+`+`, red `−`, grey on the first file). Hovering any day on the chart previews all
+5 values with their moves in one box.
+
+## v44 — 22 Sep 2026 — Exploration status by day (KPIs + day-by-day chart)
+
+Bottom of the Trend section gains **Exploration status by day**: a Day picker plus
+5 headline numbers (Available, Explored, Outstanding, Exploring, Performing) for the
+picked file, with a 5-line chart across all loaded files. Each loaded file — single
+day or range — counts as one column, never summed. Available follows TikTok's rule
+(rows minus Not active / Unavailable / Rejected / Excluded / Authorization needed).
+
+## v43 — 22 Sep 2026 — Exploration guide + clickable 2nd-status pills
+
+Top creatives gains a collapsible **Exploration guide** (all 10 TikTok stages with
+plain definitions, next to the Insight guide). Every 2nd-status pill — in the tables,
+account popup, guide and preview — now shows its meaning on hover and opens a popup
+on click. `Excluded` and `Not active` get their own badges instead of the generic dot.
+
 ## v42 — 20 Sep 2026 — Manage accounts CSV export + Last updated column
 
 The Manage accounts popup gains a **Download CSV** button next to Download JSON:

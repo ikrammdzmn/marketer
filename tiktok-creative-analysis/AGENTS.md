@@ -87,7 +87,16 @@ files). Serve on a fresh port per test; always stop background servers.
     Single-file blanks (no campaign column) stay `Product Card` as before.
     the `Exclude Product Card` tick (default off) filters them everywhere. The
     `Hide Ineligible` tick (default on, `fNoInel`) drops `Ineligible` rows everywhere
-    incl. compare (status-movers stay; explicit Status=`Ineligible` bypasses it). The
+    incl. compare (status-movers stay; explicit Status=`Ineligible` bypasses it; covers
+    all 5 Ineligible reasons). Canonical taxonomy lives in
+    `../../gmvmax/product/exploration-status.md` — do not re-define here.
+    Outstanding is per-campaign relative, never global top-10.
+    Status-by-day (`statusByDay`/`renderSecDay`, Trend section): one column per loaded
+    file (ranges = one), never summed; `Available` = rows minus the 5 (case-insensitive);
+    respects Account/Campaign/Search/noCard/Hide-inactive, bypasses Status/sec/Type/
+    Insight/Hide-Ineligible facets. Hover modes: status chart = `index` (5 lines),
+    trend main + solo = `point` + fat `pointHitRadius` (dot-only); canvas deltas stay
+    uncolored, DOM deltas carry green/red (`setSecDelta`). The
     `Hide inactive` tick (default on, `fNoInactive`) drops rows of Active-unticked
     accounts everywhere incl. compare (`isInactiveAcc`; non-allowlisted never hidden).
    Insight engine (`insightOf`): verdicts from file-adaptive benchmarks

@@ -48,6 +48,12 @@
   Per-schema roles (`acct_app`/`gmv_app`) DEFERRED to P1 (owner-only for P0). Heartbeat/
   silent->40m alert is P1. `ALLOW_WRITES=0` hard lock in collector.
 
+## Current mood — 21 Sep (this session, read before touching code)
+
+- Breakthrough day. Owner powered through approval -> sandbox -> prod OAuth (screenshot of consent screen) -> store ID -> campaign IDs, pasting terminal outputs back each time. Terse loop held: feasibility-first questions ("why lock?", "why lag?", "must I give each ID?") got words only; "ok go" built immediately.
+- Two mid-session pivots handled cleanly: (1) zeros were wrong-account, not broken code — proved by probing all 3 advertisers; (2) plan-mode interlude for live-view scope, then build on "go". Owner trusts file-first/offline proofs; keep showing "works without X" at each step.
+- Energy: late-session, get-it-landed. Sync cue: lead with numbers (owner lights up at ROI figures), keep portal steps to one action per message, never ask them to open terminal beyond copy-paste commands.
+
 ## Bugs found + fixed this session (do not regress)
 1. **Unqualified table names (002/003).** Wrote `CREATE TABLE acct_tokens` after
    `CREATE SCHEMA acct` — tables landed in `public`, so `WHERE table_schema='acct'`
@@ -77,8 +83,77 @@
    (only EXAMPLE). Cause: edited without Copy-Item first. LESSON: always start portal-key
    steps with `Copy-Item EXAMPLE→real + notepad real`, then verify by
    `Test-Path + key-names/lengths`, never values.
+6. **Wired the wrong advertiser (zeros misread as broken code).** First prod
+   token pointed at HIM COFFEE1 (0 spend). Fixed by listing ALL authorized
+   advertisers (`GET /oauth2/advertiser/get/` with app_id+secret) and probing
+   each one's report — money was on GMV MAX VOL2. LESSON: after any OAuth,
+   probe every advertiser's spend before trusting numbers; store the map in
+   `TIKTOK_ADVERTISERS`, keep previous ID as `_PREV`.
+7. **Guessed wrong metric/dimension names.** `spend/gmv/CAMPAIGN_ID` →
+   40002 "ERROR Message." (useless text). Correct: metrics
+   `cost/orders/gross_revenue/roi`, dimensions `advertiser_id+stat_time_day`
+   (a main dimension is mandatory), `store_ids` required (max 1). LESSON:
+   TikTok errors are terse — change one param per probe; spec mirrors
+   (api-evangelist yml, tiktok-ads-mcp docs) carry the real enums.
+8. **GMV campaigns invisible to list APIs.** `/campaign/get/` (48 classic) +
+   `/smart_plus/campaign/get/` (0) never return GMV Max rows — seeds from the
+   owner's bulk export are the discovery mechanism. LESSON: verify emptiness
+   on every candidate endpoint before building discovery UI; say so plainly
+   and ask for IDs instead of digging further.
+9. **`session_list` key, not `list`.** Session endpoint OK with empty
+   `session_list` = no max-delivery sessions created (not an error).
+   LESSON: dump raw response keys first (`ck.py` pattern) before coding
+   parsers; treat empty-with-code-0 as data, not failure.
+10. **Edit-tool chokes on non-ASCII anchors.** Em-dash in oldString failed
+    repeatedly; ASCII hyphen worked. LESSON: anchor all edits on plain-ASCII
+    substrings; verify with Read after structural edits (function-header
+    clobbers happened twice this session: seeds/advertisers, checkpoint
+    headers — both caught by re-read).
 
-## What next-you should do first
+## API note — GMV campaign name/ID mapping (21 Sep discussion, locked)
+
+- Owner asked about a system that shows GMV campaigns by bracketed name
+  (e.g. `[Dr Samhan Official1]`) without supplying IDs, and which API to use.
+- Verified answer: `GET /campaign/gmv_max/info/` on the Business Marketing
+  API is the ONLY endpoint returning the bracketed `campaign_name`, and it
+  REQUIRES `campaign_id`. Direction is one-way: ID -> bracketed name.
+- No public endpoint maps name -> ID: `/campaign/get/` returns classic rows
+  only (zero GMV), `/smart_plus/campaign/get/` returns zero rows,
+  `/gmv_max/report/get/` returns metrics with no names.
+- Conclusion: any system showing bracketed names keeps its own ID -> name
+  map (synced from Ads Manager / bulk export). Ours is `TIKTOK_GMV_CAMPAIGNS`
+  {PRODUCT, LIVE} in `.local_secrets.json`. New campaigns = paste ID, rerun
+  `live_view.py`. Revisit only if TikTok ships a GMV list endpoint.
+
+## Checkpoint 4 — 21 Sep 2026 (LIVE GMV wired, PRODUCT/LIVE split)
+
+- Owner gave LIVE ID 1867832585793585 (VOL2): `ot1 [Dr Samhan Official1]`, budget RM10k, roas 20, 7d net ROI 14.3 / 300 orders. Session list parses (`session_list` key) but empty = no max-delivery sessions.
+- Secrets split `TIKTOK_GMV_CAMPAIGNS` PRODUCT/LIVE groups; `live_view.py` prints LIVE first, accepts legacy flat map. Dashboard shows 5 campaigns.
+- Resume: 48x30m scheduled snapshots accumulate (task live) -> P0 exit; then P1 dry-run decider.
+
+## Checkpoint 3 — 21 Sep 2026 (live per-campaign view, Product GMV done)
+
+- `live_view.py` + dashboard Live section + `/api/live` (UNLAGGED badge). Seeds (bulk-export IDs) beat discovery: list APIs return zero GMV campaigns (verified both classic + smart_plus).
+- Account fix: was reading empty HIM COFFEE1; money is on GMV MAX VOL2 (20 Sep RM1,611/RM16.6k/108 ord). Prod advertiser switched locally, all 3 accounts mapped.
+- Product GMV 7d net ROI: HIMCOFFEE 6.14, HAPPY HOUR 7.84, kombo 3.96, cocomax 3.83. Verified py/JS + 8099 smoke, secrets ignored.
+- Resume: LIVE GMV Max campaign data (no LIVE seed yet — explore session/list + LIVE campaign discovery).
+
+## Checkpoint 2 — 21 Sep 2026 (FIRST LIVE prod data, read-only)
+
+- Prod OAuth done via new `prod_auth.py` (authorize URL -> 8082 /callback -> local exchange; token lengths-only). Keys renamed to portal labels `TIKTOK_APP_ID/SECRET`.
+- Live spec found by probing: `store_ids` required + dimensions `[advertiser_id, stat_time_day]` + metrics `[cost, orders, gross_revenue, roi]`. First tick wrote `prod live 2026-09-21` (zeros - account quiet, path proven). Dashboard smoke PROD, 6 snapshots.
+- Store ID lives in gitignored `.local_secrets.json` (+ EXAMPLE placeholder). `git status` shows code/docs only.
+- Resume: ROI-lock (net vs gross) -> 48x30m snapshots -> P0 exit. Then campaign info/session list endpoints.
+
+## Checkpoint 1 — 21 Sep 2026 (parked, file-first holds)
+
+- Business app APPROVED; sandbox ad account + token created, saved locally (lengths-only OK).
+- Live test proved TikTok **sandbox has no GMV Max endpoints** (both GMV paths plain 404 on `sandbox-ads`; same path on prod = JSON 40105, path exists). Collector keeps file-first stub — correct, not a bug.
+- Shipped: `collector.py` sandbox GET attempt (stdlib, `ALLOW_WRITES=0`, stub fallback) + `.local_secrets.EXAMPLE.json` sandbox keys. Verified `py_compile` + stub tick + 8099 smoke. `git status` clean of secrets (only EXAMPLE/collector/CHANGELOG modified).
+- Resume: prod read-only auth (advertiser OAuth + shop auth) → live `GET gmv_max/report/get` → 48×30m snapshots → P0 exit. Then ROI-lock.
+
+## What next-you should do first (19 Sep baseline, superseded by checkpoint above)
+
 1. WAIT (non-issue, 20 Sep): Business API approval still pending → hold P0 on
    file-first. Check approval status only when owner reports. If approved: create Sandbox Ad
    Account (name `gmvmax-sandbox`, MY/MYR/Asia_Kuala_Lumpur), record sandbox vs prod

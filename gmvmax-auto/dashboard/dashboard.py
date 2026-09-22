@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CACHE_FILE = os.path.join(ROOT, "cache", "snapshots.jsonl")
+LIVE_FILE = os.path.join(ROOT, "cache", "live.json")
 HTML_FILE = os.path.join(HERE, "dashboard.html")
 
 
@@ -83,6 +84,13 @@ class Handler(BaseHTTPRequestHandler):
             }))
         elif path == "/api/snapshots":
             self._send(json.dumps({"branch": branch(), "rows": load_snapshots()}))
+        elif path == "/api/live":
+            try:
+                with open(LIVE_FILE, encoding="utf-8") as f:
+                    self._send(f.read())
+            except OSError:
+                self._send(json.dumps({"campaigns": [],
+                                       "error": "no live pull yet — run live_view.py"}))
         else:
             self._send("not found", "text/plain", 404)
 

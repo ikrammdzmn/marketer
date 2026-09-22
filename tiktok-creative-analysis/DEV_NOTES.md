@@ -65,26 +65,52 @@ v42. Uncommitted pile grew by exactly these 5 files: app.js, index.html,
 plan.md, CHANGELOG.md, feature.md (+ AGENTS.md one-liner). Still commit-only-
 when-asked.
 
+## Current mood — 22 Sep evening (v43→v47, this session)
+
+Exploration-status arc, five releases in one sitting, same terse loop throughout
+("just answer, do not edit" → plan → "ok go"). User brought TikTok's own
+definitions (screenshot + pasted glossary + your `Available` exclusion rule) and a
+TikTok tooltip screenshot as UI spec — screenshots-as-specs work: mirror them back.
+Arc: canonical glossary first (`gmvmax/product/exploration-status.md`, owned by
+`gmvmax/product`, tool only references), then v43 clickable pills + Exploration
+guide, v44 per-day status KPIs + 5-line chart, v45 green/red vs-prev deltas + rich
+hover, v46 same treatment on Trend chart + solo popup, v47 dot-only Trend hover
+(user called v46 cluttered — right call, `mode:'point'` + fat hit radius fixed it).
+Verified everything against the 8 real himcoffee files (extract-shipped-function
+harness, unfiltered + account-filtered). User is happy ("ok good" twice); energy:
+late-evening landing streak, no experiments. Sync cue for next self: lead with the
+verdict + worked numbers (they trust arithmetic: 3,785 = 3,083 + 702 closed the
+`Available` debate instantly), keep asking placement questions via the question
+tool (they answer fast and explicitly invited it).
+
 ## ⏰ NEXT SESSION — remind the user
 
-1. **Hard refresh for v42** (Ctrl+Shift+R) — `app.js?v=42` current (Manager CSV
-   export + Last updated header). Auto-Combine is still new behaviour: if they
-   load overlapping files and totals look doubled, check
-   the mode switch first (auto only fires on file-set change; their manual flip wins).
-2. **Commit decision still pending — ONLY when asked.** Pile keeps growing:
+1. **Hard refresh for v47** (Ctrl+Shift+R) — `app.js?v=47` current (dot-only Trend
+   hover; status chart keeps all-at-once hover by design).
+2. **Commit decision still pending — ONLY when asked.** Pile now: creative-analysis
    `app.js`, `index.html`, `style.css`, `AGENTS.md`, `feature.md`, `plan.md`,
-   `CHANGELOG.md`, `DEV_NOTES.md` (this file), `data/catalog.json` (worktree shows
-   edits — re-read before any naming work; user may have started naming), plus
-   other windows' edits in `1-MASTER/*`, root `AGENTS.md`, `gmvmax-auto/` docs.
-    HEAD is `cef46f3`. Never commit secrets; never push unasked.
+   `CHANGELOG.md`, `DEV_NOTES.md` (this file), `gmvmax/gmvmax.md`,
+   `gmvmax/product/exploration-status.md` (NEW), plus other windows' edits in
+   `1-MASTER/*`, root `AGENTS.md`, `gmvmax-auto/*` (their own ritual), new
+   UNTRACKED `marketscope/`, `tiktok-calculator/`, `tiktok-shop/`,
+   `tiktok-creative-analysis/source-file/` churn (user deleted old BULK DATA files,
+   added 09-20/21/22 dailies + new bulk 09-14~09-21 — source data, never commit
+   xlsx unasked). Never commit secrets; never push unasked.
 3. **Catalog naming** — user said they'd name things themselves. Amber `catHint`
    counts what's left; reload after saving.
 4. Open offers (parked, don't nag): silence cross-dialect "campaign moved" flag when
    one side is blank; Post ID column in the account popup (user knows it has none);
-   adjustable RM1 noise threshold.
+   adjustable RM1 noise threshold; "go both" dot-hover for the status chart (user
+   declined — left on index mode deliberately).
 
 ## Project snapshot
 
+- 22 Sep delta: `app.js?v=47` current (v43 pills+guide, v44 status-by-day KPIs+chart,
+  v45 card deltas+rich hover, v46 trend hover, v47 dot-only trend hover).
+  `source-file/` churn is the USER's doing (deleted old BULK DATA files, added
+  09-20/21/22 dailies + bulk 09-14~09-21) — read-only for us, never commit xlsx
+  unasked. Canonical taxonomy: `../gmvmax/product/exploration-status.md` (ours,
+  NEW) — `gmvmax/gmvmax.md` §3 points at it.
 - Dir: `C:\Users\PC CUSTOM\Documents\github\marketer\tiktok-creative-analysis\`
   (serve / run / commit from HERE, never from `marketer/` root — wrong cwd breaks
   relative-path commands silently or loudly).
@@ -236,6 +262,35 @@ Prior windows 1–10 live below (kept for continuity). This window:
 30. **No-op ternary hid unfinished intent** — `rangesOverlap() ? 'compare' :
     'compare'` sat in `addFile` (both arms identical). _Lesson: identical ternary
     arms = unfinished thought; flag on sight, resolve or delete._
+31. **Test-oracle bug, not code bug (mine)** — `FILTER_ACC=HIMCoffee` harness run
+    "failed" 56 assertions because the expected side counted UNFILTERED rows while
+    the shipped `statusByDay` correctly returned 77–87 filtered rows (and the
+    `avail = explored + exploring` invariant still held inside the subset).
+    _Lesson: when testing a filtered path, apply the same filter in the oracle;
+    a uniform all-rows mismatch is evidence the filter WORKS, not that it broke._
+32. **Object-literal fragments need brace-wrapping in eval harnesses** —
+    `label: function (cx) {...}` extracted for tooltip tests is not a standalone
+    expression (`(label: ...)` is a SyntaxError). _Lesson: emit
+    `var f = ({<fragment>}).label;` — same for `filter:` fragments._
+33. **Filename adjacency lies about sort order** — plan message promised the range
+    file's prev-day numbers vs the 09-15 daily, but `sortedFiles()` ranks by period
+    END date, so the 09-15→09-22 range sorts LAST (prev = 09-19 daily: +148/+45/
+    −3/+103/+2, not +173/+22/−3/+151/+2). _Lesson: never hand-compute "previous
+    file" numbers from names; the functional test (which sorts like the app) caught
+    it before the ship message — corrected there. Trust the harness over mental math._
+34. **Grep patterns must cover the whole hook family** — `secDayAvailD` matched only
+    the Available delta div, hiding the other four. _Lesson: verify multi-element
+    hooks with a family pattern (`secDay\w+D`) and count matches (10 = 5 writes + 5 divs)._
+35. **Chart.js `mode:'point'` + `pointHitRadius` is the declutter answer** — v46
+    `index` mode listed all 10 lines everywhere (user: "cluttered"); `point` +
+    `intersect:true` fires only on dots, overlapping dots still report both lines
+    with zero custom code, and a fat invisible hit radius (10–12px, visual radius
+    untouched) fixes pixel-hunting. _Lesson: reach for interaction mode before
+    custom tooltip filtering._
+36. **Canvas tooltips can't color delta fragments** — `(+148)` inside a Chart.js
+    tooltip line is uncolorable text; green/red lives in DOM (KPI delta divs) while
+    canvas gets plain-text deltas. _Lesson: state this tradeoff in the plan UP FRONT
+    (done via question tool) so the user chooses placement with eyes open._
 
 ## Standing patterns to preserve
 
@@ -262,3 +317,15 @@ Prior windows 1–10 live below (kept for continuity). This window:
   eval with stubs (`num`/`int`/fake `XLSX`), assert — tests the shipped code, not a
   re-implementation. Real-file checks: dump xlsx → JSON via openpyxl (plain load,
   never save), feed samples through the real `rowsOfWorkbook`.
+- Tooltip-callback tests: `label:`/`filter:` fragments extract as object literals —
+  wrap `({<fragment>}).label` before eval; stub `fmt`/`M`/`cx`. Assert truncation,
+  deltas, first-column silence, gap handling (null dropped, 0 kept).
+- Chart hover changes: prefer interaction `mode` (`point` + `pointHitRadius` for
+  dot-only, `index` for whole-day previews) over custom filtering; canvas deltas
+  stay uncolored, DOM deltas carry green/red. Grep the mode map after
+  (`mode: '(point|index)'`) — each chart must show its intended mode.
+- Canonical-first for TikTok taxonomy: new stages go in
+  `gmvmax/product/exploration-status.md`, tool files only point at it. Worked
+  arithmetic beats paragraphs when the user doubts a definition.
+- NEW spec medium: user pastes TikTok UI screenshots as tooltip/layout specs —
+  mirror the screenshot's exact structure back (title + dotted rows + values).

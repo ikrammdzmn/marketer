@@ -3,37 +3,43 @@
 > Internal team tool for our 1 Malaysia TikTok Shop. Runs on your own laptop.
 > Right now: **watch-only**. It does NOT change your ads by itself.
 
-## What you get today (P0)
-- **One screen** showing your LIVE and Product GMV Max campaigns, every 30 minutes
-  and hourly — spend, sales (GMV), and ROI in one table.
-- **Freshness stamp** — tells you exactly how old the numbers are (TikTok reports lag
-  15 min–2 hours, so we never show the newest shaky slot; we show the last closed one).
-- **Branch badge** — shows whether you're looking at test data (DEV), real setup (PROD),
-  or offline file copy (LOCAL-FILE). Works even with no internet (shows saved copy).
-- **Safety rules visible** — ROI ≥ 7.0, CPA ≤ RM21.18, max scale 20–25%/day, no changes
-  4:00–5:30pm, quiet hours 2:00–6:00am. These guardrails will govern every future
+## What you get today (P0, live numbers)
+- **One screen** (`http://127.0.0.1:8082/`) with two tables:
+  - **Live per-campaign** (amber UNLAGGED badge): all 5 GMV Max campaigns —
+    1 LIVE + 4 Product — with 7-day and today spend, net sales, net ROI,
+    orders, budget. Refreshed by hand (`live_view.py`). Newest possible data
+    (TikTok itself still lags minutes to ~2 hours — freshest, not real-time).
+  - **30-min history**: closed-window snapshots every 30 minutes (2 hours
+    behind on purpose — finished numbers only), with freshness stamp.
+- **Net ROI everywhere** — sales minus ~25% fees (affiliates, coupons,
+  platform) before ROI is computed. What you see is what you keep.
+- **Branch badge** — PROD means real TikTok data. Works offline too (shows
+  the last saved copy).
+- **Safety rules visible** — ROI ≥ 7.0, CPA ≤ RM21.18, max scale 20–25%/day,
+  no changes 4:00–5:30pm, quiet hours 2:00–6:00am. They govern every future
   auto-suggestion; today they're shown so everyone learns them.
-- **Future buttons, greyed out** — rules editor and Approve/Edit/Reject queue are visible
-  but disabled. They turn on in later phases.
+- **Future buttons, greyed out** — rules editor and Approve/Edit/Reject queue
+  are visible but disabled. They turn on in later phases.
 
 ## How to use it
-1. On your laptop, start the dashboard (IT gives you the command). Open
+1. Start the dashboard: `python gmvmax-auto/dashboard/dashboard.py`, open
    `http://127.0.0.1:8082/` in your browser.
-2. Pick a campaign (LIVE or PRODUCT) from the dropdown → click **Refresh**.
-3. Read the table: newest closed 30-min slot on top, with spend / GMV / ROI.
-4. Check the top-right: branch badge + "freshness" time. If it says "no snapshots yet",
-   the collector hasn't run — ask IT to run it.
-5. That's it. No buttons change your TikTok budget in this version.
+2. Read the Live table (LIVE campaign first, then Product). Numbers are net.
+3. For fresh numbers, run `python gmvmax-auto/live_view.py`, then Refresh.
+4. The 30-min table fills itself (laptop must be on). No button here changes
+   your TikTok budget in this version.
+
+## Adding a campaign
+New GMV Max campaign IDs go in `gmvmax-auto/.local_secrets.json` under
+`TIKTOK_GMV_CAMPAIGNS` → `PRODUCT` or `LIVE` group (`"id": "label"`), then
+rerun `live_view.py`. (TikTok has no list for GMV campaigns, so IDs come
+from Ads Manager or the bulk export.)
 
 ## What it does NOT do (yet)
 - No automatic budget changes. No Approve/Reject queue live. No Telegram actions.
 - No monthly cap enforcement, no email alerts, no 50-day charts (placeholder only).
-- Real TikTok numbers appear after the TikTok app approval finishes (currently pending).
-  Until then the table shows test rows so you can learn the screen.
-
-## Waiting on (expected non-issue — nothing for you to do)
-- TikTok Business app approval (submitted, pending 20 Sep — this wait is normal, not a bug). Sandbox test account unlocks after.
-- Shop app is already linked. Database (Singapore) is already live with test/dev split.
+- Session list for LIVE shows nothing until max-delivery sessions are created
+  in TikTok (campaign numbers are unaffected).
 
 ## Coming next (P1/P2, plain words)
 - **P1:** computer drafts suggestions but only logs them + sends you a Telegram message.

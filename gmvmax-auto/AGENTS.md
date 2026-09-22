@@ -1,6 +1,6 @@
 # AGENTS.md — gmvmax-auto folder conventions
 
-> P0 skeleton landed 2026-09-19 (Neon GREEN, apps in flight). Source of truth: `masterplan.md` + `plan.md`. Handoff: `DEV_NOTES.md`. User guide: `feature.md`.
+> P0 live prod read-only 21 Sep (first `prod live` snapshots, 5-campaign unlagged view, net ROI locked). Source of truth: `masterplan.md` + `plan.md`. Handoff: `DEV_NOTES.md`. User guide: `feature.md`.
 
 ## Stack
 - Python stdlib server + vanilla JS + Tailwind CDN. `127.0.0.1` only.
@@ -12,9 +12,12 @@
 - `DEV_NOTES.md` — session handoff (vibe + bugs + lessons, read first). `feature.md` — non-technical user guide.
 - `CHANGELOG.md` — folder releases. `APP_CHECKLIST.md` — Business API (PENDING approval 2026-09-19, `TIKTOK GMV MAX`) + Shop Custom app (created, MY) paperwork tracker.
 - `migrations/001_core.sql, 002_acct.sql, 003_gmv.sql` (FROZEN, have bugs — see 004) + `004_fix_schemas.sql` (applied dev+prod: schema-qualified tables, `win` not `window`). Never edit applied files; new fix = 005+.
-- `collector.py` — 30m read-only pulls, closed-window T-2h, skip 02:00–06:00 MYT. Dual-write file + Neon (file first, DB when reachable). DB column is `win`; file JSON key stays `window`. NEVER `POST update` in P0 (`ALLOW_WRITES=0` assert).
-- `dashboard/dashboard.py + dashboard.html` — serves file/memory cache, freshness stamp + DEV/PROD branch badge. Rules/approval UI stubbed grey (P1/P2).
-- `cache/` (gitignored runtime), `.local_secrets.json` (gitignored, template in `.local_secrets.EXAMPLE.json`).
+- `collector.py` — 30m prod pulls, closed-window T-2h, skip 02:00–06:00 MYT. Net ROI lock (`FEE_RATE=0.25`, gross kept). DB column is `win`; file JSON key stays `window`. NEVER `POST update` in P0 (`ALLOW_WRITES=0` assert).
+- `live_view.py` — MANUAL unlagged per-campaign view (eyes only; 2h rule stays for scheduler/auto). Seeds from `TIKTOK_GMV_CAMPAIGNS` {PRODUCT, LIVE} (list APIs return zero GMV rows — verified). Writes `cache/live.json` (LIVE first).
+- `prod_auth.py` — one-shot prod OAuth (authorize URL → 8082 /callback → local exchange; lengths-only console).
+- `collector_task.bat` + Windows task `GMVMaxCollector30m` (every 30m; same-slot dedupe in code).
+- `dashboard/dashboard.py + dashboard.html` — file/memory cache, freshness stamp + DEV/PROD branch badge, Live section (`/api/live`, UNLAGGED badge). Rules/approval UI stubbed grey (P1/P2).
+- `cache/` (gitignored runtime), `.local_secrets.json` (gitignored; keys: `TIKTOK_APP_ID/SECRET`, `TIKTOK_PROD_ACCESS_TOKEN/ADVERTISER_ID`, `TIKTOK_STORE_ID`, `TIKTOK_ADVERTISERS` map, `TIKTOK_GMV_CAMPAIGNS` {PRODUCT, LIVE}, `SANDBOX_*`, `SHOP_APP_*`, Neon URLs, `GMV_ENC_KEY`).
 
 ## Rules
 1. Secrets never in git/chat: `NEON_URL_DEV/PROD`, `GMV_ENC_KEY`, TikTok/Shop keys, Telegram tokens. `git status` must never show them. Verify by key-names + lengths only.

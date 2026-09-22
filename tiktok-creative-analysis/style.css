@@ -137,3 +137,5 @@
 [data-copy] { cursor: pointer; }
 [data-copy]:hover { text-decoration: underline; color: #2563eb; }
 .dark [data-copy]:hover { color: #93c5fd; }
+/* Clickable exploration pills (guide + all tables): same affordance as insight chips */
+[data-sec] { cursor: pointer; }

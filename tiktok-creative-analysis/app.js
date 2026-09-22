@@ -5,7 +5,7 @@
   var BUNDLED_FILE = 'source-file/1. himcoffee - [1858977225474178]/Creative data 2026-09-19 - 2026-09-19 - Product 1729556489100298210.xlsx';
   var MAX_TABLE_ROWS = 200;
 
-  var state = { rows: [], allowlist: [], allowMeta: {}, bench: null, chart: null, trendChart: null, trendSoloChart: null,
+  var state = { rows: [], allowlist: [], allowMeta: {}, bench: null, chart: null, trendChart: null, trendSoloChart: null, secDayChart: null,
     targets: { topN: 20, minImpr: null, maxCPM: null },
     files: [], cmpRows: [], cmpMode: 'compare', cmpInfo: '', dialectCache: {} };
 
@@ -212,11 +212,40 @@
     'Calculating': ['sec-calculating', '⏳'],
     'Unavailable': ['sec-flat', '–'],
     'Authorization needed': ['sec-flat', '🔑'],
-    'Rejected': ['sec-rejected', '✕']
+    'Rejected': ['sec-rejected', '✕'],
+    'Excluded': ['sec-flat', '🚫'],
+    'Not active': ['sec-flat', '💤']
+  };
+  /* Canonical TikTok definitions (../../gmvmax/product/exploration-status.md) — display-only. */
+  var SEC_DEF = {
+    'Calculating': 'Exploration is done and results should be available in a few hours.',
+    'Exploring': 'A post that is gathering data to assess its performance potential.',
+    'Outstanding': 'Strong potential to drive gross revenue growth (per-campaign, not global top — a Performing video can out-earn them all).',
+    'Performing': 'Delivered stable results during exploration.',
+    'Underperforming': 'Delivered weaker results during exploration.',
+    'Unavailable': 'The post is currently unavailable.',
+    'Authorization needed': 'This post is not authorized for use.',
+    'Rejected': 'The post was rejected. Check the post for details.',
+    'Excluded': 'The post was manually excluded.',
+    'Not active': 'Used more than 30 days ago with no gross revenue in the past 30 days.'
   };
   function secBadge(sec) {
     var b = SEC_BADGE[sec] || ['sec-flat', '•'];
-    return '<span class="sec ' + b[0] + '">' + b[1] + ' ' + esc(sec) + '</span>';
+    var d = SEC_DEF[sec] || sec;
+    return '<span class="sec ' + b[0] + '" data-sec="' + esc(sec) +
+      '" title="' + esc(d) + ' — click to explain" style="cursor:pointer">' + b[1] + ' ' + esc(sec) + '</span>';
+  }
+  function renderSecGuide() {
+    var el = $('secGuide');
+    if (!el) return;
+    var order = ['Calculating', 'Exploring', 'Outstanding', 'Performing', 'Underperforming',
+      'Unavailable', 'Authorization needed', 'Rejected', 'Excluded', 'Not active'];
+    el.innerHTML = order.map(function (k) {
+      var b = SEC_BADGE[k] || ['sec-flat', '•'];
+      return '<div class="text-sm"><span class="sec ' + b[0] + '" data-sec="' + esc(k) +
+        '" title="' + esc(SEC_DEF[k]) + ' — click to explain" style="cursor:pointer">' + b[1] + ' ' + esc(k) +
+        '</span> <span>' + esc(SEC_DEF[k]) + '</span></div>';
+    }).join('');
   }
 
   /* ---------- theme ---------- */
@@ -925,7 +954,7 @@
     fs.forEach(function (f, fi) {
       f.rows.forEach(function (r) {
         var e = map[keyOf(r.postId, r.account, r.creative)];
-        e.cells[fi] = { rev: r.revenue, ord: r.orders, cost: r.cost, impr: r.impr, status: String(r.status || '') };
+        e.cells[fi] = { rev: r.revenue, ord: r.orders, cost: r.cost, impr: r.impr, status: String(r.status || ''), sec: String(r.sec || '') };
       });
     });
     var n = fs.length;
@@ -991,6 +1020,7 @@
     sec.hidden = !show;
     if (!show) {
       if (state.trendChart) { state.trendChart.destroy(); state.trendChart = null; }
+      if (state.secDayChart) { state.secDayChart.destroy(); state.secDayChart = null; }
       return;
     }
     var mkey = ($('trendMetric') && $('trendMetric').value) || 'rev';
@@ -1060,16 +1090,139 @@
           var cr = String(e.creative || '');
           var col = TREND_COLORS[i % TREND_COLORS.length];
           return { label: pid + ' · ' + e.account, creative: cr, data: e.cells.map(function (c) { return c ? Math.round(M.get(c) * 100) / 100 : null; }),
-            borderColor: col, backgroundColor: col, tension: 0.2, spanGaps: false, borderWidth: 2, pointRadius: 3 };
+            borderColor: col, backgroundColor: col, tension: 0.2, spanGaps: false, borderWidth: 2, pointRadius: 3, pointHitRadius: 10 };
         })
       },
       options: { responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'point', intersect: true },
         plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
-          tooltip: { callbacks: { label: function (cx) { var t = String(cx.dataset.creative || ''); if (t.length > 60) t = t.slice(0, 60) + '…'; return ' ' + cx.dataset.label + (t ? ' · ' + t : '') + ': ' + fmt(cx.parsed.y, M.d); } } } },
+          tooltip: { mode: 'point', intersect: true, callbacks: {
+            title: function (items) { return items.length ? items[0].label : ''; },
+            filter: function (item) { return item.parsed.y !== null && item.parsed.y !== undefined; },
+            label: function (cx) {
+              var t = String(cx.dataset.creative || '');
+              if (t.length > 60) t = t.slice(0, 60) + '…';
+              var s = ' ' + cx.dataset.label + (t ? ' · ' + t : '') + ': ' + fmt(cx.parsed.y, M.d);
+              if (cx.dataIndex > 0) {
+                var pv = cx.dataset.data[cx.dataIndex - 1];
+                if (pv !== null && pv !== undefined && isFinite(pv)) {
+                  var dd = cx.parsed.y - pv;
+                  if (dd) s += ' (' + (dd > 0 ? '+' : '−') + fmt(Math.abs(dd), M.d) + ')';
+                }
+              }
+              return s;
+            } } } },
         scales: { x: { ticks: { font: { size: 10 } } },
           y: { ticks: { font: { size: 10 }, callback: function (v) { return fmt(v, M.d); } } } } }
     });
   }
+  /* ---------- exploration status by day (one column per loaded file) ---------- */
+  /* Available = day rows minus TikTok's 5 excluded 2nd statuses (case-insensitive,
+     so lowercase file variants merge instead of splitting). Single days and ranges
+     alike count as one column each — never summed across files. */
+  var INEL_SEC = ['not active', 'unavailable', 'rejected', 'excluded', 'authorization needed'];
+  function statusByDay(fs) {
+    var acc = $('fAccount').value, q = $('fSearch').value.trim().toLowerCase();
+    var cpEl = $('fCamp'), cp = cpEl ? cpEl.value : '';
+    var noCard = $('fNoCard').checked, hideInact = $('fNoInactive').checked;
+    /* NOTE: Status / 2nd-status / Type / Insight facets + Hide Ineligible are
+       deliberately bypassed here — else the stages would filter themselves away. */
+    return fs.map(function (f) {
+      var c = { total: 0, avail: 0, explored: 0, outstanding: 0, exploring: 0, performing: 0 };
+      f.rows.forEach(function (r) {
+        if (acc && r.account !== acc) return;
+        if (cp && campKey(r) !== cp) return;
+        if (noCard && r.account === 'Product Card') return;
+        if (hideInact && isInactiveAcc(r.account)) return;
+        if (q && String(r.creative).toLowerCase().indexOf(q) === -1 &&
+            String(r.postId).toLowerCase().indexOf(q) === -1) return;
+        var st = String(r.status || '').toLowerCase(), se = String(r.sec || '').toLowerCase();
+        c.total++;
+        if (INEL_SEC.indexOf(se) === -1) c.avail++;
+        if (st === 'explored') c.explored++;
+        if (st === 'exploring' || se === 'exploring') c.exploring++;
+        if (se === 'outstanding') c.outstanding++;
+        if (se === 'performing') c.performing++;
+      });
+      return c;
+    });
+  }
+  var SECDAY_SERIES = [
+    { key: 'avail', label: 'Available', color: '#16a34a' },
+    { key: 'explored', label: 'Explored', color: '#2563eb' },
+    { key: 'outstanding', label: 'Outstanding', color: '#d97706' },
+    { key: 'exploring', label: 'Exploring', color: '#0891b2' },
+    { key: 'performing', label: 'Performing', color: '#7c3aed' }
+  ];
+  /* Day-over-day delta line under a status KPI: green +, red −, grey on flat/first. */
+  function setSecDelta(id, d, isFirst) {
+    var el = $(id);
+    if (!el) return;
+    if (isFirst) { el.textContent = '– first file'; el.className = 'text-xs text-gray-400'; return; }
+    el.textContent = (d > 0 ? '+' + fmt(d) : d < 0 ? '−' + fmt(-d) : '±0') + ' vs prev';
+    el.className = 'text-xs ' + (d > 0 ? 'text-green-600 dark:text-green-400' :
+      d < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400');
+  }
+  function renderSecDay() {
+    var fs = sortedFiles();
+    var sel = $('secDay');
+    if (!sel || fs.length < 2) {
+      if (state.secDayChart) { state.secDayChart.destroy(); state.secDayChart = null; }
+      return;
+    }
+    var counts = statusByDay(fs);
+    var cur = sel.value;
+    var rels = fs.map(function (f) { return f.rel || f.label; });
+    sel.innerHTML = fs.map(function (f) {
+      return '<option value="' + esc(f.rel || f.label) + '">' + esc(trendHead(f.period)) + '</option>';
+    }).join('');
+    sel.value = (cur && rels.indexOf(cur) !== -1) ? cur : rels[rels.length - 1];
+    var idx = Math.max(0, rels.indexOf(sel.value));
+    var c = counts[idx];
+    $('secDayAvail').textContent = fmt(c.avail);
+    $('secDayExplored').textContent = fmt(c.explored);
+    $('secDayOutstanding').textContent = fmt(c.outstanding);
+    $('secDayExploring').textContent = fmt(c.exploring);
+    $('secDayPerforming').textContent = fmt(c.performing);
+    var p = idx > 0 ? counts[idx - 1] : null;
+    setSecDelta('secDayAvailD', p ? c.avail - p.avail : 0, !p);
+    setSecDelta('secDayExploredD', p ? c.explored - p.explored : 0, !p);
+    setSecDelta('secDayOutstandingD', p ? c.outstanding - p.outstanding : 0, !p);
+    setSecDelta('secDayExploringD', p ? c.exploring - p.exploring : 0, !p);
+    setSecDelta('secDayPerformingD', p ? c.performing - p.performing : 0, !p);
+    $('secDayCount').textContent = '— ' + trendHead(fs[idx].period) + ' (' + fmt(c.total) + ' rows)';
+    if (typeof Chart === 'undefined' || !$('secDayChart')) return;
+    if (state.secDayChart) { state.secDayChart.destroy(); state.secDayChart = null; }
+    var ctx = $('secDayChart').getContext('2d');
+    state.secDayChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: fs.map(function (f) { return trendHead(f.period); }),
+        datasets: SECDAY_SERIES.map(function (s) {
+          return { label: s.label, data: counts.map(function (x) { return x[s.key]; }),
+            borderColor: s.color, backgroundColor: s.color,
+            tension: 0.2, spanGaps: false, borderWidth: 2, pointRadius: 3 };
+        })
+      },
+      options: { responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+          tooltip: { mode: 'index', intersect: false, callbacks: {
+            title: function (items) { return items.length ? items[0].label : ''; },
+            label: function (cx) {
+              var s = ' ' + cx.dataset.label + ': ' + fmt(cx.parsed.y);
+              if (cx.dataIndex > 0) {
+                var dd = cx.parsed.y - cx.dataset.data[cx.dataIndex - 1];
+                if (dd) s += ' (' + (dd > 0 ? '+' : '−') + fmt(Math.abs(dd)) + ')';
+              }
+              return s;
+            } } } },
+        scales: { x: { ticks: { font: { size: 10 } } },
+          y: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0, callback: function (v) { return fmt(v); } } } } }
+    });
+  }
+  var secDaySel = $('secDay');
+  if (secDaySel) secDaySel.addEventListener('change', renderSecDay);
   // Long-format CSV: one row per (video, file) — pivots cleanly into daily series.
   function buildTrendCsv(fs, rows) {
     var q = function (v) { return '"' + String(v === null || v === undefined ? '' : v).replace(/"/g, '""') + '"'; };
@@ -1141,11 +1294,25 @@
         datasets: [{ label: M.label,
           data: e.cells.map(function (c) { return c ? Math.round(M.get(c) * 100) / 100 : null; }),
           borderColor: '#2563eb', backgroundColor: '#2563eb',
-          tension: 0.2, spanGaps: false, borderWidth: 3, pointRadius: 5 }]
+          tension: 0.2, spanGaps: false, borderWidth: 3, pointRadius: 5, pointHitRadius: 12 }]
       },
       options: { responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'point', intersect: true },
         plugins: { legend: { display: false },
-          tooltip: { callbacks: { label: function (cx) { return ' ' + fmt(cx.parsed.y, M.d); } } } },
+          tooltip: { mode: 'point', intersect: true, callbacks: {
+            title: function (items) { return items.length ? items[0].label : ''; },
+            label: function (cx) {
+              if (cx.parsed.y === null || cx.parsed.y === undefined) return ' – absent that file';
+              var s = ' ' + fmt(cx.parsed.y, M.d);
+              if (cx.dataIndex > 0) {
+                var pv = cx.dataset.data[cx.dataIndex - 1];
+                if (pv !== null && pv !== undefined && isFinite(pv)) {
+                  var dd = cx.parsed.y - pv;
+                  if (dd) s += ' (' + (dd > 0 ? '+' : '−') + fmt(Math.abs(dd), M.d) + ')';
+                }
+              }
+              return s;
+            } } } },
         scales: { x: { ticks: { font: { size: 11 } } },
           y: { ticks: { font: { size: 11 }, callback: function (v) { return fmt(v, M.d); } } } } }
     });
@@ -1796,6 +1963,7 @@
   function applyFilters() {
     renderBench();
     renderInsightGuide();
+    renderSecGuide();
     var rows = filtered();
     var cost = 0, rev = 0, ord = 0, impr = 0;
     rows.forEach(function (r) { cost += r.cost; rev += r.revenue; ord += r.orders; impr += r.impr; });
@@ -1813,6 +1981,7 @@
     renderChart(rows);
     renderCompare();
     renderTrend();
+    renderSecDay();
     applyInsightLink();
   }
 
@@ -2027,6 +2196,22 @@
   $('insModalClose').addEventListener('click', closeInsightModal);
   $('insModal').addEventListener('click', function (e) {
     if (e.target === $('insModal')) closeInsightModal();
+  });
+  /* Exploration popup: click any 2nd-status pill for the TikTok definition (reuses insModal). */
+  function openSecModal(sec) {
+    var b = SEC_BADGE[sec] || ['sec-flat', '•'];
+    $('insModalTitle').textContent = b[1] + ' ' + sec;
+    $('insModalCtx').textContent = 'Exploration stage — TikTok definition';
+    $('insModalWhy').textContent = SEC_DEF[sec] || sec;
+    $('insModalKpis').innerHTML = '';
+    $('insModal').hidden = false;
+    document.body.style.overflow = 'hidden';
+    $('insModalClose').focus();
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-sec]') : null;
+    if (!t) return;
+    openSecModal(t.getAttribute('data-sec'));
   });
   /* ?insight=Label deep-link: expand the guide, filter to that verdict, jump to it (once). */
   var insightLinkDone = false;

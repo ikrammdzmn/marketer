@@ -91,7 +91,7 @@
       <label class="flex flex-col gap-1">Status
         <select id="fStatus" class="filter-input"><option value="">All statuses</option></select>
       </label>
-      <label class="flex flex-col gap-1">Exploration 2nd status
+      <label class="flex flex-col gap-1" title="TikTok exploration stage: Calculating = results soon, Exploring = gathering data, Outstanding/Performing/Underperforming = explored outcome, Ineligible reasons = never explores. Click any pill for the definition.">Exploration 2nd status
         <select id="fSec" class="filter-input"><option value="">All</option></select>
       </label>
       <label class="flex flex-col gap-1" title="Show only videos with this insight verdict">Insight
@@ -214,9 +214,13 @@
       <summary class="cursor-pointer text-gray-500 dark:text-gray-400 hover:underline">Insight guide — what each verdict means</summary>
       <div id="insightGuide" class="flex flex-col gap-1 mt-1 text-gray-600 dark:text-gray-300"></div>
     </details>
+    <details id="secGuideBox" class="mb-2 text-sm">
+      <summary class="cursor-pointer text-gray-500 dark:text-gray-400 hover:underline">Exploration guide — what each stage means (click a pill for details)</summary>
+      <div id="secGuide" class="flex flex-col gap-1 mt-1 text-gray-600 dark:text-gray-300"></div>
+    </details>
     <div class="table-scroll"><table class="data-table" id="topTable">
       <thead><tr>
-        <th>Post ID</th><th>Creative</th><th>Account</th><th>Campaign</th><th>Product</th><th>Type</th><th>Status</th><th>2nd Status</th><th>Insight</th><th>Posted</th>
+        <th>Post ID</th><th>Creative</th><th>Account</th><th>Campaign</th><th>Product</th><th>Type</th><th>Status</th><th title="TikTok exploration stage — hover a pill for its meaning, click for details">2nd Status</th><th>Insight</th><th>Posted</th>
         <th>Cost</th><th>Orders</th><th>Revenue</th><th>ROI</th><th>AOV</th><th>Impr.</th><th>Clicks</th><th>CPM</th>
       </tr></thead>
       <tbody><tr><td colspan="18" class="empty-note">Load a file to see creatives.</td></tr></tbody>
@@ -298,6 +302,24 @@
       <tbody><tr><td colspan="14" class="empty-note">Load 2+ files to see day-by-day trends.</td></tr></tbody>
     </table></div>
     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">One column per loaded file, oldest → newest. – = video absent that file. Shapes are scaled per row (compare shapes within a row, numbers across rows). Showing first 200.</p>
+
+    <div class="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+        <h3 class="font-semibold text-sm">Exploration status by day <span id="secDayCount" class="font-normal text-gray-500"></span></h3>
+        <label class="flex items-center gap-1 text-sm">Day
+          <select id="secDay" class="filter-input" style="width:auto"></select>
+        </label>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
+        <div class="kpi"><div class="kpi-label">Available (eligible)</div><div id="secDayAvail" class="kpi-value">–</div><div id="secDayAvailD" class="text-xs text-gray-400">–</div></div>
+        <div class="kpi"><div class="kpi-label">Explored</div><div id="secDayExplored" class="kpi-value">–</div><div id="secDayExploredD" class="text-xs text-gray-400">–</div></div>
+        <div class="kpi"><div class="kpi-label">Outstanding</div><div id="secDayOutstanding" class="kpi-value">–</div><div id="secDayOutstandingD" class="text-xs text-gray-400">–</div></div>
+        <div class="kpi"><div class="kpi-label">Exploring</div><div id="secDayExploring" class="kpi-value">–</div><div id="secDayExploringD" class="text-xs text-gray-400">–</div></div>
+        <div class="kpi"><div class="kpi-label">Performing</div><div id="secDayPerforming" class="kpi-value">–</div><div id="secDayPerformingD" class="text-xs text-gray-400">–</div></div>
+      </div>
+      <div class="chart-wrap mb-2"><canvas id="secDayChart"></canvas></div>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">One column per loaded file — single days and ranges alike, oldest → newest, never summed. Available = rows minus Not active / Unavailable / Rejected / Excluded / Authorization needed. Outstanding + Performing are subsets of Explored. Hover any day to preview all 5 values with their vs-prev moves; card deltas read vs the previous loaded file (green +, red −). Respects Account / Campaign / Search / Exclude Product Card / Hide inactive; ignores Status / 2nd-status / Type / Insight / Hide Ineligible so the stages stay visible.</p>
+    </div>
   </section>
 
   <!-- General notes -->
@@ -329,7 +351,7 @@
     <div id="acctModalKpis" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 mb-3"></div>
     <div class="table-scroll"><table class="data-table" id="acctModalTable">
       <thead><tr>
-        <th>#</th><th>Creative</th><th>Campaign</th><th>Product</th><th>Type</th><th>Status</th><th>2nd Status</th><th>Insight</th><th>Posted</th>
+        <th>#</th><th>Creative</th><th>Campaign</th><th>Product</th><th>Type</th><th>Status</th><th title="TikTok exploration stage — hover a pill for its meaning, click for details">2nd Status</th><th>Insight</th><th>Posted</th>
         <th>Cost</th><th>Orders</th><th>Revenue</th><th>ROI</th><th>AOV</th><th>Impr.</th><th>Clicks</th><th>CPM</th>
       </tr></thead>
       <tbody></tbody>
@@ -406,6 +428,6 @@
     </div>
   </div>
 </div>
-<script src="app.js?v=42"></script>
+<script src="app.js?v=47"></script>
 </body>
 </html>

@@ -115,14 +115,27 @@ file from oldest to newest, so you can watch a creative day by day. Switch the
 wasn't in that file (spot launches and kills down the columns); the Move badge
 marks NEW / LOST / KEPT the same way compare does. A line chart above the table
 draws the top 10 — switch metric and both follow; its lines are labeled by Post
-ID (hover any point for the creative title). Every row also carries its own
+ID (hover any point for the creative title). Hover a dot to preview that line's value
+with its move vs the previous file (overlapping dots show both lines); absent
+videos stay out of the box. Every row also carries its own
 mini shape graph (Shape column, hover for exact day values; shapes are scaled per
 row, so compare shapes within a row and numbers across rows). Rows lead with the
 Post ID (click to copy, then paste into Search to isolate the video) — note IDs
 may differ in trailing digits, verify before Ads Manager use. Click any Shape
 graph for an enlarged popup of that creative alone, with Total / Latest / Δ /
-Days-present cards (close with ✕, backdrop click or Escape). **Export trend CSV** downloads
+Days-present cards (close with ✕, backdrop click or Escape) — hovering the popup
+chart shows the value plus its move vs the previous file. **Export trend CSV** downloads
 one row per video per file — built for pivoting into your own charts.
+
+**Exploration status by day** (bottom of the Trend section): pick any loaded file
+(single day or range — each counts as one column) in the **Day** dropdown to see its
+5 headline numbers — Available (eligible), Explored, Outstanding, Exploring,
+Performing. The line chart underneath draws all 5 day by day across your loaded
+files, oldest → newest, never summed. Available = rows minus the 5 Ineligible
+reasons (Not active / Unavailable / Rejected / Excluded / Authorization needed).
+Each card also shows its move vs the previous loaded file (green +, red −), and
+hovering any day on the chart previews all 5 values with their moves.
+The counts follow your Account / Campaign / Search filters.
 
 **Naming your campaigns & products:** TikTok's names are cryptic (`[him cocomax]
 20260602153651`, bare ID numbers). Open `data/catalog.json` in the folder and type
@@ -161,10 +174,15 @@ stay visibly tied to their campaign.
   straight to those videos.
 - **Status / 2nd status / Type** — narrow by video status. The 2nd status shows as
   a coloured badge (green ✓ Performing, gold 🏆 Outstanding, grey 🛡
-  Underperforming). Tip: 2nd status
+  Underperforming; the rest — Calculating, Exploring, etc. — show as neutral pills). Hover any
+  pill for its TikTok meaning, or click it for a popup. The collapsible
+  **Exploration guide** under the benchmark bar lists all 10 stages with definitions. Tip: 2nd status
   `Performing` or `Outstanding`, sorted by ROI, surfaces winners. Note:
   `Outstanding` means winners *within their own campaign*, not the top videos
   overall — a `Performing` video can out-earn them all, so always sort by ROI.
+  `Calculating` = results coming in a few hours; `Exploring` = still gathering data.
+  Ineligible rows (`Unavailable`, `Authorization needed`, `Rejected`, `Excluded`,
+  `Not active` = old + no revenue in 30 days) hide under Hide Ineligible.
 - **Insight** — show only videos with one verdict (e.g. 🚀 Boost to see every boost
   candidate, 🛑 Review for the kill list). Works together with all other filters.
 - **Min ROI / Min orders / Posted within (days) / Only 1000+ impressions / Exclude Product Card / Hide

@@ -27,6 +27,7 @@ Here is what was learned about how GMV Max actually behaves under real-world con
 - **The media buyer's only levers are binary:** You can only **"Boost"** (prioritize auction weight) or **"Remove / Exclude"** (stop delivery).
 - **The favorite-child problem:** If you feed the system 25 affiliate videos without intervention, machine learning will pick 1 or 2 favorites and give virtually 0 spend to the other 23.
 - **The metric funnel tells the real story:** You have to manage videos using specific dashboard columns (`Exploration secondary status`, `Cost`, `SKU orders`, `CPA`, `2s view rate`, `CTR`, `CVR`) to identify when an affiliate video is draining margin before it ruins campaign ROI.
+- **Exploration taxonomy:** canonical definitions live in `product/exploration-status.md` (Explored: Calculating / Exploring / Outstanding / Performing / Underperforming; Ineligible: Unavailable / Authorization needed / Rejected / Excluded / Not active).
 
 ---
 

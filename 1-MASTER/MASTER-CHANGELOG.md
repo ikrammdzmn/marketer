@@ -4,6 +4,21 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 22 Sep 2026
+
+- `tiktok-creative-analysis` v43–v47: exploration-status arc — canonical glossary
+  (`gmvmax/product/exploration-status.md`, NEW) + clickable 2nd-status pills +
+  Exploration guide (v43), status-by-day KPIs + 5-line chart, ranges count as one
+  column (v44), green/red vs-prev deltas + rich hover (v45), all-lines Trend hover
+  + solo popup moves (v46), dot-only Trend hover declutter (v47)
+  → `tiktok-creative-analysis/CHANGELOG.md`
+- `gmvmax/product/exploration-status.md` born (NEW): TikTok stages incl. user's
+  `Available` exclusion rule (9,553 − 5,768 = 3,785 verified); `gmvmax.md` §3 points at it
+
+## 21 Sep 2026
+
+- `gmvmax-auto` P0 live prod read-only: Business app APPROVED + prod OAuth (`prod_auth.py`) + report params locked (store_ids, cost/orders/gross_revenue/roi) + net ROI lock (fee 25%) + 30m scheduler task + manual unlagged 5-campaign view (`live_view.py`, 1 LIVE ROI 14.3 + 4 Product) + secrets split PRODUCT/LIVE → `gmvmax-auto/CHANGELOG.md` (checkpoints 1-4 in `gmvmax-auto/DEV_NOTES.md`)
+
 ## 20 Sep 2026
 
 - `tiktok-account` dashboard liveliness (committed `4f9a792`): `/refresh?stream=1`
