@@ -13,7 +13,21 @@ $ErrorActionPreference = 'Stop'
 
 $SyncDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $MarketerRoot = Split-Path -Parent (Split-Path -Parent $SyncDir)
-$ToolsMcp = Join-Path (Split-Path -Parent $MarketerRoot) 'tools\spreadsheet-mcp'
+# Resolve the spreadsheet-mcp runner by probing upward: the checkout may sit
+# at .../ikrammdzmn/marketer (canonical) or .../marketer/marketer-1 (nested
+# clone when the target name already existed). The tools repo itself holds
+# tools/spreadsheet-mcp under its root, hence the double 'tools' segment.
+$ToolsMcp = $null
+$Level1 = Split-Path -Parent $MarketerRoot
+$Level2 = Split-Path -Parent $Level1
+foreach ($base in @($Level1, $Level2)) {
+  foreach ($rel in @('tools\tools\spreadsheet-mcp', 'tools\spreadsheet-mcp')) {
+    if (-not $base) { continue }
+    $cand = Join-Path $base $rel
+    if (Test-Path -LiteralPath $cand) { $ToolsMcp = $cand; break }
+  }
+  if ($ToolsMcp) { break }
+}
 $Engine = Join-Path $SyncDir 'sheet-sync.py'
 $AccountsJson = Join-Path $MarketerRoot 'tiktok-creative-analysis\data\accounts.json'
 
@@ -93,6 +107,11 @@ function Read-Date($prompt, $required) {
 }
 
 function Invoke-Engine([string[]]$EngineArgs) {
+  if (-not $ToolsMcp -or -not (Test-Path -LiteralPath $ToolsMcp)) {
+    Write-Host 'spreadsheet-mcp folder not found (checked tools/tools/spreadsheet-mcp upward).' -ForegroundColor Red
+    Write-Host ('SyncDir={0} MarketerRoot={1}' -f $SyncDir, $MarketerRoot) -ForegroundColor Red
+    Stop-WithPause 1
+  }
   Write-Host ''
   Write-Host ('Running: uv --directory "{0}" run python "{1}" {2}' -f $ToolsMcp, $Engine, ($EngineArgs -join ' '))
   Write-Host ''

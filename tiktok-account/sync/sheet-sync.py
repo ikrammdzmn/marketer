@@ -2,10 +2,10 @@
 
 Reads the 7-day (default) window via dashboard.pull_and_cache, then upserts
 into 1 spreadsheet by Video ID:
-  - A-B are yours: Run (checkbox) + Note. New rows arrive blank/unticked;
-    stat refreshes never touch A-B.
-  - C-N are the system block (Title, Video ID, Posted, Views, Likes,
-    Comments, Shares, Links + 4 delta cols). ID matches refresh C-N + deltas;
+  - A-C are yours: Run (checkbox) + Note + Creative age (formula).
+    New rows arrive blank/unticked; stat refreshes never touch A-C.
+  - D-O are the system block (Video ID, Title, Posted, Views, Likes,
+    Comments, Shares, Links + 4 delta cols). ID matches refresh D-O + deltas;
     new IDs insert at row 2, newest first.
 Sheet 1 ("Dashboard") gets a per-account totals table each run.
 
@@ -44,21 +44,25 @@ MARKETER = os.path.dirname(PARENT)
 DASHBOARD_PY = os.path.join(PARENT, "dashboard", "dashboard.py")
 SHEET_ID_FILE = os.path.join(HERE, ".sheet_id.json")
 MYT = datetime.timezone(datetime.timedelta(hours=8))
-SYNC_VERSION = "v18"
+SYNC_VERSION = "v19"
 
-BASE_HEADER = ["Title", "Video ID", "Posted (MYT)", "Views", "Likes",
+BASE_HEADER = ["Video ID", "Title", "Posted (MYT)", "Views", "Likes",
                "Comments", "Shares", "Links"]
+OLD_BASE_HEADER = ["Title", "Video ID", "Posted (MYT)", "Views", "Likes",
+                   "Comments", "Shares", "Links"]
 DELTA_HEADER = ["ViewsD", "LikesD", "CommentsD", "SharesD"]
-HEADER = BASE_HEADER + DELTA_HEADER  # 12 system cols; customs live in A-B
+HEADER = BASE_HEADER + DELTA_HEADER  # 12 system cols; customs live in A-C
+OLD_SYS_HEADER = OLD_BASE_HEADER + DELTA_HEADER  # pre-swap C-D order
 METRIC_IDX = [3, 4, 5, 6]  # Views/Likes/Comments/Shares positions in HEADER
 N_SYS_COLS = len(HEADER)
 # User-owned columns on the LEFT of the system block. New names append here;
 # the system block shifts right automatically. Never read, never written -
 # except the header row + checkbox validation on col A ("Run").
-CUSTOM_LEFT = ["Run", "Note"]
+CUSTOM_LEFT = ["Run", "Note", "Creative age"]
 OFF = len(CUSTOM_LEFT)
+OLD_WANT = ["Run", "Note"] + HEADER  # pre-insert-C header (14 cols)
 N_COLS = OFF + N_SYS_COLS
-ID_COL = OFF + 1  # Video ID position in a full row
+ID_COL = OFF  # Video ID position in a full row (col C)
 
 
 def _col(i):
@@ -237,14 +241,15 @@ def read_block(svc, sid, title):
 
 
 def ensure_layout(svc, sid, title, grid, dry):
-    """Header Row 1: CUSTOM_LEFT + HEADER. Migrates the old A-L layout once.
+    """Header Row 1: CUSTOM_LEFT + HEADER. Migrates old layouts once
+    (A-L shift, pre-swap C-D order, pre-insert-C width).
 
     - Empty sheet: write the full header.
     - System block already at OFF but custom heads differ: fix header row only.
     - Old A-L layout (system at 0): shift every data row right by OFF,
-      blanking A-B. Anything past L is preserved as-is.
-    Data rows are never reordered; A-B values are never touched except the
-    header row (old layout has no A-B values to preserve).
+      blanking customs. Anything past L is preserved as-is.
+    Data rows are never reordered; custom values are never touched except
+    the header row (old layout has no custom values to preserve).
     """
     want = CUSTOM_LEFT + HEADER
     last = _col(N_COLS - 1)
@@ -258,17 +263,54 @@ def ensure_layout(svc, sid, title, grid, dry):
     sys_at_off = head[OFF:OFF + N_SYS_COLS] == HEADER
     if head[:OFF] == CUSTOM_LEFT and sys_at_off:
         return []
+    if head[:len(OLD_WANT)] == OLD_WANT:
+        # Pre-insert-C layout (2 customs): blank C for the header +
+        # every data row; A-B ticks/notes untouched, system shifts
+        # right. Extra user cols beyond (if any) ride along untouched.
+        if not dry:
+            new = [want]
+            for r in grid[1:]:
+                raw = list(r)
+                while len(raw) < 2:
+                    raw.append("")
+                row = raw[:2] + [""] + raw[2:]
+                row[0] = _checkbox_bool(row[0])
+                new.append(row)
+            X(svc.spreadsheets().values().update(
+                spreadsheetId=sid,
+                range="%s!A1:%s%d" % (_q(title), last, len(new)),
+                valueInputOption="RAW", body={"values": new}))
+        return ["MIGRATED_INSERT_C"]
+    if head[:OFF] == CUSTOM_LEFT and \
+            head[OFF:OFF + N_SYS_COLS] == OLD_SYS_HEADER:
+        # Pre-swap C-D order (Video ID in D): swap C<->D in the header
+        # + every data row. A-C customs and the rest are untouched.
+        if not dry:
+            new = [want]
+            for r in grid[1:]:
+                r = (list(r) + [""] * N_COLS)[:N_COLS]
+                r[OFF], r[OFF + 1] = r[OFF + 1], r[OFF]
+                r[0] = _checkbox_bool(r[0])
+                new.append(r)
+            X(svc.spreadsheets().values().update(
+                spreadsheetId=sid,
+                range="%s!A1:%s%d" % (_q(title), last, len(new)),
+                valueInputOption="RAW", body={"values": new}))
+        return ["MIGRATED_C_D"]
     if sys_at_off:
         if not dry:
             X(svc.spreadsheets().values().update(
                 spreadsheetId=sid, range="%s!A1:%s1" % (_q(title), last),
                 valueInputOption="RAW", body={"values": [want]}))
         return ["HEADER_FIXED"]
-    if head[:N_SYS_COLS] == HEADER:
+    if head[:N_SYS_COLS] == HEADER or \
+            head[:N_SYS_COLS] == OLD_SYS_HEADER:
         if not dry:
             new = [want]
             for r in grid[1:]:
                 syspart = (r[:N_SYS_COLS] + [""] * N_SYS_COLS)[:N_SYS_COLS]
+                if syspart[:2] == OLD_BASE_HEADER[:2]:
+                    syspart[0], syspart[1] = syspart[1], syspart[0]
                 new.append([""] * OFF + syspart + r[N_SYS_COLS:])
             X(svc.spreadsheets().values().update(
                 spreadsheetId=sid,
@@ -305,23 +347,57 @@ def _num(v):
 def row_for(dash, v):
     myt, _utc = dash.to_myt(v.get("create_time"))
     get = lambda k: v.get(k, "")
-    return [v.get("title", ""), v.get("id", ""), myt,
+    return [v.get("id", ""), v.get("title", ""), myt,
             get("view_count"), get("like_count"),
             get("comment_count"), get("share_count"),
             dash.clean_share(v.get("share_url", ""))]
 
 
+def _checkbox_bool(v):
+    """Col A value for writes: real booleans for checkboxes.
+
+    Sheets reads ticked/unticked boxes as "TRUE"/"FALSE" strings;
+    writing those strings back as TEXT trips strict BOOLEAN
+    validation (red triangles). Anything else passes through.
+    """
+    if v is True or v is False:
+        return v
+    s = str(v).strip().upper() if v != "" and v is not None else ""
+    if s == "TRUE":
+        return True
+    if s == "FALSE":
+        return False
+    return v
+
+
+def swap_cd(r):
+    """Full-width row with C<->D swapped (old layout -> new). Pure."""
+    row = (list(r) + [""] * N_COLS)[:N_COLS]
+    row[OFF], row[OFF + 1] = row[OFF + 1], row[OFF]
+    return row
+
+
+def _sorted_newest_first(rows):
+    """Full-width rows sorted newest-first by Posted (col OFF+2).
+
+    Stable: equal Posted keeps existing order. A-C (Run ticks +
+    notes) travel with their rows since whole rows move together.
+    """
+    return sorted(rows, key=lambda r: str(r[OFF + 2]), reverse=True)
+
+
 def sync_account(svc, sid, dash, name, title, videos, dry):
     """Upsert fresh-window videos into tab `title`. Returns (upd, ins, notes).
 
-    All writes stay inside the system block (cols C-N); A-B are only ever
+    All writes stay inside the system block (cols D-O); A-C are only ever
     blank on brand-new rows (checkbox validation covers them after).
     """
     grid = read_block(svc, sid, title)
     if not grid and title != name:
         grid = read_block(svc, sid, name)  # pre-rename tab, dry preview only
     notes = ensure_layout(svc, sid, title, grid, dry)
-    migrated = "MIGRATED_A_B" in notes and not dry
+    migrated = ("MIGRATED_A_B" in notes or "MIGRATED_C_D" in notes
+                or "MIGRATED_INSERT_C" in notes) and not dry
     data = []
     if migrated and not dry:
         grid = read_block(svc, sid, title)  # re-read post-migration
@@ -331,11 +407,30 @@ def sync_account(svc, sid, dash, name, title, videos, dry):
             head[OFF:OFF + N_SYS_COLS] == HEADER
         if is_new or migrated:
             data = grid[1:]
-        elif head[:N_SYS_COLS] == HEADER:
-            # Old A-L layout, unmigrated (dry-run): view it shifted so
+        elif head[:len(OLD_WANT)] == OLD_WANT:
+            # Old 2-custom width, unmigrated (dry-run): view it with
+            # blank C so counts match post-migration reality.
+            data = []
+            for r in grid[1:]:
+                raw = list(r)
+                while len(raw) < 2:
+                    raw.append("")
+                data.append(raw[:2] + [""] + raw[2:])
+        elif head[:OFF] == CUSTOM_LEFT and \
+                head[OFF:OFF + N_SYS_COLS] == OLD_SYS_HEADER:
+            # Old C-D order, unmigrated (dry-run): view it swapped so
             # counts match post-migration reality.
-            data = [[""] * OFF + (r[:N_SYS_COLS] + [""] * N_SYS_COLS)
-                    [:N_SYS_COLS] + r[N_SYS_COLS:] for r in grid[1:]]
+            data = [swap_cd(r) for r in grid[1:]]
+        elif head[:N_SYS_COLS] == HEADER or \
+                head[:N_SYS_COLS] == OLD_SYS_HEADER:
+            # Old A-L layout, unmigrated (dry-run): view it shifted (and
+            # C-D swapped when needed) so counts match post-migration.
+            data = []
+            for r in grid[1:]:
+                syspart = (r[:N_SYS_COLS] + [""] * N_SYS_COLS)[:N_SYS_COLS]
+                if syspart[:2] == OLD_BASE_HEADER[:2]:
+                    syspart = [syspart[1], syspart[0]] + syspart[2:]
+                data.append([""] * OFF + syspart + r[N_SYS_COLS:])
         else:
             data = grid[1:]
     idmap = {}
@@ -347,7 +442,7 @@ def sync_account(svc, sid, dash, name, title, videos, dry):
     updates, new_rows = [], []
     for v in videos:
         vals = row_for(dash, v)
-        vid = vals[1]
+        vid = vals[0]
         if not vid:
             continue
         hit = idmap.get(vid)
@@ -367,6 +462,19 @@ def sync_account(svc, sid, dash, name, title, videos, dry):
                         "values": [full]})
     inserted, updated = len(new_rows), len(updates)
     last_row = 1 + len(data) + inserted
+    # Row-2 insert assumes new rows are newer than tracked rows (true for
+    # daily top-ups, false for backfills/gap-fills of older videos).
+    # If any new video predates the tracked max, the whole tab needs a
+    # re-sort or newer ticked rows end up buried below older ones.
+    resort = False
+    if new_rows and data:
+        old_posted = [str((list(d) + [""] * N_COLS)[OFF + 2]) for d in data]
+        old_posted = [p for p in old_posted if p]
+        new_posted = [str(r[2]) for r in new_rows if str(r[2])]
+        resort = bool(old_posted and new_posted
+                      and min(new_posted) < max(old_posted))
+    if resort:
+        notes.append("RESORT_NEWEST_FIRST")
     if not dry:
         if updates:
             X(svc.spreadsheets().values().batchUpdate(
@@ -384,6 +492,19 @@ def sync_account(svc, sid, dash, name, title, videos, dry):
                 spreadsheetId=sid,
                 range=_rng(title, 2, OFF, 1 + inserted, OFF + 11),
                 valueInputOption="RAW", body={"values": new_rows}))
+        if resort:
+            # Re-read post-write truth, rewrite whole block newest-first.
+            # A-C customs travel with their rows; metric updates above are
+            # already in the sheet and survive (whole-row rewrite).
+            grid2 = read_block(svc, sid, title)
+            rows2 = _sorted_newest_first(
+                [(r + [""] * N_COLS)[:N_COLS] for r in grid2[1:]])
+            for r in rows2:
+                r[0] = _checkbox_bool(r[0])
+            X(svc.spreadsheets().values().update(
+                spreadsheetId=sid,
+                range=_rng(title, 2, 0, 1 + len(rows2), N_COLS - 1),
+                valueInputOption="RAW", body={"values": rows2}))
         ensure_checkboxes(svc, sid, title, last_row, dry)
     return updated, inserted, notes
 
@@ -414,14 +535,14 @@ def _pad8(row):
 
 def _get_yesterday_run_stats(svc, sid, tabs, yesterday_ts, today_ts):
     """
-    Batch-read all account tabs (col A=Run, col E=Posted MYT).
+    Batch-read all account tabs (col A=Run, col F=Posted MYT).
     Returns {sheet_title: (yesterday_count, yesterday_ticked)}.
     """
     if not tabs:
         return {}
     ranges = []
     for title in tabs.values():
-        ranges.append("%s!A2:E" % _q(title))
+        ranges.append("%s!A2:F" % _q(title))
     try:
         resp = X(svc.spreadsheets().values().batchGet(
             spreadsheetId=sid, ranges=ranges))
@@ -435,7 +556,7 @@ def _get_yesterday_run_stats(svc, sid, tabs, yesterday_ts, today_ts):
         vals = range_data.get("values", [])
         y_count = y_ticked = 0
         for row in vals:
-            posted = str(row[4] if len(row) > 4 else "").strip()
+            posted = str(row[5] if len(row) > 5 else "").strip()
             if not posted:
                 continue
             try:
@@ -761,8 +882,18 @@ def main():
             print("SKIP %s: relink needed (%s)" % (name, e))
             skipped.append(name)
             continue
+        print("Pull %s: paging TikTok (throttled ~1s/page)..." % name,
+              flush=True)
         _user, merged, info = dash.pull_and_cache(
-            name, access, since_ts=since_ts, until_ts=until_ts)
+            name, access, since_ts=since_ts, until_ts=until_ts,
+            on_progress=lambda p: print(
+                "  %s: page %d - %d videos so far%s" % (
+                    name, p.get("page", 0), p.get("fetched", 0),
+                    "..." if p.get("has_more") else " - done"),
+                flush=True),
+            on_wait=lambda s, r: print(
+                "  %s: TikTok busy (%s) - retry in %ss..." % (name, r, s),
+                flush=True))
         fresh = [v for v in merged
                  if (since_ts is None or (v.get("create_time") or 0) >= since_ts)
                  and (until_ts is None or (v.get("create_time") or 0) <= until_ts)]
@@ -834,4 +965,11 @@ def print_summary(results, skipped, total, dry):
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        # Ctrl+C abort: finished accounts keep their writes (upsert by
+        # Video ID, so a rerun converges); the Dashboard rewrite at the
+        # end is skipped and redone next run. Exit 130 = SIGINT.
+        print("Aborted by user - finished work kept, rerun to resume.")
+        raise SystemExit(130)

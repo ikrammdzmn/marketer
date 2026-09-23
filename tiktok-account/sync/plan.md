@@ -25,10 +25,12 @@
 - [x] Dashboard v2: "Yesterday Videos" + "Yesterday Ticked" columns (read
   Run checkbox col A from account tabs for MYT yesterday) - 8-col Dashboard
 - [x] `--refresh-ticks` mode: recompute Dashboard cols G-H with no TikTok
-  pull (launcher menu 6); version footer row (`sheet-sync v18`)
+  pull (launcher menu 6); version footer row (`sheet-sync v19`)
 - [ ] Security follow-ups (see root `SECURITY.md`): Drive scope removal,
   OneDrive scope check, incident containment/recovery
-- [ ] Name any further custom columns (append to `CUSTOM_LEFT`, rerun migrates)
-- [ ] `--full` backfill for stats older than 7d (optional; daily window is enough)
+- [x] Name any further custom columns (append to `CUSTOM_LEFT`, rerun migrates)
+  - 23 Sep: `Creative age` added (col C), all 10 tabs migrated
+- [x] `--full` backfill for stats older than 7d (optional; daily window is enough)
+  - 23 Sep: ran for `Dr. Samhan` (22 tracked + 2,521 backfilled, re-sorted)
 - [ ] Windows Task Scheduler daily job (same file, when manual gets boring)
 - [ ] History sheet for vs-any-date growth charts (only if light deltas prove insufficient)

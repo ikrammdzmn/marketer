@@ -1,5 +1,20 @@
 # CHANGELOG.md - sync/
 
+## 2026-09-23 - v19: pull progress, abort, re-sort, C-D swap, insert-C age
+- Pull progress: `on_progress`/`on_wait` hooks wired up (per-page video
+  counts + 429-retry waits, ASCII, flushed). Throttle unchanged
+  (shared `pull_and_cache`: ~1s/page + backoff).
+- Graceful abort: `__main__` catches `KeyboardInterrupt` (exit 130,
+  `Aborted by user - finished work kept, rerun to resume`).
+- `RESORT_NEWEST_FIRST`: inserts predating tracked rows trigger a
+  whole-tab newest-first rewrite (backfill seam fix).
+- System block reordered to Video ID first (col C); `MIGRATED_C_D`
+  migration on all 10 tabs.
+- `CUSTOM_LEFT` gains `Creative age` (col C); `MIGRATED_INSERT_C`
+  migration on all 10 tabs; yesterday reader moved to col F (`A2:F`).
+- Col-A boolean rule: whole-row rewrites pass Run through
+  `_checkbox_bool()` (strict validation rejects "TRUE"/"FALSE" text).
+
 ## 2026-09-21 - v18: --refresh-ticks mode + version footer
 - New `--refresh-ticks` flag: recomputes Dashboard cols G-H from the
   account tabs with no TikTok pull and no tab writes (summaries from local

@@ -108,9 +108,13 @@ uv --version
 
 ### 2.2 Clone repos
 
+> NEVER create the `marketer/` folder yourself first — an existing name forces
+> git to nest the clone as `marketer-1/` (23 Sep rename mess). Let git create it.
+
 ```powershell
-git clone https://github.com/ikrammdzmn/marketer.git
-cd marketer
+Test-Path "C:\Users\PC CUSTOM\Documents\github\marketer"  # must be False; if True, stop and clear it first
+git clone https://github.com/ikrammdzmn/marketer.git "C:\Users\PC CUSTOM\Documents\github\marketer"
+cd "C:\Users\PC CUSTOM\Documents\github\marketer"
 git clone <tools-repo-url> "C:\Users\PC CUSTOM\Documents\github\tools"
 # branch main, contains spreadsheet-mcp/ (27 Sheets tools, uv, stdio, localhost-only)
 ```
@@ -144,6 +148,8 @@ opencode — edit `marketer/opencode.json` (already correct, secret-free by desi
 ```
 
 Antigravity — ask IDE first, edits `~/.gemini/config/mcp_config.json` (`mcpServers` + `args[]` + `env`), never `opencode.json`. Never use `GOOGLE_APPLICATION_CREDENTIALS` (server var is `GOOGLE_SERVICE_ACCOUNT_FILE`). Restart IDE after any config change.
+
+> 23 Sep fix: bare `"uv"` fails with `mcp connect failed / Connection closed` when the OpenCode `serve --service` process predates the WinGet User-scope PATH (`uv` in User PATH only, never Machine PATH) or a new `GOOGLE_SHEETS_CRED`. Harden to the absolute WinGet path with forward slashes (single `\` is invalid JSON): `C:/Users/<you>/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/uv.exe`. Then fully restart IDE/OpenCode + Refresh MCP. Log proof: `%USERPROFILE%\.local\share\opencode\log\opencode.log` shows `mcp connect failed` with no server stderr; manual `uv run spreadsheet-mcp` stdio `initialize` still returns `Google Sheets 1.25.0`.
 
 ### 2.5 Per-PC secrets (recreate, never copy over chat)
 

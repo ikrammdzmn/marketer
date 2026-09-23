@@ -26,18 +26,29 @@ spreadsheet-mcp venv (google client libs). No npm, no build, no server.
   - except: never name one `Sheet1` (auto-renamed to Dashboard if empty),
   never reuse an account name, and never store notes in Dashboard cols G-H
   (rewritten every run as Yesterday Videos / Yesterday Ticked).
-- Header Row 1 frozen: `Run | Note | Title | Video ID | Posted (MYT) |
+- Header Row 1 frozen: `Run | Note | Creative age | Video ID | Title |
+  Posted (MYT) |
   Views | Likes | Comments | Shares | Links | ViewsD | LikesD | CommentsD |
-  SharesD` (A-N). Left customs come from `CUSTOM_LEFT`; appending a name
+  SharesD` (A-O). Left customs come from `CUSTOM_LEFT` (`Run`, `Note`,
+  `Creative age` user formula); appending a name
   shifts the system block right with no other code change.
-- Video ID is the upsert key (at `OFF+1`). Cols A-B are user-owned: never
-  written - except the header row, blank A-B on new rows, and
-  CHECKBOX validation re-applied to col A each run. Col A (Run) is read
+- Video ID is the upsert key (at `OFF`, col D). Cols A-C are user-owned: never
+  written - except the header row, blank A-C on new rows, and
+  CHECKBOX validation re-applied to col A each run. Col A (Run) stores
+  real booleans: the API reads ticks back as `"TRUE"`/`"FALSE"` strings,
+  but writing those strings back as TEXT trips strict BOOLEAN validation
+  (red error triangles on every cell - 23 Sep incident). Pass every col-A
+  value through `_checkbox_bool()` on any whole-row rewrite (migration,
+  re-sort). Col A (Run) is read
   once per run to count yesterday's ticks for Dashboard cols G-H.
 - New videos insert at row 2, newest first. Existing rows update the system
   block only when metrics move (unchanged rows skipped; deltas mean
   "change at last movement"). Old A-L layouts migrate once automatically
-  (`MIGRATED_A_B`: shift right, blank A-B, apply checkboxes).
+  (`MIGRATED_A_B`: shift right, blank customs, apply checkboxes). Pre-swap
+  C-D layouts migrate once automatically (`MIGRATED_C_D`: swap C<->D,
+  A-B ticks/notes untouched). Pre-insert-C widths migrate once automatically
+  (`MIGRATED_INSERT_C`: blank C for every row, A-B untouched). Backfill inserts that predate tracked rows
+  trigger a whole-tab newest-first re-sort (`RESORT_NEWEST_FIRST`).
 - `Dashboard!A1:H` rewritten every run as `USER_ENTERED`: Account column is
   `HYPERLINK("#gid=...")` jump links labeled with the tab title; cols G-H
   are Yesterday Videos / Yesterday Ticked (MYT yesterday counts from the

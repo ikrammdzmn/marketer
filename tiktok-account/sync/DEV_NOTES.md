@@ -1,4 +1,9 @@
 # DEV_NOTES.md - sync/ session handoff (20 Sep 2026, morning MYT)
+> Read this first. It carries the vibe, not just the facts.
+
+DO NOT DELETE THIS PART
+
+Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
 
 ## Vibe
 
@@ -225,3 +230,110 @@ verified in 2 calls. Short replies, one action per message held.
   absent both ends. Forensics (scheduler/Run/RustDesk/Parsec/logs) done.
 - All discussion moved to root `marketer/SECURITY.md` (threat model,
   inventory, registers, timeline, containment, pending checks).
+
+## 23 Sep 2026 - repo move + entry hardening (morning MYT)
+
+- Owner moved `marketer-1/` up one level over the old `marketer/` in
+  Explorer (stale clean clone already deleted). Verified new root
+  `.../ikrammdzmn/marketer`: HEAD 2647c04, same 3 M files, no secrets.
+- `opencode.json:7` hardened to absolute WinGet `uv.exe` (forward
+  slashes); `exit-entry.md:2.4` documents the 23 Sep `Connection closed`
+  fix (serve process predates User-scope PATH). `run-sync.ps1:14-30`
+  probes upward for `tools/tools/spreadsheet-mcp` + guards missing path.
+- `exit-entry.md:2.2` clone guard added: never pre-create `marketer/`
+  (git nests as `marketer-1`), `Test-Path ... # must be False` first.
+- OPEN: 9/10 TikTok tokens report relink needed (only `Dr. Samhan`
+  healthy). Owner to relink via dashboard before any `--all` live run.
+
+## 23 Sep 2026 - pull progress + graceful abort (same morning)
+
+- Owner: sync pulls run silent, wants dashboard-style page lines.
+  `pull_and_cache` already had `on_progress`/`on_wait` hooks; sync just
+  never passed them. Now prints `Pull <name>: paging TikTok...` +
+  `page N - M videos so far.../- done` + `TikTok busy - retry in Ns`
+  per page, `flush=True`, ASCII only. Verified live 7-day dry-run.
+- Throttle question answered from code: sync reuses `pull_and_cache`,
+  so PAGE_DELAY + 429/backoff + Retry-After identical to dashboard.
+- Abort: no handler existed (traceback on Ctrl+C). Added `__main__`
+  guard -> `Aborted by user - finished work kept, rerun to resume.`,
+  exit 130. Safe by construction: cache writes at pull end, per-account
+  sheet writes, Video-ID upsert idempotent, Dashboard rewritten last.
+- LESSON: headless shells have no console, so `GenerateConsoleCtrlEvent`
+  silently delivers nothing (child kept pulling to page 88+; had to
+  taskkill it - dry-run, no damage). Test the handler with runpy +
+  `mock.patch(time.sleep -> KeyboardInterrupt)` instead: PASS, exit 130.
+
+## 23 Sep 2026 - backfill burial + RESORT_NEWEST_FIRST (midday MYT)
+
+- Owner ran `--full` for `Dr. Samhan`: 22 tracked ticked rows slid to
+  the bottom under ~2,521 backfilled older videos (rows to 2544).
+- Diagnosis from live reads: NO dupes (2,543 distinct IDs), ticks
+  intact. Root cause: row-2 insert assumes new rows are newer (true for
+  daily top-ups, false for backfills). Seam proof: row 2522 = Dec 2020,
+  row 2523 = Sep 2026, single order violation in the tab.
+- Fixed: when any insert predates the tracked max, rewrite the whole
+  tab newest-first (`RESORT_NEWEST_FIRST` note, ticks travel with rows,
+  metric updates folded in). Dry-run previews it. Repaired the live tab
+  via temp script: 0 violations, ticks at rows 5-19. LESSON: any
+  "insert at top" design must state its newer-than-all precondition and
+  repair the seam when it breaks.
+- `SYNC_VERSION` still v18 despite post-v18 engine changes (progress,
+  abort, resort) - consider a v19 bump next touch.
+
+## 23 Sep 2026 - C-D swap Video ID first (afternoon MYT)
+
+- Owner: Video ID to col C on all tabs. `row_for` + `BASE_HEADER`
+  swapped, `ID_COL = OFF`, `vid = vals[0]`; metrics/deltas/posted
+  indices unchanged (still 2/3-6). `MIGRATED_C_D` migration + dry-run
+  view twin; A-L branches accept both orders. All 10 tabs migrated
+  live, headers verified. Docs (`AGENTS.md` header/key lines, module
+  docstring) updated.
+- Glitch found by verification scan: single cell C2 held a duplicated
+  title instead of its ID (2,542 rows + 9 other tabs clean, so a
+  one-off, not a code path). Recovered the ID from its share link,
+  rewrote RAW. Final: 2,543 distinct IDs, 0 bad, 0 dupes.
+- LESSON: after every bulk rewrite, scan the full column
+  (ID-likeness + dup check), not just the header - the header check
+  passed while C2 was corrupt.
+
+## 23 Sep 2026 - checkbox text saga, twice (afternoon MYT)
+
+- Owner screenshot: red triangles down col A. Cause: API returns ticks
+  as `"TRUE"`/`"FALSE"` strings; whole-row rewrites wrote them back as
+  TEXT and strict BOOLEAN validation rejected them. Confirmed via
+  UNFORMATTED read (all `str`, zero `bool`).
+- Fixed with `_checkbox_bool()` normalizer + live rewrite of col A on
+  all 10 tabs (verified 100% `bool`). Then it RECURRED: the new
+  insert-C migration rewrote rows without the normalizer. Added it
+  there too; all three whole-row paths (C-D, insert-C, re-sort) now
+  covered - A-L writes blanks only, updates/inserts never touch col A.
+- LESSON (now in `AGENTS.md` col-A bullet, citing this incident): any
+  new whole-row write path must pass col A through `_checkbox_bool()`.
+  The rule failed the first time because the second migration was
+  written after the rule - re-audit every write path on every change.
+
+## 23 Sep 2026 - insert-C Creative age custom (evening MYT)
+
+- Owner wants age formula right after Note. Used the sanctioned slot:
+  `CUSTOM_LEFT = ["Run", "Note", "Creative age"]` (OFF 2->3; ID/posted/
+  ranges follow automatically). `MIGRATED_INSERT_C` migration + dry
+  view; all 10 tabs live-migrated to 15 cols, headers verified.
+- One mandatory code fix: `_get_yesterday_run_stats` read `A2:E`
+  assuming Posted at E - now `A2:F`, Posted at index 5. Proven live via
+  `--refresh-ticks` (`yesterday 2 videos, 0 ticked` - correct).
+- Owner pastes into C2 (O2-era formula superseded, Posted now col F):
+  `=ARRAYFORMULA(IF(F2:F="",, ...))` with VALUE() coercion, blank skip,
+  future->`scheduled`, sheet tz GMT+8 KL. Engine never reads/writes C.
+- OPEN: add the C2 formula after migration (done by owner); relink 9
+  tokens; consider v19 bump; `--all` live run to refresh Dashboard.
+
+## 23 Sep 2026 - v19 bump + standing version rule (night MYT)
+
+- Owner: bump the version and note it. `SYNC_VERSION` v18 -> v19
+  (covers 23 Sep engine work: progress, abort, re-sort, C-D swap,
+  insert-C, boolean rule). Footer/launcher follow automatically
+  (single source of truth). CHANGELOG v19 entry + plan.md ticks added.
+- STANDING RULE: bump `SYNC_VERSION` on every engine behavior change,
+  and record the change in `DEV_NOTES.md` the same session. A version
+  that lags the code (v18 did, for most of 23 Sep) makes live sheets
+  lie about what wrote them. Resolves the v19 OPEN item above.
