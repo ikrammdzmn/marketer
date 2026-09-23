@@ -67,11 +67,13 @@ Status: DASHBOARD READY (local only; link each account once, then select + Refre
 - [x] Export `#` column: CSV download leads with the on-screen row number
   (same filter, same order).
 - [x] `sync/` daily Sheets bridge (own docs in `sync/`): `sheet-sync.py`
-  upserts 7-day window by Video ID into 11 sheets (Dashboard + 10 tabs),
-  A-B user customs, deltas, jump links, colors, window presets
-  (today/yesterday/since-until/full), `run-sync.ps1` launcher; first
-  `--all --days 7` 10/10 live. Untracked until owner asks to commit.
+  upserts 7-day window by Video ID into 12 sheets (Dashboard + account
+  info + 10 tabs), A-C user customs (Run/Note/Creative age), deltas,
+  jump links, colors, window presets (today/yesterday/since-until/full),
+  `run-sync.ps1` launcher; committed 23 Sep (`2663c7a`, v19).
+- [x] Picker active status (23 Sep): grey `inactive` tag + dimmed rows
+  from `accounts.json`, still selectable for linking.
 - [ ] Table page-size (planned, if wanted): show N rows at a time in browser
   (e.g. 30/page with Next/Prev) for fast rendering on 2000-video accounts.
-- [ ] Link all 10 real accounts end-to-end (one Authorize each)
+- [x] Link all 10 real accounts end-to-end (one Authorize each, 23 Sep sandbox)
 - [ ] 10 real accounts end-to-end: authorize → all pages → CSVs with post times

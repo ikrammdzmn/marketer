@@ -4,6 +4,24 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 23 Sep 2026
+
+- `tiktok-account/sync` v19 (committed `2663c7a`): pull progress lines,
+  graceful abort (exit 130), RESORT_NEWEST_FIRST backfill fix, Video-ID-first
+  cols (`MIGRATED_C_D`), Creative-age custom col (`MIGRATED_INSERT_C`),
+  col-A boolean rule; entry/MCP hardening (`opencode.json` absolute uv,
+  `run-sync.ps1` upward probe, `exit-entry.md` clone guard)
+  -> `tiktok-account/sync/CHANGELOG.md` + `tiktok-account/sync/DEV_NOTES.md`
+- `tiktok-account` dashboard: picker shows `active` from accounts.json
+  (grey `inactive` tag + dimmed rows; uncommitted working tree)
+  -> `tiktok-account/CHANGELOG.md`
+- root docs born: `DEV_NOTES.md` (session handoff) + `feature.md` (plain-words
+  showcase); `otherdevice.md` Sec 4 token-copy path; `exit-entry.md` portable-MCP
+  checklist; `accounts.json` reordered by owner (21 entries / 15 active)
+- review track: stay-on-Sandbox evaluated (slots 10/10, dummy clean locally),
+  Production cutover plan + demo-video staged, decision open; all 10 tokens
+  linked (sandbox)
+
 ## 22 Sep 2026
 
 - `tiktok-creative-analysis` v43–v47: exploration-status arc — canonical glossary

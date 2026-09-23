@@ -1,13 +1,13 @@
 [
   {
-    "name": "HIMCoffee",
-    "username": "himcoffeedrsamhan",
-    "accountId": "7534954290880872456",
-    "note": "",
+    "name": "Dr. Samhan",
+    "username": "dr.samhan",
+    "accountId": "7235542515297009665",
+    "note": "own: pijie/ana",
     "active": true,
     "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T15:54:53"
+    "updatedAt": "2026-09-17T16:46:19"
   },
   {
     "name": "Dr Samhan",
@@ -20,32 +20,22 @@
     "updatedAt": "2026-09-17T16:45:52"
   },
   {
-    "name": "Dr Samhan Official3",
-    "username": "drsamhanofficial3",
-    "accountId": "7638889204189265941",
-    "note": "own: Qibah",
+    "name": "HIMCoffee",
+    "username": "himcoffeedrsamhan",
+    "accountId": "7534954290880872456",
+    "note": "",
     "active": true,
     "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:45:52"
+    "updatedAt": "2026-09-17T15:54:53"
   },
   {
-    "name": "Dr. Samhan",
-    "username": "dr.samhan",
-    "accountId": "7235542515297009665",
-    "note": "own: pijie/ana",
+    "name": "DrSamhanWellness",
+    "username": "drsamhanwellness",
+    "accountId": "7345686756198514690",
+    "note": "own: Zammy",
     "active": true,
-    "live": true,
-    "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:46:19"
-  },
-  {
-    "name": "Affiliate Dr Samhan4",
-    "username": "affiliatedrsamhan4",
-    "accountId": "7457838393997656080",
-    "note": "own: Qibah",
-    "active": true,
-    "live": true,
+    "live": false,
     "topAffiliate": false,
     "updatedAt": "2026-09-17T16:45:52"
   },
@@ -60,12 +50,12 @@
     "updatedAt": "2026-09-17T15:54:53"
   },
   {
-    "name": "DrSamhanWellness",
-    "username": "drsamhanwellness",
-    "accountId": "7345686756198514690",
-    "note": "own: Zammy",
+    "name": "Affiliate Dr Samhan4",
+    "username": "affiliatedrsamhan4",
+    "accountId": "7457838393997656080",
+    "note": "own: Qibah",
     "active": true,
-    "live": false,
+    "live": true,
     "topAffiliate": false,
     "updatedAt": "2026-09-17T16:45:52"
   },
@@ -86,6 +76,16 @@
     "note": "own: Qibah",
     "active": true,
     "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-09-17T16:45:52"
+  },
+  {
+    "name": "Dr Samhan Official3",
+    "username": "drsamhanofficial3",
+    "accountId": "7638889204189265941",
+    "note": "own: Qibah",
+    "active": true,
+    "live": true,
     "topAffiliate": false,
     "updatedAt": "2026-09-17T16:45:52"
   },

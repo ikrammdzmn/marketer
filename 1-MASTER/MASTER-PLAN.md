@@ -5,14 +5,14 @@
 
 ## 1. Repo map (what lives where)
 - `tiktok-creative-analysis/` — Static creative analytics (single + bulk dialects, multi-file compare ≤7 with auto-pick Combine/diff, trend per creative: day columns + line chart + sparklines + solo popup + ROI/CPM/AOV metrics, dot-only chart hover with vs-prev moves, insight engine + verdict filter + `?insight` links, exploration guide + clickable pills + status-by-day KPIs/chart with green-red deltas, SOP bars, folder-grouped filename-chip picker, click-to-copy Post IDs, manager CSV export). Pure HTML/CSS/vanilla JS, no build (`app.js?v=47`). Authoritative `data/accounts.json` (20 entries × {name,username,accountId,note,active,live,topAffiliate,updatedAt}, exact-match on name); `data/catalog.json` (4 campaigns + 18 products, user-named); `data/targets.json` (SOP topN/minImpr/maxCPM, null = auto). Local `server.py` (127.0.0.1, accounts+targets savers) + `start-server.bat`; loader auto-picks newest `source-file/*.xlsx` by end-date. Statuses in its `plan.md`; releases in `CHANGELOG.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
-- `tiktok-account/` — Display API dashboard (own videos + post times). Python stdlib + Tailwind, localhost 8080. `tester.py` FROZEN. 17 Sep: 429 throttle/retry, range + limit pulls (merged cache), unlink, calendar UX, thumbnails, link-mismatch guard. 20 Sep: live Refresh progress popup (stream, same-connection) + last-fetch stamps + `#`-first CSV export (committed `4f9a792`); new UNTRACKED `sync/` daily Sheets bridge (11 sheets, customs, deltas, presets, ps1 launcher — own docs inside). Statuses in its `plan.md`; releases in `CHANGELOG.md`. Agent note: `NEON_NOTE.md`.
+- `tiktok-account/` - Display API dashboard (own videos + post times). Python stdlib + Tailwind, localhost 8080. `tester.py` FROZEN. 17 Sep: 429 throttle/retry, range + limit pulls (merged cache), unlink, calendar UX, thumbnails, link-mismatch guard. 20 Sep: live Refresh progress popup (stream, same-connection) + last-fetch stamps + `#`-first CSV export (committed `4f9a792`); `sync/` daily Sheets bridge committed 23 Sep (`2663c7a`, v19: progress, abort, re-sort, Video-ID-first, Creative-age col). 23 Sep: picker shows `active` from accounts.json (uncommitted). Statuses in its `plan.md`; releases in `CHANGELOG.md`. Agent note: `NEON_NOTE.md`.
 - `tiktok-strategy/` — Himwellness Growth OS playbook (`himwellness-playbook.html` + `full-strategy.md`). Business guardrails live here: ROI ≥7.0, CPA ≤RM21.18, 1 campaign/SKU, TTAM feeder role, dayparting windows, payday surge. Offline, localStorage.
 - `tiktok-event/` — HIMCOFFEE RACI MASTER (`index.html`, vanilla single-file, local-only, no build). Timeline 2026–2030 + RACI Worksheet + 5T/3M Blueprint + workload + CSV + local PIN seats. Reference: `raci_campaign_dashboard.tsx` (React+Firebase, FROZEN) + `tiktok-prd` (PRD v1.0.0). Statuses in its `plan.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
 - `gmvmax/` — Knowledge only: `gmvmax.md` (algo realities, §3 points at product glossary) + `product/exploration-status.md` (canonical TikTok stages + `Available` exclusion rule) + `product/*.xlsx`. No code goes here.
 - `gmvmax-auto/` — auto budget-adjust service: P0 LIVE prod read-only 21 Sep (prod OAuth, report GET live, net ROI locked fee 25%, 30m scheduler task, manual unlagged 5-campaign view: 1 LIVE + 4 Product). Code: `collector.py` + `live_view.py` + `prod_auth.py` + `dashboard/` 8082 + migrations `001–004`. See `gmvmax-auto/plan.md` + `DEV_NOTES.md` + `feature.md`.
 - `docs/` — `terms.html` + `privacy.html` (GitHub Pages, TikTok app review). `tiktok*.txt` at root = domain verification. Never move/rename without updating TikTok app form.
-- `opencode.json` (NEW, untracked 19 Sep) — opencode MCP pointer: `google-sheets`
-  local via `../tools/spreadsheet-mcp` (`uv run`), secret-free
+- `opencode.json` (committed 23 Sep `2663c7a`) - opencode MCP pointer: `google-sheets`
+  local via absolute WinGet `uv.exe` (forward slashes) + local `tools/` path, secret-free
   (`{env:GOOGLE_SHEETS_CRED}` only). Antigravity counterpart
   `~/.gemini/config/mcp_config.json` also wired (was 0 bytes).
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, `main`) — `spreadsheet-mcp` cloned 19 Sep
@@ -47,11 +47,12 @@
 - `tiktok-strategy` playbook content complete (static).
 - `tiktok-event` built 17 Sep (vanilla RACI board + docs), UNTRACKED. Backlog: structured due-dates, C/I columns, shared Firebase seats, mobile cards.
 - `gmvmax-auto` P0 skeleton landed 19 Sep (UNCOMMITTED): Neon `TIKTOK DATA` SG with `production` + persistent `dev`, `001–004` applied (`acct`=2, `gmv`=7 both branches; 004 fixed public-schema + reserved-`window`→`win` bugs), collector stub + 8082 dashboard verified offline-first, keys gitignored (lengths-only check). Business API `TIKTOK GMV MAX` PENDING approval — expected non-issue 20 Sep, P0 holds file-first (sandbox locked); Shop Custom app created (MY). Next: sandbox GET wiring → 48×30m snapshots → P0 exit. Detail: `gmvmax-auto/plan.md`, `DEV_NOTES.md`, `CHANGELOG.md`.
-- Git: branch `main`. HEAD `4f9a792` (20 Sep, dashboard liveliness; message is
-  bare status text — don't amend unasked). Worktree holds UNCOMMITTED edits
-  across `1-MASTER/*`, root `AGENTS.md`, `tiktok-account/` docs (ritual),
-  UNTRACKED `tiktok-account/sync/`, plus the older creative-analysis /
-  gmvmax-auto work noted below. Commit only when asked.
+- Git: branch `main`. HEAD `2663c7a` (23 Sep night, sync v19 + entry
+  hardening + session docs). Worktree holds UNCOMMITTED evening work:
+  dashboard active badge (`dashboard.py`/`.html`, `feature.md`), portable
+  docs (`otherdevice.md` Sec 4, `exit-entry.md` MCP checklist), owner-reordered
+  `accounts.json` (21 entries / 15 active), root `DEV_NOTES.md` + `feature.md`
+  (new), xlsx 09-22/09-23. No secrets in set. Commit only when asked.
 
 ## 3. Relations each AGENTS.md must know
 - **Accounts source:** `tiktok-creative-analysis/data/accounts.json` is authoritative. `tiktok-account/dashboard` reads it live — never duplicate the list. `tiktok-creative-analysis/data/catalog.json` (friendly campaign/product labels) and `data/targets.json` (SOP bars) are creative-analysis-only, display-local, not shared. `gmvmax-auto` will resolve campaigns against shop/account names from the same source of truth via `core` schema later.

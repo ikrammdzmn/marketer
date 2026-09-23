@@ -18,13 +18,17 @@ and growth (+numbers) shown. Sheet 1 (`Dashboard`) shows per-account totals.
 **Columns:**
 - A `Run` - tick the checkbox when a video is handled.
 - B `Note` - your free text (boosted, reviewed, pending...).
-- C-N automatic (don't edit): Title, Video ID, Posted date, Views, Likes,
+- C `Creative age` - automatic text (how long ago each video was posted).
+  Paste the formula once in C2; it fills every row by itself. Don't type here.
+- D-O automatic (don't edit): Video ID, Title, Posted date, Views, Likes,
   Comments, Shares, video Link, then 4 growth columns (change since last run).
 
 **Columns:**
 - A `Run` - tick the checkbox when a video is handled.
-- B `Note` - your free text (booosted, reviewed, pending...).
-- C-N automatic (don't edit): Title, Video ID, Posted date, Views, Likes,
+- B `Note` - your free text (boosted, reviewed, pending...).
+- C `Creative age` - automatic text (how long ago each video was posted).
+  Paste the formula once in C2; it fills every row by itself. Don't type here.
+- D-O automatic (don't edit): Video ID, Title, Posted date, Views, Likes,
   Comments, Shares, video Link, then 4 growth columns (change since last run).
 
 New videos arrive with empty Run/Note. Your ticks and notes are never erased

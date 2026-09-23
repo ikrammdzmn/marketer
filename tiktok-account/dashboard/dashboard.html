@@ -134,6 +134,7 @@ function pillFor(a){const st=a.mismatch?["mismatch","background:#fef3c7;color:#9
 (a.linked?["linked","background:#dcfce7;color:#15803d"]:["not linked","background:#fee2e2;color:#b91c1c"]));
 const tip=a.mismatch&&a.linked_as?(" title='Linked as @"+esc(a.linked_as)+" — expected @"+esc(a.username)+"'"):"";
 return "<span"+tip+" style='"+st[1]+";border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0'>"+st[0]+"</span>";}
+function activeTag(a){return a.active?"":" <span style='background:#f3f4f6;color:#6b7280;border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0'>inactive</span>";}
 async function accounts(){
 const r=await fetch("/api/accounts");const d=await r.json();
 ACCDATA=d.accounts;LINKMAP={};let linked=0;
@@ -146,15 +147,15 @@ paintAccBtn();load();}
 let LINKMAP={};
 function paintAccBtn(){const a=LINKMAP[CUR],btn=document.getElementById("accBtn");
 if(!a){btn.textContent="…";return;}
-btn.innerHTML="<b>"+esc(CUR)+"</b> <span class='text-gray-400 font-normal'>@"+esc(a.username)+"</span> "+pillFor(a);
+btn.innerHTML="<b>"+esc(CUR)+"</b> <span class='text-gray-400 font-normal'>@"+esc(a.username)+"</span> "+pillFor(a)+activeTag(a);
 document.getElementById("unlinkBtn").style.display=a.linked?"":"none";}
 function toggleAcc(){const l=document.getElementById("accList");
 const open=l.style.display==="block";
 if(open){l.style.display="none";return;}
 l.innerHTML="";
 ACCDATA.forEach(a=>{const b=document.createElement("button");
-b.className="flex items-center justify-between gap-2 w-full text-left text-sm px-2 py-1.5 rounded-lg hover:bg-gray-100";
-b.innerHTML="<span>"+esc(a.name)+" <span class='text-gray-400'>@"+esc(a.username)+"</span></span>"+pillFor(a);
+b.className="flex items-center justify-between gap-2 w-full text-left text-sm px-2 py-1.5 rounded-lg hover:bg-gray-100"+(a.active?"":" opacity-60");
+b.innerHTML="<span>"+esc(a.name)+" <span class='text-gray-400'>@"+esc(a.username)+"</span></span><span class='flex gap-1'>"+pillFor(a)+activeTag(a)+"</span>";
 b.onclick=function(){CUR=a.name;paintAccBtn();l.style.display="none";load();};
 l.appendChild(b);});
 l.style.display="block";}

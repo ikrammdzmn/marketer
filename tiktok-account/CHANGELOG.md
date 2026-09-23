@@ -3,6 +3,12 @@
 Local-only release record, newest first. One line per shipped change.
 Rollup: `1-MASTER/MASTER-CHANGELOG.md`. Status checklist: `plan.md`.
 
+## 23 Sep 2026 - picker active status
+- Account picker shows `active` from `accounts.json`: grey `inactive`
+  tag on the button + dropdown rows, inactive rows dimmed (still
+  selectable for linking). `/api/accounts` carries the field; verified
+  live smoke 21 accounts / 15 active -> `plan.md`, `feature.md`
+
 ## 20 Sep 2026 — live Refresh + Sheets bridge
 - Export `#` column: CSV leads with the on-screen row number → `plan.md`
 - `sync/` daily TikTok→Sheets bridge (own changelog `sync/CHANGELOG.md`):

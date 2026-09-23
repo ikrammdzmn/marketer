@@ -10,8 +10,9 @@ can use this.
 - **Every account on one page.** Pick any account from the picker at the top.
   A green `linked` tag means ready; red `not linked` means that account needs
   its one-time login; amber `mismatch` means someone linked the wrong TikTok
-  login into that slot — tell your helper. Each account is linked once, then
-  it just works for months.
+  login into that slot — tell your helper. A grey `inactive` tag means the
+  account is switched off in the accounts list (dimmed, still selectable).
+  Each account is linked once, then it just works for months.
 - **Every public video, newest first.** Each row shows a small photo
   (thumbnail) next to the title, the exact Malaysia date and time it was
   posted (with "3 days ago" written grey underneath), views, likes, comments,

@@ -40,6 +40,35 @@ TikTok account → Authorize) → select → Refresh from TikTok → Export CSV.
 - Shutdown/restart needs NO relink — `dashboard/tokens/` persists on disk.
   Relink only on refresh-token death (~1yr), revoke, or scope change.
 
+## 4. Shortcut: copy tokens from the old PC (no relink)
+
+Tokens are bearer files, not machine-bound. USB stick only (never
+chat/email/cloud), wipe the stick after. The app key must be the SAME
+one the tokens were issued under (refresh flow uses it).
+
+Copy (portable):
+- `tiktok-account/dashboard/tokens/*.json` (the 10 logins)
+- `tiktok-account/.local_secrets.json`
+- `tiktok-account/sync/.sheet_id.json` (sync only)
+- service-account JSON to `%USERPROFILE%\.config\spreadsheet-mcp\`
+  (sync/MCP only) + set `GOOGLE_SHEETS_CRED` to its local path
+- `gmvmax-auto/.local_secrets.json` (GMV Max only, if used there)
+
+Clone fresh, never USB-copy:
+- `marketer/` + `tools/` repos (`.venv/` rebuilds on first `uv run`)
+- `csvs/` caches (rebuild on first pull)
+
+Per-PC (see root `exit-entry.md` ENTRY):
+- `uv` via WinGet, IDE started after install, Python 3, Git
+- `opencode.json` MCP paths carry the old PC's username - edit locally,
+  never commit that hunk; same for Antigravity `mcp_config.json`
+
+Verify: dashboard shows all linked, one Refresh works, `git status
+--short` shows none of the copied files. Do NOT run live sync from
+both PCs at once. Check OneDrive scope first (`SECURITY.md` 4.1) -
+synced Documents means secrets already in Microsoft cloud. Copying
+defers relink, not abolishes it (Sec 3 still applies on token death).
+
 ## 5. Do NOT repeat (already done once, shared)
 
 - TikTok app registration (category, description, URLs, terms/privacy).

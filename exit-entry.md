@@ -151,6 +151,14 @@ Antigravity — ask IDE first, edits `~/.gemini/config/mcp_config.json` (`mcpSer
 
 > 23 Sep fix: bare `"uv"` fails with `mcp connect failed / Connection closed` when the OpenCode `serve --service` process predates the WinGet User-scope PATH (`uv` in User PATH only, never Machine PATH) or a new `GOOGLE_SHEETS_CRED`. Harden to the absolute WinGet path with forward slashes (single `\` is invalid JSON): `C:/Users/<you>/AppData/Local/Microsoft/WinGet/Packages/astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe/uv.exe`. Then fully restart IDE/OpenCode + Refresh MCP. Log proof: `%USERPROFILE%\.local\share\opencode\log\opencode.log` shows `mcp connect failed` with no server stderr; manual `uv run spreadsheet-mcp` stdio `initialize` still returns `Google Sheets 1.25.0`.
 
+Per-PC MCP checklist (second PC): fresh `tools/` clone (never copy
+`.venv/` - absolute paths inside break it; first `uv run` rebuilds);
+`uv` via WinGet, IDE started after install; `GOOGLE_SHEETS_CRED` set to
+the local SA path; `opencode.json` command paths edited to the local
+username (tracked file carries the old PC - modify, never commit that
+hunk); Antigravity `mcp_config.json` same edits. Smoke test:
+`get_spreadsheet_info` must succeed before the first sync.
+
 ### 2.5 Per-PC secrets (recreate, never copy over chat)
 
 ```powershell
@@ -164,6 +172,7 @@ notepad "gmvmax-auto\.local_secrets.json"
 - `gmvmax-auto/.local_secrets.json` keys: `NEON_URL_DEV`, `NEON_URL_PROD`, `GMV_ENC_KEY`, `TIKTOK_CLIENT_KEY`, `TIKTOK_CLIENT_SECRET`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
 - `tiktok-account/sync/.sheet_id.json`: auto-created on first sync; env `SHEET_ID` wins. Prefer file over `--spreadsheet-id` flag on shared machines (flag echoes to console + Task Manager).
 - Verify by key-NAMES + lengths only. `git status --short` must never show these files.
+- Token copy between PCs (no relink, USB only): see `tiktok-account/otherdevice.md` Sec 4.
 
 ### 2.6 First run per folder
 

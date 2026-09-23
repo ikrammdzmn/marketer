@@ -580,7 +580,8 @@ class H(BaseHTTPRequestHandler):
                 rows.append({"name": name, "username": a.get("username", ""),
                               "linked": bool(t), "relink": relink,
                               "linked_as": (t or {}).get("linked_as", ""),
-                              "mismatch": bool((t or {}).get("mismatch", False))})
+                              "mismatch": bool((t or {}).get("mismatch", False)),
+                              "active": bool(a.get("active", False))})
             self._json({"accounts": rows})
             return
         if parsed.path == "/authorize":

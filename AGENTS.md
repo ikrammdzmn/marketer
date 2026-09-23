@@ -6,7 +6,7 @@
 
 ## Folder index
 - `tiktok-creative-analysis/` — creative analytics (authoritative `data/accounts.json`).
-- `tiktok-account/` — Display API dashboard (8080, `tester.py` FROZEN, `NEON_NOTE.md` for `acct` schema) + `sync/` daily Sheets bridge (11 sheets, own docs; untracked until asked).
+- `tiktok-account/` - Display API dashboard (8080, `tester.py` FROZEN, `NEON_NOTE.md` for `acct` schema) + `sync/` daily Sheets bridge (12 sheets, Creative-age col, own docs; committed 23 Sep `2663c7a`).
 - `gmvmax-auto/` — GMV Max auto-adjust (P0 live prod 21 Sep: prod OAuth, unlagged 5-campaign view, net ROI locked; read `DEV_NOTES.md` first for vibe + portal lessons).
 - `tiktok-strategy/` — guardrails owner (ROI ≥7.0, CPA ≤RM21.18). Automation obeys, never re-derives.
 - `tiktok-event/` — RACI board. `gmvmax/` — knowledge only, no code.

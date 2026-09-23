@@ -441,3 +441,55 @@ Unique discoveries this window:
    messages say what changed). _Lesson: next window, offer `git commit
    --amend -m` wording IF owner asks to touch history — never amend
    unasked; just note it here and move on._
+
+## Window 2026-09-23 — active badge + review track + portable docs (night)
+
+Vibe: closeout stretch of a marathon day (sync v19 already pushed
+`2663c7a`). Owner steering in single sentences with screenshots:
+which token file is which, picker should show active status, portal
+product/scope dialogs, Pages-vs-Vercel, publish-online-vs-Tailscale,
+USB token copy, portable MCP. Two Plan-mode excursions (review plan,
+column-placement debate settled by ELI5) with clean build-mode
+follow-throughs. Short "ok go" rhythm held throughout.
+
+What happened, in order:
+1. **Token-file ID**: `Dr_Samhan.json` = slot Dr Samhan
+   (@affiliatedrsamhan1), `Dr__Samhan.json` = slot Dr. Samhan
+   (@dr.samhan) - `safe()` maps `.` to `_`. Verified via `linked_as`
+   (usernames only, token values never printed): both clean, old
+   cross-link incident resolved. All 10 relinked (sandbox).
+2. **Picker active status** (built): `/api/accounts` now carries
+   `active` from accounts.json; grey `inactive` tag + dimmed rows,
+   still selectable. Verified py_compile + `node --check` + live smoke
+   on scratch port 8099 (21 accounts / 15 active, server stopped after).
+   `feature.md` + `CHANGELOG.md` + `plan.md` ticked.
+3. **Review track** (words only): stay-on-Sandbox evaluated (10/10 slots,
+   dummy clean locally, portal count still owner's check); Production
+   parity list (4 scopes incl basic/profile, Desktop redirect re-add),
+   demo-video plan, per-scope justifications, cutover = key swap +
+   10 relinks. Decision open. Portal guidance given: tick NOTHING except
+   Login Kit (done) + the Display card (scroll - it was off-screen);
+   no Posting/Share/Webhooks/Portability/Local Service.
+4. **Hosting questions** (words only): Pages wins over Vercel (static
+   surface only, re-verify cost); Pages cannot hold Neon creds (browser
+   Postgres = leaked secrets); publish-online vs Tailscale - recommended
+   Tailscale + encrypted backup over public hosting (no auth gates, stdlib
+   server, portal/review churn); USB token-copy file list + conditions.
+5. **Portable docs** (built on go): `otherdevice.md` section 4 token-copy
+   path, `exit-entry.md` portable-MCP checklist + token pointer.
+6. **accounts.json reordered by owner** (data identical, 21/15) - user's
+   order, keep; it renumbers the sync scope menu.
+
+Unique discoveries this window:
+- `linked_as` on the token is the ground truth for slot-vs-login
+  questions - filename is only the slot. Read usernames, never values.
+- Portal Add-dialogs grey buttons + missing entries resolve to: scroll,
+  search, then trust the attached-list tab, never the dialog.
+- `accounts.json` grew 20 -> 21 entries; dashboard shows all 21, sync
+  covers active-10 semantics per its own picker (`pick_accounts`).
+
+30. **No new code bugs this window.** Process note: plan-then-build
+    excursions worked because each feasibility answer ended with an
+    explicit question and each build was verified on live surfaces.
+    _Lesson: keep that rhythm; never let plan-mode advice drift into
+    uncommitted code without a `go`._
