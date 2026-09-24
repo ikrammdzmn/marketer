@@ -3,6 +3,21 @@
 A simple webpage that reads your TikTok Creative Excel file and shows which videos and
 accounts make money. No installation, no uploads — everything stays on your own computer.
 
+## What it does for you
+
+- **Tells you which videos to boost and which to kill** — every video gets one
+  plain-words verdict (Boost, Review, Template, Learning, Hook weak, Drops,
+  Small basket), with the why one hover away.
+- **Compares weeks and days side by side** — load up to **31 files** (a full
+  month of dailies): each video gets one row with a column per day, NEW / LOST /
+  KEPT badges, and a chart of the top 10.
+- **Tracks TikTok's exploration stages day by day** — see how many videos are
+  Exploring, Performing, Outstanding (and 7 more stages on demand) across your
+  files, with moves vs the previous file.
+- **Speaks your names, not TikTok's codes** — rename cryptic campaign and product
+  IDs once, and the whole page uses your names everywhere.
+- **Exports anything you filtered** — one click to Excel, exactly what you see.
+
 ## How to open it
 
 1. Double-click **`start-server.bat`** in the `tiktok-creative-analysis` folder
@@ -11,10 +26,10 @@ accounts make money. No installation, no uploads — everything stays on your ow
 2. Open your browser and go to: `http://localhost:8000`
 3. Click **Load bundled file** (picks the newest Excel in `source-file/` by
    dataset date) or drag your Excel file into the dotted box. To compare weeks
-   or days, drag **several** files at once (up to 7), or click **Choose bundled
+   or days, drag **several** files at once (up to 31 — a full month of dailies), or click **Choose bundled
    files…**: files are grouped under collapsible folder headers (your campaign
    folders plus Top level) — ticking a folder selects everything inside it, and
-   the button counts as you go (`Load selected (3 · max 7)`). The newest file is
+   the button counts as you go (`Load selected (3 · max 31)`). The newest file is
    pre-ticked with its folder open; tick more, then **Load selected**. Empty
    campaign folders show greyed until you drop Excel files into them.
     Each file shows below with its date range and type badge — click **remove** to drop one, **Clear** to start over.
@@ -106,7 +121,7 @@ loaded files). Single-campaign exports carry no product column, so the page
 reads the `Product {ID}` from the file name instead. Unnamed products show
 `Unnamed product`.
 
-## Trend per creative (2–7 files)
+## Trend per creative (2–31 files)
 
 Below compare sits the **Trend** table: one row per video, one column per loaded
 file from oldest to newest, so you can watch a creative day by day. Switch the
@@ -134,8 +149,16 @@ Performing. The line chart underneath draws all 5 day by day across your loaded
 files, oldest → newest, never summed. Available = rows minus the 5 Ineligible
 reasons (Not active / Unavailable / Rejected / Excluded / Authorization needed).
 Each card also shows its move vs the previous loaded file (green +, red −), and
-hovering any day on the chart previews all 5 values with their moves.
+hovering any day on the chart previews every value currently switched on.
 The counts follow your Account / Campaign / Search filters.
+
+Seven more stages are available but stay out of the way: **Underperforming,
+Calculating, Rejected, Authorization needed, Unavailable, Excluded, Not active**
+appear in the chart legend with a line struck through them. Click any of those to
+draw its line — a card with the same number appears below the chart; click again to
+hide both. Nothing extra shows by default, and reloading the page puts you back to
+the original five. Since these seven are bad news when they grow, their moves are
+coloured backwards: red + and green −.
 
 **Naming your campaigns & products:** TikTok's names are cryptic (`[him cocomax]
 20260602153651`, bare ID numbers). Open `data/catalog.json` in the folder and type

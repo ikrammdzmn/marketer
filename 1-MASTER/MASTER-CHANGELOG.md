@@ -4,6 +4,21 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 24 Sep 2026
+
+- `tiktok-creative-analysis` v48: status-by-day counts all 10 TikTok stages — the
+  7 beyond the headline 5 (Underperforming, Calculating, Rejected, Authorization
+  needed, Unavailable, Excluded, Not active) sit struck-through in the chart
+  legend; click reveals the line + its own KPI card (second card row, hidden
+  until used), reload resets, their deltas invert (rise = red)
+  → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-creative-analysis` v49: file cap 7 → 31 (full month of dailies) via one
+  `MAX_FILES` constant driving all five gates + live button labels
+  → `tiktok-creative-analysis/CHANGELOG.md`
+- session ritual: folder `DEV_NOTES.md` handoff (mood + vibe + honest bug log +
+  lessons 37–39), `feature.md` user showcase block, folder `AGENTS.md`
+  single-constant-caps rule
+
 ## 23 Sep 2026
 
 - `tiktok-account/sync` v19 (committed `2663c7a`): pull progress lines,

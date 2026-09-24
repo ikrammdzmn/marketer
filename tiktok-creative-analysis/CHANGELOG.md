@@ -4,6 +4,26 @@ Newest first, in plain words. `plan.md` is the live checklist; this file is the
 release record. The `app.js?v=N` tag is a cache-buster counter (it keeps rising:
 v15, v16, …) — the headings below are releases in the order they shipped.
 
+## v49 — 24 Sep 2026 — Up to 31 files (a full month of dailies)
+
+The file cap is now 31 instead of 7 — one `MAX_FILES` constant in `app.js` drives
+every gate (upload, drag-drop, bundled picker, and the drop-oldest overflow rule),
+so all five stay in sync and the button counts live (`Load selected (3 · max 31)`).
+Compare still reads baseline → latest; the Trend table just grows more day columns
+(sideways scroll). Heads-up: 31 big bulk files is ~1M rows in memory — fine on
+desktop, but drop files you no longer need with **remove** / **Clear**.
+
+## v48 — 24 Sep 2026 — Status chart: 7 more stages, off until clicked
+
+The **Exploration status by day** chart now counts all 10 TikTok stages. The five
+you already see are unchanged; the other seven — Underperforming, Calculating,
+Rejected, Authorization needed, Unavailable, Excluded, Not active — sit in the chart
+legend with a line struck through them. Click one to switch that line on, and its own
+KPI card (count + vs-prev move) appears underneath; click again to hide both. Nothing
+extra shows by default and a reload starts you back at the original five. Because a
+rise in those seven is bad news, their card deltas are coloured the other way round:
+red +, green −.
+
 ## v47 — 22 Sep 2026 — Dot-only hover on Trend charts (declutter)
 
 The Trend per creative chart (and solo popup) now pop up only when hovering a dot —

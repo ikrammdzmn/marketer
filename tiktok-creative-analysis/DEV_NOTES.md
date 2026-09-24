@@ -83,10 +83,46 @@ verdict + worked numbers (they trust arithmetic: 3,785 = 3,083 + 702 closed the
 `Available` debate instantly), keep asking placement questions via the question
 tool (they answer fast and explicitly invited it).
 
+## Current mood — 24 Sep afternoon (v48→v49, this session)
+
+Two builds, same terse loop, zero screenshots this time — pure feature asks in
+plain words. (1) "The system supports graph for Exploration status by day — can
+it also include rejected, unavailable, underperforming etc., but hidden by
+default?" → four placement questions via the question tool (toggle style / cards
+/ which stages / persistence — user picked legend-click + hidden cards + all 7 +
+no persistence), then v48: all 10 stages counted, 7 struck-through in the legend,
+click reveals line + card, reload resets, deltas inverted (rise = red). (2) "The
+system can only support 7 files — can we increase more?" → one question (user
+picked 31 = a full month of dailies), then v49: single `MAX_FILES = 31` constant
+drives all five gates. Both verified without a connected browser (no desktop
+browser on this session): `node --check` + fresh-port HTTP 200s + a Node harness
+that extracts the REAL `statusByDay`/`SECDAY_SERIES` from app.js and runs
+synthetic rows through them. User mood: approving ("ok", "ok good") — the loop
+is now ask → options → go → verify → done, no friction. Energy: mid-afternoon,
+steady landing streak, still no experiments wanted.
+Sync cue for next self: keep offering the question tool on any placement choice
+(they answer in seconds and like being asked); verify with the extract-real-code
+harness whenever the browser isn't connected; always `Ctrl+Shift+R` reminder with
+the new `app.js?v=N`; never commit/push unasked (pile below).
+
+Bugs this session — honest log: **none shipped.** Every failure was mine, caught
+before landing: (a) v48 harness wrote 8 wrong expectations (forgot Account /
+Product-Card facets default off, so those rows *should* count; miscounted
+`setSecDelta` occurrences) — fixed the TEST, not the app, and it went green;
+(b) three same-file parallel `edit` calls raced (2 × "could not find oldString")
+→ lesson 37; (c) one `plan.md` append REPLACED the v48 line instead of adding
+v49 after it — caught on re-read, restored immediately; (d) one `feature.md`
+anchor missed leading spaces — retried with exact indent. Lessons: re-read the
+region after EVERY edit (rule already says it — this session proved why);
+test-expectation failures are guilty-until-proven-innocent, never "fix" shipped
+code to satisfy your own harness; append-edits must anchor on the preceding line
+and keep it in both strings.
+
 ## ⏰ NEXT SESSION — remind the user
 
-1. **Hard refresh for v47** (Ctrl+Shift+R) — `app.js?v=47` current (dot-only Trend
-   hover; status chart keeps all-at-once hover by design).
+1. **Hard refresh for v49** (Ctrl+Shift+R) — `app.js?v=49` current (v48 extra
+   stages behind legend click; v49 31-file cap; status chart all-at-once hover,
+   Trend dot-only — both by design).
 2. **Commit decision still pending — ONLY when asked.** Pile now: creative-analysis
    `app.js`, `index.html`, `style.css`, `AGENTS.md`, `feature.md`, `plan.md`,
    `CHANGELOG.md`, `DEV_NOTES.md` (this file), `gmvmax/gmvmax.md`,
@@ -105,8 +141,10 @@ tool (they answer fast and explicitly invited it).
 
 ## Project snapshot
 
-- 22 Sep delta: `app.js?v=47` current (v43 pills+guide, v44 status-by-day KPIs+chart,
-  v45 card deltas+rich hover, v46 trend hover, v47 dot-only trend hover).
+- 24 Sep delta: `app.js?v=49` current (v43 pills+guide, v44 status-by-day KPIs+chart,
+  v45 card deltas+rich hover, v46 trend hover, v47 dot-only trend hover,
+  v48 status-by-day: all 10 stages counted, 7 off-by-default behind legend click,
+  v49 file cap 7 → 31 via one `MAX_FILES` constant).
   `source-file/` churn is the USER's doing (deleted old BULK DATA files, added
   09-20/21/22 dailies + bulk 09-14~09-21) — read-only for us, never commit xlsx
   unasked. Canonical taxonomy: `../gmvmax/product/exploration-status.md` (ours,
@@ -154,7 +192,7 @@ tool (they answer fast and explicitly invited it).
   `keyOf(postId, account, creative)`. Verified: shared video gives identical key in
   both dialects. Bulk catalogue rows do NOT match single-file Product Cards (numeric
   vs TXT keys) — Exclude Product Card for clean mixed compares.
-- Multi-file (max 7): `state.files[]` {label, period, rows, dialect}; main view =
+- Multi-file (max 31, `MAX_FILES`): `state.files[]` {label, period, rows, dialect}; main view =
   latest file (compare mode) or summed rows (combine mode); mode AUTO-PICKS on
   file-set change (`autoPickMode`: dated + disjoint ⇒ combine, else diff; manual
   radio wins until set changes; switch announced on status line via `state.modeMsg`).
@@ -280,7 +318,9 @@ Prior windows 1–10 live below (kept for continuity). This window:
     it before the ship message — corrected there. Trust the harness over mental math._
 34. **Grep patterns must cover the whole hook family** — `secDayAvailD` matched only
     the Available delta div, hiding the other four. _Lesson: verify multi-element
-    hooks with a family pattern (`secDay\w+D`) and count matches (10 = 5 writes + 5 divs)._
+    hooks with a family pattern (`secDay\w+D`) and count matches (10 = 5 writes + 5 divs;
+    v48: 17 literal = 5 literal writes + 12 divs, plus the dynamic `'secDay'+s.id+'D'`
+    write in the SECDAY loop = 24 hooks)._
 35. **Chart.js `mode:'point'` + `pointHitRadius` is the declutter answer** — v46
     `index` mode listed all 10 lines everywhere (user: "cluttered"); `point` +
     `intersect:true` fires only on dots, overlapping dots still report both lines
@@ -291,6 +331,20 @@ Prior windows 1–10 live below (kept for continuity). This window:
     tooltip line is uncolorable text; green/red lives in DOM (KPI delta divs) while
     canvas gets plain-text deltas. _Lesson: state this tradeoff in the plan UP FRONT
     (done via question tool) so the user chooses placement with eyes open._
+
+37. **Never fire multiple `edit` calls at the SAME file in one parallel block** — v48
+    shipped 5 edits; the 3 that landed first won and the 2 racing writes failed with
+    "could not find oldString" (file mid-write). _Lesson: parallelise across FILES
+    only; queue same-file edits one at a time._
+38. **Tailwind display beats the UA `[hidden]` rule** — `class="grid"` (author CSS)
+    outranks the browser's `[hidden]{display:none}`, so toggling the `hidden`
+    ATTRIBUTE on a `.grid` element shows nothing. _Lesson: show/hide layout wrappers
+    with inline `style.display` (`syncSecCards`), which always wins._
+39. **Read output merges its separator space with content indent** — `124:    hover`
+    is line-number + ONE separator space + THREE content spaces, not four. v49-wrap
+    burned two failed edits on a 4-space anchor. _Lesson: for indented anchors,
+    verify with `python3 -c repr(line)` when an edit misses twice; never "fix" by
+    guessing wider._
 
 ## Standing patterns to preserve
 

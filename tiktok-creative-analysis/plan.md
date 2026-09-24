@@ -38,7 +38,9 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Day deltas + rich hover (v45): each status card shows green/red vs-prev-file move; chart hover previews all 5 values with moves (index mode)
   - [x] Trend hover upgrade (v46): main top-10 chart hovers all lines at once with vs-prev moves (absent videos filtered out); solo popup hover adds value + move
   - [x] Dot-only trend hover (v47): popup fires only on dots (overlaps show both), fat invisible hit zone, deltas kept; status chart stays all-at-once
-  - [x] Multi-file compare (up to 7 files): multi-pick upload / drag-drop / Load all bundled, baseline→latest Δ table (NEW/LOST/KEPT, ΔRevenue/Orders/Cost/ROI/Impr/CPM + status Δ, noise-greyed), Combine-days sum mode, overlap warning, compare CSV export
+  - [x] 7 hidden status stages (v48): status-by-day counts all 10 stages; Underperforming/Calculating/Rejected/Authorization needed/Unavailable/Excluded/Not active start struck-through in the legend — click reveals the line AND its own KPI card (second card row, hidden until used, `syncSecCards`); in-memory only (reload = the original 5), their deltas invert (rise = red)
+  - [x] 31-file cap (v49): single `MAX_FILES = 31` constant drives all five gates (addFile + loadManyBuffers overflow drops, upload slice, drop slice, bundled slice); button labels read it live; a full month of dailies now loads
+  - [x] Multi-file compare (up to 31 files): multi-pick upload / drag-drop / Load all bundled, baseline→latest Δ table (NEW/LOST/KEPT, ΔRevenue/Orders/Cost/ROI/Impr/CPM + status Δ, noise-greyed), Combine-days sum mode, overlap warning, compare CSV export
   - [x] Bulk product-campaigns dialect: header aliases (Video title→Creative, Video ID→Post ID), Campaign/CampaignID/ProductID carried, ROI derived when column absent, `~`-with-hours period parse, Campaign filter + column (Top/modal/compare/CSV/preview), N/A-ID text-fallback join, bundled checkbox picker (period + type badge, newest pre-ticked) with mixed-type/overlap/size warnings
   - [x] `data/catalog.json`: 4 campaign IDs + 18 product IDs from the 09-08 bulk file (labels blank for user to name); friendly labels in filter/tables/CSV/preview, Product column everywhere, unmapped-ID hint under the Campaign filter
   - [x] Allowlist coverage notes (webpage only): 0-row accounts flagged with did-you-mean hints, collapsible (default collapsed)
@@ -68,7 +70,7 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Hint tooltip (v29): hovering the amber catalog hint lists the unnamed campaign/product IDs
   - [x] Himcoffee folder retag (v30): folder `[…298210]` (product ID) renamed to campaign `[HIMCOFFEE MAIN 1]` ID verified from bulk export; fallback path updated
   - [x] Filename product fill (v31): blank Product IDs inherit `Product {ID}` from the filename (single-campaign files); Product column resolves via catalog
-  - [x] Trend per creative (v32): day-by-day columns across 2–7 files (metric switcher, total/latest/Δ sort, long-format CSV export)
+  - [x] Trend per creative (v32): day-by-day columns across 2–31 files (metric switcher, total/latest/Δ sort, long-format CSV export)
   - [x] Trend line chart (v34): top-10 daily lines above the trend table (current metric/sort/filters, gaps for absent, legend toggle)
   - [x] Per-row sparklines (v35): Shape column with inline SVG per video (per-row scale, gaps for absent, value tooltips)
   - [x] Trend solo popup (v36): click Shape cell for enlarged single-creative chart + Total/Latest/Δ/Days cards (✕/backdrop/Esc close)

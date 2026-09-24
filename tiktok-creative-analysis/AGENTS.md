@@ -38,7 +38,7 @@ no framework**. Keep it that way.
   would otherwise flip JSON/JS to CRLF against the saver's LF).
 - `source-file/*.xlsx` + one level of campaign subfolders (e.g.
   `himcoffee - [123]/file.xlsx`) — input data, read-only. Loose files and
-  subfolder files list together in the picker (max 7); folder `name - [digits]`
+  subfolder files list together in the picker (max 31); folder `name - [digits]`
   tags its files with that ID label-only (blank Campaign IDs inherit it for
   display/compare/CSV, rows never dropped; single-`[id]` loads pre-set the
   Campaign facet).
@@ -131,7 +131,7 @@ files). Serve on a fresh port per test; always stop background servers.
    ⇒ combine, else diff; manual radio wins until the set changes; flips announced
    on the status line via `state.modeMsg`; dateless files always diff).
    Bundled picker (`bundlePick`) lists candidates with
-   period + cached dialect badge, newest pre-ticked, max 7. Filename-only picker chips
+   period + cached dialect badge, newest pre-ticked, max 31 (`MAX_FILES`). Filename-only picker chips
    (`pickerMeta`): single date vs `from → to · N days`, product chip from `Product {ID}`
    (`prodOfName`), instant `bulk` badge from `product campaigns` in the name (`bulkOfName`). Product ID `'N/A'`
    displays as `Product Card - {campaign}` (friendly campaign label;
@@ -144,7 +144,9 @@ files). Serve on a fresh port per test; always stop background servers.
    shipped a bug report (v38).
    Bump `app.js?v=N` in index.html whenever app.js changes (no build step to hash it).
    Add a `CHANGELOG.md` line per release in the same session (counter keeps rising,
-   never renumber).
+   never renumber). Shared numeric caps live in one named constant (`MAX_FILES` =
+   31); every gate (upload / drop / bundled slices, overflow drops) AND every label
+   reads it — never hardcode the number twice.
 5. **Replies**: short. Feasibility questions ("just answer, do not edit") get words
    only; code only on explicit "proceed/go/build".
 6. **Local saver**: `server.py` binds 127.0.0.1 only, validates entries, keeps ≤10

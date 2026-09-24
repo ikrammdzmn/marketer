@@ -4,10 +4,13 @@
 
   var BUNDLED_FILE = 'source-file/1. himcoffee - [1858977225474178]/Creative data 2026-09-19 - 2026-09-19 - Product 1729556489100298210.xlsx';
   var MAX_TABLE_ROWS = 200;
+  var MAX_FILES = 31;
 
   var state = { rows: [], allowlist: [], allowMeta: {}, bench: null, chart: null, trendChart: null, trendSoloChart: null, secDayChart: null,
     targets: { topN: 20, minImpr: null, maxCPM: null },
-    files: [], cmpRows: [], cmpMode: 'compare', cmpInfo: '', dialectCache: {} };
+    files: [], cmpRows: [], cmpMode: 'compare', cmpInfo: '', dialectCache: {},
+    /* extra (ext) status lines revealed via legend click — in-memory only, resets on reload */
+    secExt: {} };
 
   function $(id) { return document.getElementById(id); }
 
@@ -769,12 +772,12 @@
     if (fileProd) {
       parsed.rows.forEach(function (r) { if (!r.productId) r.productId = fileProd; });
     }
-    // cap 7 files — drop oldest (by rank) when overflowing
+    // cap MAX_FILES files — drop oldest (by rank) when overflowing
     state.files.push({ label: label, rel: rel, folder: folder, folderId: folderId,
       fileDate: fileDate, period: periodOfName(label), rows: parsed.rows, dialect: parsed.dialect || 'single' });
     state.dialectCache[rel] = parsed.dialect || 'single';
     var fs = sortedFiles();
-    while (fs.length > 7) { var drop = fs.shift(); state.files.splice(state.files.indexOf(drop), 1); fs = sortedFiles(); }
+    while (fs.length > MAX_FILES) { var drop = fs.shift(); state.files.splice(state.files.indexOf(drop), 1); fs = sortedFiles(); }
     autoPickMode();
     refreshAfterFiles();
   }
@@ -1128,7 +1131,8 @@
     /* NOTE: Status / 2nd-status / Type / Insight facets + Hide Ineligible are
        deliberately bypassed here — else the stages would filter themselves away. */
     return fs.map(function (f) {
-      var c = { total: 0, avail: 0, explored: 0, outstanding: 0, exploring: 0, performing: 0 };
+      var c = { total: 0, avail: 0, explored: 0, outstanding: 0, exploring: 0, performing: 0,
+        calculating: 0, underperforming: 0, unavailable: 0, auth: 0, rejected: 0, excluded: 0, notactive: 0 };
       f.rows.forEach(function (r) {
         if (acc && r.account !== acc) return;
         if (cp && campKey(r) !== cp) return;
@@ -1143,6 +1147,14 @@
         if (st === 'exploring' || se === 'exploring') c.exploring++;
         if (se === 'outstanding') c.outstanding++;
         if (se === 'performing') c.performing++;
+        /* the 7 stages not shown by default (legend click reveals them) */
+        if (se === 'calculating') c.calculating++;
+        if (se === 'underperforming') c.underperforming++;
+        if (se === 'unavailable') c.unavailable++;
+        if (se === 'authorization needed') c.auth++;
+        if (se === 'rejected') c.rejected++;
+        if (se === 'excluded') c.excluded++;
+        if (se === 'not active') c.notactive++;
       });
       return c;
     });
@@ -1152,22 +1164,46 @@
     { key: 'explored', label: 'Explored', color: '#2563eb' },
     { key: 'outstanding', label: 'Outstanding', color: '#d97706' },
     { key: 'exploring', label: 'Exploring', color: '#0891b2' },
-    { key: 'performing', label: 'Performing', color: '#7c3aed' }
+    { key: 'performing', label: 'Performing', color: '#7c3aed' },
+    /* ext = off by default; revealed by clicking its legend entry (line + card follow) */
+    { key: 'underperforming', label: 'Underperforming', color: '#4b5563', ext: true, id: 'Underperforming' },
+    { key: 'calculating', label: 'Calculating', color: '#9a3412', ext: true, id: 'Calculating' },
+    { key: 'rejected', label: 'Rejected', color: '#e11d48', ext: true, id: 'Rejected' },
+    { key: 'auth', label: 'Authorization needed', color: '#854d0e', ext: true, id: 'Auth' },
+    { key: 'unavailable', label: 'Unavailable', color: '#6b7280', ext: true, id: 'Unavailable' },
+    { key: 'excluded', label: 'Excluded', color: '#78716c', ext: true, id: 'Excluded' },
+    { key: 'notactive', label: 'Not active', color: '#374151', ext: true, id: 'NotActive' }
   ];
+  /* Extra stage cards mirror their line: card shows only while its legend entry is
+     turned on; the whole second row disappears when nothing extra is on (or no chart). */
+  function syncSecCards(chart) {
+    var anyOn = false, row = $('secDayMore');
+    SECDAY_SERIES.forEach(function (s, i) {
+      if (!s.ext) return;
+      var on = !!(chart && chart.isDatasetVisible(i));
+      if (on) anyOn = true;
+      var card = $('secDayCard' + s.id);
+      if (card) card.style.display = on ? '' : 'none';
+    });
+    if (row) row.style.display = anyOn ? '' : 'none';
+  }
   /* Day-over-day delta line under a status KPI: green +, red −, grey on flat/first. */
-  function setSecDelta(id, d, isFirst) {
+  function setSecDelta(id, d, isFirst, bad) {
     var el = $(id);
     if (!el) return;
     if (isFirst) { el.textContent = '– first file'; el.className = 'text-xs text-gray-400'; return; }
     el.textContent = (d > 0 ? '+' + fmt(d) : d < 0 ? '−' + fmt(-d) : '±0') + ' vs prev';
-    el.className = 'text-xs ' + (d > 0 ? 'text-green-600 dark:text-green-400' :
-      d < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400');
+    /* bad = a rise is negative news (the 7 extra stages) → colours flip: up red, down green */
+    var up = bad ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
+    var dn = bad ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+    el.className = 'text-xs ' + (d > 0 ? up : d < 0 ? dn : 'text-gray-400');
   }
   function renderSecDay() {
     var fs = sortedFiles();
     var sel = $('secDay');
     if (!sel || fs.length < 2) {
       if (state.secDayChart) { state.secDayChart.destroy(); state.secDayChart = null; }
+      syncSecCards(null);
       return;
     }
     var counts = statusByDay(fs);
@@ -1190,8 +1226,16 @@
     setSecDelta('secDayOutstandingD', p ? c.outstanding - p.outstanding : 0, !p);
     setSecDelta('secDayExploringD', p ? c.exploring - p.exploring : 0, !p);
     setSecDelta('secDayPerformingD', p ? c.performing - p.performing : 0, !p);
+    /* the 7 extra stage cards — values always fresh, visibility follows the legend */
+    SECDAY_SERIES.forEach(function (s) {
+      if (!s.ext) return;
+      var v = $('secDay' + s.id);
+      if (!v) return;
+      v.textContent = fmt(c[s.key]);
+      setSecDelta('secDay' + s.id + 'D', p ? c[s.key] - p[s.key] : 0, !p, true);
+    });
     $('secDayCount').textContent = '— ' + trendHead(fs[idx].period) + ' (' + fmt(c.total) + ' rows)';
-    if (typeof Chart === 'undefined' || !$('secDayChart')) return;
+    if (typeof Chart === 'undefined' || !$('secDayChart')) { syncSecCards(null); return; }
     if (state.secDayChart) { state.secDayChart.destroy(); state.secDayChart = null; }
     var ctx = $('secDayChart').getContext('2d');
     state.secDayChart = new Chart(ctx, {
@@ -1201,12 +1245,22 @@
         datasets: SECDAY_SERIES.map(function (s) {
           return { label: s.label, data: counts.map(function (x) { return x[s.key]; }),
             borderColor: s.color, backgroundColor: s.color,
+            /* ext lines start struck-through in the legend until clicked */
+            hidden: !!(s.ext && !state.secExt[s.key]),
             tension: 0.2, spanGaps: false, borderWidth: 2, pointRadius: 3 };
         })
       },
       options: { responsive: true, maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
-        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } },
+          onClick: function (e, item, legend) {
+            var ds = item.datasetIndex, ch = legend.chart, vis = !ch.isDatasetVisible(ds);
+            ch.setDatasetVisibility(ds, vis);
+            var s = SECDAY_SERIES[ds];
+            if (s && s.ext) state.secExt[s.key] = vis;
+            ch.update();
+            syncSecCards(ch);
+          } },
           tooltip: { mode: 'index', intersect: false, callbacks: {
             title: function (items) { return items.length ? items[0].label : ''; },
             label: function (cx) {
@@ -1220,6 +1274,7 @@
         scales: { x: { ticks: { font: { size: 10 } } },
           y: { beginAtZero: true, ticks: { font: { size: 10 }, precision: 0, callback: function (v) { return fmt(v); } } } } }
     });
+    syncSecCards(state.secDayChart);
   }
   var secDaySel = $('secDay');
   if (secDaySel) secDaySel.addEventListener('change', renderSecDay);
@@ -1401,7 +1456,7 @@
       } catch (e) { setStatus('Parse failed (' + it.label + '): ' + e.message); }
     });
     var fs = sortedFiles();
-    while (fs.length > 7) { var drop = fs.shift(); state.files.splice(state.files.indexOf(drop), 1); fs = sortedFiles(); }
+    while (fs.length > MAX_FILES) { var drop = fs.shift(); state.files.splice(state.files.indexOf(drop), 1); fs = sortedFiles(); }
     autoPickMode();
     refreshAfterFiles();
   }
@@ -1409,7 +1464,7 @@
   $('fileInput').addEventListener('change', function (e) {
     var list = e.target.files;
     if (!list || !list.length) return;
-    var arr = Array.prototype.slice.call(list, 0, 7);
+    var arr = Array.prototype.slice.call(list, 0, MAX_FILES);
     if (arr.length === 1 && state.files.length === 0) {
       var f0 = arr[0], r0 = new FileReader();
       r0.onload = function () { loadArrayBuffer(r0.result, f0.name, new Date(f0.lastModified), true); };
@@ -1424,7 +1479,7 @@
       rd.onload = function () {
         p.buf = rd.result; done++;
         if (done === pending.length) {
-          // append to existing slots (cap 7 inside addFile/loadManyBuffers path)
+          // append to existing slots (cap MAX_FILES inside addFile/loadManyBuffers path)
           pending.forEach(function (q) {
             try {
               var wb = XLSX.read(q.buf, { type: 'array' });
@@ -1615,7 +1670,7 @@
           (fid ? ' <span class="suggest-tag">[' + esc(fid) + ']</span>' : '') + ' (empty — no xlsx yet)</span></div>';
       });
       box.innerHTML = html +
-      '<div class="flex flex-wrap items-center gap-2 mt-2"><button id="bundleLoad" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Load selected (max 7)</button>' +
+      '<div class="flex flex-wrap items-center gap-2 mt-2"><button id="bundleLoad" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Load selected (max 31)</button>' +
       '<span class="text-xs text-gray-500">Tick a folder to select all its files. Newest is pre-ticked (its folder starts open). Span, product and bulk chips come from file names; the type badge confirms after first read.</span></div>';
       var syncBundleUI = function () {
         Array.prototype.forEach.call(box.querySelectorAll('[data-fpick]'), function (head) {
@@ -1628,7 +1683,7 @@
         });
         var total = box.querySelectorAll('[data-bpick]:checked').length;
         var btn = $('bundleLoad');
-        if (btn) btn.textContent = 'Load selected (' + total + ' · max 7)';
+        if (btn) btn.textContent = 'Load selected (' + total + ' · max ' + MAX_FILES + ')';
       };
       // Wired once: box persists across opens (only innerHTML is replaced).
       if (!box._bpWired) {
@@ -1660,14 +1715,14 @@
           });
           var total = box.querySelectorAll('[data-bpick]:checked').length;
           var btn = $('bundleLoad');
-          if (btn) btn.textContent = 'Load selected (' + total + ' · max 7)';
+          if (btn) btn.textContent = 'Load selected (' + total + ' · max ' + MAX_FILES + ')';
         });
       }
       syncBundleUI();
       $('bundleLoad').addEventListener('click', function () {
         var sel = Array.prototype.map.call(box.querySelectorAll('[data-bpick]:checked'), function (c) { return c.value; });
         if (!sel.length) { setStatus('Tick at least one bundled file.'); return; }
-        sel = sel.slice(-7);
+        sel = sel.slice(-MAX_FILES);
         var byRel = {};
         sorted.forEach(function (en) { byRel[en.rel] = en; });
         setStatus('Fetching ' + sel.length + ' bundled file(s)…');
@@ -1709,7 +1764,7 @@
   dz.addEventListener('drop', function (e) {
     var list = e.dataTransfer.files;
     if (!list || !list.length) return;
-    var arr = Array.prototype.slice.call(list, 0, 7);
+    var arr = Array.prototype.slice.call(list, 0, MAX_FILES);
     arr.forEach(function (f) {
       var reader = new FileReader();
       reader.onload = function () {

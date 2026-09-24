@@ -228,7 +228,7 @@
     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Showing first 200 rows of the filtered set. Use Export for the full set.</p>
   </section>
 
-  <!-- Compare files (2-7 files, per-video delta) -->
+  <!-- Compare files (2-31 files, per-video delta) -->
   <section id="cmpSection" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4" hidden>
     <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
       <h2 class="font-semibold">Compare files <span id="cmpCount" class="text-sm font-normal text-gray-500"></span></h2>
@@ -269,7 +269,7 @@
     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Baseline = oldest file, Latest = newest file (by period end date). Δ = Latest − Baseline. Cost &lt; RM1 deltas are noise — shown greyed. Showing first 200.</p>
   </section>
 
-  <!-- Trend per creative (2-7 files, day-by-day columns) -->
+  <!-- Trend per creative (2-31 files, day-by-day columns) -->
   <section id="trendSection" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4" hidden>
     <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
       <h2 class="font-semibold">Trend per creative <span id="trendCount" class="text-sm font-normal text-gray-500"></span></h2>
@@ -317,8 +317,17 @@
         <div class="kpi"><div class="kpi-label">Exploring</div><div id="secDayExploring" class="kpi-value">–</div><div id="secDayExploringD" class="text-xs text-gray-400">–</div></div>
         <div class="kpi"><div class="kpi-label">Performing</div><div id="secDayPerforming" class="kpi-value">–</div><div id="secDayPerformingD" class="text-xs text-gray-400">–</div></div>
       </div>
+      <div id="secDayMore" class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-2" style="display:none">
+        <div id="secDayCardUnderperforming" class="kpi" style="display:none"><div class="kpi-label">Underperforming</div><div id="secDayUnderperforming" class="kpi-value">–</div><div id="secDayUnderperformingD" class="text-xs text-gray-400">–</div></div>
+        <div id="secDayCardCalculating" class="kpi" style="display:none"><div class="kpi-label">Calculating</div><div id="secDayCalculating" class="kpi-value">–</div><div id="secDayCalculatingD" class="text-xs text-gray-400">–</div></div>
+        <div id="secDayCardRejected" class="kpi" style="display:none"><div class="kpi-label">Rejected</div><div id="secDayRejected" class="kpi-value">–</div><div id="secDayRejectedD" class="text-xs text-gray-400">–</div></div>
+        <div id="secDayCardAuth" class="kpi" style="display:none"><div class="kpi-label">Authorization needed</div><div id="secDayAuth" class="kpi-value">–</div><div id="secDayAuthD" class="text-xs text-gray-400">–</div></div>
+        <div id="secDayCardUnavailable" class="kpi" style="display:none"><div class="kpi-label">Unavailable</div><div id="secDayUnavailable" class="kpi-value">–</div><div id="secDayUnavailableD" class="text-xs text-gray-400">–</div></div>
+        <div id="secDayCardExcluded" class="kpi" style="display:none"><div class="kpi-label">Excluded</div><div id="secDayExcluded" class="kpi-value">–</div><div id="secDayExcludedD" class="text-xs text-gray-400">–</div></div>
+        <div id="secDayCardNotActive" class="kpi" style="display:none"><div class="kpi-label">Not active</div><div id="secDayNotActive" class="kpi-value">–</div><div id="secDayNotActiveD" class="text-xs text-gray-400">–</div></div>
+      </div>
       <div class="chart-wrap mb-2"><canvas id="secDayChart"></canvas></div>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">One column per loaded file — single days and ranges alike, oldest → newest, never summed. Available = rows minus Not active / Unavailable / Rejected / Excluded / Authorization needed. Outstanding + Performing are subsets of Explored. Hover any day to preview all 5 values with their vs-prev moves; card deltas read vs the previous loaded file (green +, red −). Respects Account / Campaign / Search / Exclude Product Card / Hide inactive; ignores Status / 2nd-status / Type / Insight / Hide Ineligible so the stages stay visible.</p>
+      <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">One column per loaded file — single days and ranges alike, oldest → newest, never summed. Available = rows minus Not active / Unavailable / Rejected / Excluded / Authorization needed. Outstanding + Performing are subsets of Explored. Hover any day to preview the visible values with their vs-prev moves; card deltas read vs the previous loaded file (green +, red −). <b>Click any legend entry to show or hide that stage.</b> The five cards above are always on; the other 7 stages (Underperforming, Calculating, Rejected, Authorization needed, Unavailable, Excluded, Not active) start hidden and gain a card when their line is switched on — for those a rise is bad news, so their deltas flip (red +, green −). Respects Account / Campaign / Search / Exclude Product Card / Hide inactive; ignores Status / 2nd-status / Type / Insight / Hide Ineligible so the stages stay visible.</p>
     </div>
   </section>
 
@@ -428,6 +437,6 @@
     </div>
   </div>
 </div>
-<script src="app.js?v=47"></script>
+<script src="app.js?v=49"></script>
 </body>
 </html>

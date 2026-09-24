@@ -70,8 +70,9 @@ additional prompt Do not delete this part
 
 ## 7. Folder index (specifics live in each folder's AGENTS.md)
 
-- `tiktok-creative-analysis/` — static creative analytics (multi-file compare,
-  bulk dialect, insight engine, SOP bars, `?insight` links, picker chips).
+- `tiktok-creative-analysis/` — static creative analytics (multi-file compare ≤31,
+  bulk dialect, insight engine, SOP bars, `?insight` links, picker chips,
+  status-by-day with 7 on-demand stages).
 - `tiktok-account/` — Display API dashboard (`dashboard/`; `tester.py` FROZEN; link-mismatch guard + throttled/merged pulls + stream progress popup + fetched_at; releases in `CHANGELOG.md`) + `sync/` daily Sheets bridge (own AGENTS.md: path-import reuse, `X()` retry, dry-run purity, lengths-only secrets).
 - `tiktok-strategy/` — Growth OS playbook (guardrails owner, §6 above).
 - `tiktok-event/` — RACI board, vanilla single-file (`raci_campaign_dashboard.tsx`
