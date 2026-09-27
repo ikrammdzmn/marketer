@@ -6,6 +6,42 @@ DO NOT DELETE THIS PART
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
 
+## 27 Sep 2026 - closeout (night MYT)
+
+- Tail after the v1 commit (`40e4f7a`): tg_bot v2 (sender, mention, test
+  full-only) + v3 buckets, all verified (18 + 4 + 14 stub tests),
+  feature.md now covers Telegram, masters rolled up. Uncommitted.
+- Vibe stayed fast-iterative: owner compares options live (full vs
+  condensed, buckets vs per-row dates), decides in one line. Sparring mode
+  cooled into trust - fewer challenges needed, confirm-and-build sufficed.
+- New bugs, all mine: (1) garbled assertion expression in a test harness
+  (fixed by simplifying to a plain index check); (2) wrong weekday in a
+  test expectation (Sep 25 2026 is Friday - the CODE was right, lesson:
+  verify calendar facts independently, and when code and test disagree,
+  check the test's constants first); (3) edit oldString mismatch after
+  earlier edits (re-read the region first, always); (4) "Verification Katz"
+  typo (re-read after editing, always). Standing lesson reinforced: the
+  harness is guilty until proven innocent.
+- Next window: owner picks Telegram style, installs both trigger sets,
+  aligns F-formulas to marker ranges. Pending-scope 2nd email still parked.
+
+## 27 Sep 2026 - tg_bot v2/v3 + buckets (evening MYT)
+
+- Telegram sender built (`tg_bot/telegram.gs`, `code.gs` untouched):
+  group + `Affiliate Digest` topic, `BOT_TOKEN`/`GROUP_ID`/`TOPIC_ID`/
+  `MY_USER_ID`/`TG_STYLE`/`TG_ENABLED` keys, full + condensed styles,
+  Open-sheet button, `logThreadId` helper, megaphone `tg://user` mention
+  of the owner on every message, `testTelegram` (now full-only).
+- Corrected two assumptions live: user ID can't replace chat ID for
+  sending (chat-addressed only); bot can't create private-chat topics
+  (group redesign instead). Topics verdict documented in plan chat.
+- v3: priority rendered as Due-today / Overdue-oldest-first buckets on
+  email + Telegram (shared `splitBuckets`); rows slimmed to user + link.
+- Verification kit: stubbed node harness (18 tg tests, 4 mention tests,
+  14 bucket tests - all pass); `node --check` via .js temp copy; ASCII 0.
+- OPEN: owner comparing styles; email + Telegram triggers install after
+  the pick; F-formulas still fixed ranges.
+
 ## Vibe
 
 Owner ran this session in bursts: short confirms ("ok", "ok good"), then a

@@ -8,7 +8,8 @@ no npm, no build). Each tool gets its own subfolder with `plan.md` +
 
 - `aff-notify/` - 4x-daily email digest for the Affiliate Collection sheet
   (`code.gs`: RUNNING due/overdue priority, tomorrow reminder, PENDING ADS
-  RUN queue action; HTML mail + plain-text fallback). See its `plan.md`.
+  RUN queue action; HTML mail + plain-text fallback) + `tg_bot/` Telegram
+  sender (group topic, full/condensed styles). See its `plan.md`.
 - Future tools root here the same way (one folder per tool).
 
 ## Sheet contract (aff-notify)

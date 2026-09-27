@@ -41,17 +41,20 @@ ranges (see Scope rule).
    listed every run until cleared). Purpose: check ads performance now.
 2. REMINDER - STATUS = RUNNING and N == tomorrow. Purpose: due tomorrow.
 3. ACTION - F4 (PENDING ADS RUN count) >= 1: "need to run the ads" + count.
-- Each digest line: username + STATUS + NEXT REVIEW date + video link.
-  Dates display as `Sun Sep 27 2026 (Today)` / `Mon Sep 28 2026 (Tomorrow)` /
-  `Thu Sep 25 2026 (2 days ago)` (MYT, relative to run day).
+- Each digest line: username + video link. Dates live in bucket headers
+  (Due today / Overdue), not on rows: `Sun Sep 27 2026 (Today)` style
+  (MYT, relative to run day) is kept for the `dateLabel` utility.
 - No notifications for PENDING VID CODE / PENDING REVIEW / ADS REVIEW
   (counts only, for now).
 
-## Future-proofing (not now)
+## Future-proofing (Telegram: BUILT 27 Sep, see tg_bot/)
 - Recipients in one config map: everything to owner today; reserved slot
   routes the pending-scope digest to a SECOND email later (one-line change).
-- Telegram sender hook reserved: same checker, UrlFetchApp to Bot API,
-  token + chat ID in Script Properties (never in cells).
+- `tg_bot/telegram.gs` sends the same digest to a group topic
+  (`Affiliate Digest`): classic sendMessage + HTML tier, full + condensed
+  styles (`TG_STYLE`), Open-sheet button, `testTelegram` sends both for
+  comparison, `logThreadId` setup helper. Keys: `BOT_TOKEN`, `GROUP_ID`,
+  `TOPIC_ID`, `MY_USER_ID` (stored, not enforced), `TG_STYLE`, `TG_ENABLED`.
 
 ## Build order
 1. Helper cell + F2/F3/F4 INDIRECT updates (in-sheet, user-tested live).

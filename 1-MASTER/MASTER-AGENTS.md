@@ -79,7 +79,8 @@ additional prompt Do not delete this part
   FROZEN as spec source; localStorage only; PIN is courtesy, not security).
 - `gmvmax/` — knowledge only, no code.
 - `g-sheet_tools/` — Sheets Apps Script tools (bound scripts, no server):
-  `aff-notify/` 4x-daily Affiliate Collection digest (own AGENTS.md).
+  `aff-notify/` 4x-daily Affiliate Collection digest (email `code.gs` +
+  Telegram `tg_bot/` group-topic sender, own AGENTS.md).
 - `gmvmax-auto/` — P0 skeleton live (Neon GREEN, apps in flight): stdlib collector (closed-window, `ALLOW_WRITES=0`) + 8082 dashboard + `001–004` migrations (schema-qualified, `win` col). Business app pending, Shop app created. Docs: `DEV_NOTES.md` (handoff) + `feature.md` (user guide). Folder rules §5–7 carry portal lessons (branch TTL, localhost redirect).
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, branch `main`) — local MCP runners. `spreadsheet-mcp`
   (27 Sheets tools, `uv`, stdio `127.0.0.1` only, IGNORED clone; nested upstream

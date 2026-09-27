@@ -77,8 +77,8 @@ function digestCheck(opts) {
       var item = {
         user: String(row[CONFIG.COL_USER - 1] || '').trim(),
         date: String(row[CONFIG.COL_DATE_N - 1]).trim(),
-        label: dateLabel(row[CONFIG.COL_DATE_N - 1], keys.today),
-        link: String(row[CONFIG.COL_LINK - 1] || '').trim()
+        link: String(row[CONFIG.COL_LINK - 1] || '').trim(),
+        key: key
       };
       if (key <= keys.today) priority.push(item);
       else if (key === keys.tomorrow) reminder.push(item);
@@ -86,6 +86,7 @@ function digestCheck(opts) {
   }
 
   var actionCount = (f4 >= 1) ? f4 : 0;
+  var buckets = splitBuckets(priority, keys.today);
   var hasContent = priority.length > 0 || reminder.length > 0 || actionCount > 0;
   if (!hasContent && !opts.forceSend) {
     Logger.log('aff-notify: nothing to report (rows ' + firstRow + '-' +
@@ -100,14 +101,16 @@ function digestCheck(opts) {
   lines.push('Scope: rows ' + firstRow + '-' + lastRow + ' (2nd end marker).');
   lines.push('');
   if (priority.length > 0) {
-    lines.push('[PRIORITY] RUNNING due today/overdue (' + priority.length +
-      ') - check ads performance:');
-    lines = lines.concat(fmtItems(priority));
+    lines.push('[PRIORITY] RUNNING - check ads performance:');
+    lines.push('Due today (' + buckets.dueToday.length + '):');
+    lines = lines.concat(fmtRows(buckets.dueToday));
+    lines.push('Overdue, oldest first (' + buckets.overdue.length + '):');
+    lines = lines.concat(fmtRows(buckets.overdue));
     lines.push('');
   }
   if (reminder.length > 0) {
     lines.push('[REMINDER] RUNNING due tomorrow (' + reminder.length + '):');
-    lines = lines.concat(fmtItems(reminder));
+    lines = lines.concat(fmtRows(reminder));
     lines.push('');
   }
   if (actionCount > 0) {
@@ -121,7 +124,7 @@ function digestCheck(opts) {
     to: CONFIG.RECIPIENTS.default,
     subject: subject,
     body: lines.join('\n'),
-    htmlBody: buildHtml(stamp, firstRow, lastRow, priority, reminder,
+    htmlBody: buildHtml(stamp, firstRow, lastRow, buckets, reminder,
       actionCount, f4, hasContent)
   });
   Logger.log('aff-notify: sent to ' + CONFIG.RECIPIENTS.default +
@@ -214,51 +217,75 @@ function esc(s) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function sectionTable(title, bg, items, dateLabel) {
-  var h = '<h3 style="margin:16px 0 6px 0;font-family:Arial,sans-serif;' +
+function splitBuckets(priority, todayKey) {
+  // Two buckets shared by email + Telegram: due-today (key == today) and
+  // overdue (key < today, oldest first). Dates live in bucket headers, so
+  // rows stay lean (username + link only).
+  var dueToday = [];
+  var overdue = [];
+  for (var i = 0; i < priority.length; i++) {
+    if (priority[i].key < todayKey) overdue.push(priority[i]);
+    else dueToday.push(priority[i]);
+  }
+  overdue.sort(function (a, b) {
+    return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+  });
+  return { dueToday: dueToday, overdue: overdue };
+}
+
+function bannerHtml(title, bg, count) {
+  return '<h3 style="margin:16px 0 6px 0;font-family:Arial,sans-serif;' +
     'font-size:15px;color:#ffffff;background:' + bg +
     ';padding:8px 12px;border-radius:6px;">' + esc(title) + ' (' +
-    items.length + ')</h3>';
-  h += '<table style="border-collapse:collapse;width:100%;' +
+    count + ')</h3>';
+}
+
+function bucketSub(sub) {
+  return '<p style="font-family:Arial,sans-serif;font-size:13px;' +
+    'font-weight:bold;margin:10px 0 4px 0;">' + esc(sub) + '</p>';
+}
+
+function bucketTable(items) {
+  var h = '<table style="border-collapse:collapse;width:100%;' +
     'font-family:Arial,sans-serif;font-size:13px;">';
   h += '<tr style="background:#f1f3f4;">' +
     '<th style="text-align:left;padding:6px 8px;border:1px solid #dadce0;">' +
     'Username</th>' +
     '<th style="text-align:left;padding:6px 8px;border:1px solid #dadce0;">' +
-    dateLabel + '</th>' +
-    '<th style="text-align:left;padding:6px 8px;border:1px solid #dadce0;">' +
     'Video</th></tr>';
   for (var i = 0; i < items.length; i++) {
-    var link = items[i].link;
-    var cell = link
-      ? '<a href="' + esc(link) + '">open video</a>'
+    var cell = items[i].link
+      ? '<a href="' + esc(items[i].link) + '">open video</a>'
       : '<span style="color:#9aa0a6;">no link</span>';
     h += '<tr><td style="padding:6px 8px;border:1px solid #dadce0;">' +
       esc(items[i].user) + '</td>' +
-      '<td style="padding:6px 8px;border:1px solid #dadce0;white-space:nowrap;">' +
-      esc(items[i].label) + '</td>' +
       '<td style="padding:6px 8px;border:1px solid #dadce0;">' + cell +
       '</td></tr>';
   }
   return h + '</table>';
 }
 
-function buildHtml(stamp, firstRow, lastRow, priority, reminder,
+function buildHtml(stamp, firstRow, lastRow, buckets, reminder,
     actionCount, f4, hasContent) {
+  var nP = buckets.dueToday.length + buckets.overdue.length;
   var h = '<div style="font-family:Arial,sans-serif;color:#202124;' +
     'max-width:640px;">';
   h += '<h2 style="font-size:17px;margin:0 0 4px 0;">' +
     'Affiliate Collection digest</h2>';
   h += '<p style="font-size:12px;color:#5f6368;margin:0 0 12px 0;">' +
     esc(stamp) + ' MYT &middot; scope rows ' + firstRow + '-' + lastRow +
-    ' &middot; P' + priority.length + ' / R' + reminder.length +
+    ' &middot; P' + nP + ' / R' + reminder.length +
     ' / ADS' + actionCount + '</p>';
-  if (priority.length > 0) {
-    h += sectionTable('PRIORITY - due today/overdue, check ads performance',
-      '#c5221f', priority, 'Due');
+  if (nP > 0) {
+    h += bannerHtml('PRIORITY - check ads performance', '#c5221f', nP);
+    h += bucketSub('Due today (' + buckets.dueToday.length + ')');
+    h += bucketTable(buckets.dueToday);
+    h += bucketSub('Overdue, oldest first (' + buckets.overdue.length + ')');
+    h += bucketTable(buckets.overdue);
   }
   if (reminder.length > 0) {
-    h += sectionTable('REMINDER - due tomorrow', '#1a73e8', reminder, 'Due');
+    h += bannerHtml('REMINDER - due tomorrow', '#1a73e8', reminder.length);
+    h += bucketTable(reminder);
   }
   if (actionCount > 0) {
     h += '<h3 style="margin:16px 0 6px 0;font-size:15px;color:#ffffff;' +
@@ -275,11 +302,10 @@ function buildHtml(stamp, firstRow, lastRow, priority, reminder,
   return h + '</div>';
 }
 
-function fmtItems(items) {
+function fmtRows(items) {
   var out = [];
   for (var i = 0; i < items.length; i++) {
-    out.push('- ' + items[i].user + ' | RUNNING | due ' + items[i].label +
-      ' | ' + items[i].link);
+    out.push('- ' + items[i].user + ' | ' + items[i].link);
   }
   return out;
 }

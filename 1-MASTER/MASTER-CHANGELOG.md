@@ -12,6 +12,13 @@ Rule: whoever ships a folder release adds one line here the same session.
   mail + text fallback, `Sun Sep 27 2026 (Today)` dates; `testNotify`
   live-tested, triggers pending)
   -> `g-sheet_tools/aff-notify/CHANGELOG.md` + `DEV_NOTES.md` + `feature.md`
+- `g-sheet_tools/aff-notify` v2/v3 (same day): Telegram group-topic sender
+  (`tg_bot/telegram.gs`, `code.gs` untouched - shared scope globals;
+  full/condensed styles, Open-sheet button, owner mention ping,
+  `logThreadId` helper) + two-bucket priority on email + Telegram
+  (Due-today / Overdue-oldest-first, shared `splitBuckets`, rows slimmed
+  to user + link; 36 stub tests green)
+  -> `g-sheet_tools/aff-notify/CHANGELOG.md`
 - `tiktok-account/sync` v20: Dashboard col I Total Ticked (all-time
   Run=TRUE per tab, same batchGet as yesterday stats, zero extra API;
   menu 6 relabeled Ticks refresh; mock-verified, uncommitted)
