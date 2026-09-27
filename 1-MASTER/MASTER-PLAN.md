@@ -11,6 +11,11 @@
 - `gmvmax/` — Knowledge only: `gmvmax.md` (algo realities, §3 points at product glossary) + `product/exploration-status.md` (canonical TikTok stages + `Available` exclusion rule) + `product/*.xlsx`. No code goes here.
 - `gmvmax-auto/` — auto budget-adjust service: P0 LIVE prod read-only 21 Sep (prod OAuth, report GET live, net ROI locked fee 25%, 30m scheduler task, manual unlagged 5-campaign view: 1 LIVE + 4 Product). Code: `collector.py` + `live_view.py` + `prod_auth.py` + `dashboard/` 8082 + migrations `001–004`. See `gmvmax-auto/plan.md` + `DEV_NOTES.md` + `feature.md`.
 - `docs/` — `terms.html` + `privacy.html` (GitHub Pages, TikTok app review). `tiktok*.txt` at root = domain verification. Never move/rename without updating TikTok app form.
+- `g-sheet_tools/` — Sheets Apps Script tools (bound scripts, no server, own
+  `AGENTS.md`): `aff-notify/` 4x-daily Affiliate Collection email digest
+  (`code.gs` live-tested 27 Sep: RUNNING priority/reminder + ads-queue
+  action, HTML mail; triggers pending). Docs: `plan.md` + `DEV_NOTES.md` +
+  `feature.md` + `CHANGELOG.md`.
 - `opencode.json` (committed 23 Sep `2663c7a`) - opencode MCP pointer: `google-sheets`
   local via absolute WinGet `uv.exe` (forward slashes) + local `tools/` path, secret-free
   (`{env:GOOGLE_SHEETS_CRED}` only). Antigravity counterpart
@@ -27,6 +32,13 @@
 - `1-MASTER/` — this file + `MASTER-CHANGELOG.md` (repo rollup) + `MASTER-AGENTS.md` (shared conventions) + `antigravity-aistudio.md` (IDE transfer guide, not product code).
 
 ## 2. Current status (2026-09-20, midday)
+
+- 27 Sep: `g-sheet_tools/aff-notify` v1 built + email live-tested
+  (`testNotify` works): 4x-daily digest (RUNNING priority/reminder +
+  PENDING ADS RUN action, HTML mail, marker-derived scope, silent-if-empty);
+  triggers pending install; sheet F-formulas still fixed ranges.
+  27 Sep: `tiktok-account/sync` v20 (Dashboard col I Total Ticked, same
+  batchGet, menu 6 relabeled; mock-verified, uncommitted).
 
 - `tiktok-account` dashboard liveliness landed (committed `4f9a792` 20 Sep
   09:09 +0800): stream progress popup + fetched_at stamps + `#` export.

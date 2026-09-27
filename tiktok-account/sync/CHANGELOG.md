@@ -1,5 +1,14 @@
 # CHANGELOG.md - sync/
 
+## 2026-09-27 - v20: Total Ticked column
+- Dashboard extended 8->9 cols: new "Total Ticked" (col I = every Run=TRUE
+  in the account tab col A, any date). Same `batchGet A2:F` as yesterday
+  stats, so zero extra API cost.
+- `--refresh-ticks` (launcher menu 6, relabeled "Ticks refresh") recomputes
+  cols G-I with no TikTok pull; normal runs attach total ticks after sync.
+  Per-account line now prints yesterday + total ticked. Old 8-col rows heal
+  via `_pad9` merge; write/clear range moved `A1:H` -> `A1:I`.
+
 ## 2026-09-23 - v19: pull progress, abort, re-sort, C-D swap, insert-C age
 - Pull progress: `on_progress`/`on_wait` hooks wired up (per-page video
   counts + 429-retry waits, ASCII, flushed). Throttle unchanged

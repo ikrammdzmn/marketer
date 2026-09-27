@@ -327,6 +327,22 @@ verified in 2 calls. Short replies, one action per message held.
 - OPEN: add the C2 formula after migration (done by owner); relink 9
   tokens; consider v19 bump; `--all` live run to refresh Dashboard.
 
+## 27 Sep 2026 - v20 Total Ticked column (morning MYT)
+
+- Owner: wants all-time ticked count per account, same fast method as
+  yesterday refresh. No new menu number: option 6 `--refresh-ticks`
+  now recomputes cols G-I (Yesterday Videos / Yesterday Ticked /
+  Total Ticked). Total = every Run=TRUE in tab col A, any date,
+  counted in the same `batchGet A2:F` loop - zero extra API calls.
+- `sheet-sync.py`: `SYNC_VERSION` v19 -> v20; `_get_yesterday_run_stats`
+  returns 3-tuples, `summarize`/`_summary_row` carry `total_ticked`,
+  Dashboard 8->9 cols (`_pad9`, `A1:I` write/clear, merge heals old
+  8-col rows + drops footer strays). Per-account line prints
+  `yesterday N videos, M ticked, K total ticked`.
+- Verified: py_compile, ASCII 0, `--help`, fake-grid test (stats
+  2/1/3, 9-col header, merge keeps Old padded + appends fresh).
+- Next: owner runs option 6 live (`--all --refresh-ticks`) to add col I.
+
 ## 23 Sep 2026 - v19 bump + standing version rule (night MYT)
 
 - Owner: bump the version and note it. `SYNC_VERSION` v18 -> v19

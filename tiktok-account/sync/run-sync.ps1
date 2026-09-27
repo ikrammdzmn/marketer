@@ -153,7 +153,7 @@ Write-Host '  2) Yesterday only (missed-day catch-up)'
 Write-Host '  3) Last 7 days incl. today (daily routine) [default]'
 Write-Host '  4) Custom dates (gap fill)'
 Write-Host '  5) All-time backfill (once, ~15-30 min, supervised)'
-Write-Host '  6) Yesterday ticks refresh (fast, no TikTok pull)'
+Write-Host '  6) Ticks refresh - yesterday + total (fast, no TikTok pull)'
 $choice = (Read-Host 'Window [1-6, Enter=3]').Trim()
 if (-not $choice) { $choice = '3' }
 
@@ -176,7 +176,7 @@ switch ($choice) {
     $windowLabel = if ($until) { "$since..$until" } else { "$since..today" }
   }
   '5' { $windowArgs = @('--full'); $windowLabel = 'ALL TIME'; $confirmFull = $true }
-  '6' { $windowArgs = @('--refresh-ticks'); $windowLabel = 'yesterday ticks refresh' }
+  '6' { $windowArgs = @('--refresh-ticks'); $windowLabel = 'ticks refresh' }
   default {
     Write-Host 'Unknown choice, using default: last 7 days.' -ForegroundColor Yellow
     $windowArgs = @('--days', '7'); $windowLabel = 'last 7 days incl. today'

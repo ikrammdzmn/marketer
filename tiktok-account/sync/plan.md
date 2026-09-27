@@ -24,8 +24,10 @@
   quiet names, relink names, quiet-day callout, dry/live footer)
 - [x] Dashboard v2: "Yesterday Videos" + "Yesterday Ticked" columns (read
   Run checkbox col A from account tabs for MYT yesterday) - 8-col Dashboard
-- [x] `--refresh-ticks` mode: recompute Dashboard cols G-H with no TikTok
-  pull (launcher menu 6); version footer row (`sheet-sync v19`)
+- [x] `--refresh-ticks` mode: recompute Dashboard cols G-I with no TikTok
+  pull (launcher menu 6); version footer row (`sheet-sync v20`)
+- [x] Dashboard col I `Total Ticked`: all-time Run=TRUE count per tab (same
+  batchGet as yesterday stats, zero extra API cost)
 - [ ] Security follow-ups (see root `SECURITY.md`): Drive scope removal,
   OneDrive scope check, incident containment/recovery
 - [x] Name any further custom columns (append to `CUSTOM_LEFT`, rerun migrates)

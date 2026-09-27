@@ -13,7 +13,10 @@ and growth (+numbers) shown. Sheet 1 (`Dashboard`) shows per-account totals.
 4. Say Y to the preview, read the plain-words summary, say Y to run live.
 5. After each run: R repeats the same, M returns to the menu, Enter exits.
 6. Open the spreadsheet - new videos are on top, `Dashboard` has today's
-   totals (click any account name to jump to its tab).
+   totals (click any account name to jump to its tab). Dashboard also shows
+   `Yesterday Videos`, `Yesterday Ticked`, and `Total Ticked` (all ticked
+   Run boxes, any date) - refresh them fast anytime with menu 6
+   (Ticks refresh, no TikTok pull).
 
 **Columns:**
 - A `Run` - tick the checkbox when a video is handled.

@@ -11,6 +11,8 @@
 - `tiktok-strategy/` — guardrails owner (ROI ≥7.0, CPA ≤RM21.18). Automation obeys, never re-derives.
 - `tiktok-event/` — RACI board. `gmvmax/` — knowledge only, no code.
 - `docs/` + `tiktok*.txt` — app-review pages + domain verification, frozen.
+- `g-sheet_tools/` — Sheets Apps Script tools (own AGENTS.md): `aff-notify/` 4x-daily
+  Affiliate Collection email digest (`code.gs` + plan + user-tested 27 Sep).
 - `opencode.json` — opencode MCP pointer (secret-free, `{env:GOOGLE_SHEETS_CRED}` only).
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, branch `main`) — local MCP runners (`spreadsheet-mcp`,
   27 Sheets tools, IGNORED clone) + its own `AGENTS.md`/`DEV_NOTES.md`/`feature.md`/`bootstrap.ps1`. Read/write GREEN

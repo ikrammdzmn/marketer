@@ -4,6 +4,19 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 27 Sep 2026
+
+- `g-sheet_tools/aff-notify` v1 (NEW track): 4x-daily Affiliate Collection
+  email digest (`code.gs` bound script - RUNNING due/overdue priority,
+  tomorrow reminder, PENDING ADS RUN action; marker-derived scope, HTML
+  mail + text fallback, `Sun Sep 27 2026 (Today)` dates; `testNotify`
+  live-tested, triggers pending)
+  -> `g-sheet_tools/aff-notify/CHANGELOG.md` + `DEV_NOTES.md` + `feature.md`
+- `tiktok-account/sync` v20: Dashboard col I Total Ticked (all-time
+  Run=TRUE per tab, same batchGet as yesterday stats, zero extra API;
+  menu 6 relabeled Ticks refresh; mock-verified, uncommitted)
+  -> `tiktok-account/sync/CHANGELOG.md`
+
 ## 24 Sep 2026
 
 - `tiktok-creative-analysis` v48: status-by-day counts all 10 TikTok stages — the
