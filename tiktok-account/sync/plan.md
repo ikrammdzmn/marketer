@@ -36,3 +36,7 @@
   - 23 Sep: ran for `Dr. Samhan` (22 tracked + 2,521 backfilled, re-sorted)
 - [ ] Windows Task Scheduler daily job (same file, when manual gets boring)
 - [ ] History sheet for vs-any-date growth charts (only if light deltas prove insufficient)
+- [x] v21: Dashboard col A `No` (1-N static, Account shifts to B, 10-col A-J)
+- [x] v21: numbered tab titles `N. @user / Name` + canonical tab-strip
+  order (Dashboard first, rename + `index` reorder each run, merge
+  re-sorts + renumbers)

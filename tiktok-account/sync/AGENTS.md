@@ -20,11 +20,13 @@ spreadsheet-mcp venv (google client libs). No npm, no build, no server.
 ## Sheet contract
 
 - 11 sheets: `Dashboard` + one tab per account titled
-  `@username / Account Name` (`tab_title()`; renames bare-name tabs once).
+  `N. @username / Account Name` (`tab_title()` with canonical number;
+  renames bare-name and legacy unnumbered tabs once, reorders the strip
+  Dashboard-first every run via `index`).
   Fixed per-tab colors (`ACCOUNT_COLORS`, Dashboard gray), re-applied each run.
   Extra personal tabs (e.g. Notes) are ignored by the engine and survive runs
   - except: never name one `Sheet1` (auto-renamed to Dashboard if empty),
-  never reuse an account name, and never store notes in Dashboard cols G-I
+  never reuse an account name, and never store notes in Dashboard cols H-J
   (rewritten every run as Yesterday Videos / Yesterday Ticked / Total Ticked).
 - Header Row 1 frozen: `Run | Note | Creative age | Video ID | Title |
   Posted (MYT) |
@@ -41,7 +43,7 @@ spreadsheet-mcp venv (google client libs). No npm, no build, no server.
   value through `_checkbox_bool()` on any whole-row rewrite (migration,
   re-sort). Col A (Run) is read
   once per run to count yesterday's ticks + all-time ticks for Dashboard
-  cols G-I.
+  cols H-J.
 - New videos insert at row 2, newest first. Existing rows update the system
   block only when metrics move (unchanged rows skipped; deltas mean
   "change at last movement"). Old A-L layouts migrate once automatically
@@ -50,15 +52,18 @@ spreadsheet-mcp venv (google client libs). No npm, no build, no server.
   A-B ticks/notes untouched). Pre-insert-C widths migrate once automatically
   (`MIGRATED_INSERT_C`: blank C for every row, A-B untouched). Backfill inserts that predate tracked rows
   trigger a whole-tab newest-first re-sort (`RESORT_NEWEST_FIRST`).
-- `Dashboard!A1:I` rewritten every run as `USER_ENTERED`: Account column is
-  `HYPERLINK("#gid=...")` jump links labeled with the tab title; cols G-I
+- `Dashboard!A1:J` rewritten every run as `USER_ENTERED`: col A is the
+  position number (1-N in canonical accounts.json order, blank on footer
+  rows); Account column (B) is
+  `HYPERLINK("#gid=...")` jump links labeled with the tab title; cols H-J
   are Yesterday Videos / Yesterday Ticked / Total Ticked (MYT yesterday
   counts from the
   account tabs: total posted + Run-checkbox TRUE; Total Ticked = all TRUE
-  in tab col A, any date); footer is blank +
+  in tab col A, any date); single-account merges re-sort into canonical
+  order + renumber (never append at the bottom); footer is blank +
   `Updated (MYT)` + timestamp + `sheet-sync vNN` version row; date cols
   formatted `yyyy-mm-dd hh:mm:ss`. Plain text in dry-run.
-- `--refresh-ticks` recomputes Dashboard cols G-I only: no TikTok pull,
+- `--refresh-ticks` recomputes Dashboard cols H-J only: no TikTok pull,
   no account-tab writes (summaries from local cache). Takes no window
   flag; works with `--all` / `--account` / `--dry-run`.
 

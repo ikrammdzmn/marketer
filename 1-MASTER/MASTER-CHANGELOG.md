@@ -4,6 +4,15 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 28 Sep 2026
+
+- `tiktok-account/sync` v21: Dashboard `No` col (A, 1-N static; Account
+  links shift to B, ticks to H-J, range `A1:J`) + numbered tabs
+  `N. @user / Name` + canonical tab-strip/Dashboard order every run
+  (single runs keep their slot via `canon`; legacy unnumbered layout heals;
+  fake-grid verified, uncommitted)
+  -> `tiktok-account/sync/CHANGELOG.md`
+
 ## 27 Sep 2026
 
 - `g-sheet_tools/aff-notify` v1 (NEW track): 4x-daily Affiliate Collection

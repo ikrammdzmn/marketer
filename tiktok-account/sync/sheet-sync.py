@@ -7,7 +7,10 @@ into 1 spreadsheet by Video ID:
   - D-O are the system block (Video ID, Title, Posted, Views, Likes,
     Comments, Shares, Links + 4 delta cols). ID matches refresh D-O + deltas;
     new IDs insert at row 2, newest first.
-Sheet 1 ("Dashboard") gets a per-account totals table each run.
+Sheet 1 ("Dashboard") gets a numbered per-account totals table each run
+(No in col A, Account jump-links in col B). Account tabs are titled
+"N. @username / Account Name" and kept left-to-right in Dashboard order
+(accounts.json picked order).
 
 Run (manual, from the marketer repo root):
   uv --directory ../tools/spreadsheet-mcp run python ^
@@ -15,7 +18,7 @@ Run (manual, from the marketer repo root):
 Windows (pick ONE window per run):
   --days N (default 7) | --today | --yesterday |
   --since YYYY-MM-DD [--until YYYY-MM-DD] | --full
-Ticks-only refresh (no TikTok pull, Dashboard cols G-I only):
+Ticks-only refresh (no TikTok pull, Dashboard cols H-J only):
   ... sheet-sync.py --all --refresh-ticks [--dry-run]
 Single account / dry run / gap fill:
   ... sheet-sync.py --account "Dr Samhan" --today
@@ -44,7 +47,7 @@ MARKETER = os.path.dirname(PARENT)
 DASHBOARD_PY = os.path.join(PARENT, "dashboard", "dashboard.py")
 SHEET_ID_FILE = os.path.join(HERE, ".sheet_id.json")
 MYT = datetime.timezone(datetime.timedelta(hours=8))
-SYNC_VERSION = "v20"
+SYNC_VERSION = "v21"
 
 BASE_HEADER = ["Video ID", "Title", "Posted (MYT)", "Views", "Likes",
                "Comments", "Shares", "Links"]
@@ -143,12 +146,44 @@ def X(req, tries=6):
     raise last  # type: ignore
 
 
-def tab_title(name, username):
-    """Sheet tab: @username / Account Name (falls back to bare name)."""
+def tab_title(name, username, n=None):
+    """Sheet tab: N. @username / Account Name (falls back to bare name)."""
     username = (username or "").strip()
     if username and not username.startswith("@"):
         username = "@" + username
-    return "%s / %s" % (username, name) if username else name
+    base = "%s / %s" % (username, name) if username else name
+    return ("%d. %s" % (n, base)) if n else base
+
+
+def _strip_num(title):
+    """Drop a leading "N. " position prefix (tabs + Dashboard labels)."""
+    s = str(title or "").strip()
+    i = 0
+    while i < len(s) and s[i].isdigit():
+        i += 1
+    if i == 0 or i > 2:
+        return s  # no prefix; guards date serials like 46285.618
+    if i + 1 < len(s) and s[i] == "." and s[i + 1] == " ":
+        return s[i + 2:]
+    if i < len(s) and s[i] == ".":
+        return s[i + 1:].strip()
+    return s
+
+
+def _relabel(cell, title):
+    """Swap the label of a =HYPERLINK cell to `title`, keeping its gid."""
+    s = str(cell or "")
+    if s.startswith("=HYPERLINK("):
+        i = s.find("#gid=")
+        if i != -1:
+            j = i + 5
+            k = j
+            while k < len(s) and s[k].isdigit():
+                k += 1
+            if k > j:
+                return '=HYPERLINK("#gid=%s","%s")' % (
+                    s[j:k], title.replace('"', '""'))
+    return None
 
 
 DASHBOARD_COLOR = {"red": 0.38, "green": 0.38, "blue": 0.38}
@@ -187,14 +222,24 @@ def ensure_sheets(svc, sid, tabs):
                 have["Dashboard"] = have.pop("Sheet1")
         if "Dashboard" not in have:
             reqs.append({"addSheet": {"properties": {"title": "Dashboard"}}})
+    stripped = {_strip_num(t): t for t in have}
     for name, title in tabs.items():
         if title in have:
             continue
-        if name in have:
+        base = _strip_num(title)
+        old = None
+        if base in have:
+            old = base  # legacy unnumbered "@user / Name" tab
+        elif base in stripped:
+            old = stripped[base]  # differently-numbered tab, renumber
+        elif name in have:
+            old = name  # pre-rename bare-name tab
+        if old is not None:
             reqs.append({"updateSheetProperties": {
-                "properties": {"sheetId": have[name], "title": title},
+                "properties": {"sheetId": have[old], "title": title},
                 "fields": "title"}})
-            have[title] = have.pop(name)
+            have[title] = have.pop(old)
+            stripped = {_strip_num(t): t for t in have}
         else:
             reqs.append({"addSheet": {"properties": {"title": title}}})
     if reqs:
@@ -221,6 +266,14 @@ def ensure_sheets(svc, sid, tabs):
             fields += ",tabColor"
         freeze.append({"updateSheetProperties": {"properties": props,
                                                  "fields": fields}})
+    # Canonical tab order: Dashboard first, then account tabs in picked
+    # (Dashboard row) order. Personal tabs are left alone and float right.
+    order = ["Dashboard"] + list(tabs.values())
+    for i, title in enumerate(order):
+        if title in have:
+            freeze.append({"updateSheetProperties": {
+                "properties": {"sheetId": have[title], "index": i},
+                "fields": "index"}})
     if freeze:
         X(svc.spreadsheets().batchUpdate(
             spreadsheetId=sid, body={"requests": freeze}))
@@ -393,8 +446,13 @@ def sync_account(svc, sid, dash, name, title, videos, dry):
     blank on brand-new rows (checkbox validation covers them after).
     """
     grid = read_block(svc, sid, title)
-    if not grid and title != name:
-        grid = read_block(svc, sid, name)  # pre-rename tab, dry preview only
+    if not grid:
+        # Pre-rename/renumber tab, dry preview only.
+        for cand in (_strip_num(title), name):
+            if cand and cand != title:
+                grid = read_block(svc, sid, cand)
+                if grid:
+                    break
     notes = ensure_layout(svc, sid, title, grid, dry)
     migrated = ("MIGRATED_A_B" in notes or "MIGRATED_C_D" in notes
                 or "MIGRATED_INSERT_C" in notes) and not dry
@@ -533,9 +591,9 @@ def _pad8(row):
     return (list(row) + [""] * 8)[:8]
 
 
-def _pad9(row):
-    """Pad any row to exactly 9 Dashboard cols (footer-safe)."""
-    return (list(row) + [""] * 9)[:9]
+def _pad10(row):
+    """Pad any row to exactly 10 Dashboard cols (footer-safe)."""
+    return (list(row) + [""] * 10)[:10]
 
 
 def _get_yesterday_run_stats(svc, sid, tabs, yesterday_ts, today_ts):
@@ -593,7 +651,7 @@ def _dash_label(cell):
 
 
 def _is_dashboard_footer(a):
-    """True for the Updated/timestamp footer rows (even with stale B-F)."""
+    """True for the Updated/timestamp footer rows (even with stale C-J)."""
     s = str(a or "").strip()
     if s == "Updated (MYT)":
         return True
@@ -607,34 +665,34 @@ def _is_dashboard_footer(a):
         f = float(s.replace(",", ""))
         if 20000.0 <= f <= 80000.0:
             # Date serial: an old timestamp cell read back as a number
-            # (FORMULA render). Col A is never legitimately numeric.
+            # (FORMULA render). Col B is never legitimately numeric.
             return True
     except (TypeError, ValueError):
         pass
     return False
 
 
-def _summary_row(s, gids):
+def _summary_row(s, gids, n):
     label = s["sheet"]
     gid = gids.get(label)
     cell = ('=HYPERLINK("#gid=%d","%s")' % (gid, label.replace('"', '""'))
             if gid is not None else label)
-    return [cell, s["followers"], s["videos_7d"],
+    return [n, cell, s["followers"], s["videos_7d"],
             s["views_7d"], s["views_d_7d"], s["last_post"],
             s.get("yesterday_videos", 0), s.get("yesterday_ticked", 0),
             s.get("total_ticked", 0)]
 
 
 def _read_dashboard_grid(svc, sid):
-    """Dashboard values A1:I100 with default (formatted) render.
+    """Dashboard values A1:J100 with default (formatted) render.
 
     Dates come back as displayed strings, so footer detection works.
-    Col A hyperlinks come back as plain labels - pair with
-    _read_dashboard_col_a for the real formulas.
+    Col B hyperlinks come back as plain labels - pair with
+    _read_dashboard_col_b for the real formulas.
     """
     try:
         resp = X(svc.spreadsheets().values().get(
-            spreadsheetId=sid, range="Dashboard!A1:I100"))
+            spreadsheetId=sid, range="Dashboard!A1:J100"))
     except Exception as e:  # noqa: BLE001 - missing tab reads as empty
         blob = str(getattr(e, "content", "")) + str(e)
         if "Unable to parse range" in blob:
@@ -643,11 +701,11 @@ def _read_dashboard_grid(svc, sid):
     return resp.get("values", [])
 
 
-def _read_dashboard_col_a(svc, sid):
-    """Dashboard col A with FORMULA render (keeps =HYPERLINK cells)."""
+def _read_dashboard_col_b(svc, sid):
+    """Dashboard col B with FORMULA render (keeps =HYPERLINK cells)."""
     try:
         resp = X(svc.spreadsheets().values().get(
-            spreadsheetId=sid, range="Dashboard!A1:A100",
+            spreadsheetId=sid, range="Dashboard!B1:B100",
             valueRenderOption="FORMULA"))
     except Exception as e:  # noqa: BLE001 - missing tab reads as empty
         blob = str(getattr(e, "content", "")) + str(e)
@@ -670,65 +728,88 @@ def _link_cell(label, gids, svc, sid, dry):
     return '=HYPERLINK("#gid=%d","%s")' % (gid, label.replace('"', '""'))
 
 
-def write_dashboard(svc, sid, dash, summaries, gids, dry, merge=False):
-    header = ["Account", "Followers", "Videos 7d", "Views 7d",
-              "ViewsD 7d", "Last post MYT", "Yesterday Videos", "Yesterday Ticked",
-              "Total Ticked"]
+def write_dashboard(svc, sid, dash, summaries, gids, dry, merge=False,
+                    order=None):
+    header = ["No", "Account", "Followers", "Videos 7d", "Views 7d",
+              "ViewsD 7d", "Last post MYT", "Yesterday Videos",
+              "Yesterday Ticked", "Total Ticked"]
     fresh = {}
-    for s in summaries:
-        fresh[s["sheet"]] = _summary_row(s, gids)
+    for i, s in enumerate(summaries, 1):
+        fresh[_strip_num(s["sheet"])] = _summary_row(s, gids, i)
     if merge:
-        # Single-account run: keep every other account row in place,
-        # replace only the just-synced row. Footer-like rows (including
-        # the corrupted Updated/timestamp rows with stale B-F left by
-        # the old 1-row rewrite, and bare date-serial rows) are dropped
-        # and rebuilt below. Col A comes from the FORMULA read (keeps
-        # =HYPERLINK); other cols from the formatted read (keeps dates).
-        acc_rows, seen = [], set()
-        formulas = _read_dashboard_col_a(svc, sid)
+        # Single-account run: keep every other account row in place but
+        # emit all rows in canonical (accounts.json picked) order, then
+        # renumber col A top-to-bottom. Match on the number-stripped
+        # col-B label so renumbers and the legacy unnumbered layout both
+        # heal. Footer-like rows (including the corrupted Updated/timestamp
+        # rows with stale C-J left by the old short rewrite, and bare
+        # date-serial rows) are dropped and rebuilt below. Col B comes
+        # from the FORMULA read (keeps =HYPERLINK); other cols from the
+        # formatted read (keeps dates).
+        order = order or [s["sheet"] for s in summaries]
+        order_bases = [_strip_num(t) for t in order]
+        have, unknowns, seen = {}, [], set()
+        formulas = _read_dashboard_col_b(svc, sid)
         for i, r in enumerate(_read_dashboard_grid(svc, sid)[1:]):
-            pad = _pad9(r)
-            fa = (formulas[i + 1] + [""])[0] \
+            pad = _pad10(r)
+            fb = (formulas[i + 1] + [""])[0] \
                 if i + 1 < len(formulas) else ""
-            if str(fa or "").strip():
-                pad[0] = fa
-            a = str(pad[0] or "").strip()
-            if not a:
+            if str(fb or "").strip():
+                pad[1] = fb
+            b = str(pad[1] or "").strip()
+            if not b:
                 continue
-            if _is_dashboard_footer(a):
+            if _is_dashboard_footer(b) or \
+                    _is_dashboard_footer(str(pad[0] or "").strip()):
+                # Second check catches legacy pre-numbering footers whose
+                # stale values sit in col A (v14-era corruption shape).
                 continue
-            label = _dash_label(pad[0])
-            if label in fresh:
-                if label not in seen:
-                    acc_rows.append(fresh[label])
-                    seen.add(label)
-            elif label and label not in seen:
+            base = _strip_num(_dash_label(pad[1]))
+            if not base or base in seen:
+                continue
+            seen.add(base)
+            if base in order_bases:
+                if base not in have:
+                    have[base] = pad
+            else:
+                unknowns.append(pad)
+        acc_rows = []
+        for title in order:
+            base = _strip_num(title)
+            if base in fresh:
+                acc_rows.append(fresh[base])
+            elif base in have:
+                row = have[base]
                 # Re-link plain labels (FORMULA read keeps links; this
-                # heals sheets delinked by the earlier merge).
-                if not str(pad[0]).startswith("=HYPERLINK("):
-                    pad[0] = _link_cell(label, gids, svc, sid, dry)
-                acc_rows.append(pad)
-                seen.add(label)
-        for label, row in fresh.items():
-            if label not in seen:
+                # heals sheets delinked by the earlier merge), and swap
+                # legacy unnumbered labels to the numbered title (gid kept).
+                if str(row[1]).startswith("=HYPERLINK("):
+                    new_link = _relabel(row[1], title)
+                    if new_link is not None:
+                        row[1] = new_link
+                else:
+                    row[1] = _link_cell(title, gids, svc, sid, dry)
                 acc_rows.append(row)
-                seen.add(label)
+        acc_rows += unknowns
+        for i, row in enumerate(acc_rows, 1):
+            row[0] = i
     else:
-        acc_rows = [fresh[s["sheet"]] for s in summaries]
-    rows = [header] + acc_rows + [_pad9([]), _pad9(["Updated (MYT)"]),
-            _pad9([datetime.datetime.now(MYT).strftime("%Y-%m-%d %H:%M:%S")]),
-            _pad9(["sheet-sync " + SYNC_VERSION])]
+        acc_rows = [fresh[_strip_num(s["sheet"])] for s in summaries]
+    rows = [header] + acc_rows + [_pad10([]), _pad10(["", "Updated (MYT)"]),
+            _pad10(["", datetime.datetime.now(MYT).strftime(
+                "%Y-%m-%d %H:%M:%S")]),
+            _pad10(["", "sheet-sync " + SYNC_VERSION])]
     n_acc = len(acc_rows)
     if not dry:
         X(svc.spreadsheets().values().update(
-            spreadsheetId=sid, range="Dashboard!A1:I%d" % len(rows),
+            spreadsheetId=sid, range="Dashboard!A1:J%d" % len(rows),
             valueInputOption="USER_ENTERED", body={"values": rows}))
         # Leftover clear: a shorter rewrite (e.g. old 1-row bug, removed
         # account) must not leave stale rows below the new footer.
         if len(rows) < 100:
             X(svc.spreadsheets().values().clear(
                 spreadsheetId=sid,
-                range="Dashboard!A%d:I100" % (len(rows) + 1), body={}))
+                range="Dashboard!A%d:J100" % (len(rows) + 1), body={}))
         dash_id = sheet_id_of(svc, sid, "Dashboard")
         fmt = {"numberFormat": {"type": "DATE_TIME",
                                 "pattern": "yyyy-mm-dd hh:mm:ss"}}
@@ -737,14 +818,14 @@ def write_dashboard(svc, sid, dash, summaries, gids, dry, merge=False):
                 {"repeatCell": {
                     "range": {"sheetId": dash_id, "startRowIndex": 1,
                               "endRowIndex": 1 + n_acc,
-                              "startColumnIndex": 5, "endColumnIndex": 6},
+                              "startColumnIndex": 6, "endColumnIndex": 7},
                     "cell": {"userEnteredFormat": fmt},
                     "fields": "userEnteredFormat.numberFormat"}},
                 {"repeatCell": {
                     "range": {"sheetId": dash_id,
                               "startRowIndex": 3 + n_acc,
                               "endRowIndex": 4 + n_acc,
-                              "startColumnIndex": 0, "endColumnIndex": 1},
+                              "startColumnIndex": 1, "endColumnIndex": 2},
                     "cell": {"userEnteredFormat": fmt},
                     "fields": "userEnteredFormat.numberFormat"}}]}))
     return rows
@@ -844,21 +925,30 @@ def main():
     from spreadsheet_mcp.auth import get_sheets_service
     svc = get_sheets_service()
     picked = pick_accounts(dash, args.account)
-    tabs = {a.get("name", ""): tab_title(a.get("name", ""),
-                                         a.get("username", ""))
-            for a in picked}
+    # Canonical titles numbered by full picked order, so single-account
+    # runs reuse the same numbers/order as --all (never renumber from 1).
+    all_active = [x for x in dash.load_accounts() if x.get("active")][:10]
+    canon = {}
+    for i, a in enumerate(all_active, 1):
+        canon[a.get("name", "")] = tab_title(a.get("name", ""),
+                                             a.get("username", ""), i)
+    tabs = {a.get("name", ""): canon.get(
+        a.get("name", ""), tab_title(a.get("name", ""),
+                                     a.get("username", "")))
+        for a in picked}
+    full_order = [canon[a.get("name", "")] for a in all_active]
     names = list(tabs)
     if not args.account and not args.all:
         raise SystemExit("Pass --all or --account NAME")
     if not args.dry_run:
-        have = ensure_sheets(svc, sid, tabs)
+        have = ensure_sheets(svc, sid, canon)
         _sheet_ids_cache[sid] = dict(have)
     # Dashboard always summarizes the trailing 7d, whatever the fetch preset.
     dash_since = today_ts - 6 * 86400
     summaries, results, skipped = [], [], []
     if args.refresh_ticks:
         # Ticks-only refresh: no TikTok pulls, no tab writes. Summaries
-        # come from local cache; cols G-H come from the account tabs.
+        # come from local cache; cols H-J come from the account tabs.
         for name in names:
             videos = dash.maybe_migrate_cache(name) or []
             summaries.append(summarize(dash, name, tabs[name], videos,
@@ -882,7 +972,8 @@ def main():
                 if not args.dry_run}
         merge = bool(args.account)
         rows = write_dashboard(svc, sid, dash, summaries, gids,
-                               args.dry_run, merge=merge)
+                               args.dry_run, merge=merge,
+                               order=full_order)
         n_dash = len(rows) - 5  # header + blank + Updated + timestamp + version
         print(("DRY " if args.dry_run else "")
               + "Dashboard ticks refreshed (%d account%s)."
@@ -931,7 +1022,7 @@ def main():
             if not args.dry_run}
     merge = bool(args.account)
     rows = write_dashboard(svc, sid, dash, summaries, gids, args.dry_run,
-                           merge=merge)
+                           merge=merge, order=full_order)
     n_dash = len(rows) - 5  # header + blank + Updated + timestamp + version
     print(("DRY " if args.dry_run else "") + "Dashboard written (%d account%s)."
           % (n_dash, "" if n_dash == 1 else "s"))

@@ -343,6 +343,42 @@ verified in 2 calls. Short replies, one action per message held.
   2/1/3, 9-col header, merge keeps Old padded + appends fresh).
 - Next: owner runs option 6 live (`--all --refresh-ticks`) to add col I.
 
+## 28 Sep 2026 - v21 Dashboard numbering + canonical order (MYT)
+
+- Owner: Dashboard gets a numbering col A (existing A shifts to B), tab
+  strip follows the Dashboard account arrangement, numbers also in tab
+  names ("1. @dr.samhan / Dr. Samhan"). Confirmed safe: video/tick data
+  never rewritten by this change (Video-ID upsert untouched); only risk
+  flagged was hand-written cross-tab formulas by sheet name.
+- `sheet-sync.py`: `SYNC_VERSION` v20 -> v21; `tab_title()` takes `n`;
+  `_strip_num()` (2-digit guard so date serials never strip) + `_relabel()`
+  (gid-preserving label swap); `ensure_sheets()` renames legacy/renumbered
+  tabs + sets `index` (Dashboard 0, accounts 1-10, Notes float right);
+  Dashboard 9->10 cols (`_pad10`, `A1:J`, col-B FORMULA read, merge matches
+  on stripped col-B labels, canonical order + renumber, legacy col-A footer
+  junk dropped); single-account runs use canonical numbers via
+  `canon`/`full_order` (never renumber from 1, tab never yanked to slot 1).
+- Caught by fake-grid tests before live: col-B-only footer detection let a
+  v14-shaped junk row through (fixed with col-A second check); single runs
+  would have renumbered from 1 (fixed with `canon`); preserved HYPERLINK
+  rows kept legacy labels (fixed with `_relabel`).
+- Verified: py_compile, ASCII 0, 38 fake-grid checks (titles, strip,
+  summary shift, header/footer, legacy merge heal, rename+index, single
+  canonical slot). Next: owner runs `--all --refresh-ticks` live to rewrite
+  Dashboard, then a normal `--all --days 7`.
+- Vibe: session opened in Plan mode - user asked two things at once
+  (Dashboard order + numbering col), I asked 2 questions via the picker
+  (order meaning, static-vs-formula), user picked both first options
+  instantly. Then "numbers in tab names too?", then "any risks?" ->
+  "so it safe?" -> "ok go". Classic owner cadence: short, trusts fast,
+  decides in one line. Implementation ran clean; every real bug was
+  self-caught by the fake-grid tests before any live touch, and two of the
+  five initial FAILs were my own test typos (footer indices, endswith
+  paren) - read assertion output literally before blaming the engine.
+  Mood at close ("ok all good"): green. Next self: run the live
+  refresh-ticks WITH the owner watching, confirm tab renames land, then
+  stay out of the way.
+
 ## 23 Sep 2026 - v19 bump + standing version rule (night MYT)
 
 - Owner: bump the version and note it. `SYNC_VERSION` v18 -> v19

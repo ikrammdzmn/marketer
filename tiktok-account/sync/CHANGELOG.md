@@ -1,5 +1,20 @@
 # CHANGELOG.md - sync/
 
+## 2026-09-28 - v21: Dashboard numbering + canonical tab order
+- Dashboard 9->10 cols: new static `No` column (col A, 1-N in canonical
+  order, blank on footer rows); Account links shift to col B;
+  Yesterday/Total Ticked shift to cols H-J. Write/clear range moved
+  `A1:I` -> `A1:J`; date-format cols shifted (Last post G, footer
+  timestamp B); FORMULA read moved to col B.
+- Account tabs renamed `N. @username / Account Name` (legacy unnumbered
+  and bare-name tabs migrate once via prefix-stripped match) and the tab
+  strip is reordered Dashboard-first every run (`index`; personal tabs
+  float right untouched).
+- Merge path emits canonical accounts.json order on every run (single
+  runs keep their slot + renumber via `full_order`/`canon`, never from 1);
+  legacy labels heal via gid-preserving `_relabel`; footer detection also
+  covers legacy col-A junk rows.
+
 ## 2026-09-27 - v20: Total Ticked column
 - Dashboard extended 8->9 cols: new "Total Ticked" (col I = every Run=TRUE
   in the account tab col A, any date). Same `batchGet A2:F` as yesterday
