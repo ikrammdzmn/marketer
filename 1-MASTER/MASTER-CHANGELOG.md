@@ -4,6 +4,16 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 29 Sep 2026
+
+- `tiktok-creative-analysis` v50–v54 (uncommitted): Shop daily trend (GMV-Max
+  style day-by-day shop totals over 2+ single-day files; dashboard-pattern
+  calendar with preset rail + hover preview + month jump; 5 KPI cards with
+  vs-previous deltas, Cost + Revenue sharing one axis) + one-click single-day
+  fix + silent `/health` + probe-noise quiet list + loading spinner with
+  locked load buttons
+  → `tiktok-creative-analysis/CHANGELOG.md`
+
 ## 28 Sep 2026
 
 - `tiktok-account/sync` v21: Dashboard `No` col (A, 1-N static; Account

@@ -4,7 +4,9 @@
 > Detailed GMV auto plan lives in `gmvmax-auto/masterplan.md` (not duplicated here).
 
 ## 1. Repo map (what lives where)
-- `tiktok-creative-analysis/` — Static creative analytics (single + bulk dialects, multi-file compare ≤31 with auto-pick Combine/diff, trend per creative: day columns + line chart + sparklines + solo popup + ROI/CPM/AOV metrics, dot-only chart hover with vs-prev moves, insight engine + verdict filter + `?insight` links, exploration guide + clickable pills + status-by-day KPIs/chart with green-red deltas + 7 on-demand stages, SOP bars, folder-grouped filename-chip picker, click-to-copy Post IDs, manager CSV export). Pure HTML/CSS/vanilla JS, no build (`app.js?v=49`). Authoritative `data/accounts.json` (20 entries × {name,username,accountId,note,active,live,topAffiliate,updatedAt}, exact-match on name); `data/catalog.json` (4 campaigns + 18 products, user-named); `data/targets.json` (SOP topN/minImpr/maxCPM, null = auto). Local `server.py` (127.0.0.1, accounts+targets savers) + `start-server.bat`; loader auto-picks newest `source-file/*.xlsx` by end-date. Statuses in its `plan.md`; releases in `CHANGELOG.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
+- `tiktok-creative-analysis/` — Static creative analytics (single + bulk dialects, multi-file compare ≤31 with auto-pick Combine/diff, trend per creative: day columns + line chart + sparklines + solo popup + ROI/CPM/AOV metrics, dot-only chart hover with vs-prev moves, insight engine + verdict filter + `?insight` links, exploration guide + clickable pills + status-by-day KPIs/chart with green-red deltas + 7 on-demand stages, SOP bars, folder-grouped filename-chip picker, click-to-copy Post IDs, manager CSV export, shop daily trend (GMV-Max cards +
+dashboard-pattern calendar + vs-previous deltas), loading spinner + locked
+load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative `data/accounts.json` (20 entries × {name,username,accountId,note,active,live,topAffiliate,updatedAt}, exact-match on name); `data/catalog.json` (4 campaigns + 18 products, user-named); `data/targets.json` (SOP topN/minImpr/maxCPM, null = auto). Local `server.py` (127.0.0.1, accounts+targets savers, silent `/health` + probe quiet list) + `start-server.bat`; loader auto-picks newest `source-file/*.xlsx` by end-date. Statuses in its `plan.md`; releases in `CHANGELOG.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
 - `tiktok-account/` - Display API dashboard (own videos + post times). Python stdlib + Tailwind, localhost 8080. `tester.py` FROZEN. 17 Sep: 429 throttle/retry, range + limit pulls (merged cache), unlink, calendar UX, thumbnails, link-mismatch guard. 20 Sep: live Refresh progress popup (stream, same-connection) + last-fetch stamps + `#`-first CSV export (committed `4f9a792`); `sync/` daily Sheets bridge committed 23 Sep (`2663c7a`, v19: progress, abort, re-sort, Video-ID-first, Creative-age col). 23 Sep: picker shows `active` from accounts.json (uncommitted). Statuses in its `plan.md`; releases in `CHANGELOG.md`. Agent note: `NEON_NOTE.md`. 28 Sep: `sync/` v21 (Dashboard No col, numbered tabs, canonical order, uncommitted).
 - `tiktok-strategy/` — Himwellness Growth OS playbook (`himwellness-playbook.html` + `full-strategy.md`). Business guardrails live here: ROI ≥7.0, CPA ≤RM21.18, 1 campaign/SKU, TTAM feeder role, dayparting windows, payday surge. Offline, localStorage.
 - `tiktok-event/` — HIMCOFFEE RACI MASTER (`index.html`, vanilla single-file, local-only, no build). Timeline 2026–2030 + RACI Worksheet + 5T/3M Blueprint + workload + CSV + local PIN seats. Reference: `raci_campaign_dashboard.tsx` (React+Firebase, FROZEN) + `tiktok-prd` (PRD v1.0.0). Statuses in its `plan.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
@@ -33,6 +35,13 @@
 - `1-MASTER/` — this file + `MASTER-CHANGELOG.md` (repo rollup) + `MASTER-AGENTS.md` (shared conventions) + `antigravity-aistudio.md` (IDE transfer guide, not product code).
 
 ## 2. Current status (2026-09-20, midday)
+
+- 29 Sep: `tiktok-creative-analysis` v50–v54 (uncommitted): Shop daily trend +
+  dashboard-pattern calendar + KPI cards with vs-previous deltas + one-click
+  single-day fix + silent `/health` + probe quiet list + loading spinner with
+  locked load buttons (`app.js?v=54`). Ritual done (DEV_NOTES handoff + bugs
+  40–43, folder AGENTS rule 4 anchor lesson, rollup lines here + CHANGELOG +
+  MASTER-AGENTS).
 
 - 27 Sep: `g-sheet_tools/aff-notify` v1 built + email live-tested
   (`testNotify` works), then v2 Telegram sender + v3 two-bucket priority

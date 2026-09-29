@@ -40,3 +40,7 @@
 - [x] v21: numbered tab titles `N. @user / Name` + canonical tab-strip
   order (Dashboard first, rename + `index` reorder each run, merge
   re-sorts + renumbers)
+- [x] v22: `--seed-age` reseeds canonical Creative-age formula into C2
+  (clear-first, col-C-only, dry-run safe)
+- [x] v23: seed-age clear fixed to `C2:C10000` (read extent undercounts
+  trailing formula-blanks -> #REF!)

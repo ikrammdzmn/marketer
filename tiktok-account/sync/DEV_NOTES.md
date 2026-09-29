@@ -343,6 +343,41 @@ verified in 2 calls. Short replies, one action per message held.
   2/1/3, 9-col header, merge keeps Old padded + appends fresh).
 - Next: owner runs option 6 live (`--all --refresh-ticks`) to add col I.
 
+## 29 Sep 2026 - v23 seed-age clear fix (MYT)
+
+- Live `--seed-age` wrote C2 on all 10 tabs but every tab #REF!'d
+  (would-overwrite, e.g. C11). Root cause: my clear range was sized from
+  the read extent, and the Sheets API omits trailing formula-blank cells
+  from reads - the old per-row formulas sitting below survived the clear
+  and blocked expansion. Dry-run reported 0 strays for the same reason
+  (""-valued cells are invisible to value reads).
+- Fixed: clear is now fixed `C2:C10000`, never read-sized.
+  `SYNC_VERSION` v22 -> v23. Stub-verified. Rerun heals.
+- LESSON: never size a destructive range from an API read extent when
+  trailing empties are omitted - overshoot with a fixed bound. And value
+  reads cannot see formula-blank blockers; only a write + evaluate reveals
+  them, which is exactly why the single-account-live-first rule exists.
+
+## 29 Sep 2026 - v22 --seed-age formula seeder (MYT)
+
+- Owner picked the engine tool over manual paste. New `--seed-age` mode:
+  per picked tab, clear C2:Cmax then write canonical `age_formula.txt`
+  into C2 as USER_ENTERED (col C's only sanctioned writer; A-B + system
+  block untouched). Takes no window flag, refuses `--refresh-ticks`
+  combo, dry-run safe. `SYNC_VERSION` v21 -> v22. Launcher untouched
+  (generic `-Forward` passthrough covers the flag).
+- OPEN: canonical formula text still needed - owner asked to reconstruct
+  instead (29 Sep): `sync/age_formula.txt` now holds a rebuilt
+  ARRAYFORMULA to spec (F2:F + VALUE, blanks skipped, future->scheduled,
+  days granularity with today; sheet tz already GMT+8 KL so NOW() is MYT).
+  Loads clean (145 chars, ASCII, balanced). Live verify still pending -
+  sibling `../tools` absent on this box, so owner runs it: dry-run all,
+  then single-account live, read back C2.
+- Verified: py_compile, ASCII 0, 14 stub checks (no-op, stray clear+range,
+  wrong-C2, dry purity, missing tab, empty col, v22, --help).
+- Lesson: folder ASCII rule applies to the new reader too -
+  `age_formula.txt` is read `utf-8-sig` like `.sheet_id.json` (Notepad BOM).
+
 ## 28 Sep 2026 - v21 Dashboard numbering + canonical order (MYT)
 
 - Owner: Dashboard gets a numbering col A (existing A shifts to B), tab

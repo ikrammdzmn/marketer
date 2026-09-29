@@ -72,7 +72,8 @@ additional prompt Do not delete this part
 
 - `tiktok-creative-analysis/` — static creative analytics (multi-file compare ≤31,
   bulk dialect, insight engine, SOP bars, `?insight` links, picker chips,
-  status-by-day with 7 on-demand stages).
+  status-by-day with 7 on-demand stages, shop daily trend + dashboard-pattern
+  calendar + loading busy state, silent `/health`).
 - `tiktok-account/` — Display API dashboard (`dashboard/`; `tester.py` FROZEN; link-mismatch guard + throttled/merged pulls + stream progress popup + fetched_at; releases in `CHANGELOG.md`) + `sync/` daily Sheets bridge (own AGENTS.md: path-import reuse, `X()` retry, dry-run purity, lengths-only secrets).
 - `tiktok-strategy/` — Growth OS playbook (guardrails owner, §6 above).
 - `tiktok-event/` — RACI board, vanilla single-file (`raci_campaign_dashboard.tsx`

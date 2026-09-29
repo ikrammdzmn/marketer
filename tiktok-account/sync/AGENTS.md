@@ -35,8 +35,10 @@ spreadsheet-mcp venv (google client libs). No npm, no build, no server.
   `Creative age` user formula); appending a name
   shifts the system block right with no other code change.
 - Video ID is the upsert key (at `OFF`, col D). Cols A-C are user-owned: never
-  written - except the header row, blank A-C on new rows, and
-  CHECKBOX validation re-applied to col A each run. Col A (Run) stores
+  written - except the header row, blank A-C on new rows,
+  CHECKBOX validation re-applied to col A each run, and `--seed-age`
+  (clears col C below the header + writes the canonical
+  `age_formula.txt` formula into C2 as USER_ENTERED; touches nothing else). Col A (Run) stores
   real booleans: the API reads ticks back as `"TRUE"`/`"FALSE"` strings,
   but writing those strings back as TEXT trips strict BOOLEAN validation
   (red error triangles on every cell - 23 Sep incident). Pass every col-A

@@ -20,6 +20,8 @@ Windows (pick ONE window per run):
   --since YYYY-MM-DD [--until YYYY-MM-DD] | --full
 Ticks-only refresh (no TikTok pull, Dashboard cols H-J only):
   ... sheet-sync.py --all --refresh-ticks [--dry-run]
+Age-formula seeding (no TikTok pull, col C only):
+  ... sheet-sync.py --all --seed-age [--dry-run]
 Single account / dry run / gap fill:
   ... sheet-sync.py --account "Dr Samhan" --today
   ... sheet-sync.py --all --days 7 --dry-run
@@ -46,8 +48,9 @@ PARENT = os.path.dirname(HERE)  # tiktok-account/
 MARKETER = os.path.dirname(PARENT)
 DASHBOARD_PY = os.path.join(PARENT, "dashboard", "dashboard.py")
 SHEET_ID_FILE = os.path.join(HERE, ".sheet_id.json")
+AGE_FORMULA_FILE = os.path.join(HERE, "age_formula.txt")
 MYT = datetime.timezone(datetime.timedelta(hours=8))
-SYNC_VERSION = "v21"
+SYNC_VERSION = "v23"
 
 BASE_HEADER = ["Video ID", "Title", "Posted (MYT)", "Views", "Likes",
                "Comments", "Shares", "Links"]
@@ -728,6 +731,59 @@ def _link_cell(label, gids, svc, sid, dry):
     return '=HYPERLINK("#gid=%d","%s")' % (gid, label.replace('"', '""'))
 
 
+def load_age_formula():
+    """Canonical Creative-age C2 formula from sync/age_formula.txt."""
+    if not os.path.exists(AGE_FORMULA_FILE):
+        raise SystemExit(
+            "No age formula: paste the C2 Creative-age formula (one line, "
+            "starting with =) into sync/age_formula.txt, then rerun.")
+    with open(AGE_FORMULA_FILE, encoding="utf-8-sig") as f:
+        formula = f.read().strip()
+    if not formula.startswith("="):
+        raise SystemExit(
+            "Bad age formula in sync/age_formula.txt "
+            "(want one line starting with =).")
+    return formula
+
+
+def seed_age(svc, sid, title, formula, dry):
+    """Clear col C below the header and (re)write the formula into C2.
+
+    Returns (would_write, strays) - or None when the tab is missing.
+    Live runs clear col C first (stray values block ARRAYFORMULA with
+    #REF!) then write C2 as USER_ENTERED so it evaluates. The clear uses
+    a fixed C2:C10000 bound, never the read extent: trailing formula-blank
+    cells are omitted from reads but still block expansion. Cols A-B and
+    the system block are never touched.
+    """
+    try:
+        cur = X(svc.spreadsheets().values().get(
+            spreadsheetId=sid, range="%s!C2:C" % _q(title))).get("values", [])
+    except Exception as e:  # noqa: BLE001 - missing tab reads as skip
+        blob = str(getattr(e, "content", "")) + str(e)
+        if "Unable to parse range" in blob:
+            return None
+        raise
+    flat = [(r + [""])[0] for r in cur]
+    have = bool(flat) and str(flat[0]).strip() == formula.strip()
+    strays = sum(1 for v in flat[1:] if str(v).strip() != "")
+    if have and strays == 0:
+        return (False, 0)
+    if not dry:
+        # Fixed generous bound, not the read extent: trailing
+        # formula-blank cells are omitted from reads but still block
+        # ARRAYFORMULA, so the clear must overshoot them (29 Sep bug:
+        # read-extent clear left blockers below, every tab #REF!'d).
+        X(svc.spreadsheets().values().clear(
+            spreadsheetId=sid,
+            range="%s!C2:C10000" % _q(title), body={}))
+        X(svc.spreadsheets().values().update(
+            spreadsheetId=sid, range="%s!C2" % _q(title),
+            valueInputOption="USER_ENTERED",
+            body={"values": [[formula]]}))
+    return (True, strays)
+
+
 def write_dashboard(svc, sid, dash, summaries, gids, dry, merge=False,
                     order=None):
     header = ["No", "Account", "Followers", "Videos 7d", "Views 7d",
@@ -874,6 +930,7 @@ def main():
     ap.add_argument("--until", default="")
     ap.add_argument("--full", action="store_true")
     ap.add_argument("--refresh-ticks", action="store_true")
+    ap.add_argument("--seed-age", action="store_true")
     ap.add_argument("--spreadsheet-id", default="")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -886,6 +943,11 @@ def main():
     if args.refresh_ticks and any(specs):
         raise SystemExit("--refresh-ticks takes no window flag "
                          "(--today | --yesterday | --days N | --since/--until | --full)")
+    if args.seed_age and any(specs):
+        raise SystemExit("--seed-age takes no window flag "
+                         "(--today | --yesterday | --days N | --since/--until | --full)")
+    if args.refresh_ticks and args.seed_age:
+        raise SystemExit("Pick one mode: --refresh-ticks or --seed-age")
     if sum(1 for s in specs if s) > 1:
         raise SystemExit("Pick ONE window: --today | --yesterday | --days N "
                          "| --since/--until | --full")
@@ -943,6 +1005,40 @@ def main():
     if not args.dry_run:
         have = ensure_sheets(svc, sid, canon)
         _sheet_ids_cache[sid] = dict(have)
+    if args.seed_age:
+        # Formula seeding: no TikTok pull, no Dashboard write. Clears
+        # col C below the header and writes the canonical age formula
+        # into C2 on every picked tab (col C's only sanctioned writer).
+        formula = load_age_formula()
+        done, fixed, skipped = 0, 0, []
+        for name in names:
+            res = seed_age(svc, sid, tabs[name], formula, args.dry_run)
+            tag = "DRY " if args.dry_run else ""
+            if res is None:
+                print("%s%s: no tab - run a normal sync first." % (tag, name))
+                skipped.append(name)
+                continue
+            wrote, strays = res
+            done += 1
+            if wrote:
+                fixed += 1
+            verb = "would write" if args.dry_run else "written"
+            if wrote and strays:
+                print("%s%s: formula %s, %d stray cell%s cleared."
+                      % (tag, name, verb, strays,
+                         "" if strays == 1 else "s"))
+            elif wrote:
+                print("%s%s: formula %s." % (tag, name, verb))
+            else:
+                print("%s%s: already correct." % (tag, name))
+        print(("DRY " if args.dry_run else "")
+              + "Creative age: %d of %d tabs %s."
+              % (fixed, done, "would fix" if args.dry_run else "fixed"))
+        if skipped:
+            print("Skipped (no tab): %s." % ", ".join(skipped))
+        if args.dry_run:
+            print("Preview only - sheet untouched.")
+        return
     # Dashboard always summarizes the trailing 7d, whatever the fetch preset.
     dash_since = today_ts - 6 * 86400
     summaries, results, skipped = [], [], []

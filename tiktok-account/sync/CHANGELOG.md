@@ -1,5 +1,21 @@
 # CHANGELOG.md - sync/
 
+## 2026-09-29 - v23: seed-age clear overshoots read extent
+- `--seed-age` live clear is now fixed `C2:C10000`, not the read extent:
+  trailing formula-blank cells are omitted from API reads but still block
+  ARRAYFORMULA, so v22's extent-sized clear left blockers below and every
+  tab #REF!'d. Rerunning `--seed-age` heals those tabs.
+
+## 2026-09-29 - v22: --seed-age formula seeder
+- New `--seed-age` mode: clears col C below the header and writes the
+  canonical `sync/age_formula.txt` formula into C2 (USER_ENTERED) on every
+  picked tab. Stray values in C3+ block ARRAYFORMULA with #REF!, so the
+  clear-first is the point. Cols A-B + system block untouched; works with
+  `--all` / `--account` / `--dry-run`; takes no window flag; never combined
+  with `--refresh-ticks`. Per-tab report (already-correct / written +
+  strays cleared / no-tab skip). Launcher needs no change (generic
+  `-Forward` passthrough).
+
 ## 2026-09-28 - v21: Dashboard numbering + canonical tab order
 - Dashboard 9->10 cols: new static `No` column (col A, 1-N in canonical
   order, blank on footer rows); Account links shift to col B;

@@ -18,7 +18,9 @@ and growth (+numbers) shown. Sheet 1 (`Dashboard`) shows per-account totals.
    Dashboard also shows
    `Yesterday Videos`, `Yesterday Ticked`, and `Total Ticked` (all ticked
    Run boxes, any date) - refresh them fast anytime with menu 6
-   (Ticks refresh, no TikTok pull).
+   (Ticks refresh, no TikTok pull). If a tab's C ages ever break (stray
+   values block the formula), reseed all tabs with
+   `run-sync.ps1 --all --seed-age`.
 
 **Columns:**
 - A `Run` - tick the checkbox when a video is handled.
