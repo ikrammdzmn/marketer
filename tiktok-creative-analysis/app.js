@@ -7,8 +7,9 @@
   var MAX_FILES = 31;
 
   var state = { rows: [], allowlist: [], allowMeta: {}, bench: null, chart: null, trendChart: null, trendSoloChart: null, secDayChart: null,
+    shopChart: null, shop: { from: '', to: '', metrics: ['cost', 'rev'] }, shopAnchor: '', shopCalLeft: '', shopHov: '',
     targets: { topN: 20, minImpr: null, maxCPM: null },
-    files: [], cmpRows: [], cmpMode: 'compare', cmpInfo: '', dialectCache: {},
+    files: [], loading: false, cmpRows: [], cmpMode: 'compare', cmpInfo: '', dialectCache: {},
     /* extra (ext) status lines revealed via legend click — in-memory only, resets on reload */
     secExt: {} };
 
@@ -450,6 +451,18 @@
 
   /* ---------- loading ---------- */
   function setStatus(msg) { $('loadStatus').textContent = msg; }
+  /* Loading busy state: spinner in the status line + every load control
+     locked until the current load finishes (success or fail). */
+  function spinStatus(msg) { $('loadStatus').innerHTML = '<span class="spin" aria-hidden="true"></span>' + esc(msg); }
+  function setLoadBusy(on) {
+    state.loading = !!on;
+    ['loadBundled', 'loadAllBundled', 'bundleLoad', 'fileInput', 'clearFiles'].forEach(function (id) {
+      var el = $(id);
+      if (el) el.disabled = !!on;
+    });
+    var dz = $('dropzone');
+    if (dz) dz.classList.toggle('load-busy', !!on);
+  }
 
   /* DD MMMM YYYY, e.g. 13 September 2026 */
   function fmtLong(d) {
@@ -730,7 +743,7 @@
       state.rows = []; state.cmpRows = []; state.trendRows = [];
       setStatus('No file loaded.');
       $('fileMeta').textContent = '';
-    renderFileList(); renderCompareBar(); renderCompare(); renderTrend(); renderCatHint();
+    renderFileList(); renderCompareBar(); renderCompare(); renderTrend(); renderShop(); renderCatHint();
       populateFacets(); computeBench(); applyFilters();
       return;
     }
@@ -904,6 +917,447 @@
         '</td><td>' + r.aCpm.toFixed(2) + '</td><td>' + r.bCpm.toFixed(2) + '</td><td>' + sd + '</td></tr>';
     }).join('');
   }
+
+  /* ---------- shop daily trend (day-by-day single files only) ---------- */
+  var SHOP_METRICS = {
+    cost: { label: 'Cost (MYR)', d: 2, col: '#0e7490', unit: 'myr', good: 'down', suffix: ' MYR' },
+    rev: { label: 'Gross revenue (MYR)', d: 2, col: '#d97706', unit: 'myr', good: 'up', suffix: ' MYR' },
+    ord: { label: 'SKU orders', d: 0, col: '#ca8a04', unit: 'count', good: 'up', suffix: '' },
+    cpo: { label: 'Cost per order (MYR)', d: 2, col: '#2563eb', unit: 'myr', good: 'down', suffix: ' MYR' },
+    roi: { label: 'ROI', d: 2, col: '#7c3aed', unit: 'ratio', good: 'up', suffix: '' }
+  };
+  /* Dashboard-style preset rail, anchored to the latest loaded daily file. */
+  var SHOP_PRESETS = [
+    { id: 'all', label: 'All time' },
+    { id: 'today', label: 'Today' },
+    { id: 'yesterday', label: 'Yesterday' },
+    { id: 'last7', label: 'Last 7 days', days: 7 },
+    { id: 'last30', label: 'Last 30 days', days: 30 },
+    { id: 'last3m', label: 'Last 3 months', days: 91 },
+    { id: 'last6m', label: 'Last 6 months', days: 182 },
+    { id: 'last12m', label: 'Last 12 months', days: 364 }
+  ];
+  function shopVal(s, m) {
+    if (m === 'cost') return s.cost;
+    if (m === 'rev') return s.rev;
+    if (m === 'ord') return s.ord;
+    if (m === 'cpo') return s.ord > 0 ? s.cost / s.ord : 0;
+    if (m === 'roi') return s.cost > 0 ? s.rev / s.cost : 0;
+    return 0;
+  }
+  /* Eligible files: single dialect, one-day period. Bulk + ranges excluded. */
+  function dailyFiles() {
+    return sortedFiles().filter(function (f) {
+      return (f.dialect || 'single') === 'single' && f.period && f.period.from && f.period.from === f.period.to;
+    });
+  }
+  function shopDates() {
+    var seen = {};
+    dailyFiles().forEach(function (f) { seen[f.period.from] = 1; });
+    return Object.keys(seen).sort();
+  }
+  function isoAdd(iso, n) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    if (!m) return '';
+    var d = new Date(+m[1], +m[2] - 1, +m[3]);
+    d.setDate(d.getDate() + n);
+    var mm = ('0' + (d.getMonth() + 1)).slice(-2), dd = ('0' + d.getDate()).slice(-2);
+    return d.getFullYear() + '-' + mm + '-' + dd;
+  }
+  function isoDiff(a, b) {
+    var ma = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(a || '')), mb = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(b || ''));
+    if (!ma || !mb) return NaN;
+    var da = new Date(+ma[1], +ma[2] - 1, +ma[3]), db = new Date(+mb[1], +mb[2] - 1, +mb[3]);
+    return Math.round((db - da) / 86400000);
+  }
+  function isoMonth(iso, delta) {
+    var m = /^(\d{4})-(\d{2})/.exec(String(iso || ''));
+    if (!m) return '';
+    var d = new Date(+m[1], +m[2] - 1, 1);
+    d.setMonth(d.getMonth() + (delta || 0));
+    var mm = ('0' + (d.getMonth() + 1)).slice(-2);
+    return d.getFullYear() + '-' + mm;
+  }
+  /* Per-row pass for shop totals: Account / Campaign / Search / NoCard /
+     Hide-inactive / Hide-Ineligible only (creative-level Status/Type/Insight/ROI
+     gates bypassed so sales stay complete). */
+  function shopRowPass(r) {
+    var acc = $('fAccount').value, q = $('fSearch').value.trim().toLowerCase();
+    var cpEl = $('fCamp'), cp = cpEl ? cpEl.value : '';
+    var noCard = $('fNoCard').checked;
+    var hideInel = $('fNoInel').checked;
+    var hideInact = $('fNoInactive').checked;
+    if (acc && r.account !== acc) return false;
+    if (cp && campKey(r) !== cp) return false;
+    if (noCard && r.account === 'Product Card') return false;
+    if (hideInact && isInactiveAcc(r.account)) return false;
+    if (hideInel && (String(r.status) === 'Ineligible' || String(r.status) === '—')) return false;
+    if (q && String(r.creative).toLowerCase().indexOf(q) === -1 &&
+        String(r.postId).toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  }
+  function shopDayTotals() {
+    var map = {};
+    dailyFiles().forEach(function (f) {
+      var s = map[f.period.from] || (map[f.period.from] = { cost: 0, rev: 0, ord: 0, impr: 0 });
+      f.rows.forEach(function (r) {
+        if (!shopRowPass(r)) return;
+        s.cost += r.cost; s.rev += r.revenue; s.ord += r.orders; s.impr += r.impr;
+      });
+    });
+    return map;
+  }
+  function shopRangeDays(from, to) {
+    var out = [], n = isoDiff(from, to);
+    if (!isFinite(n) || n < 0 || n > 366) return out;
+    for (var i = 0; i <= n; i++) out.push(isoAdd(from, i));
+    return out;
+  }
+  /* Preset enable rule: windowed presets need >=2 loaded daily files inside the
+     window (anchored to the latest loaded date); else greyed. Axis trims leading
+     emptiness: from = earliest loaded date inside the window. */
+  function shopPresetState() {
+    var dates = shopDates(), have = {};
+    dates.forEach(function (d) { have[d] = 1; });
+    var dmax = dates.length ? dates[dates.length - 1] : '';
+    var dmin = dates.length ? dates[0] : '';
+    var todayIso = (function () { var t = new Date(); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); })();
+    return SHOP_PRESETS.map(function (p) {
+      var from = '', to = '', ok = false;
+      if (p.id === 'all') { from = dmin; to = dmax; ok = dates.length > 1; }
+      else if (p.id === 'today') { from = todayIso; to = todayIso; ok = !!have[todayIso]; }
+      else if (p.id === 'yesterday') { from = isoAdd(todayIso, -1); to = from; ok = !!have[from]; }
+      else {
+        to = dmax;
+        var w0 = isoAdd(dmax, -(p.days - 1));
+        var inWin = dates.filter(function (d) { return d >= w0 && d <= dmax; });
+        ok = inWin.length > 1;
+        from = ok ? inWin[0] : '';
+      }
+      var on = ok && from === state.shop.from && to === state.shop.to;
+      return { id: p.id, label: p.label, from: from, to: to, ok: ok, on: on };
+    });
+  }
+  function shopApplyPreset(id) {
+    var ps = shopPresetState();
+    for (var i = 0; i < ps.length; i++) {
+      if (ps[i].id === id && ps[i].ok) {
+        state.shop.from = ps[i].from; state.shop.to = ps[i].to;
+        state.shopAnchor = ''; state.shopHov = '';
+        /* Keep the picked span in view. */
+        state.shopCalLeft = isoMonth(state.shop.to, -1);
+        renderShop();
+        return true;
+      }
+    }
+    return false;
+  }
+  /* Approach A (period-over-period): previous equal-length block before `from`.
+     Single day: previous loaded day. Returns {prev, prevDays} or null. */
+  function shopPrevBlock(totals, dates, from, days) {
+    if (days.length <= 1) {
+      var idx = dates.indexOf(from);
+      if (idx > 0) {
+        var pd = dates[idx - 1];
+        return { agg: totals[pd] || { cost: 0, rev: 0, ord: 0, impr: 0 }, prevDays: 1, tag: 'prev day' };
+      }
+      return null;
+    }
+    var n = days.length;
+    var pTo = isoAdd(from, -1), pFrom = isoAdd(from, -n);
+    var agg = { cost: 0, rev: 0, ord: 0, impr: 0 }, cnt = 0;
+    shopRangeDays(pFrom, pTo).forEach(function (d) {
+      if (totals[d]) { agg.cost += totals[d].cost; agg.rev += totals[d].rev; agg.ord += totals[d].ord; agg.impr += totals[d].impr; cnt++; }
+    });
+    if (!cnt) return null;
+    return { agg: agg, prevDays: cnt, tag: cnt < n ? 'previous (' + cnt + 'd)' : 'previous' };
+  }
+  function shopDeltaText(m, cur, prevInfo) {
+    if (!prevInfo) return { t: 'vs previous —', cls: '' };
+    var M = SHOP_METRICS[m];
+    var pv = shopVal(prevInfo.agg, m);
+    if (!isFinite(pv) || pv === 0) return { t: 'vs ' + prevInfo.tag + ' —', cls: '' };
+    var pct = (cur - pv) / Math.abs(pv) * 100;
+    var good = (M.good === 'up' && cur >= pv) || (M.good === 'down' && cur <= pv);
+    var sign = pct > 0 ? '+' : (pct < 0 ? '−' : '');
+    return { t: 'vs ' + prevInfo.tag + ' ' + sign + fmt(Math.abs(pct), 2) + '%', cls: pct === 0 ? '' : (good ? 'good' : 'bad') };
+  }
+  function renderShop() {
+    var sec = $('shopSection');
+    if (!sec) return;
+    var dates = shopDates();
+    var show = dates.length > 1;
+    sec.hidden = !show;
+    if (!show) {
+      if (state.shopChart) { state.shopChart.destroy(); state.shopChart = null; }
+      return;
+    }
+    /* Default range: full span once, then keep user picks inside new bounds. */
+    if (!state.shop.from || !state.shop.to || dates.indexOf(state.shop.from) === -1 || dates.indexOf(state.shop.to) === -1 || isoDiff(state.shop.from, state.shop.to) < 0) {
+      state.shop.from = dates[0];
+      state.shop.to = dates[dates.length - 1];
+      state.shopAnchor = ''; state.shopHov = '';
+    }
+    if (!state.shopCalLeft) state.shopCalLeft = isoMonth(state.shop.to, -1);
+    var totals = shopDayTotals();
+    var days = shopRangeDays(state.shop.from, state.shop.to);
+    var agg = { cost: 0, rev: 0, ord: 0, impr: 0 };
+    days.forEach(function (d) {
+      var s = totals[d];
+      if (s) { agg.cost += s.cost; agg.rev += s.rev; agg.ord += s.ord; agg.impr += s.impr; }
+    });
+    var ms = state.shop.metrics.filter(function (m) { return SHOP_METRICS[m]; });
+    if (!ms.length) { ms = ['cost', 'rev']; state.shop.metrics = ms; }
+    var curVals = { cost: agg.cost, rev: agg.rev, ord: agg.ord,
+      cpo: agg.ord > 0 ? agg.cost / agg.ord : 0, roi: agg.cost > 0 ? agg.rev / agg.cost : 0 };
+    var prevInfo = shopPrevBlock(totals, dates, state.shop.from, days);
+    var shopIds = { cost: ['shopCost', 'shopCostD'], rev: ['shopRev', 'shopRevD'], ord: ['shopOrd', 'shopOrdD'], cpo: ['shopCpo', 'shopCpoD'], roi: ['shopRoi', 'shopRoiD'] };
+    Object.keys(shopIds).forEach(function (m) {
+      var M = SHOP_METRICS[m], v = curVals[m];
+      var vel = $(shopIds[m][0]);
+      if (vel) vel.textContent = ((m === 'cpo' && agg.ord <= 0) || (m === 'roi' && agg.cost <= 0)) ? '–' : fmt(v, M.d) + M.suffix;
+      var dt = shopDeltaText(m, v, prevInfo);
+      var del = $(shopIds[m][1]);
+      if (del) { del.textContent = dt.t; del.className = 'shop-delta' + (dt.cls ? ' ' + dt.cls : ''); }
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-shopck]'), function (c) {
+      c.checked = ms.indexOf(c.getAttribute('data-shopck')) !== -1;
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.shop-kpi'), function (k) {
+      var isOn = ms.indexOf(k.getAttribute('data-shop')) !== -1;
+      k.classList.toggle('on', isOn);
+      k.classList.toggle('off', !isOn);
+    });
+    var btn = $('shopRangeBtn');
+    if (btn) btn.textContent = state.shop.from + '  –  ' + state.shop.to + '  📅';
+    var cnt = $('shopCount');
+    if (cnt) cnt.textContent = '— ' + days.length + ' days · ' + dates.length + ' daily files';
+    var meta = $('shopMeta');
+    if (meta) meta.textContent = 'Range: ' + state.shop.from + ' → ' + state.shop.to +
+      ' (' + days.length + ' days, ' + days.filter(function (d) { return totals[d]; }).length + ' with data). Missing days break the line.' +
+      (prevInfo ? ' Compared vs ' + prevInfo.tag + ' (' + prevInfo.prevDays + 'd with data).' : ' No earlier files for a vs-previous compare.');
+    var single = state.shop.from === state.shop.to;
+    var note = $('shopSingleNote'), wrap = $('shopChartWrap');
+    if (note) note.hidden = !single;
+    if (wrap) wrap.style.display = single ? 'none' : '';
+    if (single) {
+      if (state.shopChart) { state.shopChart.destroy(); state.shopChart = null; }
+      renderShopCal();
+      return;
+    }
+    renderShopChart(days, totals, ms);
+    renderShopCal();
+  }
+  function renderShopChart(days, totals, ms) {
+    if (typeof Chart === 'undefined' || !$('shopChart')) return;
+    if (state.shopChart) { state.shopChart.destroy(); state.shopChart = null; }
+    var use = ms.slice(0, 2);
+    var ctx = $('shopChart').getContext('2d');
+    /* Same-unit pairs (e.g. Cost + Revenue, both MYR) share one left axis;
+       mixed units split left/right. */
+    var shared = use.length < 2 || SHOP_METRICS[use[0]].unit === SHOP_METRICS[use[1]].unit;
+    var dark = document.documentElement && document.documentElement.classList.contains('dark');
+    var gridCol = dark ? '#374151' : '#e5e7eb', tickCol = dark ? '#9ca3af' : '#6b7280';
+    var axScale = function (pos, noGrid) {
+      var o = { position: pos, grid: { color: gridCol }, ticks: { font: { size: 10 }, color: tickCol } };
+      if (noGrid) o.grid.drawOnChartArea = false;
+      return o;
+    };
+    state.shopChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: days.map(fmtDay),
+        datasets: use.map(function (m, i) {
+          var M = SHOP_METRICS[m];
+          return { label: M.label, data: days.map(function (d) { return totals[d] ? Math.round(shopVal(totals[d], m) * 100) / 100 : null; }),
+            borderColor: M.col, backgroundColor: M.col, tension: 0.2, spanGaps: false,
+            borderWidth: 2, pointRadius: 3, pointHitRadius: 10, yAxisID: (!shared && i === 1) ? 'y1' : 'y' };
+        })
+      },
+      options: { responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'point', intersect: true },
+        scales: shared
+          ? { x: { grid: { color: gridCol }, ticks: { font: { size: 10 }, color: tickCol, maxRotation: days.length > 10 ? 45 : 0, autoSkip: true } }, y: axScale('left') }
+          : { x: { grid: { color: gridCol }, ticks: { font: { size: 10 }, color: tickCol, maxRotation: days.length > 10 ? 45 : 0, autoSkip: true } }, y: axScale('left'), y1: axScale('right', true) },
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } },
+          tooltip: { mode: 'point', intersect: true, callbacks: {
+            title: function (items) { return items.length ? items[items[0].dataIndex] && days[items[0].dataIndex] : ''; },
+            filter: function (item) { return item.parsed.y !== null && item.parsed.y !== undefined; },
+            label: function (cx) {
+              var M = SHOP_METRICS[use[cx.datasetIndex]] || SHOP_METRICS.cost;
+              var s = ' ' + M.label + ': ' + fmt(cx.parsed.y, M.d);
+              if (cx.dataIndex > 0) {
+                var pv = cx.dataset.data[cx.dataIndex - 1];
+                if (pv !== null && pv !== undefined && isFinite(pv)) {
+                  var dd = cx.parsed.y - pv;
+                  if (dd) s += ' (' + (dd > 0 ? '+' : '−') + fmt(Math.abs(dd), M.d) + ')';
+                }
+              }
+              return s;
+            } } } } }
+    });
+  }
+  function renderShopCal() {
+    var box = $('shopCal');
+    if (!box || box.hidden) return;
+    var dates = shopDates(), have = {};
+    dates.forEach(function (d) { have[d] = 1; });
+    var dmin = dates[0], dmax = dates[dates.length - 1];
+    var minMonth = isoMonth(dmin), maxMonth = isoMonth(dmax);
+    var left = state.shopCalLeft || isoMonth(dmax, -1);
+    if (left < minMonth) left = minMonth;
+    if (left > maxMonth) left = maxMonth;
+    state.shopCalLeft = left;
+    var presets = shopPresetState().map(function (p) {
+      return '<button type="button" data-preset="' + p.id + '"' + (p.ok ? '' : ' disabled') + (p.on ? ' class="on"' : '') + '>' + p.label + '</button>';
+    }).join('');
+    var canPrev = left > minMonth, canNext = left < maxMonth;
+    /* Two-click pick + hover preview (dashboard pickDay/hoverDay pattern). */
+    var anchor = state.shopAnchor, hov = state.shopHov;
+    var lo = null, hi = null;
+    if (anchor && hov && hov !== anchor) { lo = anchor < hov ? anchor : hov; hi = anchor < hov ? hov : anchor; }
+    var btnCell = function (iso, label, adj) {
+      var cls = adj ? 'dim' : '';
+      if (!have[iso]) return '<td><button class="' + cls + '" disabled>' + label + '</button></td>';
+      if (!anchor) {
+        if (iso === state.shop.from || iso === state.shop.to) cls = 'sel';
+        else if (iso > state.shop.from && iso < state.shop.to) cls = 'inr';
+      } else if (!hov || hov === anchor) {
+        if (iso === anchor) cls = 'sel';
+      } else {
+        if (iso === anchor || iso === hov) cls = 'sel';
+        else if (iso > lo && iso < hi) cls = 'inr';
+      }
+      return '<td><button class="' + cls + '" data-day="' + iso + '" data-hov="' + iso + '">' + label + '</button></td>';
+    };
+    var monthHtml = function (ym) {
+      var m = /^(\d{4})-(\d{2})/.exec(ym || '');
+      if (!m) return '';
+      var y = +m[1], mo = +m[2] - 1;
+      var first = new Date(y, mo, 1).getDay(), n = new Date(y, mo + 1, 0).getDate();
+      var h = "<h4 class='text-center font-semibold text-sm my-1'>" + ym + "</h4><table><tr><th>Su</th><th>Mo</th><th>Tu</th><th>We</th><th>Th</th><th>Fr</th><th>Sa</th></tr><tr>";
+      var cell = 0, pm = mo === 0 ? 11 : mo - 1, py = mo === 0 ? y - 1 : y;
+      var pLen = new Date(py, pm + 1, 0).getDate();
+      var i, dd, iso, p2 = function (v) { return ('0' + v).slice(-2); };
+      for (i = 0; i < first; i++) { dd = pLen - first + 1 + i; iso = py + '-' + p2(pm + 1) + '-' + p2(dd); h += btnCell(iso, dd, true); cell++; }
+      for (dd = 1; dd <= n; dd++) { iso = y + '-' + p2(mo + 1) + '-' + p2(dd); h += btnCell(iso, dd, false); cell++; if (cell % 7 === 0 && dd < n) h += '</tr><tr>'; }
+      var nm = mo === 11 ? 0 : mo + 1, ny = mo === 11 ? y + 1 : y, nx = 1;
+      while (cell % 7 !== 0) { iso = ny + '-' + p2(nm + 1) + '-' + p2(nx); h += btnCell(iso, nx, true); nx++; cell++; }
+      return h + '</tr></table>';
+    };
+    var right = isoMonth(left, 1);
+    box.innerHTML = '<div class="shop-cal-row"><div class="shop-rail">' + presets +
+      '<input type="month" id="shopMonthPick" class="filter-input shop-monthpick" min="' + minMonth + '" max="' + maxMonth + '" value="' + left + '">' +
+      '</div><div class="shop-main">' +
+      '<div class="shop-nav"><button type="button" data-nav="-12"' + (canPrev ? '' : ' disabled') + '>«</button>' +
+      '<button type="button" data-nav="-1"' + (canPrev ? '' : ' disabled') + '>‹</button>' +
+      '<button type="button" data-close="1">✕</button>' +
+      '<button type="button" data-nav="1"' + (canNext ? '' : ' disabled') + '>›</button>' +
+      '<button type="button" data-nav="12"' + (canNext ? '' : ' disabled') + '>»</button></div>' +
+      '<div class="shop-months" id="shopMonths">' + monthHtml(left) + monthHtml(right) + '</div>' +
+      '</div></div>' +
+      '<div class="shop-cal-foot"><span>Click = one day · second click = range. Grey = no file.</span><button type="button" data-close="1" class="hint-btn">Close</button></div>';
+  }
+  function initShop() {
+    var btn = $('shopRangeBtn'), box = $('shopCal');
+    if (btn && box) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        box.hidden = !box.hidden;
+        if (!box.hidden) { state.shopAnchor = ''; state.shopHov = ''; renderShopCal(); }
+      });
+      box.addEventListener('click', function (e) {
+        var pre = e.target.closest ? e.target.closest('[data-preset]') : null;
+        if (pre && !pre.disabled) { shopApplyPreset(pre.getAttribute('data-preset')); return; }
+        var nav = e.target.closest ? e.target.closest('[data-nav]') : null;
+        if (nav && !nav.disabled) {
+          var dates2 = shopDates();
+          var nl = isoMonth(state.shopCalLeft || isoMonth(state.shop.to, -1), parseInt(nav.getAttribute('data-nav'), 10));
+          if (dates2.length > 1) {
+            var lo2 = isoMonth(dates2[0]), hi2 = isoMonth(dates2[dates2.length - 1]);
+            if (nl < lo2) nl = lo2;
+            if (nl > hi2) nl = hi2;
+          }
+          state.shopCalLeft = nl;
+          renderShopCal();
+          return;
+        }
+        if (e.target.closest && e.target.closest('[data-close]')) {
+          box.hidden = true;
+          if (state.shopAnchor || state.shopHov) { state.shopAnchor = ''; state.shopHov = ''; renderShop(); }
+          return;
+        }
+        var day = e.target.closest ? e.target.closest('[data-day]') : null;
+        if (day) {
+          var iso = day.getAttribute('data-day');
+          state.shopHov = '';
+          if (!state.shopAnchor) {
+            state.shopAnchor = iso;
+            state.shop.from = iso; state.shop.to = iso;
+          } else if (iso === state.shopAnchor) {
+            state.shop.from = iso; state.shop.to = iso;
+            state.shopAnchor = '';
+          } else {
+            state.shop.from = iso < state.shopAnchor ? iso : state.shopAnchor;
+            state.shop.to = iso < state.shopAnchor ? state.shopAnchor : iso;
+            state.shopAnchor = '';
+          }
+          renderShop();
+          return;
+        }
+      });
+      box.addEventListener('mouseover', function (e) {
+        var b = e.target.closest ? e.target.closest('[data-hov]') : null;
+        if (!b || !state.shopAnchor) return;
+        var hiso = b.getAttribute('data-hov');
+        if (state.shopHov === hiso) return;
+        state.shopHov = hiso;
+        var btn2 = $('shopRangeBtn');
+        if (btn2) {
+          var a = state.shopAnchor;
+          btn2.textContent = (a < hiso ? a : hiso) + '  →  ' + (a < hiso ? hiso : a) + '  📅';
+        }
+        renderShopCal();
+      });
+      box.addEventListener('mouseleave', function () {
+        if (!state.shopHov) return;
+        state.shopHov = '';
+        renderShop();
+      });
+      box.addEventListener('change', function (e) {
+        if (e.target && e.target.id === 'shopMonthPick') {
+          var v = e.target.value, dates3 = shopDates();
+          if (dates3.length > 1) {
+            var lo3 = isoMonth(dates3[0]), hi3 = isoMonth(dates3[dates3.length - 1]);
+            if (v && v >= lo3 && v <= hi3) { state.shopCalLeft = v; renderShopCal(); return; }
+          }
+          e.target.value = state.shopCalLeft;
+        }
+      });
+      document.addEventListener('click', function (e) {
+        if (!box.hidden && !box.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
+          box.hidden = true;
+          if (state.shopAnchor || state.shopHov) { state.shopAnchor = ''; state.shopHov = ''; renderShop(); }
+        }
+      });
+    }
+    Array.prototype.forEach.call(document.querySelectorAll('[data-shopck]'), function (c) {
+      c.addEventListener('change', function () {
+        var m = c.getAttribute('data-shopck');
+        var ms = state.shop.metrics.slice();
+        if (c.checked) {
+          if (ms.indexOf(m) === -1) ms.push(m);
+          while (ms.length > 2) ms.shift();
+        } else {
+          ms = ms.filter(function (x) { return x !== m; });
+          if (!ms.length) { c.checked = true; return; }
+        }
+        state.shop.metrics = ms;
+        renderShop();
+      });
+    });
+  }
+  initShop();
 
   /* ---------- trend per creative (day-by-day columns across loaded files) ---------- */
   function fmtDay(iso) {
@@ -1464,31 +1918,40 @@
   $('fileInput').addEventListener('change', function (e) {
     var list = e.target.files;
     if (!list || !list.length) return;
+    if (state.loading) { e.target.value = ''; return; }
+    setLoadBusy(true);
     var arr = Array.prototype.slice.call(list, 0, MAX_FILES);
+    spinStatus('Loading ' + arr.length + ' file(s)…');
     if (arr.length === 1 && state.files.length === 0) {
       var f0 = arr[0], r0 = new FileReader();
-      r0.onload = function () { loadArrayBuffer(r0.result, f0.name, new Date(f0.lastModified), true); };
+      r0.onload = function () { loadArrayBuffer(r0.result, f0.name, new Date(f0.lastModified), true); setLoadBusy(false); };
+      r0.onerror = function () { setLoadBusy(false); setStatus('Read failed (' + f0.name + ')'); };
       r0.readAsArrayBuffer(f0);
       e.target.value = '';
       return;
     }
     var pending = arr.map(function (f) { return { f: f, buf: null }; });
     var done = 0;
+    var finishUpload = function () {
+      // append to existing slots (cap MAX_FILES inside addFile/loadManyBuffers path)
+      pending.forEach(function (q) {
+        if (q.buf === null || q.buf === undefined) return;
+        try {
+          var wb = XLSX.read(q.buf, { type: 'array' });
+          var parsed = rowsOfWorkbook(wb);
+          addFile(q.f.name, new Date(q.f.lastModified), parsed, false);
+        } catch (err) { setStatus('Parse failed (' + q.f.name + '): ' + err.message); }
+      });
+      setLoadBusy(false);
+    };
     pending.forEach(function (p) {
       var rd = new FileReader();
       rd.onload = function () {
         p.buf = rd.result; done++;
-        if (done === pending.length) {
-          // append to existing slots (cap MAX_FILES inside addFile/loadManyBuffers path)
-          pending.forEach(function (q) {
-            try {
-              var wb = XLSX.read(q.buf, { type: 'array' });
-              var parsed = rowsOfWorkbook(wb);
-              addFile(q.f.name, new Date(q.f.lastModified), parsed, false);
-            } catch (err) { setStatus('Parse failed (' + q.f.name + '): ' + err.message); }
-          });
-        }
+        spinStatus('Loading ' + done + '/' + pending.length + '…');
+        if (done === pending.length) finishUpload();
       };
+      rd.onerror = function () { p.buf = null; done++; if (done === pending.length) finishUpload(); };
       rd.readAsArrayBuffer(p.f);
     });
     e.target.value = '';
@@ -1585,12 +2048,15 @@
       .catch(function () { state.listFallback = true; return [entryOf(fallback)]; });
   }
   $('loadBundled').addEventListener('click', function () {
-    setStatus('Fetching bundled file…');
+    if (state.loading) return;
+    setLoadBusy(true);
+    spinStatus('Fetching bundled file…');
     findBundledCandidates().then(function (entries) {
       var file = newestEntry(entries) || entries[entries.length - 1];
       fetchBundledFile(encodeURI('source-file/' + file.rel), file)
-        .catch(function (e) { setStatus('Bundled load failed: ' + e.message); });
-    });
+        .then(function () { setLoadBusy(false); },
+          function (e) { setLoadBusy(false); setStatus('Bundled load failed: ' + e.message); });
+    }, function (e) { setLoadBusy(false); setStatus('Bundled load failed: ' + ((e && e.message) || e)); });
   });
   /* Picker chips, all from the filename (no file read): span, product, bulk badge. */
   function spanMeta(n) {
@@ -1720,12 +2186,14 @@
       }
       syncBundleUI();
       $('bundleLoad').addEventListener('click', function () {
+        if (state.loading) return;
         var sel = Array.prototype.map.call(box.querySelectorAll('[data-bpick]:checked'), function (c) { return c.value; });
         if (!sel.length) { setStatus('Tick at least one bundled file.'); return; }
         sel = sel.slice(-MAX_FILES);
         var byRel = {};
         sorted.forEach(function (en) { byRel[en.rel] = en; });
-        setStatus('Fetching ' + sel.length + ' bundled file(s)…');
+        setLoadBusy(true);
+        spinStatus('Fetching 0/' + sel.length + '…');
         var results = [], chain = Promise.resolve();
         sel.forEach(function (rel) {
           chain = chain.then(function () {
@@ -1736,19 +2204,26 @@
                 var en = byRel[rel] || entryOf(rel);
                 results.push({ buf: buf, label: en.label, rel: en.rel, folder: en.folder, folderId: en.folderId,
                   fileDate: lm ? new Date(lm) : new Date() });
+                spinStatus('Fetching ' + results.length + '/' + sel.length + '…');
               });
             });
           });
         });
         chain.then(function () {
           box.hidden = true; box.innerHTML = '';
-          loadManyBuffers(results);
-        }).catch(function (e) { setStatus('Bundled load failed: ' + e.message); });
+          spinStatus('Parsing ' + results.length + ' file(s)…');
+          /* Yield so the spinner paints before the synchronous parse blocks. */
+          setTimeout(function () {
+            try { loadManyBuffers(results); }
+            finally { setLoadBusy(false); }
+          }, 30);
+        }).catch(function (e) { setLoadBusy(false); setStatus('Bundled load failed: ' + e.message); });
       });
     });
   });
   var clearBtn = $('clearFiles');
   if (clearBtn) clearBtn.addEventListener('click', function () {
+    if (state.loading) return;
     state.files = []; state.cmpRows = [];
     autoPickMode();
     refreshAfterFiles('Cleared. No file loaded.');
@@ -1764,7 +2239,16 @@
   dz.addEventListener('drop', function (e) {
     var list = e.dataTransfer.files;
     if (!list || !list.length) return;
+    if (state.loading) return;
+    setLoadBusy(true);
     var arr = Array.prototype.slice.call(list, 0, MAX_FILES);
+    spinStatus('Loading ' + arr.length + ' file(s)…');
+    var left = arr.length;
+    var oneDone = function () {
+      left--;
+      spinStatus('Loading ' + (arr.length - left) + '/' + arr.length + '…');
+      if (left <= 0) setLoadBusy(false);
+    };
     arr.forEach(function (f) {
       var reader = new FileReader();
       reader.onload = function () {
@@ -1773,7 +2257,9 @@
           var parsed = rowsOfWorkbook(wb);
           addFile(f.name, new Date(f.lastModified), parsed, state.files.length === 0);
         } catch (err) { setStatus('Parse failed (' + f.name + '): ' + err.message); }
+        oneDone();
       };
+      reader.onerror = function () { setStatus('Read failed (' + f.name + ')'); oneDone(); };
       reader.readAsArrayBuffer(f);
     });
   });
@@ -2037,6 +2523,7 @@
     renderCompare();
     renderTrend();
     renderSecDay();
+    renderShop();
     applyInsightLink();
   }
 

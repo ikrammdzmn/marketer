@@ -139,3 +139,69 @@
 .dark [data-copy]:hover { color: #93c5fd; }
 /* Clickable exploration pills (guide + all tables): same affordance as insight chips */
 [data-sec] { cursor: pointer; }
+/* Shop daily trend: range-button calendar popup (dashboard pattern) + KPI cards */
+.shop-cal {
+  position: absolute; right: 0; top: 100%; z-index: 30;
+  background: #fff; border: 1px solid #d1d5db; border-radius: 0.75rem;
+  margin-top: 4px; padding: 0.75rem; width: max-content; max-width: calc(100vw - 2rem);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.16); color: #111827;
+}
+.dark .shop-cal { background: #1f2937; border-color: #4b5563; color: #e5e7eb; }
+.shop-cal-row { display: flex; gap: 0.75rem; }
+.shop-rail { display: flex; flex-direction: column; gap: 2px; min-width: 112px; }
+.shop-rail button {
+  padding: 0.25rem 0.5rem; border-radius: 0.375rem; font-size: 0.8rem;
+  text-align: left; cursor: pointer; background: transparent; border: 0; color: inherit;
+}
+.shop-rail button:hover { background: #f3f4f6; }
+.dark .shop-rail button:hover { background: #374151; }
+.shop-rail button:disabled { opacity: 0.35; cursor: not-allowed; }
+.shop-rail button.on { background: #0f766e; color: #fff; }
+.shop-monthpick { width: 130px; margin-top: 0.375rem; }
+.shop-main { display: flex; flex-direction: column; }
+.shop-nav { display: flex; gap: 2px; justify-content: center; margin-bottom: 0.25rem; }
+.shop-nav button {
+  padding: 0 0.5rem; font-size: 0.85rem; cursor: pointer;
+  border: 1px solid #d1d5db; border-radius: 0.375rem; background: transparent; color: inherit;
+}
+.dark .shop-nav button { border-color: #4b5563; }
+.shop-nav button:disabled { opacity: 0.35; cursor: not-allowed; }
+.shop-months { display: flex; gap: 0.75rem; }
+.shop-cal table { border-collapse: collapse; font-size: 0.75rem; }
+.shop-cal th { color: #9ca3af; font-weight: 600; padding: 0; width: 30px; text-align: center; }
+.shop-cal td { border: 0; padding: 0; }
+.shop-cal td button {
+  width: 30px; height: 28px; margin: 1px; border: 1px solid #e2e8f0;
+  background: #ccfbf1; border-radius: 6px; cursor: pointer; font-size: 0.72rem; color: inherit;
+}
+.dark .shop-cal td button { border-color: #4b5563; background: rgba(15,118,110,0.35); }
+.shop-cal td button.dim { color: #b6c2cf; background: #eef1f4; }
+.dark .shop-cal td button.dim { color: #6b7280; background: #374151; }
+.shop-cal td button:disabled { opacity: 0.55; cursor: not-allowed; }
+.shop-cal td button.sel { background: #0d9488; color: #fff; border-color: #0d9488; font-weight: 700; }
+.shop-cal td button.inr { background: #99f6e4; border-color: #99f6e4; }
+.dark .shop-cal td button.inr { background: rgba(15,118,110,0.6); border-color: transparent; color: #fff; }
+.shop-cal-foot { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: 0.5rem; font-size: 0.72rem; color: #6b7280; }
+.dark .shop-cal-foot { color: #9ca3af; }
+.shop-kpi { cursor: pointer; border: 2px solid transparent; display: flex; flex-direction: column; gap: 2px; }
+.shop-kpi.on { border-color: #0d9488; }
+.shop-kpi.off { opacity: 0.6; }
+.shop-top { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.shop-ck { width: 1rem; height: 1rem; accent-color: #0d9488; flex-shrink: 0; }
+.shop-delta { font-size: 0.72rem; color: #6b7280; }
+.dark .shop-delta { color: #9ca3af; }
+.shop-delta.good { color: #16a34a; }
+.dark .shop-delta.good { color: #4ade80; }
+.shop-delta.bad { color: #dc2626; }
+.dark .shop-delta.bad { color: #f87171; }
+/* Loading busy state: status-line spinner + locked load controls */
+.spin {
+  display: inline-block; width: 0.85rem; height: 0.85rem; flex-shrink: 0;
+  border: 2px solid #99f6e4; border-top-color: #0d9488; border-radius: 9999px;
+  vertical-align: -0.15rem; margin-right: 0.35rem;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; border-top-color: #99f6e4; } }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+#dropzone.load-busy { opacity: 0.5; }

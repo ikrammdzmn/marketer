@@ -144,7 +144,8 @@ files). Serve on a fresh port per test; always stop background servers.
    shipped a bug report (v38).
    Bump `app.js?v=N` in index.html whenever app.js changes (no build step to hash it).
    Add a `CHANGELOG.md` line per release in the same session (counter keeps rising,
-   never renumber). Shared numeric caps live in one named constant (`MAX_FILES` =
+   never renumber; prepends anchor on heading + first body line — a bare-heading
+   oldString eats the previous release, v50/v51). Shared numeric caps live in one named constant (`MAX_FILES` =
    31); every gate (upload / drop / bundled slices, overflow drops) AND every label
    reads it — never hardcode the number twice.
 5. **Replies**: short. Feasibility questions ("just answer, do not edit") get words

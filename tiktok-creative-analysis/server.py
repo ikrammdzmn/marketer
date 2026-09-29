@@ -211,8 +211,30 @@ class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
 
+    # Probe/noise paths never logged (health + model-API scans + icon).
+    QUIET_PATHS = ("/health", "/v1/models", "/favicon.ico")
+
     def log_message(self, *args):
-        sys.stderr.write("[server] " + args[0] % args[1:] + "\n")
+        try:
+            msg = args[0] % args[1:]
+        except Exception:
+            msg = str(args[0])
+        if any(q in msg for q in self.QUIET_PATHS):
+            return
+        sys.stderr.write("[server] " + msg + "\n")
+
+    def send_error(self, code, message=None, explain=None):
+        # Quiet 404s stay bodyless AND logless (super().send_error logs
+        # a "code 404, message ..." line that carries no path to filter on).
+        if urlparse(self.path).path in self.QUIET_PATHS:
+            try:
+                self.send_response(code, message)
+                self.send_header("Connection", "close")
+                self.end_headers()
+            except Exception:
+                pass
+            return
+        return super().send_error(code, message, explain)
 
     def _json(self, code, obj):
         body = json.dumps(obj).encode("utf-8")
@@ -231,6 +253,15 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/files":
             files, empty = list_source_files()
             return self._json(200, {"ok": True, "files": files, "emptyDirs": empty})
+        if path == "/health":
+            # Silent liveness probe (uptime monitors/extensions poll this).
+            body = b"ok"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         return super().do_GET()
 
     def do_POST(self):

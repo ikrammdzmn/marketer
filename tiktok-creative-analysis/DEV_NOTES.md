@@ -118,20 +118,38 @@ test-expectation failures are guilty-until-proven-innocent, never "fix" shipped
 code to satisfy your own harness; append-edits must anchor on the preceding line
 and keep it in both strings.
 
+## Current mood — 29 Sep evening (v50→v54, this session)
+
+Shop-trend arc, five releases in one sitting, driven by screenshots-as-specs:
+user pasted the live tool + TikTok GMV Max overview + dashboard calendar +
+KPI cards and said "follow ui like this". Arc: v50 new Shop daily trend
+section (Cost+Revenue default, calendar with greyed no-data days, presets,
+single-day hides chart), v51 dashboard-pattern rebuild (preset rail All
+time→Last 12m anchored to latest file, table-button cells, hover preview,
+month jump, vs-previous % deltas option A, same-unit shared axis, dark grid),
+v52 one-click single-day fix (stale anchor survived popup close), v53 silent
+`/health` + probe quiet list, v54 loading spinner + locked load buttons (user
+picked "all load buttons" via the question tool). Loop stayed terse but the
+user's messages got typo-dense ("ok ggod,, noo wi") — that's approval, not
+confusion; keep building. They validate on 16 himcoffee dailies (09-13→09-28)
+and paste server-window logs when something looks off (that's how the
+`/v1/models` model-API scan got found). Plan-mode discipline held: two
+"switch agents" refusals, instant switch + "go". Sync cue for next self: lead
+with the verdict + what to click; announce `app.js?v=N` every build; never
+commit/push unasked.
+
 ## ⏰ NEXT SESSION — remind the user
 
-1. **Hard refresh for v49** (Ctrl+Shift+R) — `app.js?v=49` current (v48 extra
-   stages behind legend click; v49 31-file cap; status chart all-at-once hover,
-   Trend dot-only — both by design).
+1. **Hard refresh for v54** (Ctrl+Shift+R) — `app.js?v=54` current (shop trend
+   with dashboard calendar + vs-previous deltas; one-click single day; loading
+   spinner + locked buttons; server-only v53 `/health` silent needs a server
+   restart, not a refresh).
 2. **Commit decision still pending — ONLY when asked.** Pile now: creative-analysis
-   `app.js`, `index.html`, `style.css`, `AGENTS.md`, `feature.md`, `plan.md`,
-   `CHANGELOG.md`, `DEV_NOTES.md` (this file), `gmvmax/gmvmax.md`,
-   `gmvmax/product/exploration-status.md` (NEW), plus other windows' edits in
-   `1-MASTER/*`, root `AGENTS.md`, `gmvmax-auto/*` (their own ritual), new
-   UNTRACKED `marketscope/`, `tiktok-calculator/`, `tiktok-shop/`,
-   `tiktok-creative-analysis/source-file/` churn (user deleted old BULK DATA files,
-   added 09-20/21/22 dailies + new bulk 09-14~09-21 — source data, never commit
-   xlsx unasked). Never commit secrets; never push unasked.
+   `app.js`, `index.html`, `style.css`, `server.py`, `AGENTS.md`, `feature.md`,
+   `plan.md`, `CHANGELOG.md`, `DEV_NOTES.md` (this file), plus
+   `1-MASTER/MASTER-CHANGELOG.md` + `MASTER-PLAN.md` + `MASTER-AGENTS.md`
+   (29 Sep rollup lines) and `source-file/` xlsx churn (user's 16 dailies,
+   never commit xlsx unasked). Never commit secrets; never push unasked.
 3. **Catalog naming** — user said they'd name things themselves. Amber `catHint`
    counts what's left; reload after saving.
 4. Open offers (parked, don't nag): silence cross-dialect "campaign moved" flag when
@@ -141,6 +159,15 @@ and keep it in both strings.
 
 ## Project snapshot
 
+- 29 Sep delta: `app.js?v=54` current (v50 shop daily trend: 5 tickable cards
+  + calendar, v51 dashboard-pattern rebuild + vs-prev deltas + shared MYR axis,
+  v52 stale-anchor one-click fix, v54 loading spinner + `setLoadBusy` locking
+  all five load paths; v53 server-only: `GET /health` 200 + `QUIET_PATHS`
+  silencing /health + /v1/models + /favicon.ico incl. quiet `send_error`).
+  `source-file/1. himcoffee - [1858977225474178]/` holds 16 dailies 09-13→09-28
+  (user's data, read-only). Found via user-pasted server log: something on the
+  laptop polls `/health` + `/v1/models` (model-API scan) in a loop — silenced,
+  not ours.
 - 24 Sep delta: `app.js?v=49` current (v43 pills+guide, v44 status-by-day KPIs+chart,
   v45 card deltas+rich hover, v46 trend hover, v47 dot-only trend hover,
   v48 status-by-day: all 10 stages counted, 7 off-by-default behind legend click,
@@ -149,7 +176,7 @@ and keep it in both strings.
   09-20/21/22 dailies + bulk 09-14~09-21) — read-only for us, never commit xlsx
   unasked. Canonical taxonomy: `../gmvmax/product/exploration-status.md` (ours,
   NEW) — `gmvmax/gmvmax.md` §3 points at it.
-- Dir: `C:\Users\PC CUSTOM\Documents\github\marketer\tiktok-creative-analysis\`
+- Dir: `C:\Users\darkv\Documents\GitHub\ikrammdzmn\marketer\tiktok-creative-analysis\`
   (serve / run / commit from HERE, never from `marketer/` root — wrong cwd breaks
   relative-path commands silently or loudly).
 - GitHub: `https://github.com/ikrammdzmn/marketer.git`, branch `main`. HEAD is
@@ -345,6 +372,26 @@ Prior windows 1–10 live below (kept for continuity). This window:
     burned two failed edits on a 4-space anchor. _Lesson: for indented anchors,
     verify with `python3 -c repr(line)` when an edit misses twice; never "fix" by
     guessing wider._
+
+40. **CHANGELOG inserts ate their own heading (twice: v50, v51)** — oldString
+    anchored on the `## vNN` heading line alone, so the new entry REPLACED the
+    heading and orphaned the previous body (caught on re-read both times,
+    restored via heading re-insert). _Lesson: changelog prepends anchor on
+    heading + first body line (or the preamble tail), never the bare heading —
+    now a standing rule in AGENTS.md rule 4._
+41. **Brace-matcher harness choked on array literals** — extractor started at
+    the first `{` inside `SHOP_PRESETS = [...]` and closed early (SyntaxError
+    on eval). _Lesson: extract `[...]` vars to `];` explicitly; objects to
+    balanced close._
+42. **Test-oracle date bug, not code bug (mine, again)** — single-day prev test
+    used a dates list excluding the prev day, so correct `null` read as FAIL.
+    _Lesson stands: fix the test; the shipped code was right._
+43. **Log-silencer matched `'"/health'` but the real line is `"GET /health`**
+    (space, not quote) — silencer silently did nothing, caught only because
+    the user pasted the window log. Plus `send_error` logs pathless
+    `code 404` lines no request-filter can catch → quiet `send_error`
+    override. _Lesson: verify log filters against a captured stderr sample
+    (quiet-smoke did), never by eyeballing the format string._
 
 ## Standing patterns to preserve
 

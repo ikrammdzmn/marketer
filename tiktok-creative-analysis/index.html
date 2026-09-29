@@ -269,6 +269,30 @@
     <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Baseline = oldest file, Latest = newest file (by period end date). Δ = Latest − Baseline. Cost &lt; RM1 deltas are noise — shown greyed. Showing first 200.</p>
   </section>
 
+  <!-- Shop daily trend (2+ single-day files, day-by-day totals) -->
+  <section id="shopSection" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4" hidden>
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+      <h2 class="font-semibold">Shop daily trend <span id="shopCount" class="text-sm font-normal text-gray-500"></span></h2>
+      <div class="relative">
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+          <button id="shopRangeBtn" class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm" title="Pick a date range">– 📅</button>
+        </div>
+        <div id="shopCal" class="shop-cal" hidden></div>
+      </div>
+    </div>
+    <p id="shopMeta" class="text-xs text-gray-500 dark:text-gray-400 mb-2"></p>
+    <div id="shopCards" class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-2">
+      <label class="kpi shop-kpi" data-shop="cost"><span class="shop-top"><span class="kpi-label">Cost</span><input type="checkbox" data-shopck="cost" checked class="shop-ck"></span><span id="shopCost" class="kpi-value">–</span><span id="shopCostD" class="shop-delta">vs previous —</span></label>
+      <label class="kpi shop-kpi" data-shop="rev"><span class="shop-top"><span class="kpi-label">Gross revenue</span><input type="checkbox" data-shopck="rev" checked class="shop-ck"></span><span id="shopRev" class="kpi-value">–</span><span id="shopRevD" class="shop-delta">vs previous —</span></label>
+      <label class="kpi shop-kpi" data-shop="ord"><span class="shop-top"><span class="kpi-label">SKU orders</span><input type="checkbox" data-shopck="ord" class="shop-ck"></span><span id="shopOrd" class="kpi-value">–</span><span id="shopOrdD" class="shop-delta">vs previous —</span></label>
+      <label class="kpi shop-kpi" data-shop="cpo"><span class="shop-top"><span class="kpi-label">Cost per order</span><input type="checkbox" data-shopck="cpo" class="shop-ck"></span><span id="shopCpo" class="kpi-value">–</span><span id="shopCpoD" class="shop-delta">vs previous —</span></label>
+      <label class="kpi shop-kpi" data-shop="roi"><span class="shop-top"><span class="kpi-label">ROI</span><input type="checkbox" data-shopck="roi" class="shop-ck"></span><span id="shopRoi" class="kpi-value">–</span><span id="shopRoiD" class="shop-delta">vs previous —</span></label>
+    </div>
+    <div id="shopChartWrap" class="chart-wrap mb-2"><canvas id="shopChart"></canvas></div>
+    <p id="shopSingleNote" class="text-xs text-amber-600 dark:text-amber-400 mb-2" hidden>One-day view — graph not available for a single day.</p>
+    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Daily shop totals across your day-by-day files (bulk and range files excluded). Tick up to 2 cards to draw them. Respects Account / Campaign / Search / Exclude Product Card / Hide inactive / Hide Ineligible.</p>
+  </section>
+
   <!-- Trend per creative (2-31 files, day-by-day columns) -->
   <section id="trendSection" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4" hidden>
     <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
@@ -437,6 +461,6 @@
     </div>
   </div>
 </div>
-<script src="app.js?v=49"></script>
+<script src="app.js?v=54"></script>
 </body>
 </html>

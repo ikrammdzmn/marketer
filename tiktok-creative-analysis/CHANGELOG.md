@@ -4,6 +4,60 @@ Newest first, in plain words. `plan.md` is the live checklist; this file is the
 release record. The `app.js?v=N` tag is a cache-buster counter (it keeps rising:
 v15, v16, …) — the headings below are releases in the order they shipped.
 
+## v54 — 29 Sep 2026 — Loading spinner + locked load buttons
+
+While files load, the status line shows a spinning ring with live progress
+(`Fetching 3/16…`, `Parsing 16 file(s)…`) and every load control — Load
+bundled file, Choose bundled files…, the file picker, drag-drop, Clear, and
+the picker's Load selected button — locks until the load finishes (success or
+fail), so double-clicks can't fire overlapping loads. The single-file button
+shares the same treatment. Spinner rests when `prefers-reduced-motion` is set.
+
+## v53 — 29 Sep 2026 — Silent `/health` endpoint (server-only, no page change)
+
+`server.py` answers `GET /health` with `200 ok` (plain text) and never logs
+probe noise: `/health`, `/v1/models` (model-API scans), and `/favicon.ico`
+are fully silent (request line + error line both suppressed via a shared
+`QUIET_PATHS` list + quiet `send_error`). Real traffic still logs. Nothing on
+the page changed — no hard refresh needed, just restart the server window.
+
+## v52 — 29 Sep 2026 — Shop calendar: one click picks one day
+
+Closing the calendar mid-pick (or reopening it) used to keep the pending
+first-click, so the next day you clicked became a range start and a single day
+took two clicks. The pending pick now clears on popup open/close (✕, Close,
+outside click), so one click always lands a single day; two clicks on
+different days still make a range.
+
+## v51 — 29 Sep 2026 — Shop calendar + cards rebuilt (dashboard pattern)
+
+The Shop daily trend popup now mirrors `tiktok-account/dashboard/dashboard.html`:
+a left preset rail (All time, Today, Yesterday, Last 7 / 30 days, Last 3 / 6 /
+12 months, anchored to the latest loaded file — a preset stays grey until its
+window holds 2+ daily files), real table-button day cells (dim adjacent days,
+disabled no-file days, teal pick, light-teal range, live hover preview after
+the first click), `« ‹ ✕ › »` nav clamped to months holding files (dead-end
+arrows disabled), and a month-jump input. The five KPI cards match the GMV Max
+look: checkbox top-right, `MYR` on money values, teal border on the two drawn
+metrics, and a `vs previous ±x%` line each (period-over-period: range vs the
+equal days before it, single day vs the previous loaded day; cost-type falls
+are green, rises red, `—` with a day-count note when data is partial or
+absent). Same-unit pairs (Cost + Revenue) now share one axis instead of the
+mirrored dual scale, and grid/ticks follow dark mode.
+
+## v50 — 29 Sep 2026 — Shop daily trend (GMV-Max style day-by-day graph)
+
+A new **Shop daily trend** section sits above Trend per creative. It appears only
+when 2+ day-by-day files are loaded (single-day single-dialect files — bulk and
+range files are excluded). Five tickable cards — Cost, Gross revenue, SKU orders,
+Cost per order, ROI — total the range (default Cost + Revenue, up to 2 drawn on
+a dual-axis line with gaps for missing days). The date button opens a calendar:
+days with files are enabled, days without are greyed; one click is a one-day
+view, a second click makes a range. Last 3/7/14/30d presets snap to the latest
+data and grey out when fewer files exist. A one-day pick hides the chart and
+says so plainly, keeping the cards. Respects Account / Campaign / Search /
+Exclude Product Card / Hide inactive / Hide Ineligible.
+
 ## v49 — 24 Sep 2026 — Up to 31 files (a full month of dailies)
 
 The file cap is now 31 instead of 7 — one `MAX_FILES` constant in `app.js` drives

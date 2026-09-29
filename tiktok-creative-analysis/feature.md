@@ -32,7 +32,7 @@ accounts make money. No installation, no uploads — everything stays on your ow
    the button counts as you go (`Load selected (3 · max 31)`). The newest file is
    pre-ticked with its folder open; tick more, then **Load selected**. Empty
    campaign folders show greyed until you drop Excel files into them.
-    Each file shows below with its date range and type badge — click **remove** to drop one, **Clear** to start over.
+    Each file shows below with its date range and type badge — click **remove** to drop one, **Clear** to start over. While files load, the status line spins with live progress and the load buttons lock until it finishes.
     In the picker, one-day files show a single date, ranges show `from → to` plus day
     count, single files carry their product name, and bulk files are badged from the name.
 
@@ -122,6 +122,20 @@ reads the `Product {ID}` from the file name instead. Unnamed products show
 `Unnamed product`.
 
 ## Trend per creative (2–31 files)
+
+Below compare sits the **Shop daily trend**: shop totals day by day, GMV-Max
+style. It shows only when 2+ one-day files are loaded (bulk and range files
+don't count). Pick dates with the 📅 button — days with files light up, days
+without are grey; one click views a single day, a second click makes a range.
+**Last 3/7/14/30d** jump to the latest data (greyed when you hold fewer files).
+Tick up to 2 of the 5 cards (Cost, Gross revenue, SKU orders, Cost per order,
+ROI — Cost + Revenue by default) to draw them; a single day shows cards only
+and says the graph needs a range. Each card carries a `vs previous` line
+(range vs the equal days before it, single day vs the previous loaded day).
+The 📅 popup mirrors the accounts dashboard: preset rail on the left (All
+time, Today, Yesterday, Last 7 / 30 days, Last 3 / 6 / 12 months — grey until
+the window holds 2+ daily files), two month tables, hover preview after the
+first click, and a month-jump box.
 
 Below compare sits the **Trend** table: one row per video, one column per loaded
 file from oldest to newest, so you can watch a creative day by day. Switch the
