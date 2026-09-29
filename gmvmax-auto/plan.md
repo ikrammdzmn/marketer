@@ -59,3 +59,61 @@ No decider writes, no Telegram actions, no approvals queue live, no monthly kill
 ## 6. Source of truth
 
 Detail: `gmvmax-auto/masterplan.md` §9 phases (P0 first, on explicit go). Neon rollout: `tiktok-account/NEON_NOTE.md`.
+
+## 7. Online version — Vercel + Neon (locked 29 Sep, replicates temp-marketplace)
+
+Single Vercel project for supported modules only (local stays frozen: `tester.py`, `tiktok-account/sync/`, `g-sheet_tools/aff-notify` Apps Script, `docs/tiktok*.txt` Pages review, `tiktok-creative-analysis/source-file/` disk).
+Local rules (stdlib, `127.0.0.1`, `.local_secrets.json`, `cache/`) do NOT transfer — online uses Next.js API routes + `pg Pool` on `NEON_URL_PROD` + Vercel Env + `CRON_SECRET` guard.
+
+- [ ] Migration `005_online.sql` (new file, never edit 001–004): `credentials.refresh_ads_tokens(advertiser_id, access_token, refresh_token)`, `gmv.gmv_campaigns(campaign_id PK, name, account, type)` cache, extend daily metrics `gmv.daily_shop_metrics(shop_number, date UNIQUE, gmv, live_cost, product_cost, manual_spend, spend_before/after_tax, roas_before/after, orders, impressions)`; schema-qualify all identifiers, `win` not `window`
+- [ ] Port `src/lib/db.ts` pattern: `pg Pool(max:20, ssl prod)` + DB-first credentials with auto-refresh (`now >= expiry-1h`), env fallback
+- [ ] Campaign discovery (fixes `DEV_NOTES.md:98` zeros): `GET /open_api/v1.3/gmv_max/campaign/get/?advertiser_id&filtering={"gmv_max_promotion_types":[TYPE]}&page&page_size=100` paginated → upsert `gmv_campaigns`
+- [ ] Report fetch: `GET /gmv_max/report/get/?advertiser_id&store_ids=[shopId]&gmv_max_promotion_type=TYPE&dimensions=["stat_time_day","campaign_id"]&metrics=["cost","orders","gross_revenue","roi","cost_per_order","net_cost"]&start/end_date&page_size=1000`, filter to campaign map, aggregate total + accounts[] + campaigns[]
+- [ ] Live drill: `dimensions=["room_id","stat_time_day"]&filtering={"campaign_ids":[single]}&metrics=[live_name,live_status,live_launched_time,live_duration,cost,gross_revenue...]` (single-ID only)
+- [ ] TTAM exclusion: collect all GMV IDs, then `GET /report/integrated/get/?report_type=BASIC&data_level=AUCTION_CAMPAIGN` and exclude GMV IDs = true manual spend
+- [ ] ROAS: `gmvMaxCost=live+product`, `total=gmvMax+manual`, `sst=wht=8%`, `actualRoas=gmv/totalWithTax`
+- [ ] Sync: Vercel cron nightly 01:00 MYT (`0 17 * * *`) + guard-heal past 2d + 30d gap-fill, `ON CONFLICT(shop_number,date) DO UPDATE`, `Promise.allSettled(GMV, ROAS)` so GMV saves if ads fail; 30m pulls need Pro or external pinger (Hobby = daily only)
+- [ ] UI parity with screenshot (`debug-table-ikram/page.tsx:METRICS`): Shop / Metric (`Total=LIVE+PRODUCT parallel`, `LIVE`, `Product`, `TTAM`, `ROAS`) / Date Range / Fetch Data + Metric/Value table + expandable Account → Campaign → Live Sessions on-demand
+
+## 8. Shop map day-1 (same as temp-marketplace `route.ts:SHOPS`)
+
+- `1 Him.DrSamhan shop 7495609155379170274 / adv 7505228077656621057 hasGMV=true`
+- `2 HIM CLINIC 7495102143139318172 / adv 7404387549454008336 hasGMV=false` → GMV routes return zeros
+- `3 Vigomax HQ 7494799386964364219 / adv 7259935704698929153 hasGMV=true`
+- `4 VigomaxPlus HQ 7495580262600706099 / same adv as 3 hasGMV=true` → scope by `store_ids`, never sum across 3/4 blindly
+
+## 9. Campaign `[Account]` naming rule (locked 29 Sep)
+
+- Exact format: `^[Account] Rest` — one `[]` pair at start, no nesting, trim inside. Regex both sides: `^\[([^\[\]]+)\]\s*(.*)$`
+- With `[]`: `account=capture group 1` (e.g. `[Him.DrSamhan] HIMC 3 + FREE GIFT` → `Him.DrSamhan`)
+- Without `[]`: `account=Other`, `campaignName=original full name`, still in totals + listed under `Other`, never hidden; nightly validator flags `WHERE name NOT LIKE '[%]%'` for rename
+
+## 10. Start flow (online build order)
+
+0. Freeze local + approve `online/` Next.js exception (repo rule: no npm/build unless folder approves).
+1. Neon `005_online.sql` on dev first, verify counts; Vercel Env (`NEON_URL_PROD`, `TIKTOK_ADS_ACCOUNT1-4`, `SHOP_APP_KEY/SECRET`, `CRON_SECRET`) lengths-only.
+2. Port `db.ts` pool + `getShopCredentials()` DB-first auto-refresh (`expiry-1h`), env fallback.
+3. Campaign sync `GET gmv_max/campaign/get` + `filtering` paginated → `gmv_campaigns` + `[]` parse; verify count vs Ads Manager.
+4. Report `GET gmv_max/report/get` + `promotion_type` + `[stat_time_day,campaign_id]` → filter to map → totals + accounts + campaigns; rooms drill single-ID only.
+5. TTAM exclusion + ROAS (`live+product+manual`, `sst=wht=8%`).
+6. Cron nightly 01:00 MYT + guard-heal 2d + 30d gap-fill, `ON CONFLICT DO UPDATE`, `allSettled(GMV,ROAS)`.
+7. UI Shop/Metric/Date/Fetch + Metric/Value + Account → Campaign → Sessions; verify Sep 24–27 range.
+
+## 11. Roadblocks / challenges / risks
+
+- P0: Vercel Hobby cron daily-only + 60s cap — 30m pulls need Pro or external pinger; `pg` pool exhaustion (max 20 + release); token expiry mid-sync → partial rows (allSettled saves GMV); shops 3/4 share advertiser — missing `store_ids` double-counts; shop 2 zero GMV misread as bug.
+- API: missing `store_ids`/main dimension → 40002; `spend` vs `cost` metric mix → invalid; `stat_time_day`-only → "1-3 main dimensions"; rate 40100 → 300–1000ms delay + retry; lag 15m–2h + 11h live latency → nightly re-sync before trust.
+- Data: `Other` bucket grows without `[]` discipline (flag, never hide); gross-vs-net (fee 25%) breaks ROI ≥7.0 guardrail; cancelled/refunded drift Shop vs Marketing API.
+- Process: editing 001–004 / `tester.py` / `docs/tiktok*.txt` breaks review + Neon; committing secrets/`cache/`; second Business app resets approval queue.
+
+## 12. Todo / milestones (updated per milestone)
+
+- [x] M0 exception: approve `online/` Next.js exception to repo no-npm rule; single Vercel project `marketer` (Root Directory `gmvmax-auto/online`), scaffold + `/api/health` landed 29 Sep)
+- [x] M1 Neon `005_online.sql` drafted → applied dev → counts verified (`gmv_campaigns`, `daily_shop_metrics`)
+- [x] M2 Vercel Env set (names + lengths only) + `db` pool + ads-token auto-refresh working (5 envs on Production verified 29 Sep)
+- [x] M3 campaign sync: counts match Ads Manager, `[]` parse verified, `Other` fallback shown (shop 1: 202 campaigns, 29 first-bracket groups, 66 unbracketed, 29 Sep)
+- [x] M4 report fetch Sep 24–27 verified: totals + accounts + campaigns match screenshot logic (shop 1 LIVE 24–27 Sep: gmv 169.8k, cost 12.6k, roi 13.48, net 10.11, 1012 orders)
+- [x] M5 TTAM exclusion + ROAS (`sst=wht=8%`) verified (shop 1, 24–27 Sep: live 10,131.24 + product 2,468.21 + manual 31,527.35 = 44,126.80; roas 3.85, actual 3.32; fixed mixed-type double-count 29 Sep)
+- [x] M6 cron nightly + guard-heal + gap-fill live, no dupes (`ON CONFLICT`) (single-shop verified 29 Sep: 9-27 row + healed 9-28; full 4-shop run may exceed Hobby 60s — per-shop escape hatch `?shopNumber=` kept)
+- [ ] M7 UI parity + cutover: expandable Account → Campaign → Sessions, freshness + branch badge
+- [x] Deploy helper `deploy_online.py` (stdlib, prod deploy from repo root, no `--cwd`)

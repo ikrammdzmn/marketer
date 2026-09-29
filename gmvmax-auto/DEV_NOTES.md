@@ -3,6 +3,10 @@
 > Next-you: read this first, then `plan.md`, then `masterplan.md` §9. You are picking up
 > mid-P0 with a warm, hands-on owner. Tone below is the vibe, not just facts.
 
+DONT DELETE THIS PART
+
+Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
 ## Vibe / dynamic / energy — sync to this frequency
 - Owner is Ikram (HIMWELLNESS, MY shop), non-DB beginner but fast executor: clicks through
   Neon/TikTok portals live and pastes back screenshots instead of words. Replies are short
@@ -109,6 +113,33 @@
     substrings; verify with Read after structural edits (function-header
     clobbers happened twice this session: seeds/advertisers, checkpoint
     headers — both caught by re-read).
+11. **Next 14 rejects `next.config.ts`.** Cloud build: "Configuring Next.js via
+    'next.config.ts' is not supported" — replaced with `next.config.mjs`.
+    LESSON: scaffold Next 14 with `.mjs` from the start.
+12. **App Router needs root `layout.tsx`.** Build: "page.tsx doesn't have a root
+    layout" — added minimal `src/app/layout.tsx`. LESSON: layout is mandatory,
+    not optional, even for single-page scaffolds.
+13. **Missing TS `target` breaks Map iteration.** `for (const [id, c] of map)`
+    needs `target ES2017+` in tsconfig (hand-written one lacked it). LESSON:
+    always set `target: ES2017` minimum.
+14. **Dashboard Root Directory + CLI `--cwd` double-applies.** After setting Root
+    Directory, deploys with `--cwd gmvmax-auto/online` built an empty dir
+    (Framework `Other`, "No Output Directory public"). LESSON: with Root
+    Directory set, deploy from repo root with NO `--cwd`. The Production
+    Overrides banner ("differs from Project Settings") is the tell.
+15. **Fresh-DB FK chain bites.** `/api/campaigns/sync` 500 on
+    `gmv_campaigns_shop_id_fkey` — `gmv_shops` (and `core.shops`) empty.
+    LESSON: sync upserts parents first (`core.shops` -> `gmv.gmv_shops`).
+16. **Report API returns mixed types; DB map must scope by type.** ROAS showed
+    live == product (12,599.45 twice, gmv doubled to 339k). LESSON: never trust
+    `gmv_max_promotion_type` alone — filter by Neon's `promotion_type=$2` map
+    (temp-marketplace does the same).
+17. **PowerShell `$_` eaten by outer shell.** `powershell -c "...$_..."` from
+    inside PowerShell expands `$_` first (`System.Char` x32). LESSON: run the
+    command directly, no wrapper; single quotes if wrapping.
+18. **`vercel curl` takes no `-H`.** Header parsed as URL ("Malformed input").
+    LESSON: use dashboard Protection Bypass (`x-vercel-protection-bypass`)
+    + plain `Invoke-RestMethod`/`curl.exe` for authed endpoints.
 
 ## API note — GMV campaign name/ID mapping (21 Sep discussion, locked)
 
@@ -124,6 +155,35 @@
   map (synced from Ads Manager / bulk export). Ours is `TIKTOK_GMV_CAMPAIGNS`
   {PRODUCT, LIVE} in `.local_secrets.json`. New campaigns = paste ID, rerun
   `live_view.py`. Revisit only if TikTok ships a GMV list endpoint.
+
+## Checkpoint 5 — 29 Sep 2026 (ONLINE Vercel + Neon live, M0–M7)
+
+- Biggest milestone since P0: `gmvmax-auto/online/` (Next.js, Vercel project `marketer`,
+  Root Directory `gmvmax-auto/online`, alias `marketer-hw.vercel.app`) + Neon `005_online.sql`
+  applied on dev. Owner drove every portal step (Vercel link/env, Neon SQL Editor,
+  redeploys); loop stayed terse: paste output -> fix -> redeploy -> verify.
+- Proven live: shop 1 campaign sync = 202 campaigns / 29 first-bracket groups / 66
+  unbracketed; report 24–27 Sep LIVE gmv 169.8k / cost 12.6k / roi 13.48 (net 10.11),
+  1012 orders; ROAS split live 10,131.24 + product 2,468.21 + manual 31,527.35
+  (18 campaigns) = 44,126.80, roas 3.85 / actual 3.32; cron single-shop wrote
+  `gmv.daily_shop_metrics` 9-27 + guard-healed 9-28. Dashboard `/` mirrors the
+  temp-marketplace screenshot (Shop/Metric/Date/Fetch + Metric-Value + expandable
+  Account -> Campaigns). `plan.md` §7–§12 carry spec + todos (M0–M6 ticked, M7 code
+  landed, browser parity check open).
+- Secrets: `CRON_SECRET` + protection-bypass pasted in chat TWICE by owner (terminal
+  instead of chat next time); rotated + redeployed same session. Vercel env now:
+  `NEON_URL_PROD`, `TIKTOK_APP_ID/SECRET`, `TIKTOK_ADS_ACCOUNT1_ACCESS_TOKEN`,
+  `CRON_SECRET` (Production). `git status` shows code/docs only (`.vercel/`, `.env*`
+  ignored); everything still UNCOMMITTED — commit question open.
+- Deferred mismatches (owner: fix later): (1) `Other` bucket dominates — this account's
+  `[]` holds product labels (`[HIMC 3 + FREE GIFT]`, `[Kombo]`) or sits mid-name
+  (`ot1 [Dr Samhan Official1]`), not shop accounts; §9 "bracket-at-start" rule may
+  need relaxing to first-`[]`-anywhere. (2) Product spent RM2,468 with ~zero attributed
+  GMV in-window — real underperformance or lag, nightly re-sync will tell.
+  (3) Bracketed-account parity vs temp-marketplace eyeballed same, full diff open.
+- Resume: commit? (`online/`, `005`, `plan.md` — no push until asked) -> full 4-shop
+  cron (Hobby 60s risk, `?shopNumber=` escape hatch kept) -> rooms/creatives drill ->
+  Shop-order GMV numerator for true ROAS (needs shop token store).
 
 ## Checkpoint 4 — 21 Sep 2026 (LIVE GMV wired, PRODUCT/LIVE split)
 
