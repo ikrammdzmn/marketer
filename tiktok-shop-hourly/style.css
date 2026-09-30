@@ -1,0 +1,9 @@
+/* Extras only — layout via Tailwind classes. */
+#hourTable td, #hourTable th, #sumTable td, #sumTable th, #scoreTable td, #scoreTable th { white-space: nowrap; }
+tr.row-missing td { opacity: 0.45; }
+tr.row-zero td { color: #9aa0a6; }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 9999px; font-size: 12px; }
+.badge-ok { background: #e6f4ea; color: #188038; }
+.badge-bad { background: #fce8e6; color: #c5221f; }
+.dark .badge-ok { background: #1e3a2a; color: #7ddf9a; }
+.dark .badge-bad { background: #3a1e1e; color: #ff8a80; }

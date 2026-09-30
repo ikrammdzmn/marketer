@@ -4,6 +4,22 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 30 Sep 2026
+
+- `tiktok-shop-hourly` v1 (NEW track, uncommitted): shop-1 hourly reporting page
+  (single/range day-by-day fetch with session auth, saved-JSON fallback,
+  sums-vs-footer gate, recomputed ROAS, missing-vs-zero statuses, Chart.js
+  lines, combined CSV export; golden check vs 2026-09-30 pending owner session)
+  → `tiktok-shop-hourly/CHANGELOG.md`
+- `tiktok-shop-hourly` v2 (same day, uncommitted): CORS fix — standalone fetch
+  blocked cross-origin, so same-origin Tampermonkey fetcher
+  (`shop-hourly.user.js`, draggable panel, direct CSV download)
+- `tiktok-shop-hourly` v3 (same day, uncommitted): hour scorecard section
+  (DEAD/GOLDEN/WATCH tags + scorecard CSV, verified vs 8-day export)
+- `tiktok-shop-hourly` v4 (same day, uncommitted): CSV loading in the viewer
+  (multi-day per file, overwrite dedup, `csv` honesty badge; headless-tested
+  with the owner's 8-day file: 8 days / 192 rows / 24 score rows)
+
 ## 29 Sep 2026
 
 - `tiktok-creative-analysis` v50–v54 (uncommitted): Shop daily trend (GMV-Max

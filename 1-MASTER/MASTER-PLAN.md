@@ -19,6 +19,11 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
   live-tested 27 Sep: buckets, mention ping, full/condensed styles;
   triggers pending). Docs: `plan.md` + `DEV_NOTES.md` +
   `feature.md` + `CHANGELOG.md`.
+- `tiktok-shop-hourly/` — static shop-hourly reporting (NEW 30 Sep, uncommitted):
+  third-party shop API, shop 1 first; single/range day-by-day fetch (session
+  auth, max 31) + saved-JSON fallback, sums-vs-footer gate, recomputed ROAS,
+  missing-vs-zero hours, Chart.js lines, combined CSV. Quirks: flat feed ROAS
+  (recomputed), allocated hourly spend (shape-only). Statuses in its `plan.md`.
 - `opencode.json` (committed 23 Sep `2663c7a`) - opencode MCP pointer: `google-sheets`
   local via absolute WinGet `uv.exe` (forward slashes) + local `tools/` path, secret-free
   (`{env:GOOGLE_SHEETS_CRED}` only). Antigravity counterpart
@@ -35,6 +40,13 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
 - `1-MASTER/` — this file + `MASTER-CHANGELOG.md` (repo rollup) + `MASTER-AGENTS.md` (shared conventions) + `antigravity-aistudio.md` (IDE transfer guide, not product code).
 
 ## 2. Current status (2026-09-20, midday)
+
+- 30 Sep: `tiktok-shop-hourly` v1–v4 (uncommitted): new track built + verified
+  (viewer + same-origin userscript fetcher + scorecard + CSV loading;
+  `node --check` clean, HTTP 200s, headless-tested with owner's 8-day file).
+  Owner golden check in logged-in browser still open. Shop 2 merge + browser
+  cache parked. Same day: `ROW-COL-HIGHLIGHT` fixes (dynamic scope,
+  scope-only paint, property-nuke fix) + crosshair userscript v1.1.
 
 - 29 Sep: `tiktok-creative-analysis` v50–v54 (uncommitted): Shop daily trend +
   dashboard-pattern calendar + KPI cards with vs-previous deltas + one-click

@@ -74,6 +74,11 @@ additional prompt Do not delete this part
   bulk dialect, insight engine, SOP bars, `?insight` links, picker chips,
   status-by-day with 7 on-demand stages, shop daily trend + dashboard-pattern
   calendar + loading busy state, silent `/health`).
+- `tiktok-shop-hourly/` — static shop-hourly reporting (shop 1 first):
+  same-origin Tampermonkey fetcher (day-by-day, max 31) + viewer
+  (totals strip, hourly table, Chart.js lines, DEAD/GOLDEN/WATCH scorecard,
+  CSV in/out); feed quirks (flat ROAS recomputed, allocated spend
+  shape-only) + strategy guardrails stamped in-UI. Statuses in its `plan.md`.
 - `tiktok-account/` — Display API dashboard (`dashboard/`; `tester.py` FROZEN; link-mismatch guard + throttled/merged pulls + stream progress popup + fetched_at; releases in `CHANGELOG.md`) + `sync/` daily Sheets bridge (own AGENTS.md: path-import reuse, `X()` retry, dry-run purity, lengths-only secrets).
 - `tiktok-strategy/` — Growth OS playbook (guardrails owner, §6 above).
 - `tiktok-event/` — RACI board, vanilla single-file (`raci_campaign_dashboard.tsx`

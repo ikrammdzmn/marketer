@@ -10,6 +10,11 @@ no npm, no build). Each tool gets its own subfolder with `plan.md` +
   (`code.gs`: RUNNING due/overdue priority, tomorrow reminder, PENDING ADS
   RUN queue action; HTML mail + plain-text fallback) + `tg_bot/` Telegram
   sender (group topic, full/condensed styles). See its `plan.md`.
+- `aff-notify/ROW-COL-HIGHLIGHT/` - crosshair highlight helpers for the same
+  tab: bound `code.gs` (marker-derived scope 9..2nd `end`, scope-only paint;
+  own `DEV_NOTES.md` + `CHANGELOG.md`) + `crosshair.user.js` v1.1
+  (Tampermonkey instant lines + draggable ON/OFF pill) + `Tampermonkey.md`
+  (13 possible features). Sheet contract + ASCII rules below apply.
 - Future tools root here the same way (one folder per tool).
 
 ## Sheet contract (aff-notify)

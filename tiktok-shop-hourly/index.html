@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marketer — Shop Hourly Report</title>
+<script>
+  // Anti-flash dark mode (class strategy, localStorage with OS fallback)
+  (function () {
+    try {
+      var t = localStorage.getItem('marketer-theme');
+      if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {}
+  })();
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { darkMode: 'class' };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen">
+<div class="max-w-7xl mx-auto px-4 py-6">
+
+  <header class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">Shop Hourly Report</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Local-only reporting — fetch with your login session. Nothing leaves your machine except the shop API calls you trigger.</p>
+    </div>
+    <div class="flex gap-2">
+      <button id="themeToggle" class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-sm">Toggle dark</button>
+    </div>
+  </header>
+
+  <!-- 1. Load -->
+  <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
+    <h2 class="font-semibold mb-2">1. Load data (shop 1 · Himclinic Official)</h2>
+    <div class="flex flex-wrap items-end gap-3 text-sm">
+      <label class="flex flex-col gap-1">Shop #
+        <input id="shopNum" type="number" min="1" value="1" class="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent w-20">
+      </label>
+      <label class="flex flex-col gap-1">Single day
+        <input id="daySingle" type="date" value="2026-09-30" class="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent">
+      </label>
+      <button id="fetchSingle" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Fetch day</button>
+      <label class="flex flex-col gap-1">Range from
+        <input id="rangeFrom" type="date" class="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent">
+      </label>
+      <label class="flex flex-col gap-1">Range to
+        <input id="rangeTo" type="date" class="px-2 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent">
+      </label>
+      <button id="fetchRange" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Fetch range (day-by-day, max 31)</button>
+      <button id="clearDays" class="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-sm">Clear</button>
+    </div>
+    <div class="flex flex-wrap items-center gap-3 mt-3 text-sm">
+      <span class="text-gray-500 dark:text-gray-400">Or load saved files (JSON exports or hourly CSVs):</span>
+      <input id="jsonFiles" type="file" accept=".json,.csv" multiple class="text-sm">
+    </div>
+    <p class="text-xs text-amber-600 dark:text-amber-400 mt-2">Hourly spend/ROAS is allocated shape-only (feed splits spend proportional to GMV) — decisions off the totals row.</p>
+    <div class="mt-2 text-sm"><span id="loadStatus" class="text-gray-500 dark:text-gray-400">No day loaded.</span></div>
+    <div id="dayList" class="mt-2 flex flex-wrap gap-2 text-sm"></div>
+  </section>
+
+  <!-- 2. Totals -->
+  <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
+    <h2 class="font-semibold mb-2">2. Daily totals (from API footer — source of truth)</h2>
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm" id="sumTable">
+      <thead><tr class="text-left text-gray-500 dark:text-gray-400">
+        <th class="py-1 pr-3">Date</th><th class="py-1 pr-3">GMV (RM)</th><th class="py-1 pr-3">Orders</th><th class="py-1 pr-3">Spend (RM)</th><th class="py-1 pr-3">ROAS</th><th class="py-1 pr-3">Check</th><th class="py-1 pr-3">As of</th>
+      </tr></thead>
+      <tbody id="sumBody"><tr><td class="py-1 text-gray-400">—</td></tr></tbody>
+    </table>
+    </div>
+  </section>
+
+  <!-- 3. Hourly -->
+  <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+      <h2 class="font-semibold">3. Hourly rows</h2>
+      <div class="flex items-center gap-3 text-sm">
+        <label class="flex items-center gap-1"><input type="checkbox" id="showMissing" checked> Show future hours</label>
+        <button id="exportCsv" class="px-3 py-1.5 rounded bg-green-600 text-white text-sm hover:bg-green-700" disabled>Export combined CSV</button>
+      </div>
+    </div>
+    <canvas id="trendChart" height="120"></canvas>
+    <div class="overflow-x-auto mt-3" style="max-height:420px;overflow-y:auto;">
+    <table class="w-full text-sm" id="hourTable">
+      <thead class="sticky top-0 bg-white dark:bg-gray-800"><tr class="text-left text-gray-500 dark:text-gray-400">
+        <th class="py-1 pr-3">Date</th><th class="py-1 pr-3">Hour</th><th class="py-1 pr-3">GMV</th><th class="py-1 pr-3">Orders</th><th class="py-1 pr-3">Spend</th><th class="py-1 pr-3">ROAS*</th><th class="py-1 pr-3">Status</th>
+      </tr></thead>
+      <tbody id="hourBody"><tr><td class="py-1 text-gray-400">—</td></tr></tbody>
+    </table>
+    </div>
+    <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">*ROAS recomputed per hour (gmv ÷ spend). Blank = future/missing hour, excluded from any sums.</p>
+  </section>
+
+  <!-- 4. Hour scorecard -->
+  <section class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+      <h2 class="font-semibold">4. Hour scorecard (across loaded days, missing excluded)</h2>
+      <button id="exportScore" class="px-3 py-1.5 rounded bg-green-600 text-white text-sm hover:bg-green-700" disabled>Export scorecard CSV</button>
+    </div>
+    <p class="text-xs text-amber-600 dark:text-amber-400 mb-2">Tags: DEAD = &lt;2 orders/day (suppress candidate) · GOLDEN = top-5 avg GMV · WATCH = CPA &gt;RM50 (investigate, spend is allocated shape — never a kill order). Guardrails untouched: GMV Max ROI ≥7.0, scale ≤20–25%/24h, no changes 16:00–17:30 or after 23:00.</p>
+    <div class="overflow-x-auto" style="max-height:420px;overflow-y:auto;">
+    <table class="w-full text-sm" id="scoreTable">
+      <thead class="sticky top-0 bg-white dark:bg-gray-800"><tr class="text-left text-gray-500 dark:text-gray-400">
+        <th class="py-1 pr-3">Hour</th><th class="py-1 pr-3">Days</th><th class="py-1 pr-3">Avg GMV</th><th class="py-1 pr-3">Avg orders</th><th class="py-1 pr-3">ROAS</th><th class="py-1 pr-3">CPA</th><th class="py-1 pr-3">Tag</th>
+      </tr></thead>
+      <tbody id="scoreBody"><tr><td class="py-1 text-gray-400">—</td></tr></tbody>
+    </table>
+    </div>
+  </section>
+
+</div>
+<script src="app.js?v=4"></script>
+</body>
+</html>

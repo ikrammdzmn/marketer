@@ -6,6 +6,7 @@
 
 ## Folder index
 - `tiktok-creative-analysis/` — creative analytics (authoritative `data/accounts.json`).
+- `tiktok-shop-hourly/` — shop hourly reporting (shop 1; fetcher userscript + viewer with DEAD/GOLDEN/WATCH scorecard; quirks + guardrails in its AGENTS.md).
 - `tiktok-account/` - Display API dashboard (8080, `tester.py` FROZEN, `NEON_NOTE.md` for `acct` schema) + `sync/` daily Sheets bridge (12 sheets, Creative-age col, own docs; committed 23 Sep `2663c7a`).
 - `gmvmax-auto/` — GMV Max auto-adjust (P0 live prod 21 Sep: prod OAuth, unlagged 5-campaign view, net ROI locked; read `DEV_NOTES.md` first for vibe + portal lessons).
 - `tiktok-strategy/` — guardrails owner (ROI ≥7.0, CPA ≤RM21.18). Automation obeys, never re-derives.
@@ -13,7 +14,8 @@
 - `docs/` + `tiktok*.txt` — app-review pages + domain verification, frozen.
 - `g-sheet_tools/` — Sheets Apps Script tools (own AGENTS.md): `aff-notify/` 4x-daily
   Affiliate Collection digest (`code.gs` email + `tg_bot/` Telegram sender,
-  user-tested 27 Sep).
+  user-tested 27 Sep) + `aff-notify/ROW-COL-HIGHLIGHT/` crosshair helpers
+  (bound `code.gs` marker scope + Tampermonkey instant lines v1.1).
 - `opencode.json` — opencode MCP pointer (secret-free, `{env:GOOGLE_SHEETS_CRED}` only).
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, branch `main`) — local MCP runners (`spreadsheet-mcp`,
   27 Sheets tools, IGNORED clone) + its own `AGENTS.md`/`DEV_NOTES.md`/`feature.md`/`bootstrap.ps1`. Read/write GREEN
