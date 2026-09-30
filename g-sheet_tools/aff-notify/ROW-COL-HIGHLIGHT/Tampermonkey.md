@@ -5,13 +5,16 @@ trigger changes. Complements `code.gs` (which paints real cells).
 
 ## Built
 
-- `crosshair.user.js` v1.1: instant mouse crosshair lines on
-  `docs.google.com/spreadsheets/*`, active only when the sheet tab is
-  `Affiliate Collection` (trimmed compare tolerates the trailing space).
-  Tweak size via `LINE_PX` (now 8). Draggable ON/OFF pill (click toggles,
-  drag by label, state + position persist in localStorage).
+- `crosshair.user.js` v1.1 (PRIMARY - owner uses this only): instant mouse
+  crosshair lines on `docs.google.com/spreadsheets/*`, active only when the
+  sheet tab is `Affiliate Collection` (trimmed compare tolerates the trailing
+  space). Tweak size via `LINE_PX` (now 8). Draggable ON/OFF pill (click
+  toggles, drag by label, state + position persist in localStorage).
   Limit: Sheets grid is canvas, so lines follow
-  the cursor; real cell fill stays in `code.gs`.
+  the cursor; real cell fill would need `code.gs` (deprecated, see below).
+- `code.gs` (DEPRECATED 30 Sep 2026, fallback only): bound-script crosshair
+  with marker-derived scope + scope-only paint. Shelved - Apps Script
+  round-trip lags (~1s/click).
 
 ## Possible features
 

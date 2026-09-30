@@ -1,4 +1,7 @@
 // ROW-COL-HIGHLIGHT - crosshair highlight for the Affiliate Collection sheet.
+// DEPRECATED 30 Sep 2026: owner uses crosshair.user.js (Tampermonkey instant
+// lines) instead - the Apps Script round-trip lags (~1s/click). Kept as
+// fallback only; do not extend.
 //https://www.youtube.com/watch?v=dXjqzrkzUro SOURCE
 //
 // Scope = data rows 9 through the SECOND end marker in col B (two blocks;
