@@ -46,8 +46,11 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
   `node --check` clean, HTTP 200s, headless-tested with owner's 8-day file).
   Owner golden check in logged-in browser still open. Shop 2 merge + browser
   cache parked. Same day: `ROW-COL-HIGHLIGHT` fixes (dynamic scope,
-  scope-only paint, property-nuke fix) + crosshair userscript v1.1.
-
+  scope-only paint, property-nuke fix) + crosshair userscript v1.1, then
+  `code.gs` deprecated (owner on Tampermonkey lines only). Also `sync` v24
+  (launcher menu 7 reseeds Creative-age) + `row_highlight-keyword`
+  partial-match cutover (live on ALL INTERNAL CREATIVE DATA) - both
+  uncommitted.
 - 29 Sep: `tiktok-creative-analysis` v50–v54 (uncommitted): Shop daily trend +
   dashboard-pattern calendar + KPI cards with vs-previous deltas + one-click
   single-day fix + silent `/health` + probe quiet list + loading spinner with

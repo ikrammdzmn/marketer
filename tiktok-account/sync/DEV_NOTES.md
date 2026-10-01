@@ -343,6 +343,21 @@ verified in 2 calls. Short replies, one action per message held.
   2/1/3, 9-col header, merge keeps Old padded + appends fresh).
 - Next: owner runs option 6 live (`--all --refresh-ticks`) to add col I.
 
+## 30 Sep 2026 - v24 launcher menu 7 (MYT)
+
+- Owner: menu 6 never touches col C by design, and the CLI-only seeder was
+  undiscoverable - "but i want it also in the tool". Added window option
+  `7) Reseed Creative-age formula`: forwards `--seed-age` through the normal
+  scope picker (all/one) + dry-run preview flow; done message points at col C
+  in seed-age mode. `--seed-age` takes scope + dry-run, no window flag, so it
+  slots in with zero engine changes.
+- Verified: PSParser 0 errors, content ASCII (BOM only, pre-existing).
+  CHANGELOG v24 + plan tick + feature.md menu-7 line. Uncommitted.
+- Lesson (tooling): PowerShell eats backticks inside double-quoted shell
+  strings (`` `r `` becomes CR) - put script text in a file via the write
+  tool instead. And Read output shows 4-space indent where the file has
+  3 spaces + CRLF - repr-check anchors before retrying blind edits.
+
 ## 29 Sep 2026 - v23 seed-age clear fix (MYT)
 
 - Live `--seed-age` wrote C2 on all 10 tabs but every tab #REF!'d
@@ -379,7 +394,6 @@ verified in 2 calls. Short replies, one action per message held.
   `age_formula.txt` is read `utf-8-sig` like `.sheet_id.json` (Notepad BOM).
 
 ## 28 Sep 2026 - v21 Dashboard numbering + canonical order (MYT)
-
 - Owner: Dashboard gets a numbering col A (existing A shifts to B), tab
   strip follows the Dashboard account arrangement, numbers also in tab
   names ("1. @dr.samhan / Dr. Samhan"). Confirmed safe: video/tick data

@@ -1,5 +1,12 @@
 # CHANGELOG.md - sync/
 
+## 2026-09-30 - v24: launcher menu 7 reseeds Creative-age
+- `run-sync.ps1` window menu gains `7) Reseed Creative-age formula - fix col C
+  (fast, no TikTok pull)`: forwards `--seed-age` through the normal
+  scope + dry-run preview flow (works with --all / --account). Done message
+  points at col C in seed-age mode. Owner asked: menu 6 never touches col C
+  by design, and the CLI-only seeder was undiscoverable.
+
 ## 2026-09-29 - v23: seed-age clear overshoots read extent
 - `--seed-age` live clear is now fixed `C2:C10000`, not the read extent:
   trailing formula-blank cells are omitted from API reads but still block

@@ -154,12 +154,14 @@ Write-Host '  3) Last 7 days incl. today (daily routine) [default]'
 Write-Host '  4) Custom dates (gap fill)'
 Write-Host '  5) All-time backfill (once, ~15-30 min, supervised)'
 Write-Host '  6) Ticks refresh - yesterday + total (fast, no TikTok pull)'
-$choice = (Read-Host 'Window [1-6, Enter=3]').Trim()
+Write-Host '  7) Reseed Creative-age formula - fix col C (fast, no TikTok pull)'
+$choice = (Read-Host 'Window [1-7, Enter=3]').Trim()
 if (-not $choice) { $choice = '3' }
 
 $windowArgs = @()
 $windowLabel = ''
 $confirmFull = $false
+$seedAge = $false
 switch ($choice) {
   '1' { $windowArgs = @('--today'); $windowLabel = 'today' }
   '2' { $windowArgs = @('--yesterday'); $windowLabel = 'yesterday' }
@@ -177,6 +179,7 @@ switch ($choice) {
   }
   '5' { $windowArgs = @('--full'); $windowLabel = 'ALL TIME'; $confirmFull = $true }
   '6' { $windowArgs = @('--refresh-ticks'); $windowLabel = 'ticks refresh' }
+  '7' { $windowArgs = @('--seed-age'); $windowLabel = 'reseed Creative-age (col C)'; $seedAge = $true }
   default {
     Write-Host 'Unknown choice, using default: last 7 days.' -ForegroundColor Yellow
     $windowArgs = @('--days', '7'); $windowLabel = 'last 7 days incl. today'
@@ -231,7 +234,11 @@ Invoke-Engine ($accountArgs + $windowArgs)
 $code = $LASTEXITCODE
 Write-Host ''
 if ($code -eq 0) {
-  Write-Host 'Done. Check the Dashboard tab for fresh totals.' -ForegroundColor Green
+  if ($seedAge) {
+    Write-Host 'Done. Check col C on the account tabs for fresh ages.' -ForegroundColor Green
+  } else {
+    Write-Host 'Done. Check the Dashboard tab for fresh totals.' -ForegroundColor Green
+  }
 } else {
   Write-Host "Finished with exit code $code (see errors above)." -ForegroundColor Red
 }

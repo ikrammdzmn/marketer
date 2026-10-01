@@ -10,7 +10,7 @@ spreadsheet-mcp venv (google client libs). No npm, no build, no server.
   (reuses `pull_and_cache`, `ensure_access`, `to_myt`, `clean_share`).
   Never duplicate dashboard logic here; never edit `dashboard/` from here.
 - `.sheet_id.json` - local spreadsheet ID store, gitignored. Env `SHEET_ID` wins.
-- `run-sync.ps1` - the human entry point (menus + dry-run preview + live
+- `run-sync.ps1` - the human entry point (window menu 1-7 + dry-run preview + live
   run, then Repeat/Main-menu/Exit loop). Forwards explicit args to the engine;
   non-interactive shells get the safe default. Never put engine logic here -
   flags only. Cancels loop back to the window menu (never strand the user).

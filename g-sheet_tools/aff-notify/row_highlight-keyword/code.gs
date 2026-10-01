@@ -97,7 +97,7 @@ function applyDynamicHighlighting() {
     rulesConfig.forEach(cfg => {
       if (cfg.scope.toUpperCase() === 'ALL' || cfg.scope.toLowerCase() === sheetName.toLowerCase()) {
         const formulaText = escapeForFormula(cfg.text);
-        const formula = `=AND($E2<>"", $E2=${formulaText})`;
+        const formula = `=AND($E2<>"",ISNUMBER(SEARCH(${formulaText},$E2)))`;
         const rule = SpreadsheetApp.newConditionalFormatRule()
           .whenFormulaSatisfied(formula)
           .setBackground(cfg.color)
@@ -118,9 +118,12 @@ function applyDynamicHighlighting() {
         const criteriaValues = boolCond.getCriteriaValues();
         const formula = criteriaValues && criteriaValues.length > 0 ? String(criteriaValues[0]) : '';
         
-        // Strip all whitespace and convert to uppercase to guarantee match
+        // Strip all whitespace and convert to uppercase to guarantee match.
+        // Both prefixes: legacy exact-match rules (pre-partial era) must die
+        // too, or they pile up as immortal zombies beside the new rules.
         const cleanFormula = formula.replace(/\s+/g, '').toUpperCase();
-        return !cleanFormula.startsWith('=AND($E2<>"",$E2=');
+        return !cleanFormula.startsWith('=AND($E2<>"",$E2=') &&
+          !cleanFormula.startsWith('=AND($E2<>"",ISNUMBER(SEARCH(');
       }
       return true;
     });

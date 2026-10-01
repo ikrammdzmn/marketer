@@ -19,6 +19,12 @@ Rule: whoever ships a folder release adds one line here the same session.
 - `tiktok-shop-hourly` v4 (same day, uncommitted): CSV loading in the viewer
   (multi-day per file, overwrite dedup, `csv` honesty badge; headless-tested
   with the owner's 8-day file: 8 days / 192 rows / 24 score rows)
+- `tiktok-account/sync` v24 (uncommitted): launcher menu 7 forwards
+  `--seed-age` (scope + dry-run flow; menu 6 never touches col C by design)
+  -> `tiktok-account/sync/CHANGELOG.md`
+- `row_highlight-keyword` partial-match cutover (uncommitted): formula exact
+  -> `ISNUMBER(SEARCH(...))` (live tab holds full titles, fragments never
+  matched); dual-prefix zombie filter; live on `ALL INTERNAL CREATIVE DATA`
 
 ## 29 Sep 2026
 

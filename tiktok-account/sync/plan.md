@@ -44,3 +44,4 @@
   (clear-first, col-C-only, dry-run safe)
 - [x] v23: seed-age clear fixed to `C2:C10000` (read extent undercounts
   trailing formula-blanks -> #REF!)
+- [x] v24: launcher menu 7 forwards `--seed-age` (scope + dry-run flow)

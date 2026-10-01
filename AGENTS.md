@@ -15,7 +15,9 @@
 - `g-sheet_tools/` — Sheets Apps Script tools (own AGENTS.md): `aff-notify/` 4x-daily
   Affiliate Collection digest (`code.gs` email + `tg_bot/` Telegram sender,
   user-tested 27 Sep) + `aff-notify/ROW-COL-HIGHLIGHT/` crosshair helpers
-  (bound `code.gs` marker scope + Tampermonkey instant lines v1.1).
+  (bound `code.gs` marker scope + Tampermonkey instant lines v1.1) +
+  `aff-notify/row_highlight-keyword/` keyword highlighter (live on
+  ALL INTERNAL CREATIVE DATA, partial match).
 - `opencode.json` — opencode MCP pointer (secret-free, `{env:GOOGLE_SHEETS_CRED}` only).
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, branch `main`) — local MCP runners (`spreadsheet-mcp`,
   27 Sheets tools, IGNORED clone) + its own `AGENTS.md`/`DEV_NOTES.md`/`feature.md`/`bootstrap.ps1`. Read/write GREEN

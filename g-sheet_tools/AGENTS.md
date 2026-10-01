@@ -15,6 +15,11 @@ no npm, no build). Each tool gets its own subfolder with `plan.md` +
   own `DEV_NOTES.md` + `CHANGELOG.md`) + `crosshair.user.js` v1.1
   (Tampermonkey instant lines + draggable ON/OFF pill) + `Tampermonkey.md`
   (13 possible features). Sheet contract + ASCII rules below apply.
+- `aff-notify/row_highlight-keyword/` - keyword row highlighter, LIVE on
+  spreadsheet `ALL INTERNAL CREATIVE DATA` (do not retire): rules from
+  `account info` E34:G (text + painted color + scope), partial
+  `SEARCH` match on col E, manual Refresh menu. Own `AGENTS.md` (spec) +
+  `DEV_NOTES.MD` + `feature.md` + `CHANGELOG.md`. ASCII rules below apply.
 - Future tools root here the same way (one folder per tool).
 
 ## Sheet contract (aff-notify)

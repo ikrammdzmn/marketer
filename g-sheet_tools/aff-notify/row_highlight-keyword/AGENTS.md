@@ -24,15 +24,20 @@ An automated Google Apps Script-driven conditional formatting manager that synch
 ---
 
 ## 4. Current Active Formula Logic
-* **Exact Match (Current Production):**
+* **Partial Match / Substring (Current Production since 30 Sep 2026):**
+  ```excel
+  =AND($E2<>"",ISNUMBER(SEARCH("<ESCAPED_TEXT>",$E2)))
+  ```
+  Reason: the live tab's col E holds full video titles, rule texts are
+  fragments - exact match could never fire (verified live). Short fragments
+  match broadly by design.
+* **Exact Match (Superseded):**
   ```excel
   =AND($E2<>"", $E2="<ESCAPED_TEXT>")
   ```
-* **Partial Match / Substring (On Reserve - Not Active):**
-  ```excel
-  =AND($E2<>"", ISNUMBER(SEARCH("<ESCAPED_TEXT>", $E2)))
-  ```
-  *Note:* User was briefed on wildcard behaviors (`?`, `*`) and false positive risks with short words. Do not deploy unless requested.
+  Legacy rules with this prefix are still stripped by the cleanup filter so
+  they cannot pile up as zombies.
+  *Note:* User was briefed on wildcard behaviors (`?`, `*`) and false positive risks with short words.
 
 ---
 
@@ -76,4 +81,12 @@ An automated Google Apps Script-driven conditional formatting manager that synch
 * Maintain an intellectually rigorous tone.
 * Challenge unexamined assumptions (e.g., confusing partial match with exact match, or treating visual glitches as features).
 * Verify user claims against spreadsheet mechanics before accepting premise.
+
+---
+
+## 8. Live Deployment
+* **Spreadsheet:** `ALL INTERNAL CREATIVE DATA` (owner-confirmed 30 Sep 2026 -
+  this tool IS in active use there; do not retire it).
+* The config contract above (`'account info'` tab, E34:G table, exclusions)
+  must hold on that spreadsheet or the script silently does nothing.
 ```

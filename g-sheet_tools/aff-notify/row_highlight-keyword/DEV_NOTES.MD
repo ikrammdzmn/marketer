@@ -1,6 +1,11 @@
 
 # DEV_NOTES.md
 
+DO NOT DELETE THIS PART 
+
+Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+
 ## 1. The Vibe, Headspace & Dynamic
 * **The Frequency:** Intellectual sparring partner. Zero sycophancy, zero empty affirmations. The user expects you to rigorously stress-test assumptions, spot hidden edge cases, and call out flaws before writing code.
 * **Truth over Agreement:** When the user experiences a false positive (e.g., Outcome Bias where a zombie rule made something look like it "worked"), do not sugarcoat it. Show the mechanical breakdown, walk through the math/logic, and diagnose why it happened.
@@ -107,9 +112,31 @@ Whenever you add a new row, change a color, or create a new sheet:
 
 ## Important Rules to Remember
 * **Excluded Sheets:** The script will **never** color or touch the `account info` tab or the `Dashboard` tab.
-* **Exact Matching:** The cell must match the text exactly (it does not care about uppercase vs lowercase, but extra words or missing sentences will not trigger).
+* **Partial Matching (since 30 Sep 2026):** The cell only needs to CONTAIN the text (extra words around it still trigger; case-insensitive).
 * **Blank Rows Protected:** Empty cells will never accidentally trigger a highlight.
 ```
+
+---
+
+## 4. Session 30 Sep 2026 - partial-match cutover
+* **Symptom:** New rules (rows 37-39, tab-scoped) painted nothing; even `ALL` scope painted nothing on that tab.
+* **Diagnosis:** The tab's col E holds FULL video titles, rule texts are fragments. Active formula was exact match (`$E2="text"`) - a fragment can never equal a full title. Proved by the ALL-scope test (also blank).
+* **Fix:** Formula line switched to `=AND($E2<>"",ISNUMBER(SEARCH(text,$E2)))`; cleanup filter now strips BOTH the legacy exact prefix and the partial prefix (else old exact rules turn into immortal zombies + new rules duplicate each run). AGENTS.md S4 + feature text updated.
+* **Lesson:** When "nothing paints anywhere", check what col E actually contains before suspecting scope/triggers. Content-shape first, always.
+
+---
+
+## 5. Session 30 Sep 2026 - live confirmation + closeout
+* Owner confirmed the fix works ("ok working").
+* Correction logged: the real folder name is `row_highlight-keyword`
+  (I shortened it to `row_highlight` twice). LESSON: copy folder names from
+  directory listings, never from memory.
+* Live deployment recorded in AGENTS.md S8: spreadsheet
+  `ALL INTERNAL CREATIVE DATA` - tool is in active use there, do not retire.
+  That sheet must keep the `account info` tab + E34:G table or the script
+  silently no-ops.
+* `feature.md` created (non-technical user guide: keyword table + Refresh
+  flow + contains-matching notes). `CHANGELOG.md` created.
 
 
 
