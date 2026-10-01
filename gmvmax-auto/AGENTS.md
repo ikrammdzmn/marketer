@@ -28,3 +28,4 @@
 5. Never write to `acct_*` from gmv code and vice versa (per-schema roles `acct_app`/`gmv_app` deferred to P1; owner-only for P0).
 6. Migrations: schema-qualify EVERY identifier (`acct.x`, `gmv.x`, `core.x` incl. indexes + FK refs); never use reserved words as bare columns (`window`→`win`). Grep-check new SQL before handing to owner.
 7. Portal specifics: Neon child branches default to 1-day auto-delete (uncheck for persistent dev); Business API redirect uses `http://localhost:PORT/callback` (IP form rejected); sandbox ad account locked until app approval.
+8. Online deploys run from the repo root (`python gmvmax-auto/deploy_online.py`, never `--cwd`); on Windows the script uses `npx.cmd` + shell. New API row fields must be carried through every frontend merge/accumulator (Total view merges LIVE+Product). Credential lookup is per-advertiser — never substitute another shop's token (40001 means wrong token, not no access).

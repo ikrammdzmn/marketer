@@ -83,11 +83,11 @@ additional prompt Do not delete this part
 - `tiktok-strategy/` — Growth OS playbook (guardrails owner, §6 above).
 - `tiktok-event/` — RACI board, vanilla single-file (`raci_campaign_dashboard.tsx`
   FROZEN as spec source; localStorage only; PIN is courtesy, not security).
-- `gmvmax/` — knowledge only, no code.
+- `0.0 TIKTOK/gmvmax/` — knowledge only, no code.
 - `g-sheet_tools/` — Sheets Apps Script tools (bound scripts, no server):
   `aff-notify/` 4x-daily Affiliate Collection digest (email `code.gs` +
   Telegram `tg_bot/` group-topic sender, own AGENTS.md).
-- `gmvmax-auto/` — P0 skeleton live (Neon GREEN, apps in flight): stdlib collector (closed-window, `ALLOW_WRITES=0`) + 8082 dashboard + `001–004` migrations (schema-qualified, `win` col). Business app pending, Shop app created. Docs: `DEV_NOTES.md` (handoff) + `feature.md` (user guide). Folder rules §5–7 carry portal lessons (branch TTL, localhost redirect).
+- `gmvmax-auto/` — GMV Max online M7 live 01 Oct (`marketer-hw.vercel.app`: Total/LIVE/Product/TTAM/ROAS, LIVE+Product split, sessions drill, ON/OFF pills, first-`[]`-anywhere accounts, `006_status`) + P0 local read-only (prod OAuth, net ROI locked, 30m task). Deploys from repo root (`deploy_online.py`, Windows `npx.cmd` fix). Shop 1 verified vs reference totals; shops 3/4 tokens pending (consortium). Docs: `DEV_NOTES.md` (handoff + discoveries) + `feature.md` (user guide).
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, branch `main`) — local MCP runners. `spreadsheet-mcp`
   (27 Sheets tools, `uv`, stdio `127.0.0.1` only, IGNORED clone; nested upstream
   `.git` → `dudegladiator`, never push there). Secrets at

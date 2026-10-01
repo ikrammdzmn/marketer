@@ -7,6 +7,14 @@ DONT DELETE THIS PART
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
 
+## Vibe — 01 Oct session (online M7 extras, read to sync)
+
+- Owner tested everything on the prod URL (`marketer-hw.vercel.app`), never local — local `.env.local` holds only a Vercel token, filling it is more hassle than deploying. Rhythm: I deploy → owner opens URL → pastes screenshot or one-line confirm ("454 rooms", "Statement executed successfully", "ok fixed"). Match it: deploy first, one browser/portal action per message, no terminal asks beyond copy-paste.
+- Mid-session the user switched to Plan mode (twice): feasibility talk only, no code. Plan mode lifted at the end. Inside Plan mode we found the real explanations (cross-shop scope, 40001 token cause, restatement) by reasoning over screenshots, not code.
+- Mood at close: satisfied ("ok good"), then curious — parity detective work with spreadsheets. Owner lights up when numbers tie; lead with the tie, then the delta.
+- Open human thread: shops 3/4 tokens belong to another consortium part — owner pursuing Analyst access. Do not nag; the fallback ladder (partner access → URL+code paste → manual rows) is recorded.
+- Secrets held: CRON_SECRET handled terminal-only; tokens never pasted. `package-lock.json` appeared untracked (left alone — ask before committing).
+
 ## Vibe / dynamic / energy — sync to this frequency
 - Owner is Ikram (HIMWELLNESS, MY shop), non-DB beginner but fast executor: clicks through
   Neon/TikTok portals live and pastes back screenshots instead of words. Replies are short
@@ -140,6 +148,24 @@ Check the Project Knowledge and the current chat for context. This conversation 
 18. **`vercel curl` takes no `-H`.** Header parsed as URL ("Malformed input").
     LESSON: use dashboard Protection Bypass (`x-vercel-protection-bypass`)
     + plain `Invoke-RestMethod`/`curl.exe` for authed endpoints.
+19. **`deploy_online.py` misses `npx` on Windows.** `subprocess.run(["npx",...])`
+    without shell can't see `npx.cmd` ("npx not found" though Node exists).
+    Fixed with `npx.cmd` + `shell=(os.name=="nt")`. LESSON: on Windows,
+    subprocess needs the `.cmd` suffix or shell=True; PowerShell itself
+    resolves fine, so direct `npx` in terminal always works.
+20. **`await` inside a setState updater breaks the Next build.**
+    `setSessions((p) => ({...await r.json()}))` compiled locally-unused but
+    Vercel webpack failed ("await isn't allowed in non-async function").
+    LESSON: await BEFORE setState, never inside the updater.
+21. **Frontend merges must carry every new field.** `/api/gmv-max` returned
+    `status:"ON"` correctly, UI showed "?" — the Total merge accumulator
+    copied cost/gmv/orders but not `status`. LESSON: when adding a field to
+    an API row, grep every merge/accumulator on the client and add it there too.
+22. **Multi-shop token fallback lies.** `getAdsCredentials` returns ACCOUNT1's
+    token for ANY advertiser (ignores `accessTokenEnv`), so shops 3/4 fail
+    with 40001 "No permission to operate advertiser" — correct TikTok error,
+    wrong token. LESSON: credential lookup must scope by advertiser first and
+    error naming the missing env, never silently substitute another token.
 
 ## API note — GMV campaign name/ID mapping (21 Sep discussion, locked)
 
@@ -162,6 +188,14 @@ Check the Project Knowledge and the current chat for context. This conversation 
 - Vibe: owner tests on prod URL (local env too sparse — `.env.local` lacks tokens), pastes screenshots + terse confirms. Keep online-first: deploy → one portal/browser action → paste back.
 - Bugs 19–20: (19) `deploy_online.py` subprocess misses `npx.cmd` on Windows without shell → `npx.cmd` + `shell=(os.name=="nt")`, `py_compile` OK. (20) frontend merge maps must carry every new field (`status` lost in Total merge while raw API was correct — check merge accumulators on any new field).
 - Resume: 24–27 Sep parity vs temp-marketplace (eyeball diff open) → full 4-shop cron (Hobby 60s risk) → rooms/creatives drill deeper → Shop-order GMV numerator (needs shop tokens). Uncommitted M7 code pending commit decision.
+
+## Discoveries 01 Oct (do not relitigate)
+
+- **Total = LIVE + PRODUCT, both systems.** Owner spreadsheet: product 10,521.20+6,256.59+1,363.12+936.49 = 19,077.40; live rows = 150,727.72; sum = 169,805.12. Per-account rows match ours row-for-row. Construction is identical (parallel fetch + sum).
+- **GMV restates, cost doesn't.** Same campaign read 74,952.09 in one pull, 74,327.14 in a later pull (~0.8% intraday drift). Rule: never compare same-name numbers across different pull times — re-fetch same-time first.
+- **Our split is lossless.** 8 live accounts sum to exactly the LIVE total (150,727.72), so a per-account gap vs their screen means restatement or row-vs-account grouping — never lost money.
+- **Cross-shop scope (shop 1 clean).** `store_ids=[shop1]` excludes GMV from LIVE campaigns selling other shops' products. 24–27 Sep totals tie ⇒ ~zero leakage for shop 1. Matters only when expanding to shops 3/4.
+- **40001 = wrong token, not no access.** `getAdsCredentials` returns ACCOUNT1's token for every advertiser (ignores `accessTokenEnv`); Vercel lacks ACCOUNT2/3 tokens (consortium owns those advertisers). Pending: per-shop-env fix + tokens (owner chasing Analyst access, else URL+code paste, else manual rows).
 
 ## Checkpoint 5 — 29 Sep 2026 (ONLINE Vercel + Neon live, M0–M7)
 

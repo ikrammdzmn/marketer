@@ -8,6 +8,7 @@
 - Shop / Metric / Date / Fetch Data: Total (LIVE + Product split in two tables), LIVE, Product, TTAM (manual spend only), ROAS (with SST+WHT actual).
 - Each campaign row shows a green ON / grey OFF pill (from TikTok) + a Sessions button (live rooms x day, on demand).
 - Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then resync.
+- Numbers can move slightly during the day (TikTok settles sales figures over hours while spend stays fixed). If a number looks off versus an hour ago, press Fetch Data again — newest wins, nothing is lost.
 
 ## What you get today (P0 local, live numbers)
 - **One screen** (`http://127.0.0.1:8082/`) with two tables:

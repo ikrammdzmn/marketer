@@ -7,10 +7,10 @@
 ## Folder index
 - `tiktok-creative-analysis/` — creative analytics (authoritative `data/accounts.json`).
 - `tiktok-shop-hourly/` — shop hourly reporting (shop 1; fetcher userscript + viewer with DEAD/GOLDEN/WATCH scorecard; quirks + guardrails in its AGENTS.md).
-- `tiktok-account/` - Display API dashboard (8080, `tester.py` FROZEN, `NEON_NOTE.md` for `acct` schema) + `sync/` daily Sheets bridge (12 sheets, Creative-age col, own docs; committed 23 Sep `2663c7a`).
-- `gmvmax-auto/` — GMV Max auto-adjust (P0 live prod 21 Sep: prod OAuth, unlagged 5-campaign view, net ROI locked; read `DEV_NOTES.md` first for vibe + portal lessons).
+- `tiktok-account/` - Display API dashboard (8080, `tester.py` FROZEN, `NEON_NOTE.md` for `acct` schema) + `sync/` daily Sheets bridge (12 sheets, Dashboard No col + numbered tabs, Creative-age col + menu-7 seeder, own docs; v21-v24 committed `8ec64f0`).
+- `gmvmax-auto/` — GMV Max auto-adjust (online M7 live 01 Oct `marketer-hw.vercel.app` + P0 local read-only 21 Sep; read `DEV_NOTES.md` first for vibe + portal lessons).
 - `tiktok-strategy/` — guardrails owner (ROI ≥7.0, CPA ≤RM21.18). Automation obeys, never re-derives.
-- `tiktok-event/` — RACI board. `gmvmax/` — knowledge only, no code.
+- `tiktok-event/` — RACI board. `0.0 TIKTOK/gmvmax/` — knowledge only, no code.
 - `docs/` + `tiktok*.txt` — app-review pages + domain verification, frozen.
 - `g-sheet_tools/` — Sheets Apps Script tools (own AGENTS.md): `aff-notify/` 4x-daily
   Affiliate Collection digest (`code.gs` email + `tg_bot/` Telegram sender,

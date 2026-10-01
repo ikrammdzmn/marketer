@@ -224,7 +224,7 @@ Get-Job | Stop-Job; Get-Job | Remove-Job
 | `gmvmax-auto/` | 8082 | stdlib + `cryptography` | `.local_secrets.json` (Neon x2, enc key, TikTok/Shop, Telegram) | `.local_secrets.json`, `cache/`, `__pycache__/` (+ `dashboard/.gitignore`) |
 | `tiktok-strategy/` | — | browser localStorage | none | none |
 | `tiktok-event/` | 8931 (test) | none, PIN = courtesy not security | none | none (folder currently untracked — do not stage unasked) |
-| `tiktok-live/` `gmvmax/` `docs/` | — | none | none | none |
+| `tiktok-live/` `0.0 TIKTOK/gmvmax/` `docs/` | — | none | none | none |
 
 Cross-folder contracts: accounts source = `tiktok-creative-analysis/data/accounts.json`; guardrails owner = `tiktok-strategy/AGENTS.md` (ROI ≥7.0, CPA ≤RM21.18, scale ≤20-25%/24h, freeze 16:00-17:30, dead 02:00-08:00, surge 25th-2nd); API separation = Display/Login (`tiktok-account`) vs Business/Shop (`gmvmax-auto`), scopes not interchangeable.
 

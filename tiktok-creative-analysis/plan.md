@@ -115,4 +115,4 @@ preserved. Matching is exact on `name`; `username`/`note` are display-only.
 - [ ] Exploration exit signals: boosting an inactive video re-enters Exploring
   (pool entry is repeatable — post date is never the clock); whole file is
   catalog-attached, so no per-row yellow-bag flag exists to add.
-  Canonical taxonomy: `../gmvmax/product/exploration-status.md`.
+  Canonical taxonomy: `../0.0 TIKTOK/gmvmax/product/exploration-status.md`.

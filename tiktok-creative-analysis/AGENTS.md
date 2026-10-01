@@ -89,7 +89,7 @@ files). Serve on a fresh port per test; always stop background servers.
     `Hide Ineligible` tick (default on, `fNoInel`) drops `Ineligible` rows everywhere
     incl. compare (status-movers stay; explicit Status=`Ineligible` bypasses it; covers
     all 5 Ineligible reasons). Canonical taxonomy lives in
-    `../../gmvmax/product/exploration-status.md` — do not re-define here.
+    `../../0.0 TIKTOK/gmvmax/product/exploration-status.md` — do not re-define here.
     Outstanding is per-campaign relative, never global top-10.
     Status-by-day (`statusByDay`/`renderSecDay`, Trend section): one column per loaded
     file (ranges = one), never summed; `Available` = rows minus the 5 (case-insensitive);

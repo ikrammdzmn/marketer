@@ -104,7 +104,7 @@ Local rules (stdlib, `127.0.0.1`, `.local_secrets.json`, `cache/`) do NOT transf
 
 - P0: Vercel Hobby cron daily-only + 60s cap — 30m pulls need Pro or external pinger; `pg` pool exhaustion (max 20 + release); token expiry mid-sync → partial rows (allSettled saves GMV); shops 3/4 share advertiser — missing `store_ids` double-counts; shop 2 zero GMV misread as bug.
 - API: missing `store_ids`/main dimension → 40002; `spend` vs `cost` metric mix → invalid; `stat_time_day`-only → "1-3 main dimensions"; rate 40100 → 300–1000ms delay + retry; lag 15m–2h + 11h live latency → nightly re-sync before trust.
-- Data: `Other` bucket grows without `[]` discipline (flag, never hide); gross-vs-net (fee 25%) breaks ROI ≥7.0 guardrail; cancelled/refunded drift Shop vs Marketing API.
+- Data: `Other` bucket grows without `[]` discipline (flag, never hide); gross-vs-net (fee 25%) breaks ROI ≥7.0 guardrail; cancelled/refunded drift Shop vs Marketing API; GMV restates intraday (~1%, cost stable) — same-time pulls only for comparisons.
 - Process: editing 001–004 / `tester.py` / `docs/tiktok*.txt` breaks review + Neon; committing secrets/`cache/`; second Business app resets approval queue.
 
 ## 12. Todo / milestones (updated per milestone)

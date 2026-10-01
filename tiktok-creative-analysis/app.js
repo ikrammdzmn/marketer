@@ -220,7 +220,7 @@
     'Excluded': ['sec-flat', '🚫'],
     'Not active': ['sec-flat', '💤']
   };
-  /* Canonical TikTok definitions (../../gmvmax/product/exploration-status.md) — display-only. */
+  /* Canonical TikTok definitions (../../0.0 TIKTOK/gmvmax/product/exploration-status.md) — display-only. */
   var SEC_DEF = {
     'Calculating': 'Exploration is done and results should be available in a few hours.',
     'Exploring': 'A post that is gathering data to assess its performance potential.',
