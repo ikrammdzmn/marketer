@@ -343,6 +343,75 @@ verified in 2 calls. Short replies, one action per message held.
   2/1/3, 9-col header, merge keeps Old padded + appends fresh).
 - Next: owner runs option 6 live (`--all --refresh-ticks`) to add col I.
 
+## 01 Oct 2026 - arc closed: Creative age healthy (MYT)
+
+- Owner ran menu 7 live with the calendar-day formula and confirmed it
+  works (Sep-30 rows read "yesterday" on Oct 1). The v21-v24 + formula
+  arc is done pending commit.
+- Vibe this tail: Plan-mode discuss -> "ok fix it" -> build + simulated
+  proof -> "ok it works" -> ritual. Owner debugs by screenshot, decides
+  in one line, closes fast. Next self: keep answers short, lead with the
+  diagnosis, and never invent what the sheet says - ask for the
+  screenshot.
+- Uncommitted sync work: age_formula.txt (calendar-day), CHANGELOG,
+  DEV_NOTES, plan.md. Commit on ask; do not sweep sibling files (their
+  tree is moving: gmvmax reorg, MASTER-AGENTS, creative-analysis).
+
+## 01 Oct 2026 - age formula calendar-day fix (MYT)
+
+- Owner screenshot: Sep-30 videos read "today" on Oct 1. Root cause: my
+  reconstructed formula used 24h truncation (`INT(NOW()-VALUE)`), so
+  anything under 24h old said "today". Fixed to calendar days
+  (`INT(TODAY())-INT(VALUE)`) + explicit "yesterday" branch (also kills
+  "1 days ago"). Simulated on the screenshot timestamps:
+  yesterday/yesterday/2-days-ago + today/scheduled edges all correct.
+- Data-file-only change (`age_formula.txt`): no engine edit, no version
+  bump. Owner reruns menu 7 to distribute. Uncommitted.
+
+## 30 Sep 2026 - session handoff: sync v21-v24 arc (MYT)
+
+- Vibe: this whole arc ran on owner short-bursts. Opened 28 Sep in Plan
+  mode (two asks at once -> picker questions -> instant picks), "numbers
+  in tab names too?", risks twice ("any risks?" -> "so it safe?") ->
+  "ok go". 29 Sep: formula-vs-engine ("give full formula" -> honest
+  "never saved" -> "reconstruct the formula" + "engine tool"). Owner runs
+  everything live themselves and pastes console output back - my box has
+  no `../tools` clone, so I build + stub-test, owner live-verifies. Trust
+  is high, replies are one-liners, momentum is fast. Match it: short
+  replies, one action per message, words-only until "go".
+- Live state (verify before closing the arc): Dashboard is `A1:J`
+  numbered, tabs are `N. @user / Name` ordered, col C holds the
+  reconstructed ARRAYFORMULA - BUT the v22 live seed #REF!'d every tab
+  and the v23/menu-7 heal rerun is still unconfirmed. First job next
+  session: ask owner to run menu 7 live (or confirm they did) and check
+  C11 shows ages, not #REF!. Until then the arc is not done.
+- Bugs found + fixed this arc (all self-caught before/at live):
+  1. single-account runs renumbered from 1 + yanked the tab to slot 1
+     (fixed: `canon`/`full_order` canonical numbering).
+  2. col-B-only footer detection admitted a v14-shaped junk row
+     (fixed: col-A second check).
+  3. preserved HYPERLINK rows kept legacy unnumbered labels
+     (fixed: gid-preserving `_relabel`).
+  4. clear sized from read extent missed trailing formula-blank blockers
+     -> 10/10 #REF! live (fixed: `C2:C10000`; lesson: never size a
+     destructive range from an API read that omits trailing empties;
+     value reads cannot see formula-blank cells).
+  5. process lessons: test-typo vs code-bug (read assertion output
+     literally - `endswith` paren, footer indices); edit anchors must be
+     byte-exact (3-space vs 2-space, Read's 4-space vs file's 3-space +
+     CRLF -> repr-check); backticks die in ps1 double-quoted strings
+     (write script text via file, never shell-inline).
+- Standing rules re-armed: SYNC_VERSION bump per engine change (v20->v24
+  this arc), sync folder pure ASCII, dry-run preview before live,
+  single-account-live-first. Commits: v21 in `9e76760` (pushed 28 Sep),
+  v22-v24 + masters rollup in `8ec64f0` (30 Sep). Ritual gap closed this
+  pass: v22/v23 never got a MASTER rollup line same-session (rotted 48h)
+  - whoever ships adds the rollup line THAT session, no exceptions.
+- Open threads (not sync): menu-7 live confirm (above); `../tools` still
+  not cloned on this box; sibling sessions active in tree (gmvmax 0.0
+  TIKTOK reorg, MASTER-AGENTS, root AGENTS, creative-analysis) - do not
+  touch their files, do not commit.
+
 ## 30 Sep 2026 - v24 launcher menu 7 (MYT)
 
 - Owner: menu 6 never touches col C by design, and the CLI-only seeder was

@@ -45,3 +45,5 @@
 - [x] v23: seed-age clear fixed to `C2:C10000` (read extent undercounts
   trailing formula-blanks -> #REF!)
 - [x] v24: launcher menu 7 forwards `--seed-age` (scope + dry-run flow)
+- [x] age formula calendar-day fix (01 Oct, owner-confirmed): `TODAY()`-date
+  diff + "yesterday" branch (24h truncation read yesterday as "today")

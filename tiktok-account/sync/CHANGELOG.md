@@ -1,5 +1,13 @@
 # CHANGELOG.md - sync/
 
+## 2026-10-01 - age formula: calendar-day semantics (no engine change)
+- `age_formula.txt` rebuilt: `INT(NOW()-VALUE)` counted 24h periods, so
+  yesterday-afternoon videos read "today". Now `INT(TODAY())-INT(VALUE)`
+  counts calendar days: same-day -> "today", 1 -> "yesterday", else
+  "N days ago" (also fixes "1 days ago" grammar). Future -> "scheduled"
+  unchanged. Rerun menu 7 / `--seed-age` to distribute (C2 differs
+  everywhere, so all 10 tabs rewrite).
+
 ## 2026-09-30 - v24: launcher menu 7 reseeds Creative-age
 - `run-sync.ps1` window menu gains `7) Reseed Creative-age formula - fix col C
   (fast, no TikTok pull)`: forwards `--seed-age` through the normal

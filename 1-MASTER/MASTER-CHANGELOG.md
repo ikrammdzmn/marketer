@@ -4,6 +4,14 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 01 Oct 2026
+
+- `tiktok-account/sync` age formula fix (uncommitted, no engine change):
+  calendar-day semantics (`INT(TODAY())-INT(VALUE)` + "yesterday" branch;
+  24h truncation made yesterday read "today"; simulated on live data,
+  owner-confirmed working)
+  -> `tiktok-account/sync/CHANGELOG.md`
+
 ## 30 Sep 2026
 
 - `tiktok-shop-hourly` v1 (NEW track, uncommitted): shop-1 hourly reporting page
@@ -35,6 +43,11 @@ Rule: whoever ships a folder release adds one line here the same session.
   fix + silent `/health` + probe-noise quiet list + loading spinner with
   locked load buttons
   → `tiktok-creative-analysis/CHANGELOG.md`
+- `tiktok-account/sync` v22+v23 (committed `8ec64f0`): `--seed-age`
+  reseeds the canonical Creative-age formula into C2 (col-C-only writer,
+  dry-run safe) + live clear fixed to `C2:C10000` (read extent undercounts
+  trailing formula-blanks -> every tab #REF! under v22)
+  -> `tiktok-account/sync/CHANGELOG.md`
 
 ## 28 Sep 2026
 

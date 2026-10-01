@@ -1,1 +1,1 @@
-=ARRAYFORMULA(IF(F2:F="",,IFERROR(IF(VALUE(F2:F)>NOW(),"scheduled",IF(INT(NOW()-VALUE(F2:F))=0,"today",INT(NOW()-VALUE(F2:F))&" days ago")),"")))
+=ARRAYFORMULA(IF(F2:F="",,IFERROR(IF(VALUE(F2:F)>NOW(),"scheduled",LET(d,INT(TODAY())-INT(VALUE(F2:F)),IF(d=0,"today",IF(d=1,"yesterday",d&" days ago")))),"")))
