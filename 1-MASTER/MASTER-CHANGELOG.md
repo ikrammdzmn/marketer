@@ -6,6 +6,9 @@ Rule: whoever ships a folder release adds one line here the same session.
 
 ## 01 Oct 2026
 
+- `gmvmax-auto` online M7 extras (uncommitted): TTAM view + PROD badge, `/api/sessions` room drill (454 rooms verified), account rule relaxed (shop 1 resync 202, `unbracketed: 0`), ON/OFF pills (`006_status.sql`, `operation_status`), Total split LIVE/Product, `deploy_online.py` Windows fix
+  -> `gmvmax-auto/CHANGELOG.md`
+
 - `tiktok-account/sync` age formula fix (uncommitted, no engine change):
   calendar-day semantics (`INT(TODAY())-INT(VALUE)` + "yesterday" branch;
   24h truncation made yesterday read "today"; simulated on live data,

@@ -13,6 +13,7 @@ const METRICS = [
   { id: "total", name: "Total GMV Max" },
   { id: "LIVE_GMV_MAX", name: "LIVE GMV MAX (Marketing API)" },
   { id: "PRODUCT_GMV_MAX", name: "Product GMV Max (Marketing API)" },
+  { id: "ttam", name: "TTAM (Manual, excl GMV)" },
   { id: "roas", name: "ROAS (Return on Ad Spend)" },
 ];
 
@@ -32,17 +33,45 @@ export default function Page() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fetchedAt, setFetchedAt] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Record<string, any>>({});
+  const [sessionsLoading, setSessionsLoading] = useState<string | null>(null);
+
+  async function loadSessions(campaignId: string) {
+    if (sessions[campaignId] || sessionsLoading === campaignId) return;
+    setSessionsLoading(campaignId);
+    try {
+      const q = `shopNumber=${shop}&campaignId=${campaignId}&startDate=${start}&endDate=${end}`;
+      const r = await fetch(`/api/sessions?${q}`);
+      if (!r.ok) throw new Error((await r.json()).error ?? "sessions failed");
+      const body = await r.json();
+      setSessions((p) => ({ ...p, [campaignId]: body }));
+    } catch (e) {
+      setSessions((p) => ({ ...p, [campaignId]: { error: e instanceof Error ? e.message : "sessions failed" } }));
+    } finally {
+      setSessionsLoading(null);
+    }
+  }
 
   async function fetchData() {
     setLoading(true);
     setError(null);
     setExpanded(new Set());
+    setSessions({});
     try {
       const q = `shopNumber=${shop}&startDate=${start}&endDate=${end}`;
       if (metric === "roas") {
         const r = await fetch(`/api/roas?${q}`);
         if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
         setData({ kind: "roas", ...(await r.json()) });
+        setFetchedAt(new Date().toISOString());
+        return;
+      }
+      if (metric === "ttam") {
+        const r = await fetch(`/api/roas?${q}`);
+        if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
+        setData({ kind: "ttam", ...(await r.json()) });
+        setFetchedAt(new Date().toISOString());
         return;
       }
       const types = metric === "total" ? ["LIVE_GMV_MAX", "PRODUCT_GMV_MAX"] : [metric];
@@ -56,38 +85,21 @@ export default function Page() {
       const cost = parts.reduce((s, p) => s + (p.cost ?? 0), 0);
       const orders = parts.reduce((s, p) => s + (p.orderCount ?? 0), 0);
       const net = gmv * 0.75;
-      const amap = new Map<string, any>();
-      for (const p of parts) {
-        for (const a of p.accounts ?? []) {
-          const e = amap.get(a.name) ?? { name: a.name, cost: 0, gmv: 0, orders: 0, campaigns: 0 };
-          e.cost += a.cost; e.gmv += a.gmv; e.orders += a.orders; e.campaigns += a.campaigns;
-          amap.set(a.name, e);
-        }
-      }
-      const accounts = [...amap.values()]
-        .map((a) => ({ ...a, roi: a.cost > 0 ? a.gmv / a.cost : 0 }))
-        .sort((a, b) => b.gmv - a.gmv);
-      const cmap = new Map<string, any>();
-      for (const p of parts) {
-        for (const c of p.campaigns ?? []) {
-          const e = cmap.get(c.campaignId) ?? {
-            campaignId: c.campaignId, campaignName: c.campaignName,
-            accountName: c.accountName, cost: 0, gmv: 0, orders: 0,
-          };
-          e.cost += c.cost; e.gmv += c.gmv; e.orders += c.orders;
-          cmap.set(c.campaignId, e);
-        }
-      }
-      const campaigns = [...cmap.values()].map((c) => ({
-        ...c, roi: c.cost > 0 ? c.gmv / c.cost : 0,
-      }));
+      setFetchedAt(new Date().toISOString());
       setData({
         kind: "gmv", shopName: parts[0]?.shopName, gmv, cost,
         roi: cost > 0 ? gmv / cost : 0, net, net_roi: cost > 0 ? net / cost : 0,
-        orders, currency: "MYR", accounts, campaigns,
+        orders, currency: "MYR",
+        sections: parts.map((p) => ({
+          key: p.promotionType,
+          title: p.promotionType === "LIVE_GMV_MAX" ? "LIVE GMV Max" : "Product GMV Max",
+          accounts: p.accounts ?? [],
+          campaigns: p.campaigns ?? [],
+        })),
         live: parts.find((p) => p.promotionType === "LIVE_GMV_MAX"),
         product: parts.find((p) => p.promotionType === "PRODUCT_GMV_MAX"),
       });
+      setFetchedAt(new Date().toISOString());
     } catch (e) {
       setError(e instanceof Error ? e.message : "fetch failed");
     } finally {
@@ -98,6 +110,10 @@ export default function Page() {
   return (
     <main style={{ padding: 24, fontFamily: "system-ui", background: "#0a0a0a", color: "#eee", minHeight: "100vh" }}>
       <h1>GMV Max Online</h1>
+      <p style={{ opacity: 0.7, fontSize: 12 }}>
+        Branch: PROD (Neon prod) | Data: live TikTok API (lag 15m-2h, closed-window for cron)
+        {fetchedAt ? ` | Fetched: ${fetchedAt}` : ""}
+      </p>
       <div style={{ display: "flex", gap: 12, alignItems: "end", flexWrap: "wrap", marginBottom: 16 }}>
         <label>Shop<br />
           <select value={shop} onChange={(e) => setShop(e.target.value)}>
@@ -129,17 +145,21 @@ export default function Page() {
             </tbody>
           </table>
           <h3>Breakdown by Account (click a row to expand campaigns)</h3>
-          <table cellPadding={8} style={{ borderCollapse: "collapse" }}>
+          {(data.sections ?? []).map((sec: any) => (
+          <div key={sec.key}>
+          <h4>{sec.title}</h4>
+          <table cellPadding={8} style={{ borderCollapse: "collapse", marginBottom: 16 }}>
             <thead><tr><th></th><th>Account</th><th>Cost</th><th>GMV</th><th>Orders</th><th>ROI</th></tr></thead>
             <tbody>
-              {data.accounts.map((a: any) => {
-                const open = expanded.has(a.name);
-                const rows = (data.campaigns ?? []).filter((c: any) => c.accountName === a.name);
+              {sec.accounts.map((a: any) => {
+                const key = `${sec.key}:${a.name}`;
+                const open = expanded.has(key);
+                const rows = (sec.campaigns ?? []).filter((c: any) => c.accountName === a.name);
                 return (
                   <>
-                    <tr key={a.name} onClick={() => setExpanded((p) => {
+                    <tr key={key} onClick={() => setExpanded((p) => {
                       const n = new Set(p);
-                      if (n.has(a.name)) n.delete(a.name); else n.add(a.name);
+                      if (n.has(key)) n.delete(key); else n.add(key);
                       return n;
                     })} style={{ cursor: "pointer" }}>
                       <td>{open ? "▾" : "▸"}</td>
@@ -148,16 +168,50 @@ export default function Page() {
                     {open && rows.map((c: any) => (
                       <tr key={c.campaignId} style={{ background: "#161616" }}>
                         <td></td>
-                        <td style={{ fontSize: 12 }}>{c.campaignName} <span style={{ opacity: 0.5 }}>({c.campaignId})</span></td>
+                        <td style={{ fontSize: 12 }}>{c.campaignName} <span style={{ opacity: 0.5 }}>({c.campaignId})</span>
+                          <span style={{
+                            marginLeft: 8, fontSize: 10, padding: "1px 6px", borderRadius: 8,
+                            background: c.status === "ON" ? "#0a4d1e" : c.status === "OFF" ? "#4d4d4d" : "#3a2f0a",
+                            color: c.status === "ON" ? "#7dffa8" : c.status === "OFF" ? "#ccc" : "#ffd97d",
+                          }}>{c.status ?? "?"}</span>
+                          <button style={{ marginLeft: 8 }} onClick={(e) => { e.stopPropagation(); loadSessions(c.campaignId); }}>
+                            {sessionsLoading === c.campaignId ? "…" : "Sessions"}
+                          </button>
+                          {sessions[c.campaignId] && !sessions[c.campaignId].error && (
+                            <span style={{ opacity: 0.6 }}> ({sessions[c.campaignId].sessions?.length ?? 0} rooms)</span>
+                          )}
+                          {sessions[c.campaignId]?.error && (
+                            <span style={{ color: "#f66" }}> ({sessions[c.campaignId].error})</span>
+                          )}
+                        </td>
                         <td>{fmt(c.cost)}</td><td>{fmt(c.gmv)}</td><td>{c.orders}</td><td>{c.roi.toFixed(2)}</td>
                       </tr>
                     ))}
+                    {open && rows.map((c: any) => (sessions[c.campaignId]?.sessions ?? []).map((s: any, i: number) => (
+                      <tr key={`${c.campaignId}-s${i}`} style={{ background: "#0f0f0f" }}>
+                        <td></td>
+                        <td style={{ fontSize: 11, paddingLeft: 28 }}>room {s.roomId || "(none)"} · {s.day}</td>
+                        <td>{fmt(s.cost)}</td><td>{fmt(s.gmv)}</td><td>{s.orders}</td><td>{Number(s.roi ?? 0).toFixed(2)}</td>
+                      </tr>
+                    )))}
                   </>
                 );
               })}
             </tbody>
           </table>
+          </div>
+          ))}
         </>
+      )}
+      {data && data.kind === "ttam" && (
+        <table cellPadding={8} style={{ borderCollapse: "collapse" }}>
+          <tbody>
+            <tr><td>Shop Name</td><td>{data.shopName}</td></tr>
+            <tr><td>Manual (TTAM) Spend ({data.manualCampaignCount} campaigns)</td><td>MYR {fmt(data.manualCampaignSpend)}</td></tr>
+            <tr><td>GMV Max Cost (live+product)</td><td>MYR {fmt(data.gmvMaxCost)}</td></tr>
+            <tr><td>Total Ads Spend</td><td>MYR {fmt(data.totalAdsSpend)}</td></tr>
+          </tbody>
+        </table>
       )}
       {data && data.kind === "roas" && (
         <table cellPadding={8} style={{ borderCollapse: "collapse" }}>

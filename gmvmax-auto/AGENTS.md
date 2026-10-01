@@ -11,8 +11,9 @@
 - `masterplan.md` — locked decisions + phases. `plan.md` — P0 checklist (tick per change).
 - `DEV_NOTES.md` — session handoff (vibe + bugs + lessons, read first). `feature.md` — non-technical user guide.
 - `CHANGELOG.md` — folder releases. `APP_CHECKLIST.md` — Business API (PENDING approval 2026-09-19, `TIKTOK GMV MAX`) + Shop Custom app (created, MY) paperwork tracker.
-- `migrations/001_core.sql, 002_acct.sql, 003_gmv.sql` (FROZEN, have bugs — see 004) + `004_fix_schemas.sql` (applied dev+prod: schema-qualified tables, `win` not `window`). Never edit applied files; new fix = 005+.
+- `migrations/001_core.sql, 002_acct.sql, 003_gmv.sql` (FROZEN, have bugs — see 004) + `004_fix_schemas.sql` (applied dev+prod: schema-qualified tables, `win` not `window`) + `005_online.sql` (ads-token store, account cache, daily rollup) + `006_status.sql` (campaign `status` + `raw`, applied prod+dev 01 Oct). Never edit applied files; new fix = 007+.
 - `collector.py` — 30m prod pulls, closed-window T-2h, skip 02:00–06:00 MYT. Net ROI lock (`FEE_RATE=0.25`, gross kept). DB column is `win`; file JSON key stays `window`. NEVER `POST update` in P0 (`ALLOW_WRITES=0` assert).
+- `online/` (Next.js exception, Vercel `marketer` prod `marketer-hw.vercel.app`) — `src/lib/gmv.ts` (campaign/report/TTAM/sessions, account = first `[]` anywhere, status = `operation_status` → ON/OFF), `src/app/page.tsx` (Shop/Metric/Date/Fetch + Metric-Value + per-type Account → Campaign → Sessions, TTAM view, PROD badge), `src/app/api/sessions/route.ts` (single-ID room drill), `deploy_online.py` (repo-root deploy, Windows `npx.cmd` fix).
 - `live_view.py` — MANUAL unlagged per-campaign view (eyes only; 2h rule stays for scheduler/auto). Seeds from `TIKTOK_GMV_CAMPAIGNS` {PRODUCT, LIVE} (list APIs return zero GMV rows — verified). Writes `cache/live.json` (LIVE first).
 - `prod_auth.py` — one-shot prod OAuth (authorize URL → 8082 /callback → local exchange; lengths-only console).
 - `collector_task.bat` + Windows task `GMVMaxCollector30m` (every 30m; same-slot dedupe in code).

@@ -8,11 +8,12 @@ const API_VERSION = "v1.3";
 export const PROMOTION_TYPES = ["PRODUCT_GMV_MAX", "LIVE_GMV_MAX"] as const;
 export type PromotionType = (typeof PROMOTION_TYPES)[number];
 
-// Exact [] rule (plan.md §9): one pair at start, no nesting, trim inside.
-// No match → account "Other", name kept as-is (never hidden).
+// Account rule (relaxed Oct 2026): first [] ANYWHERE is the account
+// ("ot1 [Dr Samhan Official1] ..." -> "Dr Samhan Official1").
+// No [] at all -> account "Other". Display name keeps the full raw title.
 export function parseCampaignName(raw: string): { account: string; name: string } {
-  const m = /^\[([^\[\]]+)\]\s*(.*)$/.exec((raw ?? "").trim());
-  if (m) return { account: m[1].trim() || "Other", name: m[2].trim() || raw.trim() };
+  const m = /\[([^\[\]]+)\]/.exec(raw ?? "");
+  if (m) return { account: m[1].trim() || "Other", name: (raw ?? "").trim() };
   return { account: "Other", name: (raw ?? "").trim() };
 }
 
@@ -21,6 +22,18 @@ export interface CampaignInfo {
   name: string;
   account: string;
   promotionType: PromotionType;
+  status: string | null;
+  rawKeys: string[];
+}
+
+// Status normalization: TikTok uses several vocabularies — map to ON/OFF,
+// anything else passes through raw so the UI shows truth, not a guess.
+export function normalizeStatus(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v).toUpperCase();
+  if (["ENABLE", "ACTIVE", "ON", "DELIVERY_OK", "STATUS_ENABLE", "CAMPAIGN_STATUS_ENABLE"].includes(s)) return "ON";
+  if (["DISABLE", "PAUSED", "OFF", "DELETE", "DELETED", "STATUS_DISABLE", "CAMPAIGN_STATUS_DISABLE"].includes(s)) return "OFF";
+  return String(v);
 }
 
 async function getCampaigns(
@@ -46,11 +59,17 @@ async function getCampaigns(
     if (body.code !== 0) throw new Error(`campaign/get code=${body.code}: ${body.message ?? ""}`);
     for (const c of body.data?.list ?? []) {
       const parsed = parseCampaignName(c.campaign_name ?? "");
+      const keys = Object.keys(c ?? {});
+      const rawStatus =
+        c.status ?? c.campaign_status ?? c.operation_status ??
+        c.delivery_status ?? c.secondary_status ?? null;
       out.set(c.campaign_id, {
         id: c.campaign_id,
         name: parsed.name || c.campaign_name || c.campaign_id,
         account: parsed.account,
         promotionType,
+        status: normalizeStatus(rawStatus),
+        rawKeys: keys,
       });
     }
     const total = body.data?.page_info?.total_page ?? 1;
@@ -88,12 +107,13 @@ export async function syncShopCampaigns(shopNumber: string) {  const shop = SHOP
   for (const c of all.values()) {
     await query(
       `INSERT INTO gmv.gmv_campaigns
-         (campaign_id, shop_id, kind, name, account, promotion_type, advertiser_id, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+         (campaign_id, shop_id, kind, name, account, promotion_type, advertiser_id, status, raw, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
        ON CONFLICT (campaign_id) DO UPDATE SET
          shop_id = EXCLUDED.shop_id, kind = EXCLUDED.kind, name = EXCLUDED.name,
          account = EXCLUDED.account, promotion_type = EXCLUDED.promotion_type,
-         advertiser_id = EXCLUDED.advertiser_id, updated_at = now()`,
+         advertiser_id = EXCLUDED.advertiser_id, status = EXCLUDED.status,
+         raw = EXCLUDED.raw, updated_at = now()`,
       [
         c.id,
         shop.shopId,
@@ -102,12 +122,16 @@ export async function syncShopCampaigns(shopNumber: string) {  const shop = SHOP
         c.account,
         c.promotionType,
         shop.advertiserId,
+        c.status,
+        JSON.stringify({ keys: c.rawKeys }),
       ]
     );
   }
   const accounts = [...new Set([...all.values()].map((c) => c.account))].sort();
   const unbracketed = [...all.values()].filter((c) => c.account === "Other").length;
-  return { shop: shop.name, synced: all.size, skipped: false as const, accounts, unbracketed };
+  const sample = [...all.values()][0];
+  const statusValues = [...new Set([...all.values()].map((c) => c.status ?? "(null)"))];
+  return { shop: shop.name, synced: all.size, skipped: false as const, accounts, unbracketed, sample_keys: sample?.rawKeys ?? [], status_values: statusValues };
 }
 
 export interface ReportRow {
@@ -179,11 +203,11 @@ export async function getShopReport(  shopNumber: string,
   // Campaign map from Neon (M3 sync), scoped to the requested type —
   // the report API can return mixed types, so filter by promotion_type here.
   const cmap = await query(
-    `SELECT campaign_id, name, account FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+    `SELECT campaign_id, name, account, status FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
     [shop.shopId, promotionType]
   );
-  const info = new Map<string, { name: string; account: string }>();
-  for (const r of cmap.rows) info.set(r.campaign_id, { name: r.name, account: r.account ?? "Other" });
+  const info = new Map<string, { name: string; account: string; status: string | null }>();
+  for (const r of cmap.rows) info.set(r.campaign_id, { name: r.name, account: r.account ?? "Other", status: r.status ?? null });
 
   const rows = await fetchGMVMaxReport(
     creds.access_token, shop.advertiserId, shop.shopId, promotionType, startDate, endDate
@@ -196,7 +220,7 @@ export async function getShopReport(  shopNumber: string,
   const byCampaign = new Map<string, { cost: number; gmv: number; orders: number }>();
   for (const r of filtered) {
     totalCost += r.cost; totalGMV += r.gmv; totalOrders += r.orders;
-    const meta = info.get(r.campaignId) ?? { name: r.campaignId, account: "Other" };
+    const meta = info.get(r.campaignId) ?? { name: r.campaignId, account: "Other", status: null };
     const a = byAccount.get(meta.account) ?? { cost: 0, gmv: 0, orders: 0, campaigns: 0 };
     a.cost += r.cost; a.gmv += r.gmv; a.orders += r.orders; a.campaigns += 1;
     byAccount.set(meta.account, a);
@@ -209,8 +233,8 @@ export async function getShopReport(  shopNumber: string,
     name, ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0,
   })).sort((a, b) => b.gmv - a.gmv);
   const campaigns = [...byCampaign.entries()].map(([campaignId, d]) => {
-    const meta = info.get(campaignId) ?? { name: campaignId, account: "Other" };
-    return { campaignId, campaignName: meta.name, accountName: meta.account, ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0 };
+    const meta = info.get(campaignId) ?? { name: campaignId, account: "Other", status: null };
+    return { campaignId, campaignName: meta.name, accountName: meta.account, status: meta.status, ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0 };
   }).sort((a, b) => a.accountName.localeCompare(b.accountName) || b.gmv - a.gmv);
   return {
     shopName: shop.name, promotionType,
@@ -220,6 +244,48 @@ export async function getShopReport(  shopNumber: string,
     currency: "MYR", dateRange: { start: startDate, end: endDate },
     accounts, campaigns,
   };
+}
+
+// Live sessions drill (single campaign only): room_id x stat_time_day.
+// The report API accepts one campaign_id in filtering here; multi-ID fails.
+export async function getCampaignSessions(
+  shopNumber: string,
+  campaignId: string,
+  startDate: string,
+  endDate: string
+) {
+  const shop = SHOPS[shopNumber];
+  if (!shop) throw new Error(`invalid shopNumber: ${shopNumber}`);
+  const creds = await getAdsCredentials(shop.advertiserId);
+  if (!creds) throw new Error(`no access token for advertiser ${shop.advertiserId}`);
+  const params = new URLSearchParams({
+    advertiser_id: shop.advertiserId,
+    store_ids: JSON.stringify([shop.shopId]),
+    gmv_max_promotion_type: "LIVE_GMV_MAX",
+    dimensions: JSON.stringify(["room_id", "stat_time_day"]),
+    filtering: JSON.stringify({ campaign_ids: [campaignId] }),
+    metrics: JSON.stringify(["cost", "orders", "gross_revenue", "roi"]),
+    start_date: startDate,
+    end_date: endDate,
+    page_size: "1000",
+  });
+  const res = await fetch(
+    `${BASE_URL}/open_api/${API_VERSION}/gmv_max/report/get/?${params.toString()}`,
+    { headers: { "Access-Token": creds.access_token, "Content-Type": "application/json" } }
+  );
+  const body = await res.json();
+  if (body.code !== 0) throw new Error(`sessions report code=${body.code}: ${body.message ?? ""}`);
+  const sessions = (body.data?.list ?? []).map((item: any) => ({
+    roomId: item.dimensions?.room_id ?? "",
+    day: item.dimensions?.stat_time_day ?? "",
+    cost: parseFloat(item.metrics?.cost ?? 0),
+    gmv: parseFloat(item.metrics?.gross_revenue ?? 0),
+    orders: parseInt(item.metrics?.orders ?? 0, 10),
+    roi: parseFloat(item.metrics?.roi ?? 0),
+  }));
+  const totalCost = sessions.reduce((s: number, x: any) => s + x.cost, 0);
+  const totalGMV = sessions.reduce((s: number, x: any) => s + x.gmv, 0);
+  return { shopName: shop.name, campaignId, sessions, totalCost, totalGMV };
 }
 
 // All GMV Max campaign IDs for an advertiser (both types) — exclusion set for TTAM.

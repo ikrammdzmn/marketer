@@ -82,11 +82,12 @@ Local rules (stdlib, `127.0.0.1`, `.local_secrets.json`, `cache/`) do NOT transf
 - `3 Vigomax HQ 7494799386964364219 / adv 7259935704698929153 hasGMV=true`
 - `4 VigomaxPlus HQ 7495580262600706099 / same adv as 3 hasGMV=true` → scope by `store_ids`, never sum across 3/4 blindly
 
-## 9. Campaign `[Account]` naming rule (locked 29 Sep)
+## 9. Campaign `[Account]` naming rule (locked 29 Sep, relaxed 01 Oct)
 
-- Exact format: `^[Account] Rest` — one `[]` pair at start, no nesting, trim inside. Regex both sides: `^\[([^\[\]]+)\]\s*(.*)$`
-- With `[]`: `account=capture group 1` (e.g. `[Him.DrSamhan] HIMC 3 + FREE GIFT` → `Him.DrSamhan`)
-- Without `[]`: `account=Other`, `campaignName=original full name`, still in totals + listed under `Other`, never hidden; nightly validator flags `WHERE name NOT LIKE '[%]%'` for rename
+- Format: first `[]` pair ANYWHERE (no nesting, trim inside). Regex: `\[([^\[\]]+)\]`
+- `ot1 [Dr Samhan Official1] ...` → account `Dr Samhan Official1` (was `Other` under the old bracket-at-start rule; shop 1 resync 01 Oct: 202 campaigns, `unbracketed: 0`)
+- With `[]`: `account=capture group 1`, display name keeps the full raw title
+- Without `[]`: `account=Other`, still in totals + listed under `Other`, never hidden; nightly validator flags `WHERE name NOT LIKE '[%]%'` for rename
 
 ## 10. Start flow (online build order)
 
@@ -115,5 +116,5 @@ Local rules (stdlib, `127.0.0.1`, `.local_secrets.json`, `cache/`) do NOT transf
 - [x] M4 report fetch Sep 24–27 verified: totals + accounts + campaigns match screenshot logic (shop 1 LIVE 24–27 Sep: gmv 169.8k, cost 12.6k, roi 13.48, net 10.11, 1012 orders)
 - [x] M5 TTAM exclusion + ROAS (`sst=wht=8%`) verified (shop 1, 24–27 Sep: live 10,131.24 + product 2,468.21 + manual 31,527.35 = 44,126.80; roas 3.85, actual 3.32; fixed mixed-type double-count 29 Sep)
 - [x] M6 cron nightly + guard-heal + gap-fill live, no dupes (`ON CONFLICT`) (single-shop verified 29 Sep: 9-27 row + healed 9-28; full 4-shop run may exceed Hobby 60s — per-shop escape hatch `?shopNumber=` kept)
-- [ ] M7 UI parity + cutover: expandable Account → Campaign → Sessions, freshness + branch badge
-- [x] Deploy helper `deploy_online.py` (stdlib, prod deploy from repo root, no `--cwd`)
+- [x] M7 UI parity + cutover: expandable Account → Campaign → Sessions, freshness + branch badge (01 Oct: TTAM view, PROD badge + Fetched stamp, per-campaign Sessions drill `room_id x stat_time_day` single-ID verified 454 rooms, ON/OFF pills via `operation_status`, Total split into LIVE + Product sections; full temp-marketplace diff still open)
+- [x] Deploy helper `deploy_online.py` (stdlib, prod deploy from repo root, no `--cwd`; 01 Oct: Windows `npx.cmd` + shell fix)

@@ -156,6 +156,13 @@ Check the Project Knowledge and the current chat for context. This conversation 
   {PRODUCT, LIVE} in `.local_secrets.json`. New campaigns = paste ID, rerun
   `live_view.py`. Revisit only if TikTok ships a GMV list endpoint.
 
+## Checkpoint 6 — 01 Oct 2026 (M7 extras live, owner-verified)
+
+- TTAM view + PROD badge + Fetched stamp → sessions drill (`/api/sessions`, 454 rooms on the RM82 spender, no error) → account rule relaxed (first-`[]`-anywhere; resync 202, `unbracketed: 0`) → ON/OFF pills (`006_status.sql` on prod+dev, field = `operation_status`, spender = ON) → Total split LIVE/Product sections. All deployed to `marketer-hw.vercel.app`, build green each time (one failed build: `await` inside setState updater — never again; one merge bug: Total-merge dropped `status`).
+- Vibe: owner tests on prod URL (local env too sparse — `.env.local` lacks tokens), pastes screenshots + terse confirms. Keep online-first: deploy → one portal/browser action → paste back.
+- Bugs 19–20: (19) `deploy_online.py` subprocess misses `npx.cmd` on Windows without shell → `npx.cmd` + `shell=(os.name=="nt")`, `py_compile` OK. (20) frontend merge maps must carry every new field (`status` lost in Total merge while raw API was correct — check merge accumulators on any new field).
+- Resume: 24–27 Sep parity vs temp-marketplace (eyeball diff open) → full 4-shop cron (Hobby 60s risk) → rooms/creatives drill deeper → Shop-order GMV numerator (needs shop tokens). Uncommitted M7 code pending commit decision.
+
 ## Checkpoint 5 — 29 Sep 2026 (ONLINE Vercel + Neon live, M0–M7)
 
 - Biggest milestone since P0: `gmvmax-auto/online/` (Next.js, Vercel project `marketer`,

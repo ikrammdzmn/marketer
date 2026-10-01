@@ -2,6 +2,14 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 01 Oct 2026 — online M7 extras (TTAM, sessions, account fix, ON/OFF, split)
+- TTAM metric view (reuses `/api/roas`, manual spend + count) + PROD branch badge + Fetched stamp on `online/src/app/page.tsx`.
+- New `/api/sessions` + per-campaign Sessions button: `room_id x stat_time_day` drill, single-ID `filtering`, verified 454 rooms on LIVE campaign, no error.
+- Account rule relaxed (§9): first `[]` anywhere → shop 1 resync 202 campaigns, `unbracketed: 0` (`Other` drained into real accounts).
+- ON/OFF pills: `006_status.sql` (`status` + `raw` cols, applied prod+dev) → sync captures `operation_status` (only status-ish key in `campaign/get`; sample_keys recorded) → report + UI badge (green ON / grey OFF). Lesson: Total-merge dropped `status` (frontend merge must carry new fields); `await` forbidden inside setState updater.
+- Total view split: LIVE GMV Max + Product GMV Max sections (own accounts each), summary unchanged.
+- `deploy_online.py` Windows fix (`npx.cmd` + shell).
+
 ## 21 Sep 2026 — checkpoint 4: LIVE wired + PRODUCT/LIVE split (ritual done)
 - New `live_view.py`: 4 GMV seeds (IDs from bulk export, VOL2 account) → info (budget, roas target, kind) + 7d/today report (net math) → `cache/live.json`. Found the money on GMV MAX VOL2 (was reading empty HIM COFFEE1); HIMCOFFEE 7d net ROI 6.14, HAPPY HOUR 7.84. Dashboard Live section + `/api/live` with UNLAGGED badge. List APIs can't return GMV campaigns (verified) — seeds are the discovery. Verified JS/py + 8099 smoke.
 - LIVE GMV wired (owner gave ID, VOL2 account): budget RM10k, roas 20, 7d net ROI 14.3 on 300 orders. Session list parses but empty = no max-delivery sessions created.

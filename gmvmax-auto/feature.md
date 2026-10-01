@@ -3,7 +3,13 @@
 > Internal team tool for our 1 Malaysia TikTok Shop. Runs on your own laptop.
 > Right now: **watch-only**. It does NOT change your ads by itself.
 
-## What you get today (P0, live numbers)
+## Online version (Vercel, `marketer-hw.vercel.app`, login required)
+
+- Shop / Metric / Date / Fetch Data: Total (LIVE + Product split in two tables), LIVE, Product, TTAM (manual spend only), ROAS (with SST+WHT actual).
+- Each campaign row shows a green ON / grey OFF pill (from TikTok) + a Sessions button (live rooms x day, on demand).
+- Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then resync.
+
+## What you get today (P0 local, live numbers)
 - **One screen** (`http://127.0.0.1:8082/`) with two tables:
   - **Live per-campaign** (amber UNLAGGED badge): all 5 GMV Max campaigns —
     1 LIVE + 4 Product — with 7-day and today spend, net sales, net ROI,

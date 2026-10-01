@@ -20,10 +20,12 @@ def main():
     if not os.path.isdir(ONLINE):
         print("missing gmvmax-auto/online (run from the marketer repo)", file=sys.stderr)
         return 1
-    cmd = ["npx", "-y", "vercel@latest", "deploy", "--prod", "--yes"]
+    # Windows: bare "npx" is npx.cmd, invisible to subprocess without shell.
+    exe = "npx.cmd" if os.name == "nt" else "npx"
+    cmd = [exe, "-y", "vercel@latest", "deploy", "--prod", "--yes"]
     print("+ (cwd=%s) %s" % (ROOT, " ".join(cmd)))
     try:
-        r = subprocess.run(cmd, cwd=ROOT)
+        r = subprocess.run(cmd, cwd=ROOT, shell=(os.name == "nt"))
     except FileNotFoundError:
         print("npx not found — install Node.js first", file=sys.stderr)
         return 1
