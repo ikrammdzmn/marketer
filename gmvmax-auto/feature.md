@@ -5,10 +5,23 @@
 
 ## Online version (Vercel, `marketer-hw.vercel.app`, login required)
 
-- Shop / Metric / Date / Fetch Data: Total (LIVE + Product split in two tables), LIVE, Product, TTAM (manual spend only), ROAS (with SST+WHT actual).
+- Shop / Metric / Date / Fetch Data: Total (LIVE + Product split in two tables), LIVE, Product, TTAM (manual spend only), ROAS (with SST+WHT actual), **Hourly** (per-campaign hour tables + trend graphs), Shop GMV (shop-order truth, needs shop login — otherwise shows the locked reference).
 - Each campaign row shows a green ON / grey OFF pill (from TikTok) + a Sessions button (live rooms x day, on demand).
 - Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then resync.
 - Numbers can move slightly during the day (TikTok settles sales figures over hours while spend stays fixed). If a number looks off versus an hour ago, press Fetch Data again — newest wins, nothing is lost.
+
+## Hourly watch (Metric = Hourly, shop 1)
+
+- Two trend lines (money spent vs money earned across today's hours) + bars for the newest hour, LIVE and Product separately.
+- Tables show each campaign's hour vs previous hour: absolute change + % change. % only appears when the previous hour is big enough (spend ≥ RM50 / sales ≥ RM200) — tiny hours show numbers only, so RM5→RM30 never screams "+500%".
+- Newest hour is tagged **partial** — TikTok is still counting it. Decide off older closed hours, never the live edge.
+
+## Telegram reports (group topic, every hour)
+
+- Two messages per hour: 📹 LIVE and 📦 Product. Each has totals, a table of campaigns that moved, steady ones collapsed (`N steady — tap to expand`), and earlier-hours history collapsed the same way.
+- 🔥 = biggest sales jump that hour. ⚠️ = spent ≥ RM5 with zero sales back.
+- Messages show ON campaigns only (dashboard keeps everything). Footnote says how many OFF are excluded.
+- Type **`/fetch`** in the topic anytime for a fresh pull — tables arrive in ~30–60s. Hourly rhythm continues on its own.
 
 ## What you get today (P0 local, live numbers)
 - **One screen** (`http://127.0.0.1:8082/`) with two tables:
@@ -43,7 +56,8 @@ rerun `live_view.py`. (TikTok has no list for GMV campaigns, so IDs come
 from Ads Manager or the bulk export.)
 
 ## What it does NOT do (yet)
-- No automatic budget changes. No Approve/Reject queue live. No Telegram actions.
+- No automatic budget changes. No Approve/Reject queue live. No Telegram actions beyond hourly reports.
+- Telegram newest-hour numbers are partial (still counting) — decisions go off closed hours.
 - No monthly cap enforcement, no email alerts, no 50-day charts (placeholder only).
 - Session list for LIVE shows nothing until max-delivery sessions are created
   in TikTok (campaign numbers are unaffected).

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Chart from "chart.js/auto";
 
 const SHOPS = [
   { value: "1", label: "Him.DrSamhan" },
@@ -15,6 +16,8 @@ const METRICS = [
   { id: "PRODUCT_GMV_MAX", name: "Product GMV Max (Marketing API)" },
   { id: "ttam", name: "TTAM (Manual, excl GMV)" },
   { id: "roas", name: "ROAS (Return on Ad Spend)" },
+  { id: "hourly", name: "Hourly (per campaign, shop 1)" },
+  { id: "shop-gmv", name: "Shop GMV (Shop API, shop 1)" },
 ];
 
 const fmt = (n: number) =>
@@ -36,6 +39,72 @@ export default function Page() {
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Record<string, any>>({});
   const [sessionsLoading, setSessionsLoading] = useState<string | null>(null);
+  const chartsRef = useRef<Chart[]>([]);
+  const trendLiveRef = useRef<HTMLCanvasElement | null>(null);
+  const trendProdRef = useRef<HTMLCanvasElement | null>(null);
+  const barRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Hourly graphs: slot-trend footsteps (cost + gmv lines per type) + latest-slot candy bars.
+  useEffect(() => {
+    chartsRef.current.forEach((c) => c.destroy());
+    chartsRef.current = [];
+    if (!data || data.kind !== "hourly") return;
+    const asc: string[] = [...(data.slots ?? [])].reverse();
+    const short = (s: string) => s.slice(11, 16);
+    const sumBy = (slot: string, type: string, k: string) =>
+      (data.rows ?? []).filter((r: any) => r.hour_slot === slot && r.promotion_type === type)
+        .reduce((s: number, r: any) => s + Number(r[k] ?? 0), 0);
+    const mk = (el: HTMLCanvasElement | null, cfg: any) => {
+      if (!el) return;
+      chartsRef.current.push(new Chart(el, cfg));
+    };
+    const line = (label: string, color: string, vals: number[]) => ({
+      label, data: vals, borderColor: color, backgroundColor: color, tension: 0.3, pointRadius: 2,
+    });
+    if (trendLiveRef.current) {
+      mk(trendLiveRef.current, {
+        type: "line",
+        data: {
+          labels: asc.map(short),
+          datasets: [
+            line("LIVE cost", "#60a5fa", asc.map((s) => sumBy(s, "LIVE_GMV_MAX", "cost"))),
+            line("LIVE gmv", "#4ade80", asc.map((s) => sumBy(s, "LIVE_GMV_MAX", "gmv"))),
+          ],
+        },
+        options: { plugins: { legend: { labels: { color: "#eee" } } }, scales: { x: { ticks: { color: "#999" } }, y: { ticks: { color: "#999" } } } },
+      });
+    }
+    if (trendProdRef.current) {
+      mk(trendProdRef.current, {
+        type: "line",
+        data: {
+          labels: asc.map(short),
+          datasets: [
+            line("Product cost", "#60a5fa", asc.map((s) => sumBy(s, "PRODUCT_GMV_MAX", "cost"))),
+            line("Product gmv", "#4ade80", asc.map((s) => sumBy(s, "PRODUCT_GMV_MAX", "gmv"))),
+          ],
+        },
+        options: { plugins: { legend: { labels: { color: "#eee" } } }, scales: { x: { ticks: { color: "#999" } }, y: { ticks: { color: "#999" } } } },
+      });
+    }
+    if (barRef.current && (data.slots ?? []).length > 0) {
+      const latest = (data.slots ?? [])[0];
+      const top = [...(data.rows ?? []).filter((r: any) => r.hour_slot === latest)]
+        .sort((a: any, b: any) => Number(b.cost) - Number(a.cost)).slice(0, 12);
+      mk(barRef.current, {
+        type: "bar",
+        data: {
+          labels: top.map((r: any) => String(r.campaign_name ?? r.campaign_id).slice(0, 24)),
+          datasets: [
+            { label: `cost @ ${short(latest)}`, data: top.map((r: any) => Number(r.cost)), backgroundColor: "#60a5fa" },
+            { label: `gmv @ ${short(latest)}`, data: top.map((r: any) => Number(r.gmv)), backgroundColor: "#4ade80" },
+          ],
+        },
+        options: { plugins: { legend: { labels: { color: "#eee" } } }, scales: { x: { ticks: { color: "#999", maxRotation: 60, minRotation: 60 } }, y: { ticks: { color: "#999" } } } },
+      });
+    }
+    return () => { chartsRef.current.forEach((c) => c.destroy()); chartsRef.current = []; };
+  }, [data]);
 
   async function loadSessions(campaignId: string) {
     if (sessions[campaignId] || sessionsLoading === campaignId) return;
@@ -60,6 +129,20 @@ export default function Page() {
     setSessions({});
     try {
       const q = `shopNumber=${shop}&startDate=${start}&endDate=${end}`;
+      if (metric === "shop-gmv") {
+        const r = await fetch(`/api/shop-gmv?${q}`);
+        if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
+        setData({ kind: "shop-gmv", ...(await r.json()) });
+        setFetchedAt(new Date().toISOString());
+        return;
+      }
+      if (metric === "hourly") {
+        const r = await fetch(`/api/hourly?${q}`);
+        if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
+        setData({ kind: "hourly", ...(await r.json()) });
+        setFetchedAt(new Date().toISOString());
+        return;
+      }
       if (metric === "roas") {
         const r = await fetch(`/api/roas?${q}`);
         if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
@@ -213,6 +296,75 @@ export default function Page() {
           </tbody>
         </table>
       )}
+      {data && (data.kind === "hourly") && (
+        <>
+          <p style={{ opacity: 0.7, fontSize: 12 }}>
+            Hour slots are real-time MYT (newest pair tagged partial — intraday numbers revise). Message shows ON campaigns only; dashboard shows all. % shows only when prev hour spend ≥ RM50 / gmv ≥ RM200, else absolute-only.
+          </p>
+          <h4>LIVE trend (cost vs gmv per slot)</h4>
+          <div style={{ maxWidth: 900 }}><canvas ref={trendLiveRef} /></div>
+          <h4>Product trend (cost vs gmv per slot)</h4>
+          <div style={{ maxWidth: 900 }}><canvas ref={trendProdRef} /></div>
+          <h4>Latest slot bars (top 12 by cost)</h4>
+          <div style={{ maxWidth: 900 }}><canvas ref={barRef} /></div>
+          {(data.slots ?? []).map((slot: string) => {
+            const rows = (data.rows ?? []).filter((r: any) => r.hour_slot === slot);
+            const prevSlot = (data.slots ?? [])[(data.slots ?? []).indexOf(slot) + 1];
+            const prev = (data.rows ?? []).filter((r: any) => r.hour_slot === prevSlot);
+            const pmap = new Map(prev.map((r: any) => [r.campaign_id, r]));
+            return (
+              <div key={slot}>
+                <h4>{slot} vs {prevSlot ?? "—"}</h4>
+                <table cellPadding={8} style={{ borderCollapse: "collapse", marginBottom: 16 }}>
+                  <thead><tr><th>Campaign</th><th>Type</th><th>Cost (Δ, %)</th><th>GMV (Δ, %)</th><th>Orders (Δ)</th></tr></thead>
+                  <tbody>
+                    {rows.map((r: any) => {
+                      const p = pmap.get(r.campaign_id) as any;
+                      const dc = p ? r.cost - p.cost : 0;
+                      const dg = p ? r.gmv - p.gmv : 0;
+                      const dor = p ? r.orders - p.orders : 0;
+                      const pc = p && p.cost >= 50 && Number(p.cost) !== 0 ? `${(dc / p.cost * 100).toFixed(1)}%` : "n/a";
+                      const pg = p && p.gmv >= 200 && Number(p.gmv) !== 0 ? `${(dg / p.gmv * 100).toFixed(1)}%` : "n/a";
+                      return (
+                        <tr key={r.campaign_id}>
+                          <td style={{ fontSize: 12 }}>{r.campaign_name ?? r.campaign_id}</td>
+                          <td>{r.promotion_type === "LIVE_GMV_MAX" ? "LIVE" : "Product"}</td>
+                          <td>{fmt(r.cost)} ({dc >= 0 ? "+" : ""}{fmt(dc)}, {pc})</td>
+                          <td>{fmt(r.gmv)} ({dg >= 0 ? "+" : ""}{fmt(dg)}, {pg})</td>
+                          <td>{r.orders} ({dor >= 0 ? "+" : ""}{dor})</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })}
+        </>
+      )}
+      {data && data.kind === "shop-gmv" && (
+        <table cellPadding={8} style={{ borderCollapse: "collapse" }}>
+          <tbody>
+            <tr><td>Shop Name</td><td>{data.shopName}</td></tr>
+            {!data.configured ? (
+              <>
+                <tr><td>Not configured</td><td style={{ fontSize: 12 }}>{data.hint}</td></tr>
+                <tr><td>Locked ref 24–27 Sep (manual)</td><td>Shop MYR 143,941.26 / 1,016 orders vs ads 169,805.12 (−15.2%); TRUE ROAS 3.26x / 2.81x</td></tr>
+              </>
+            ) : (
+              <>
+                <tr><td>Shop-order GMV ({data.shopOrderCount} orders)</td><td>MYR {fmt(data.shopOrderGMV)}</td></tr>
+                <tr><td>Ads-attributed GMV ({data.adsOrderCount} orders)</td><td>MYR {fmt(data.adsGMV)}</td></tr>
+                <tr><td>Delta vs ads</td><td>{(data.deltaVsAds * 100).toFixed(1)}%</td></tr>
+                <tr><td>Total Ads Spend</td><td>MYR {fmt(data.totalAdsSpend)}</td></tr>
+                <tr><td>TRUE ROAS (shop / spend)</td><td>{data.trueRoas.toFixed(2)}x</td></tr>
+                <tr><td>TRUE ACTUAL (shop / spend+tax)</td><td>{data.trueActualRoas.toFixed(2)}x</td></tr>
+                <tr><td>Ads ROAS (for ref)</td><td>{data.adsRoas.toFixed(2)}x / {data.adsActualRoas.toFixed(2)}x</td></tr>
+              </>
+            )}
+          </tbody>
+        </table>
+      )}
       {data && data.kind === "roas" && (
         <table cellPadding={8} style={{ borderCollapse: "collapse" }}>
           <tbody>
@@ -225,6 +377,12 @@ export default function Page() {
             <tr><td>Total with SST+WHT</td><td>MYR {fmt(data.totalCostWithTaxes)}</td></tr>
             <tr><td>ROAS</td><td>{data.roas.toFixed(2)}x</td></tr>
             <tr><td>ACTUAL ROAS</td><td>{data.actualRoas.toFixed(2)}x</td></tr>
+            {data.shopTruthRef && (
+              <>
+                <tr><td>Shop-truth ref ({data.shopTruthRef.start}–{data.shopTruthRef.end})</td><td>MYR {fmt(data.shopTruthRef.shopGMV)} / {data.shopTruthRef.shopOrders} orders</td></tr>
+                <tr><td>Ads read vs shop (locked)</td><td>{data.shopTruthRef.ratio.toFixed(2)}x high</td></tr>
+              </>
+            )}
           </tbody>
         </table>
       )}

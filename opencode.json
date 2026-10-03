@@ -8,7 +8,9 @@
         "--directory",
         "C:/Users/darkv/Documents/GitHub/ikrammdzmn/tools/tools/spreadsheet-mcp",
         "run",
-        "spreadsheet-mcp"
+        "python",
+        "-m",
+        "spreadsheet_mcp.server"
       ],
       "enabled": true,
       "environment": {

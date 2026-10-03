@@ -4,6 +4,11 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 04 Oct 2026
+
+- `gmvmax-auto` M9 hourly live (uncommitted): `stat_time_hour` grain verified + `009_hourly.sql` + batched upserts (Hobby 60s fix) + dashboard Hourly metric with Chart.js trends/bars + Telegram group-topic native tables (rich-blocks probe-verified, Details collapsibles, emoji map) + `/fetch` webhook command + real-time pivot (partial tags, ON-filter) — shop 1 only, no suggestion engine
+  -> `gmvmax-auto/CHANGELOG.md`
+
 ## 01 Oct 2026
 
 - `gmvmax-auto` online M7 extras (uncommitted): TTAM view + PROD badge, `/api/sessions` room drill (454 rooms verified), account rule relaxed (shop 1 resync 202, `unbracketed: 0`), ON/OFF pills (`006_status.sql`, `operation_status`), Total split LIVE/Product, `deploy_online.py` Windows fix

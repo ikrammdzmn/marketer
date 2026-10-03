@@ -87,7 +87,7 @@ additional prompt Do not delete this part
 - `g-sheet_tools/` — Sheets Apps Script tools (bound scripts, no server):
   `aff-notify/` 4x-daily Affiliate Collection digest (email `code.gs` +
   Telegram `tg_bot/` group-topic sender, own AGENTS.md).
-- `gmvmax-auto/` — GMV Max online M7 live 01 Oct (`marketer-hw.vercel.app`: Total/LIVE/Product/TTAM/ROAS, LIVE+Product split, sessions drill, ON/OFF pills, first-`[]`-anywhere accounts, `006_status`) + P0 local read-only (prod OAuth, net ROI locked, 30m task). Deploys from repo root (`deploy_online.py`, Windows `npx.cmd` fix). Shop 1 verified vs reference totals; shops 3/4 tokens pending (consortium). Docs: `DEV_NOTES.md` (handoff + discoveries) + `feature.md` (user guide).
+- `gmvmax-auto/` — GMV Max online M9 live 04 Oct (`marketer-hw.vercel.app`: M7 views + Hourly metric with Chart.js graphs + Telegram group-topic native tables + `/fetch` command, shop 1, real-time partial tags, ON-filter) + P0 local read-only (prod OAuth, net ROI locked, 30m task). Shop-token route parked (app review pending). Sparring mode ON for this folder. Deploys from repo root (`deploy_online.py`, Windows `npx.cmd` fix, CLI login expires — re-login on 401/Not-authorized). Docs: `DEV_NOTES.md` (handoff + discoveries, bugs 23–29) + `feature.md` (user guide).
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, branch `main`) — local MCP runners. `spreadsheet-mcp`
   (27 Sheets tools, `uv`, stdio `127.0.0.1` only, IGNORED clone; nested upstream
   `.git` → `dudegladiator`, never push there). Secrets at

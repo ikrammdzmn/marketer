@@ -1,0 +1,117 @@
+import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+
+const cleanEnv = (v: string | undefined) =>
+  (v ?? "").trim().replace(/^["']|["']$/g, "");
+
+// GET /api/tg-probe — one-shot shape probe for sendRichMessage blocks.
+// Sends labeled TEST candidates to the group topic, deletes every message
+// that lands, returns per-candidate {ok, description}. Same CRON guard.
+export async function GET(request: Request) {
+  const secret = cleanEnv(process.env.CRON_SECRET);
+  if (!secret) return NextResponse.json({ error: "CRON_SECRET missing" }, { status: 500 });
+  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  const token = cleanEnv(process.env.TELEGRAM_BOT_TOKEN);
+  const rawChat = cleanEnv(process.env.TELEGRAM_CHAT_ID);
+  const envThread = cleanEnv(process.env.TELEGRAM_THREAD_ID);
+  let chatId = rawChat;
+  let thread = envThread;
+  const m = rawChat.match(/^(-\d+)[_:](\d+)$/);
+  if (m) {
+    chatId = m[1];
+    if (!thread) thread = m[2];
+  }
+  if (!token || !chatId) return NextResponse.json({ error: "bot env missing" }, { status: 500 });
+
+  const target: Record<string, unknown> = { chat_id: chatId };
+  if (thread) target.message_thread_id = Number(thread);
+
+  const candidates: Array<{ name: string; rich_message: unknown }> = [
+    {
+      name: "details-summary-blocks",
+      rich_message: {
+        blocks: [
+          { type: "paragraph", text: { type: "bold", text: "PROBE visible" } },
+          {
+            type: "details",
+            summary: { type: "bold", text: "PROBE collapsed title" },
+            blocks: [{ type: "paragraph", text: "PROBE hidden body" }],
+          },
+        ],
+      },
+    },
+    {
+      name: "details-string-summary",
+      rich_message: {
+        blocks: [
+          {
+            type: "details",
+            summary: "PROBE collapsed title",
+            blocks: [{ type: "paragraph", text: "PROBE hidden body" }],
+          },
+        ],
+      },
+    },
+    {
+      name: "details-title-field",
+      rich_message: {
+        blocks: [
+          {
+            type: "details",
+            title: "PROBE collapsed title",
+            blocks: [{ type: "paragraph", text: "PROBE hidden body" }],
+          },
+        ],
+      },
+    },
+    {
+      name: "control-divider",
+      rich_message: {
+        blocks: [
+          { type: "paragraph", text: { type: "bold", text: "PROBE above" } },
+          { type: "divider" },
+          { type: "paragraph", text: { type: "bold", text: "PROBE below" } },
+        ],
+      },
+    },
+  ];
+
+  const results: Array<Record<string, unknown>> = [];
+  for (const c of candidates) {
+    let sent: any = null;
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendRichMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...target, rich_message: c.rich_message }),
+      });
+      sent = await res.json();
+    } catch {
+      sent = { ok: false, description: "network error" };
+    }
+    const entry: Record<string, unknown> = {
+      name: c.name,
+      ok: sent.ok === true,
+      description: sent.description ?? null,
+    };
+    // Self-clean: delete landed probes so the topic stays clean.
+    if (sent.ok === true && sent.result?.message_id) {
+      try {
+        const del = await fetch(`https://api.telegram.org/bot${token}/deleteMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...target, message_id: sent.result.message_id }),
+        });
+        entry.deleted = (await del.json()).ok === true;
+      } catch {
+        entry.deleted = false;
+      }
+    }
+    results.push(entry);
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  return NextResponse.json({ ok: true, results });
+}

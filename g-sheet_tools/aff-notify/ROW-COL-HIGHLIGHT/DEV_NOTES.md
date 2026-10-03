@@ -1,10 +1,14 @@
-# DEV_NOTES - ROW-COL-HIGHLIGHT handoff (30 Sep 2026)
+# DEV_NOTES - ROW-COL-HIGHLIGHT handoff (03 Oct 2026)
 
 ## Vibe
 Owner ran fast and terse: "read code.gs, what does it do" -> "ok fix it" ->
 "explain like i'm 5" -> lag complaint -> "go" -> Tampermonkey detour
 ("bigger lines", "toggle on/off, draggable") -> then pivoted to shop hourly.
-Match that energy next time: short replies, confirm-then-build, working
+03 Oct session: "use in all google sheet" -> v1.2 -> "what features?" ->
+"colour and thickness in popup?" -> v1.3 (SET popup + row-only) ->
+"explain freeze line" -> "can i change hotkey in pill?" -> v1.4 (FREEZE +
+remappable Alt+R). Plan-mode interludes between builds - keep plans short,
+one question max, build on "go". Short replies, confirm-then-build, working
 artifacts over explanations. ELI5 mode works when they ask simply.
 
 ## Facts
@@ -17,6 +21,14 @@ artifacts over explanations. ELI5 mode works when they ask simply.
   cursor-following lines (`LINE_PX = 8`) + draggable ON/OFF pill
   (localStorage persist). Lines only - Sheets grid is canvas, no userscript
   can paint real cells; cell fill stays in `code.gs`.
+- v1.2 (03 Oct 2026): tab gate removed - runs on ALL Google Sheets/tabs,
+  renamed `Google Sheets Crosshair`. No `code.gs` change (still bound
+  Affiliate paint, deprecated).
+- v1.3 (03 Oct 2026): SET popup on pill (color swatches + thickness slider,
+  localStorage persisted) + row-only mode toggle (hides vertical line).
+- v1.4 (03 Oct 2026): FREEZE button + hotkey (default `Alt+R`, remappable
+  via SET HOTKEY in popup, Alt/Shift combos only) pins the horizontal line
+  at last cursor height; press again to release. Freeze is session-only.
 - `Tampermonkey.md`: built list + 13 possible features + will-not-do list.
 
 ## Bugs fixed (all mine or inherited, all fixed same session)
@@ -36,3 +48,8 @@ artifacts over explanations. ELI5 mode works when they ask simply.
    restored per contract. LESSON: byte-verify the tab name on every touch.
 5. **Non-ASCII `-` in userscript.** Caught by scan, replaced with `-`.
    LESSON: this folder stays pure ASCII - scan every new file.
+6. **Freeze read consumed `pending`.** First v1.4 draft pinned from `pending.y`,
+   but `pending` is nulled every animation frame, so hotkey-freeze usually
+   fell back to screen center. Fix: dedicated `lastY` tracker updated on every
+   `onMove`. LESSON: never read single-use frame state outside the frame -
+   keep a persistent copy for event handlers.

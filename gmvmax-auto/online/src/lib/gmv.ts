@@ -365,6 +365,17 @@ export async function getShopROAS(shopNumber: string, startDate: string, endDate
   const sst = totalAdsSpend * 0.08;
   const wht = totalAdsSpend * 0.08;
   const totalCostWithTaxes = totalAdsSpend + sst + wht;
+  // Locked manual parity (03 Oct, shop 1, Seller Center vs ads-attributed):
+  // 24–27 Sep shop GMV 143,941.26 / 1,016 orders vs ads 169,805.12.
+  // Display-only reference until the Shop API token route is unblocked.
+  const shopTruthRef = {
+    start: "2026-09-24",
+    end: "2026-09-27",
+    shopGMV: 143941.26,
+    shopOrders: 1016,
+    adsGMV: 169805.12,
+    ratio: 169805.12 / 143941.26,
+  };
   return {
     shopName: shop.name,
     gmv,
@@ -378,6 +389,7 @@ export async function getShopROAS(shopNumber: string, startDate: string, endDate
     sst, wht, totalCostWithTaxes,
     roas: totalAdsSpend > 0 ? gmv / totalAdsSpend : 0,
     actualRoas: totalCostWithTaxes > 0 ? gmv / totalCostWithTaxes : 0,
+    shopTruthRef,
     currency: "MYR", dateRange: { start: startDate, end: endDate },
   };
 }

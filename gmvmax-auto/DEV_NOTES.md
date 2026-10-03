@@ -166,6 +166,34 @@ Check the Project Knowledge and the current chat for context. This conversation 
     with 40001 "No permission to operate advertiser" — correct TikTok error,
     wrong token. LESSON: credential lookup must scope by advertiser first and
     error naming the missing env, never silently substitute another token.
+23. **Hour-slot grid includes future zeros.** `stat_time_hour` returns the
+    full-day grid — future hours come back as all-zero rows. "Drop newest 2
+    slots" diffed zeros and Telegram'd an all-zero report. LESSON: detect
+    the edge by activity (last slot with cost/gmv/orders > 0) and never store
+    future slots; closed-window depth (edge-1 vs edge-inclusive + partial tag)
+    is a product call, not a data call. Slots are MYT (verified).
+24. **Hourly mixed-type PK overwrite.** Both LIVE + PRODUCT pulls returned
+    rows for the same campaign_ids; second upsert overwrote the first on
+    `(shop_id, campaign_id, hour_slot)`. Same root as bug 16. LESSON: filter
+    every report pull by the Neon promotion_type map — no exceptions, new
+    endpoints included. Rewrite-on-revise self-heals stored labels.
+25. **Telegram 4096-char cap.** 202 campaigns × ~150 chars blows past it —
+    send fails silently-ish. LESSON: top-N truncation + overflow line on every
+    list message; rich 32k cap does not remove the need (legacy fallback).
+26. **Rich `{html}` collapses newlines.** First rich messages arrived as a
+    wall of text — HTML rendering eats raw `\n`. LESSON: `\n` → `<br/>` for
+    the rich pipe only, legacy path keeps `\n` (classic parse_mode has no `<br/>`).
+27. **Hourly-sync Hobby 60s timeout.** ~2,000 sequential upserts ran past the
+    cap (predicted, then confirmed live). LESSON: batch multi-row upserts
+    (500/chunk) for any per-row write loop on serverless; keep writes
+    transaction-free so kills leave partial progress reruns continue.
+28. **Vercel CLI token expires mid-session.** Two `Not authorized` deploy
+    blocks, both fixed by owner `npx vercel login`. LESSON: expect expiry,
+    never debug the deploy itself first — check auth first.
+29. **Webhook 401 = secret mismatch.** `secret_token` typo vs CRON_SECRET;
+    Telegram queues retries (5 pending = 5 duplicate syncs on fix). LESSON:
+    re-copy secret never retype; set `drop_pending_updates=true` when
+    re-registering to clear the storm.
 
 ## API note — GMV campaign name/ID mapping (21 Sep discussion, locked)
 
@@ -181,6 +209,80 @@ Check the Project Knowledge and the current chat for context. This conversation 
   map (synced from Ads Manager / bulk export). Ours is `TIKTOK_GMV_CAMPAIGNS`
   {PRODUCT, LIVE} in `.local_secrets.json`. New campaigns = paste ID, rerun
   `live_view.py`. Revisit only if TikTok ships a GMV list endpoint.
+
+## Session closeout — 04 Oct 2026 (M9 live, divergence check open)
+
+> Next-you: read Checkpoint 8 first (facts), then this (frequency).
+
+**Vibe.** Marathon portal-plus-build session. Owner ran every portal click same-day
+(Neon 007/008/009 dev+prod, Partner Center draft→submit, Testing Tool maze,
+BotFather, setWebhook, Vercel env, campaign resync question) while I shipped
+~10 deploys. Loop held all day: deploy → one action → screenshot/short confirm.
+Owner thinks in screenshots, decides in one-liners ("ok go", "still not sucess"
+= keep digging). Match it: short replies, numbered steps, lead with numbers —
+they light up when figures tie (143,941 vs 169,805 landed exactly that way).
+
+**Standing orders now active.** (1) Sparring partner mode: never affirm blindly —
+analyze assumptions, counterpoint, test reasoning, truth over agreement.
+(2) Shop 1 only; shops 2–4 ignored until asked. (3) No suggestion engine —
+POC only. (4) Export-method exact numbers = Thread 1, owner demos next session;
+143,941 stays PROVISIONAL until then. (5) `1-MASTER/BIGMASTERPLAN.md` read-first
+rule lives in MASTER-AGENTS (note: that file does not exist in repo — rule
+dangles; do not chase it, use MASTER-PLAN instead).
+
+**Discoveries (do not relitigate).**
+- `stat_time_hour` exists on `gmv_max/report/get` (code 0 verified); 1-day span
+  max; returns full-day grid incl. future zero slots; slots are MYT.
+- Telegram Bot API 10.1+ Rich Messages are real and live on owner's client:
+  sendRichMessage `{html}` fires but renders like legacy; real tables need
+  block shapes (probe-verified: bold/string paragraph text, striped compact
+  tables w/ is_header+align cells, divider, details-variants; `header` and
+  `plain`-text unsupported). Probe endpoint `/api/tg-probe` self-deletes.
+- Shop authorize still dead ("service does not exist" = review pending, also on
+  seller-side OAuth URL). Testing-Tool path region-blocked. No repo documents
+  the first authorize anywhere (consortium tokens were pasted out-of-band).
+- Webhook 401 = secret_token typo vs CRON_SECRET (always re-copy, never retype);
+  drop_pending_updates clears retry storms (5 queued = 5 duplicate syncs).
+- Vercel CLI login expires mid-session (twice) — `npx vercel login`, redeploy.
+
+**Open threads (next session).**
+1. Telegram-vs-dashboard divergence: 4 structural causes mapped (OFF inclusion,
+   unmapped handling opposite, grain scope, pull-time drift) — awaiting owner's
+   number pair to name the culprit.
+2. 🔥 floor not implemented: fire crowns max dGmv even when all ≤ 0 — needs
+   dGmv > 0 gate.
+3. Footnote date bug: "hu Oct 01" (sliced non-ISO string) — format properly.
+4. OFF counts are shop-wide on both messages — split per-type.
+5. Export-method demo (Thread 1) → relock ref rows.
+6. Shop app approval watch → retry `shop_auth.py` when approved.
+7. cron-job.org hourly ping still open; commit question open (all uncommitted).
+
+**Mood at close.** Tired but green across the board — every deploy built first
+try except tsc catches I fixed in minutes. Owner ended curious ("why fetch
+only 14→15?", "why fire with no gmv?") — the sparring contract is working;
+keep earning it with numbers, not adjectives.
+
+## Checkpoint 8 — 03 Oct 2026 (M9 hourly POC built, needs first sync)
+
+- Grain check passed live: `stat_time_hour` + campaign_id returns hour slots (1-day span max) — no snapshot-diff fallback needed. Sparring gaps resolved per owner: rewrite-on-revise, Telegram every hour, LIVE dual view, %-guard RM50/RM200.
+- Built + deployed green: `009_hourly.sql`, `hourly.ts` (closed-window drops newest 2 slots), `/api/cron/hourly-sync` + `/api/hourly`, dashboard `Hourly` metric, `telegram.ts` (skips cleanly without env). Telegram tokens empty locally (len 0) — owner provisions via BotFather.
+- Resume: owner runs 009 dev→prod → triggers first hourly-sync → sets Telegram env + cron-job.org ping → eyeball Hourly view vs Ads Manager.
+- First sync timed out past Hobby 60s (predicted): ~2,000 sequential upserts. Fixed with batched multi-row upserts (500/chunk), redeployed green. Partial rows persisted (no wrapping transaction) — reruns continue.
+- First live run exposed 2 more bugs (prod read-only inspection): (a) TikTok returns full-day grid incl. future zero slots — "drop newest 2" diffed zeros; fixed with activity-edge detection (closed = strictly before edge-1). Slots are MYT (00–15 live at 15:49 MYT). (b) Mixed-type rows overwrote each other on the PK (same lesson as #16) — fixed with Neon map filter. Telegram now active-campaigns only. Deployed green; rewrite-on-revise self-heals the corrupted labels.
+- Split + styled per owner: 2 Telegram messages (LIVE/Product, HTML parse_mode, arrows, all-active, 3900-char guard) + Chart.js graphs on Hourly view (per-type cost/gmv trend lines + latest-slot top-12 bars). Deployed green.
+- Delivery moved to group topic per owner (DM retired for hourly): sender splits glued `-100xxx_30` form or reads TELEGRAM_THREAD_ID, passes message_thread_id on both pipes. Owner sets TELEGRAM_CHAT_ID (+ optional THREAD_ID) on Vercel; bot already a group member.
+- Rich tables live (probe-verified shapes: bold/string paragraph text, striped compact tables with is_header/align cells; `header` block unsupported, probe self-deletes): hourly messages now title + totals + real table (movers, 40 cap) + steady footer via sendRichMessage blocks, legacy HTML fallback. Deployed green.
+- Emoji mapping locked (stored in hourly.ts EMOJI const): 📹 LIVE / 📦 Product titles, 🔥 top GMV jump per type, ⚠️ stagnant (cost>=RM5, zero GMV), neutral ▲▼▪ (cost-up is bad, GMV-up is good — color carries judgment). Human headers ("12:00 → 13:00 MYT · pulled HH:MM MYT"). Deployed green.
+- Collapsible Details probe: all 3 shape variants accepted (summary object/string/title). Wired steady list + earlier-today per-type slot totals into Details blocks inside both hourly messages. Deployed green.
+- Real-time pivot per owner (lag rule dropped): edge = last active slot, newest pair tagged (partial); whole-message ON-filter (explicit OFF excluded, unknown stays, "excludes N OFF · status as of <sync>" footnote); dashboard keeps all. Deployed green.
+- On-demand `/fetch` in group topic: `/api/tg-webhook` (secret-token guard, reuses syncHourly, replies in-topic). Owner did privacy-mode + setWebhook. Deployed green.
+- Unpacked per owner (rich first): sender tries sendRichMessage {html} (Bot API 10.1+, 32k cap), auto-falls back to legacy sendMessage; sync result reports telegram_mode (rich-html+rich-html, legacy mix, or false). Content restructured: type totals + movers (|d|>=RM1 or orders moved) + steady count. Deployed green.
+## Checkpoint 7 — 03 Oct 2026 (M8 token parked, numerator locked manually)
+
+- Shop-API token route PARKED: draft Custom app `HIMWELLNESS GMV MAX INTERNAL` region-blocks authorize even on MY seller login (4h duration shown, Authorize dead). Tried: Testing Tool app_key select (finance scope refused → switched to order API → still refused → Manage scope order-read added → authorize page → region restriction). Portal path exhausted for now; scaffold stays (`007_shop_tokens` applied dev, verified `to_regclass`; `/api/shop-gmv` deployed green, graceful unconfigured).
+- Numerator LOCKED via Seller Center manual parity (shop 1, 24–27 Sep): shop GMV 143,941 / 1,016 orders vs ads-attributed 169,805 → shop −15.2% (84.8%). TRUE ROAS 3.26x (actual 2.81x) vs ads 3.85/3.32. Attributed LIVE+Product EXCEEDS whole-shop sales = double-claim overlap; guardrail ROAS read ~18% high. 3.26 is generous ceiling (shop GMV incl. organic).
+- Vibe: owner drove portal end-to-end with screenshots (Seller → Partner → Testing Tool → authorize). Terse loop held. Lead with tie-then-delta worked ("ok").
+- Resume: 007 on prod branch → strategy guardrail rebase to true ROAS (tiktok-strategy owner) → P1 dry-run decider.
 
 ## Checkpoint 6 — 01 Oct 2026 (M7 extras live, owner-verified)
 

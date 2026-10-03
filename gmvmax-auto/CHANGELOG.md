@@ -2,6 +2,22 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 04 Oct 2026 — M9 hourly live (Telegram tables + /fetch + real-time pivot)
+
+- `/api/tg-webhook` (`/fetch` command, secret-token guard, in-topic replies) live; secret-mismatch 401 diagnosed via getWebhookInfo, fixed with exact re-copy + drop_pending_updates.
+- Real-time pivot: activity edge, newest pair tagged (partial); whole-message ON-filter (explicit OFF excluded, `excludes N OFF · status as of` footnote); dashboard keeps all.
+- Telegram divergence check open: 4 structural causes mapped (OFF inclusion, unmapped filters opposite, grain scope, pull-time drift) — awaiting owner's number pair.
+- Known open: 🔥 floor (dGmv>0 gate) not implemented; footnote date garbles non-ISO ("hu Oct 01"); OFF counts shop-wide not per-type; export-method demo pending; shop app approval pending; cron-job ping open.
+
+## 03 Oct 2026 — M9 hourly POC (built + deployed, needs first sync)
+- `stat_time_hour` grain verified live (1-day span max, MYT slots, full-day grid incl. future zeros); `009_hourly.sql` (hour_slot TEXT PK, rewrite-on-revise); `hourly.ts` (Neon-map filter, activity edge, batched 500/chunk upserts after Hobby 60s timeout, prev-slot abs+% diffs, %-guard 50/200); `/api/cron/hourly-sync` (CRON_SECRET) + `/api/hourly` read; dashboard Hourly metric + Chart.js trends/bars; `telegram.ts` (rich→legacy chain, thread split, self-deleting `/tg-probe`); group-topic delivery; native rich tables + Details collapsibles (probe-verified shapes); emoji map (📹📦🔥⚠️, neutral ▲▼▪); `/fetch` via tg-webhook. All deployed green same-day.
+
+## 03 Oct 2026 — M8 shop-order GMV scaffold, shop 1 only (code done, deploy blocked)
+- New `007_shop_tokens.sql` (`credentials.shop_tokens`, schema-qualified) + `shop-credentials.ts` (DB-first, env fallback) + `shop-orders.ts` (HMAC sign, `POST /api/orders/search`, defensive sum + `sampleKeys`) + `/api/shop-gmv` (side-by-side vs ads, graceful unconfigured) + UI `Shop GMV` metric. `tsc --noEmit` clean. Deploy failed: Vercel CLI Not authorized (token refresh needed). Needs: apply 007 dev→prod, Vercel Env `SHOP_APP_KEY/SECRET` + `TIKTOK_SHOP1_ACCESS_TOKEN`, redeploy, Fetch 24–27 Sep.
+- Deployed green after owner `vercel login` (`/api/shop-gmv` in routes). 007 applied (dev verified `to_regclass` OK; prod next). Token route PARKED: draft Custom app region-blocked on authorize (Malaysia target, MY seller login still refused, 4h duration). Manual parity LOCKED instead: shop 143,941/1,016 vs ads 169,805 → −15.2%; TRUE ROAS 3.26x/2.81x vs 3.85/3.32; attributed exceeds whole shop (double-claim).
+- Owner chose display-only rebase (strategy files untouched): `shopTruthRef` locked constant in `getShopROAS` + ref rows in ROAS table + locked-ref line in unconfigured Shop GMV view. Deployed green.
+- Rewrote shop files to proven temp-marketplace shape (public repo docs): real endpoint `POST /order/202309/orders/search` + `x-tts-access-token` + `signByUrl` (`tiktok-shop` dep) + numerator = line_items sale_price+platform_discount, CANCELLED/REFUNDED excluded; `008_shop_token_columns.sql` (shop_name/cipher/expiry cols, verified `\d` OK); `shop_auth.py` one-shot seller OAuth (stdlib, mirrors `prod_auth.py`). Authorize still blocked: "service does not exist" = app review pending. No repo authorize guide exists (their SETUP starts with tokens in env).
+
 ## 01 Oct 2026 — online M7 extras (TTAM, sessions, account fix, ON/OFF, split)
 - TTAM metric view (reuses `/api/roas`, manual spend + count) + PROD branch badge + Fetched stamp on `online/src/app/page.tsx`.
 - New `/api/sessions` + per-campaign Sessions button: `room_id x stat_time_day` drill, single-ID `filtering`, verified 454 rooms on LIVE campaign, no error.
