@@ -26,10 +26,36 @@ export async function GET(request: Request) {
   }
   if (!token || !chatId) return NextResponse.json({ error: "bot env missing" }, { status: 500 });
 
+  const url = new URL(request.url);
+  const keep = url.searchParams.get("keep") === "1";
+
   const target: Record<string, unknown> = { chat_id: chatId };
   if (thread) target.message_thread_id = Number(thread);
 
+  const demoRows = (label: string) => [
+    [{ text: { type: "bold", text: "PROBE" }, is_header: true }, { text: { type: "bold", text: label }, is_header: true }],
+    [{ text: "row one" }, { text: { type: "bold", text: "1.00" } }],
+    [{ text: "row two" }, { text: { type: "bold", text: "2.00" } }],
+    [{ text: "row three" }, { text: { type: "bold", text: "3.00" } }],
+  ];
+
   const candidates: Array<{ name: string; rich_message: unknown }> = [
+    {
+      name: "stripe-striped-compact",
+      rich_message: { blocks: [{ type: "table", is_striped: true, is_compact: true, cells: demoRows("striped+compact") }] },
+    },
+    {
+      name: "stripe-striped-only",
+      rich_message: { blocks: [{ type: "table", is_striped: true, cells: demoRows("striped") }] },
+    },
+    {
+      name: "stripe-compact-only",
+      rich_message: { blocks: [{ type: "table", is_compact: true, cells: demoRows("compact") }] },
+    },
+    {
+      name: "stripe-plain",
+      rich_message: { blocks: [{ type: "table", cells: demoRows("plain") }] },
+    },
     {
       name: "details-summary-blocks",
       rich_message: {
@@ -77,6 +103,61 @@ export async function GET(request: Request) {
         ],
       },
     },
+    {
+      name: "table-mixed-array",
+      rich_message: {
+        blocks: [
+          {
+            type: "table",
+            is_striped: true,
+            is_compact: true,
+            cells: [
+              [{ text: { type: "bold", text: "PROBE" }, is_header: true }],
+              [
+                {
+                  text: [
+                    { type: "plain", text: "16.43 → " },
+                    { type: "bold", text: "34.94" },
+                    { type: "plain", text: " (+18.51)" },
+                  ],
+                  align: "right",
+                },
+              ],
+            ],
+          },
+        ],
+      },
+    },
+    {
+      name: "table-bold-html-string",
+      rich_message: {
+        blocks: [
+          {
+            type: "table",
+            is_striped: true,
+            is_compact: true,
+            cells: [
+              [{ text: { type: "bold", text: "PROBE" }, is_header: true }],
+              [{ text: "16.43 → <b>34.94</b> (+18.51)", align: "right" }],
+            ],
+          },
+        ],
+      },
+    },
+    {
+      name: "paragraph-mixed-array",
+      rich_message: {
+        blocks: [
+          {
+            type: "paragraph",
+            text: [
+              { type: "plain", text: "16.43 → " },
+              { type: "bold", text: "34.94" },
+            ],
+          },
+        ],
+      },
+    },
   ];
 
   const results: Array<Record<string, unknown>> = [];
@@ -97,8 +178,8 @@ export async function GET(request: Request) {
       ok: sent.ok === true,
       description: sent.description ?? null,
     };
-    // Self-clean: delete landed probes so the topic stays clean.
-    if (sent.ok === true && sent.result?.message_id) {
+    // Self-clean: delete landed probes so the topic stays clean (skip with ?keep=1).
+    if (!keep && sent.ok === true && sent.result?.message_id) {
       try {
         const del = await fetch(`https://api.telegram.org/bot${token}/deleteMessage`, {
           method: "POST",

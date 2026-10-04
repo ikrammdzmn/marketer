@@ -23,6 +23,7 @@ export interface CampaignInfo {
   account: string;
   promotionType: PromotionType;
   status: string | null;
+  budget: number | null;
   rawKeys: string[];
 }
 
@@ -63,12 +64,19 @@ async function getCampaigns(
       const rawStatus =
         c.status ?? c.campaign_status ?? c.operation_status ??
         c.delivery_status ?? c.secondary_status ?? null;
+      const rawBudget =
+        c.budget ?? c.daily_budget ?? c.total_budget ?? c.budget_amount ??
+        c.day_budget ?? null;
+      const nBudget = rawBudget === null || rawBudget === undefined || rawBudget === ""
+        ? null
+        : Number(rawBudget);
       out.set(c.campaign_id, {
         id: c.campaign_id,
         name: parsed.name || c.campaign_name || c.campaign_id,
         account: parsed.account,
         promotionType,
         status: normalizeStatus(rawStatus),
+        budget: nBudget !== null && Number.isFinite(nBudget) && nBudget > 0 ? nBudget : null,
         rawKeys: keys,
       });
     }
@@ -107,12 +115,13 @@ export async function syncShopCampaigns(shopNumber: string) {  const shop = SHOP
   for (const c of all.values()) {
     await query(
       `INSERT INTO gmv.gmv_campaigns
-         (campaign_id, shop_id, kind, name, account, promotion_type, advertiser_id, status, raw, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
+         (campaign_id, shop_id, kind, name, account, promotion_type, advertiser_id, status, budget, raw, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
        ON CONFLICT (campaign_id) DO UPDATE SET
          shop_id = EXCLUDED.shop_id, kind = EXCLUDED.kind, name = EXCLUDED.name,
          account = EXCLUDED.account, promotion_type = EXCLUDED.promotion_type,
          advertiser_id = EXCLUDED.advertiser_id, status = EXCLUDED.status,
+         budget = EXCLUDED.budget,
          raw = EXCLUDED.raw, updated_at = now()`,
       [
         c.id,
@@ -123,6 +132,7 @@ export async function syncShopCampaigns(shopNumber: string) {  const shop = SHOP
         c.promotionType,
         shop.advertiserId,
         c.status,
+        c.budget,
         JSON.stringify({ keys: c.rawKeys }),
       ]
     );

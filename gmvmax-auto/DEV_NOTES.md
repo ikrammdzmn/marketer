@@ -262,6 +262,17 @@ try except tsc catches I fixed in minutes. Owner ended curious ("why fetch
 only 14→15?", "why fire with no gmv?") — the sparring contract is working;
 keep earning it with numbers, not adjectives.
 
+## Checkpoint 9 — 04 Oct 2026 (M9b: divergence closed, jar+ROI+budget live)
+
+- Divergence #1 CLOSED with 04-Oct same-minute proof (Live+Product excels + both dashboard shots + Telegram). LIVE: Excel 164.19/1,734.82/16 vs dash ~166.45 (+2.26 cost, GMV+ord exact). Product: Excel 122.71/1,088.91/10 vs dash ~119.81 (−2.90). Net −0.64 (~0.2%). Culprit = grain scope; OFF/unmapped ~0; RM2-3 = pull-time drift. Standing rule updated: BOTH cost+GMV revise intraday (old "cost stable" rule from 01 Oct flipped by today's data).
+- `/fetch` split shipped: `/fetch` = day-so-far (`daily.ts` + `getShopReport`, ALL campaigns, ties dashboard) + `/fetch_hourly` = hour slice (existing path). Owner chose swap (old muscle-memory now returns day; footer points to `_hourly`).
+- Hourly matured same day: candy `prev → cur (+diff ▲)` rows → jar cumulative rows (`10.00 → 10.20`) per owner ("how much spent now"); short names bracket+tail-4 + 🔛 (🔥/⚠️ override); 6-col table (Cost/GMV/ROI H·D/Ord/Bud); Hour + Day-so-far header lines (hybrid, keeps velocity + scale).
+- Budget%: `010_campaign_budget.sql` (owner ran at least once) + list-sync fallbacks (all null — sample_keys PROVES list has no budget) + lazy `gmv_max/info` fill for movers ≤15 (fail-open, cached). Verified live: `2% 7k`, `1% 10k`, `21% 200`, `9% 1.5k`.
+- Probe verdicts: bold `<b>` renders literally in rich cells (accepted≠rendered) → native whole-cell bold + plain names; stripes desktop-only (all 4 variants flat on mobile) → kept `striped+compact`. `?keep=1` mode added to tg-probe for eyeball batches.
+- Footnote healed itself: `status as of Sun Oct 04 2026` (old "hu Oct 01" slice bug gone via synced_at path).
+- Vibe: owner drives hard on formatting ("bold all new value", "use 🔛") — implement literally, probe when spec is ambiguous, show screenshots. Mobile-first eyeballs (wallpaper bleed hides stripes). Sparring held: talked them out of jar-only (kept candy+jar hybrid) and repo media folder (Vercel auth blocks Telegram fetches — file_id path instead).
+- Resume: media/markdown probe batch (photo file_id + map + html shorthand) IF owner still wants; then 🔥 floor gate; OFF per-type split; export demo; shop approval watch; cron ping; commit question (all still uncommitted — ~10 deploys today, zero commits).
+
 ## Checkpoint 8 — 03 Oct 2026 (M9 hourly POC built, needs first sync)
 
 - Grain check passed live: `stat_time_hour` + campaign_id returns hour slots (1-day span max) — no snapshot-diff fallback needed. Sparring gaps resolved per owner: rewrite-on-revise, Telegram every hour, LIVE dual view, %-guard RM50/RM200.

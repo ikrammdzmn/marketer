@@ -2,6 +2,17 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 04 Oct 2026 — M9b Telegram maturity (divergence closed, jar rows, ROI, budget%)
+
+- Divergence #1 CLOSED (04-Oct same-minute proof): LIVE Excel 164.19/1,734.82/16 vs dashboard ~166.45 (GMV+ord exact, cost +2.26); Product Excel 122.71/1,088.91/10 vs dashboard ~119.81 (cost −2.90); net −0.64 (~0.2%). Culprit = grain scope (hour vs day); OFF/unmapped ~0 that day; RM2-3 = pull-time drift. Rule: both cost+GMV revise intraday — re-pull same grain first.
+- `/fetch` split: `/fetch` → day-so-far totals via `getShopReport` (`daily.ts`, ties dashboard, ALL campaigns); `/fetch_hourly` → hour slice (existing `syncHourly`). `tg-webhook` routes both, in-topic acks.
+- Hourly candy format: `prev → cur (+diff ▲)` per campaign (bucket data was already there); short names bracket+tail-4 (`Dr.Samhan …2114`) + 🔛 active mark (🔥/⚠️ override); 6-col rich table (Campaign/Cost/GMV/ROI H·D/Ord/Bud).
+- Bold verdict (probe): table cells render `<b>` literally — rich stays native whole-cell bold (names plain for contrast), partial-bold lives in legacy HTML fallback only.
+- Hybrid + jar: header carries Hour + Day-so-far lines; rows switched to cumulative day-so-far (`10.00 → 10.20`), ROI H (bucket, n/a if hour cost<RM1) · D (cumulative); `010_campaign_budget.sql` (`budget` col, applied at least once 04 Oct) + list-sync captures budget fallbacks (list has NO budget per sample_keys — all null) + lazy info-fill for movers (≤15 `gmv_max/info` calls, fail-open, cached in DB). Bud column live (`2% 7k`, `1% 10k` verified on mobile+desktop).
+- Stripe verdict (probe, `?keep=1` eyeball): `striped+compact` wins desktop, all variants flat on mobile (client ignores stripes + wallpaper bleed). Kept `striped+compact`.
+- Footnote date healed: `status as of Sun Oct 04 2026` (was "hu Oct 01").
+- Still open: 🔥 floor gate; OFF counts per-type; export-method demo; shop approval watch; cron-job.org ping; commit question (all still uncommitted).
+
 ## 04 Oct 2026 — M9 hourly live (Telegram tables + /fetch + real-time pivot)
 
 - `/api/tg-webhook` (`/fetch` command, secret-token guard, in-topic replies) live; secret-mismatch 401 diagnosed via getWebhookInfo, fixed with exact re-copy + drop_pending_updates.

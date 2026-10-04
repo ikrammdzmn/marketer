@@ -6,6 +6,9 @@ Rule: whoever ships a folder release adds one line here the same session.
 
 ## 04 Oct 2026
 
+- `gmvmax-auto` M9b Telegram maturity (uncommitted): divergence #1 closed (grain culprit, RM2-3 drift rule) + `/fetch` day / `/fetch_hourly` hour split + jar rows with ROI H·D + Bud% (`010_campaign_budget.sql`, lazy info-fill) + candy prev→cur format with short names + 🔛 + stripe verdict (desktop-only, kept striped+compact) + footnote date healed
+  -> `gmvmax-auto/CHANGELOG.md`
+
 - `gmvmax-auto` M9 hourly live (uncommitted): `stat_time_hour` grain verified + `009_hourly.sql` + batched upserts (Hobby 60s fix) + dashboard Hourly metric with Chart.js trends/bars + Telegram group-topic native tables (rich-blocks probe-verified, Details collapsibles, emoji map) + `/fetch` webhook command + real-time pivot (partial tags, ON-filter) — shop 1 only, no suggestion engine
   -> `gmvmax-auto/CHANGELOG.md`
 
