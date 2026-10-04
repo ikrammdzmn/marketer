@@ -41,6 +41,54 @@ export async function GET(request: Request) {
 
   const candidates: Array<{ name: string; rich_message: unknown }> = [
     {
+      name: "text-heading2",
+      rich_message: { blocks: [{ type: "heading", text: "PROBE heading", size: 2 }] },
+    },
+    {
+      name: "text-pre2",
+      rich_message: { blocks: [{ type: "pre", text: "PROBE mono" }] },
+    },
+    {
+      name: "text-list2",
+      rich_message: {
+        blocks: [{
+          type: "list",
+          items: [
+            { blocks: [{ type: "paragraph", text: "PROBE one" }] },
+            { blocks: [{ type: "paragraph", text: "PROBE two" }] },
+          ],
+        }],
+      },
+    },
+    {
+      name: "text-quote2",
+      rich_message: { blocks: [{ type: "blockquote", blocks: [{ type: "paragraph", text: "PROBE quote" }] }] },
+    },
+    {
+      name: "text-expandquote2",
+      rich_message: { blocks: [{ type: "expandable_blockquote", text: "PROBE expand" }] },
+    },
+    {
+      name: "text-pullquote2",
+      rich_message: { blocks: [{ type: "pullquote", text: "PROBE pull" }] },
+    },
+    {
+      name: "text-math",
+      rich_message: { blocks: [{ type: "mathematical_expression", expression: "E=mc^2" }] },
+    },
+    {
+      name: "text-anchor",
+      rich_message: { blocks: [{ type: "anchor", name: "probe" }] },
+    },
+    {
+      name: "media-map2",
+      rich_message: { blocks: [{ type: "map", location: { latitude: 3.139, longitude: 101.6869 } }] },
+    },
+    {
+      name: "media-photo2",
+      rich_message: { blocks: [{ type: "photo", photo: { type: "photo", media: "https://picsum.photos/200" } }] },
+    },
+    {
       name: "stripe-striped-compact",
       rich_message: { blocks: [{ type: "table", is_striped: true, is_compact: true, cells: demoRows("striped+compact") }] },
     },

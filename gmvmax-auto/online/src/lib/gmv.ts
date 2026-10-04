@@ -17,6 +17,24 @@ export function parseCampaignName(raw: string): { account: string; name: string 
   return { account: "Other", name: (raw ?? "").trim() };
 }
 
+// Delivery display map (owner-verified 04 Oct: Ads Manager shows Active /
+// Not delivering / Asset not available; API speaks CAMPAIGN_STATUS_* enums).
+// Unknown enums pass through prettified so new codes still show.
+export function formatDelivery(raw: string | null): string | null {
+  if (!raw) return null;
+  const map: Record<string, string> = {
+    CAMPAIGN_STATUS_ENABLE: "Active",
+    CAMPAIGN_STATUS_DISABLE: "Disabled",
+    CAMPAIGN_STATUS_TTS_TT_ASSET_UNAVAILABLE: "Asset unavailable",
+    CAMPAIGN_STATUS_PRODUCT_USED_BY_PRODUCT_GMV_MAX: "Product in use",
+    CAMPAIGN_STATUS_IDENTITY_USED_BY_GMV_MAX_AD: "Identity in use",
+    CAMPAIGN_STATUS_IDENTITY_USED_BY_LIVE_GMV_MAX: "Identity in use (live)",
+    CAMPAIGN_STATUS_LIVE_GMV_MAX_AUTHORIZATION_CANCEL: "Auth revoked",
+  };
+  if (map[raw]) return map[raw];
+  const pretty = raw.replace(/^CAMPAIGN_STATUS_/, "").toLowerCase().replace(/_/g, " ");
+  return pretty.replace(/\b\w/g, (c) => c.toUpperCase());
+}
 export interface CampaignInfo {
   id: string;
   name: string;
@@ -24,6 +42,7 @@ export interface CampaignInfo {
   promotionType: PromotionType;
   status: string | null;
   budget: number | null;
+  delivery: string | null;
   rawKeys: string[];
 }
 
@@ -70,6 +89,12 @@ async function getCampaigns(
       const nBudget = rawBudget === null || rawBudget === undefined || rawBudget === ""
         ? null
         : Number(rawBudget);
+      const rawDelivery = c.secondary_status ?? c.delivery_status ?? null;
+      const delivery = formatDelivery(
+        rawDelivery === null || rawDelivery === undefined || String(rawDelivery).trim() === ""
+          ? null
+          : String(rawDelivery).trim()
+      );
       out.set(c.campaign_id, {
         id: c.campaign_id,
         name: parsed.name || c.campaign_name || c.campaign_id,
@@ -77,6 +102,7 @@ async function getCampaigns(
         promotionType,
         status: normalizeStatus(rawStatus),
         budget: nBudget !== null && Number.isFinite(nBudget) && nBudget > 0 ? nBudget : null,
+        delivery,
         rawKeys: keys,
       });
     }
@@ -115,13 +141,13 @@ export async function syncShopCampaigns(shopNumber: string) {  const shop = SHOP
   for (const c of all.values()) {
     await query(
       `INSERT INTO gmv.gmv_campaigns
-         (campaign_id, shop_id, kind, name, account, promotion_type, advertiser_id, status, budget, raw, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
+         (campaign_id, shop_id, kind, name, account, promotion_type, advertiser_id, status, budget, delivery, raw, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now())
        ON CONFLICT (campaign_id) DO UPDATE SET
          shop_id = EXCLUDED.shop_id, kind = EXCLUDED.kind, name = EXCLUDED.name,
          account = EXCLUDED.account, promotion_type = EXCLUDED.promotion_type,
          advertiser_id = EXCLUDED.advertiser_id, status = EXCLUDED.status,
-         budget = EXCLUDED.budget,
+         budget = EXCLUDED.budget, delivery = EXCLUDED.delivery,
          raw = EXCLUDED.raw, updated_at = now()`,
       [
         c.id,
@@ -133,6 +159,7 @@ export async function syncShopCampaigns(shopNumber: string) {  const shop = SHOP
         shop.advertiserId,
         c.status,
         c.budget,
+        c.delivery,
         JSON.stringify({ keys: c.rawKeys }),
       ]
     );
@@ -141,7 +168,8 @@ export async function syncShopCampaigns(shopNumber: string) {  const shop = SHOP
   const unbracketed = [...all.values()].filter((c) => c.account === "Other").length;
   const sample = [...all.values()][0];
   const statusValues = [...new Set([...all.values()].map((c) => c.status ?? "(null)"))];
-  return { shop: shop.name, synced: all.size, skipped: false as const, accounts, unbracketed, sample_keys: sample?.rawKeys ?? [], status_values: statusValues };
+  const deliveryValues = [...new Set([...all.values()].map((c) => c.delivery ?? "(null)"))];
+  return { shop: shop.name, synced: all.size, skipped: false as const, accounts, unbracketed, sample_keys: sample?.rawKeys ?? [], status_values: statusValues, delivery_values: deliveryValues };
 }
 
 export interface ReportRow {
@@ -212,12 +240,21 @@ export async function getShopReport(  shopNumber: string,
 
   // Campaign map from Neon (M3 sync), scoped to the requested type —
   // the report API can return mixed types, so filter by promotion_type here.
-  const cmap = await query(
-    `SELECT campaign_id, name, account, status FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
-    [shop.shopId, promotionType]
-  );
-  const info = new Map<string, { name: string; account: string; status: string | null }>();
-  for (const r of cmap.rows) info.set(r.campaign_id, { name: r.name, account: r.account ?? "Other", status: r.status ?? null });
+  // Delivery column exists after 011 migration — tolerate pre-migration DBs.
+  let cmap;
+  try {
+    cmap = await query(
+      `SELECT campaign_id, name, account, status, delivery FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+      [shop.shopId, promotionType]
+    );
+  } catch {
+    cmap = await query(
+      `SELECT campaign_id, name, account, status FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+      [shop.shopId, promotionType]
+    );
+  }
+  const info = new Map<string, { name: string; account: string; status: string | null; delivery: string | null }>();
+  for (const r of cmap.rows) info.set(r.campaign_id, { name: r.name, account: r.account ?? "Other", status: r.status ?? null, delivery: r.delivery ?? null });
 
   const rows = await fetchGMVMaxReport(
     creds.access_token, shop.advertiserId, shop.shopId, promotionType, startDate, endDate
@@ -230,7 +267,7 @@ export async function getShopReport(  shopNumber: string,
   const byCampaign = new Map<string, { cost: number; gmv: number; orders: number }>();
   for (const r of filtered) {
     totalCost += r.cost; totalGMV += r.gmv; totalOrders += r.orders;
-    const meta = info.get(r.campaignId) ?? { name: r.campaignId, account: "Other", status: null };
+    const meta = info.get(r.campaignId) ?? { name: r.campaignId, account: "Other", status: null, delivery: null };
     const a = byAccount.get(meta.account) ?? { cost: 0, gmv: 0, orders: 0, campaigns: 0 };
     a.cost += r.cost; a.gmv += r.gmv; a.orders += r.orders; a.campaigns += 1;
     byAccount.set(meta.account, a);
@@ -243,8 +280,8 @@ export async function getShopReport(  shopNumber: string,
     name, ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0,
   })).sort((a, b) => b.gmv - a.gmv);
   const campaigns = [...byCampaign.entries()].map(([campaignId, d]) => {
-    const meta = info.get(campaignId) ?? { name: campaignId, account: "Other", status: null };
-    return { campaignId, campaignName: meta.name, accountName: meta.account, status: meta.status, ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0 };
+    const meta = info.get(campaignId) ?? { name: campaignId, account: "Other", status: null, delivery: null };
+    return { campaignId, campaignName: meta.name, accountName: meta.account, status: meta.status, delivery: meta.delivery, ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0 };
   }).sort((a, b) => a.accountName.localeCompare(b.accountName) || b.gmv - a.gmv);
   return {
     shopName: shop.name, promotionType,

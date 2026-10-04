@@ -91,6 +91,7 @@ export interface HourDiff {
   pCost: number | null;
   pGmv: number | null;
   budget: number | null;
+  delivery: string | null;
 }
 
 // Hourly POC (shop 1 only): pull today's hour slots for both types, drop the
@@ -174,20 +175,34 @@ export async function syncHourly(shopNumber: string, date: string) {
        FROM gmv.gmv_campaigns WHERE shop_id = $1`,
       [shop.shopId]
     );
-    const info = new Map<string, { name: string; promotion_type: string; status: string | null; budget: number | null }>();
-    for (const c of cmap.rows) info.set(c.campaign_id, { name: c.name, promotion_type: c.promotion_type, status: c.status ?? null, budget: null });
-    // Budget column exists after 010 migration — tolerate pre-migration DBs.
+    const info = new Map<string, { name: string; promotion_type: string; status: string | null; budget: number | null; delivery: string | null }>();
+    for (const c of cmap.rows) info.set(c.campaign_id, { name: c.name, promotion_type: c.promotion_type, status: c.status ?? null, budget: null, delivery: null });
+    // Budget/delivery columns exist after 010/011 migrations — tolerate pre-migration DBs.
     try {
       const bmap = await query(
-        `SELECT campaign_id, budget FROM gmv.gmv_campaigns WHERE shop_id = $1`,
+        `SELECT campaign_id, budget, delivery FROM gmv.gmv_campaigns WHERE shop_id = $1`,
         [shop.shopId]
       );
       for (const b of bmap.rows) {
         const m = info.get(b.campaign_id);
-        if (m) m.budget = b.budget === null ? null : Number(b.budget);
+        if (m) {
+          m.budget = b.budget === null ? null : Number(b.budget);
+          m.delivery = b.delivery ?? null;
+        }
       }
     } catch {
-      console.error("[hourly] budget column missing (run 010 migration)");
+      try {
+        const bmap = await query(
+          `SELECT campaign_id, budget FROM gmv.gmv_campaigns WHERE shop_id = $1`,
+          [shop.shopId]
+        );
+        for (const b of bmap.rows) {
+          const m = info.get(b.campaign_id);
+          if (m) m.budget = b.budget === null ? null : Number(b.budget);
+        }
+      } catch {
+        console.error("[hourly] budget/delivery columns missing (run 010/011 migrations)");
+      }
     }
     const syncedAt = cmap.rows[0]?.synced_at ?? null;
     const curCum = await query(
@@ -230,6 +245,7 @@ export async function syncHourly(shopNumber: string, date: string) {
         pCost: null,
         pGmv: null,
         budget: meta?.budget ?? null,
+        delivery: meta?.delivery ?? null,
       });
     }
     diffs.sort((a, b) => b.cost - a.cost);
@@ -327,7 +343,23 @@ export async function syncHourly(shopNumber: string, date: string) {
     const account = (m ? m[1].trim() : d.campaignName.trim()).slice(0, 22) || d.campaignId;
     const tm = /(\d{4})\D*$/.exec(d.campaignName ?? "");
     const tail = tm ? tm[1] : d.campaignId.slice(-4);
-    return `${account} …${tail}${stateMark(d, topId)}`;
+    return `${account} …${tail}${stateMark(d, topId)}${d.delivery ? ` · ${d.delivery}` : ""}`;
+  };
+  // Shared verdict line (legacy + rich quote block).
+  const verdictOf = (list: HourDiff[]) => {
+    const mv = list.filter(
+      (d) => Math.abs(d.dCost) >= 1 || Math.abs(d.dGmv) >= 1 || d.dOrders !== 0
+    );
+    const top = mv.reduce<HourDiff | null>(
+      (best, d) => (!best || d.dGmv > best.dGmv ? d : best),
+      null
+    );
+    const stag = list.filter((d) => d.cost >= STAGNANT_SPEND && d.gmv === 0).length;
+    return (
+      (top && top.dGmv > 0 ? `🔥 ${shortCampaign(top, top.campaignId)} +${top.dGmv.toFixed(2)} GMV` : "") +
+        (stag > 0 ? `${top && top.dGmv > 0 ? " · " : ""}⚠️ ${stag} stagnant` : "") ||
+      "▪ steady hour"
+    );
   };
   const summarize = (
     title: string,
@@ -351,7 +383,8 @@ export async function syncHourly(shopNumber: string, date: string) {
     const head =
       `<b>${title}</b>\n${headLine(slot, list[0]?.prevSlot ?? "?")}\n` +
       `Hour cost ${hcAll.toFixed(2)} | gmv ${hgAll.toFixed(2)} | ord ${hoAll}\n` +
-      `Day so far cost ${tc.toFixed(2)} | gmv ${tg.toFixed(2)} | ord ${tor}\n`;
+      `Day so far cost ${tc.toFixed(2)} | gmv ${tg.toFixed(2)} | ord ${tor}\n` +
+      `${esc(verdictOf(list))}\n`;
     const lines = movers.map((d) => {
       const pc0 = d.cost - d.dCost, pg0 = d.gmv - d.dGmv, po0 = d.orders - d.dOrders;
       const sCost = `${d.dCost >= 0 ? "+" : ""}${d.dCost.toFixed(2)}`;
@@ -370,6 +403,7 @@ export async function syncHourly(shopNumber: string, date: string) {
     });
     let text = head + (lines.join("\n") || "<i>no movers this hour</i>");
     if (steady > 0) text += `\n<i>${steady} steady (ON)</i>`;
+    text += `\n<a href="${DASHBOARD_URL}">📊 Open dashboard</a> (charts on buttons in rich view)`;
     text += `\n<i>${esc(syncedNote)}</i>`;
     if (text.length > MAX) {
       const kept: string[] = [];
@@ -385,10 +419,31 @@ export async function syncHourly(shopNumber: string, date: string) {
   // Rich table message (probe-verified shapes 03 Oct): bold title paragraph,
   // totals paragraph, striped compact table (movers only), steady + earlier
   // hours inside collapsible Details blocks.
+  // Chart buttons as URL links (owner call): QuickChart per-campaign hour
+  // trend (public image URL — no pipeline, no auth wall). Dashboard on top,
+  // campaigns in pairs below (one buttons-block = one row).
+  const DASHBOARD_URL = "https://marketer-hw.vercel.app/";
+  const chartLabel = (d: HourDiff) => {
+    const m = /\[([^\[\]]+)\]/.exec(d.campaignName ?? "");
+    const account = (m ? m[1].trim() : d.campaignName.trim()).slice(0, 20) || d.campaignId;
+    const tm = /(\d{4})\D*$/.exec(d.campaignName ?? "");
+    return `${account} …${tm ? tm[1] : d.campaignId.slice(-4)} 📈`;
+  };
+  const chartUrl = (labels: string[], costs: number[], gmvs: number[]) =>
+    "https://quickchart.io/chart?c=" +
+    encodeURIComponent(
+      JSON.stringify({
+        type: "line",
+        data: { labels, datasets: [{ label: "cost", data: costs }, { label: "gmv", data: gmvs }] },
+      })
+    );
+  const isMover = (d: HourDiff) =>
+    Math.abs(d.dCost) >= 1 || Math.abs(d.dGmv) >= 1 || d.dOrders !== 0;
   const buildBlocks = (
     title: string,
     list: HourDiff[],
-    earlier: Array<{ hour_slot: string; c: number; g: number; o: number }>
+    earlier: Array<{ hour_slot: string; c: number; g: number; o: number }>,
+    charts: Array<{ label: string; url: string; id: string }> = []
   ) => {
     const { tc, tg, tor, movers, steady } = calc(list);
     const prevSlot = list[0]?.prevSlot ?? "?";
@@ -414,6 +469,9 @@ export async function syncHourly(shopNumber: string, date: string) {
       ...(right ? { align: "right" } : {}),
       text: rich(s),
     });
+    // Verdict line for the quote block (owner call): top hour-GMV mover
+    // (only when it actually gained) + stagnant count, else quiet note.
+    const verdict = verdictOf(list);
     // Names plain so bold value cells stand out (whole-cell bold is the
     // max rich tables allow — partial-bold renders as literal tags).
     const nameCell = (s: string) => ({ text: s });
@@ -437,12 +495,21 @@ export async function syncHourly(shopNumber: string, date: string) {
       (d) => !(Math.abs(d.dCost) >= 1 || Math.abs(d.dGmv) >= 1 || d.dOrders !== 0)
     );
     const blocks: unknown[] = [
-      { type: "paragraph", text: rich(title) },
+      { type: "heading", text: title, size: 1 },
+      { type: "paragraph", text: { type: "marked", text: headLine(slot, prevSlot) } },
       {
-        type: "paragraph",
-        text: `${headLine(slot, prevSlot)}\n` +
-          `Hour cost ${hcAll.toFixed(2)} | gmv ${hgAll.toFixed(2)} | ord ${hoAll}\n` +
-          `Day so far: cost ${tc.toFixed(2)} | gmv ${tg.toFixed(2)} | ord ${tor}`,
+        type: "blockquote",
+        blocks: [
+          {
+            type: "paragraph",
+            text: `Hour cost ${hcAll.toFixed(2)} | gmv ${hgAll.toFixed(2)} | ord ${hoAll}`,
+          },
+          {
+            type: "paragraph",
+            text: `Day so far: cost ${tc.toFixed(2)} | gmv ${tg.toFixed(2)} | ord ${tor}`,
+          },
+          { type: "paragraph", text: verdict },
+        ],
       },
       {
         type: "table",
@@ -453,6 +520,24 @@ export async function syncHourly(shopNumber: string, date: string) {
           ...movers.slice(0, 40).map(row),
         ],
       },
+      ...(charts.length > 0
+        ? [
+          {
+            type: "buttons",
+            buttons: [{ text: "📊 Dashboard", url: DASHBOARD_URL }],
+          },
+          ...Array.from(
+            { length: Math.ceil(Math.min(charts.length, 7) / 2) },
+            (_, i) => ({
+              type: "buttons",
+              buttons: charts.slice(0, 7).slice(i * 2, i * 2 + 2).map((c) => ({
+                text: c.label,
+                url: c.url,
+              })),
+            })
+          ),
+        ]
+        : []),
       {
         type: "details",
         summary: rich(steady > 0 ? `${steady} steady (ON) — tap to expand` : "no movers this hour"),
@@ -462,11 +547,15 @@ export async function syncHourly(shopNumber: string, date: string) {
             is_striped: true,
             is_compact: true,
             cells: [
-              [cell("Steady campaign", true), cell("Cost", true, true), cell("GMV", true, true)],
+              [cell("Steady campaign", true), cell("Cost", true, true), cell("GMV", true, true), cell("ROI H·D", true, true)],
               ...steadyList.slice(0, 60).map((d) => [
                 nameCell(shortCampaign(d, topId)),
                 cell(Number(d.cost).toFixed(2), false, true),
                 cell(Number(d.gmv).toFixed(2), false, true),
+                cell(
+                  `H ${d.dCost >= 1 && d.dCost > 0 ? (d.dGmv / d.dCost).toFixed(1) : "n/a"} · D ${d.cost > 0 ? (d.gmv / d.cost).toFixed(1) : "n/a"}`,
+                  false, true
+                ),
               ]),
             ],
           },
@@ -483,11 +572,12 @@ export async function syncHourly(shopNumber: string, date: string) {
             is_striped: true,
             is_compact: true,
             cells: [
-              [cell("Slot", true), cell("Cost", true, true), cell("GMV", true, true), cell("Ord", true, true)],
+              [cell("Slot", true), cell("Cost", true, true), cell("GMV", true, true), cell("ROI", true, true), cell("Ord", true, true)],
               ...earlier.slice(-8).map((e) => [
                 cell(e.hour_slot.slice(11, 16)),
                 cell(Number(e.c).toFixed(2), false, true),
                 cell(Number(e.g).toFixed(2), false, true),
+                cell(Number(e.c) > 0 ? (Number(e.g) / Number(e.c)).toFixed(1) : "n/a", false, true),
                 cell(String(e.o), false, true),
               ]),
             ],
@@ -513,16 +603,125 @@ export async function syncHourly(shopNumber: string, date: string) {
     const earlierAll = hist.rows as Array<{ hour_slot: string; promotion_type: string; c: number; g: number; o: number }>;
     const earlierLive = earlierAll.filter((e) => e.promotion_type === "LIVE_GMV_MAX");
     const earlierProd = earlierAll.filter((e) => e.promotion_type !== "LIVE_GMV_MAX");
+    // Per-campaign chart URLs for top movers (QuickChart, fail-open).
+    const chartLinks = async (list: HourDiff[]) => {
+      const top = list.filter(isMover).sort((a, b) => Math.abs(b.dCost) - Math.abs(a.dCost)).slice(0, 7);
+      const out: Array<{ label: string; url: string; id: string }> = [];
+      for (const d of top) {
+        try {
+          const s = await query(
+            `SELECT hour_slot, cost::float AS c, gmv::float AS g
+             FROM gmv.hourly_campaign_metrics
+             WHERE shop_id = $1 AND campaign_id = $2 AND hour_slot LIKE $3
+             ORDER BY 1 LIMIT 24`,
+            [shop.shopId, d.campaignId, `${date}%`]
+          );
+          if (s.rows.length === 0) continue;
+          out.push({
+            label: chartLabel(d),
+            url: chartUrl(
+              s.rows.map((r) => String(r.hour_slot).slice(11, 16)),
+              s.rows.map((r) => Number(r.c)),
+              s.rows.map((r) => Number(r.g))
+            ),
+            id: d.campaignId,
+          });
+        } catch {
+          // fail-open: skip this campaign's button
+        }
+      }
+      return out;
+    };
+    const chartsLive = await chartLinks(liveD);
+    const chartsProd = await chartLinks(prodD);
+    // Total summary (owner call): Live + Product jar rows, combined verdict.
+    // No steady/earlier details — details live in the type messages.
+    const typeSums = (list: HourDiff[]) => ({
+      dayC: list.reduce((s, d) => s + d.cost, 0),
+      dayG: list.reduce((s, d) => s + d.gmv, 0),
+      dayO: list.reduce((s, d) => s + d.orders, 0),
+      hrC: list.reduce((s, d) => s + d.dCost, 0),
+      hrG: list.reduce((s, d) => s + d.dGmv, 0),
+      hrO: list.reduce((s, d) => s + d.dOrders, 0),
+      bud: list.filter((d) => d.budget !== null && d.budget !== undefined).reduce((s, d) => s + (d.budget as number), 0),
+      budN: list.filter((d) => d.budget !== null && d.budget !== undefined).length,
+    });
+    const fmtB = (b: number) => (b >= 1000 ? `${parseFloat((b / 1000).toFixed(1))}k` : `${b}`);
+    const typeRow = (label: string, t: ReturnType<typeof typeSums>) => {
+      const pc = t.dayC - t.hrC, pg = t.dayG - t.hrG, po = t.dayO - t.hrO;
+      const rH = t.hrC >= 1 && t.hrC > 0 ? (t.hrG / t.hrC).toFixed(1) : "n/a";
+      const rD = t.dayC > 0 ? (t.dayG / t.dayC).toFixed(1) : "n/a";
+      const bud = t.budN === 0 ? "bud n/a" : `bud ${Math.round((t.dayC / t.bud) * 100)}% of ${fmtB(t.bud)}`;
+      const arrowT = (n: number) => (n > 0 ? "▲" : n < 0 ? "▼" : "▪");
+      return {
+        label,
+        cost: `${pc.toFixed(2)} → ${t.dayC.toFixed(2)} (${t.hrC >= 0 ? "+" : ""}${t.hrC.toFixed(2)} ${arrowT(t.hrC)})`,
+        gmv: `${pg.toFixed(2)} → ${t.dayG.toFixed(2)} (${t.hrG >= 0 ? "+" : ""}${t.hrG.toFixed(2)} ${arrowT(t.hrG)})`,
+        roi: `H ${rH} · D ${rD}`,
+        ord: `${po} → ${t.dayO} (${t.hrO >= 0 ? "+" : ""}${t.hrO})`,
+        bud,
+      };
+    };
+    const tLive = typeSums(liveD), tProd = typeSums(prodD);
+    const tAll = {
+      dayC: tLive.dayC + tProd.dayC, dayG: tLive.dayG + tProd.dayG, dayO: tLive.dayO + tProd.dayO,
+      hrC: tLive.hrC + tProd.hrC, hrG: tLive.hrG + tProd.hrG, hrO: tLive.hrO + tProd.hrO,
+    };
+    const tVerdict = verdictOf([...liveD, ...prodD]);
+    const prevSlotT = liveD[0]?.prevSlot ?? prodD[0]?.prevSlot ?? "?";
+    const richT = (s: string) => ({ type: "bold", text: s });
+    const cellT = (s: string, header = false, right = false) => ({
+      ...(header ? { is_header: true } : {}),
+      ...(right ? { align: "right" } : {}),
+      text: richT(s),
+    });
+    const nameCellT = (s: string) => ({ text: s });
+    const totalLegacy =
+      `<b>Total GMV Max (shop 1)</b>\n${headLine(slot, prevSlotT)}\n` +
+      `Hour cost ${tAll.hrC.toFixed(2)} | gmv ${tAll.hrG.toFixed(2)} | ord ${tAll.hrO}\n` +
+      `Day so far cost ${tAll.dayC.toFixed(2)} | gmv ${tAll.dayG.toFixed(2)} | ord ${tAll.dayO}\n` +
+      `${esc(tVerdict)}\n` +
+      [typeRow("Live", tLive), typeRow("Product", tProd)]
+        .map((r) => `<code>${r.label}</code>\ncost ${r.cost} | gmv ${r.gmv}\n${r.roi} | ord ${r.ord} | ${r.bud}`)
+        .join("\n") +
+      `\n<a href="${DASHBOARD_URL}">📊 Open dashboard</a>\n<i>${esc(syncedNote)}</i>`;
+    const totalBlocks: unknown[] = [
+      { type: "heading", text: "Total GMV Max (shop 1)", size: 1 },
+      { type: "paragraph", text: { type: "marked", text: headLine(slot, prevSlotT) } },
+      {
+        type: "blockquote",
+        blocks: [
+          { type: "paragraph", text: `Hour cost ${tAll.hrC.toFixed(2)} | gmv ${tAll.hrG.toFixed(2)} | ord ${tAll.hrO}` },
+          { type: "paragraph", text: `Day so far: cost ${tAll.dayC.toFixed(2)} | gmv ${tAll.dayG.toFixed(2)} | ord ${tAll.dayO}` },
+          { type: "paragraph", text: tVerdict },
+        ],
+      },
+      {
+        type: "table",
+        is_striped: true,
+        is_compact: true,
+        cells: [
+          [cellT("Type", true), cellT("Cost", true, true), cellT("GMV", true, true), cellT("ROI H·D", true, true), cellT("Ord", true, true), cellT("Bud", true, true)],
+          ...[typeRow("Live", tLive), typeRow("Product", tProd)].map((r) => [
+            nameCellT(r.label), cellT(r.cost, false, true), cellT(r.gmv, false, true),
+            cellT(r.roi, false, true), cellT(r.ord, false, true), cellT(r.bud, false, true),
+          ]),
+        ],
+      },
+      { type: "buttons", buttons: [{ text: "📊 Dashboard", url: DASHBOARD_URL }] },
+      { type: "paragraph", text: syncedNote },
+    ];
     const r1 = await sendTelegramFull(
-      summarize(`${EMOJI.live} LIVE GMV Max (shop 1)`, liveD, earlierLive), true, buildBlocks(`${EMOJI.live} LIVE GMV Max (shop 1)`, liveD, earlierLive)
+      summarize(`${EMOJI.live} LIVE GMV Max (shop 1)`, liveD, earlierLive), true, buildBlocks(`${EMOJI.live} LIVE GMV Max (shop 1)`, liveD, earlierLive, chartsLive)
     );
     const r2 = await sendTelegramFull(
-      summarize(`${EMOJI.product} Product GMV Max (shop 1)`, prodD, earlierProd), true, buildBlocks(`${EMOJI.product} Product GMV Max (shop 1)`, prodD, earlierProd)
+      summarize(`${EMOJI.product} Product GMV Max (shop 1)`, prodD, earlierProd), true, buildBlocks(`${EMOJI.product} Product GMV Max (shop 1)`, prodD, earlierProd, chartsProd)
     );
+    const r3 = await sendTelegramFull(totalLegacy, true, totalBlocks);
     telegram =
-      r1.ok && r2.ok
-        ? `${r1.mode}+${r2.mode}`
-        : `failed live=${r1.mode}:${r1.error ?? "?"} prod=${r2.mode}:${r2.error ?? "?"}`;
+      r1.ok && r2.ok && r3.ok
+        ? `${r1.mode}+${r2.mode}+${r3.mode}`
+        : `failed live=${r1.mode}:${r1.error ?? "?"} prod=${r2.mode}:${r2.error ?? "?"} total=${r3.mode}:${r3.error ?? "?"}`;
   }
 
   return { shop: shop.name, date, slots: ordered.length, closedSlots: closed.length, stored, slot, diffs, pulledAt, telegram };

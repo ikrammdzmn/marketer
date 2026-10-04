@@ -35,7 +35,8 @@ async function postBot(
 export async function sendTelegramFull(
   text: string,
   html = false,
-  blocks?: unknown[]
+  blocks?: unknown[],
+  coverUrl?: string
 ): Promise<SendResult> {
   const token = cleanEnv(process.env.TELEGRAM_BOT_TOKEN);
   // Accepts "-100xxx_30" glued form or plain id; thread split out automatically.
@@ -54,6 +55,11 @@ export async function sendTelegramFull(
   }
   const target: Record<string, unknown> = { chat_id: chatId };
   if (thread) target.message_thread_id = Number(thread);
+  // Cover first as its own photo message (fail-open): a bad image must never
+  // nuke the tables — blocks send stays photo-free.
+  if (coverUrl) {
+    await postBot(token, "sendPhoto", { ...target, photo: coverUrl });
+  }
   if (blocks) {
     const table = await postBot(token, "sendRichMessage", {
       ...target,
@@ -78,6 +84,31 @@ export async function sendTelegramFull(
   });
   if (legacy.ok) return { ok: true, mode: "legacy" };
   return { ok: false, mode: "failed", error: legacy.description };
+}
+
+// Answer a callback-query tap (removes client spinner). Token from env.
+export async function answerCallback(queryId: string, text?: string): Promise<boolean> {
+  const token = cleanEnv(process.env.TELEGRAM_BOT_TOKEN);
+  if (!token) return false;
+  return (await postBot(token, "answerCallbackQuery", {
+    callback_query_id: queryId,
+    ...(text ? { text } : {}),
+  })).ok;
+}
+
+// Post a photo (by public URL) into an explicit chat/thread. Token from env.
+export async function sendPhotoDirect(
+  chatId: string | number,
+  threadId: number | null,
+  photoUrl: string,
+  caption?: string
+): Promise<boolean> {
+  const token = cleanEnv(process.env.TELEGRAM_BOT_TOKEN);
+  if (!token) return false;
+  const payload: Record<string, unknown> = { chat_id: chatId, photo: photoUrl };
+  if (threadId) payload.message_thread_id = threadId;
+  if (caption) payload.caption = caption;
+  return (await postBot(token, "sendPhoto", payload)).ok;
 }
 
 // Direct send to an explicit chat/thread (webhook replies). Token from env.

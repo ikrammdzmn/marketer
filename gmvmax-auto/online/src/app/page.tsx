@@ -246,7 +246,24 @@ export default function Page() {
                       return n;
                     })} style={{ cursor: "pointer" }}>
                       <td>{open ? "▾" : "▸"}</td>
-                      <td>{a.name}</td><td>{fmt(a.cost)}</td><td>{fmt(a.gmv)}</td><td>{a.orders}</td><td>{a.roi.toFixed(2)}</td>
+                      <td>{a.name}
+                        {(() => {
+                          const hasON = rows.some((c: any) => c.status === "ON");
+                          const dels = [...new Set(rows.map((c: any) => c.delivery).filter(Boolean))].filter(
+                            (d) => d !== "Identity in use" && d !== "Identity in use (live)"
+                          ) as string[];
+                          return (<>
+                            {hasON && (
+                              <span style={{ marginLeft: 8, fontSize: 10, padding: "1px 6px", borderRadius: 8, background: "#0a4d1e", color: "#7dffa8" }}>ON</span>
+                            )}
+                            {dels.map((d) => (
+                              <span key={d} style={{ marginLeft: 6, fontSize: 10, padding: "1px 6px", borderRadius: 8, background: "#3a2f0a", color: "#ffd97d" }}>
+                                {d === "Active" ? "🟢" : "⛔"} {d}
+                              </span>
+                            ))}
+                          </>);
+                        })()}
+                      </td><td>{fmt(a.cost)}</td><td>{fmt(a.gmv)}</td><td>{a.orders}</td><td>{a.roi.toFixed(2)}</td>
                     </tr>
                     {open && rows.map((c: any) => (
                       <tr key={c.campaignId} style={{ background: "#161616" }}>
@@ -257,6 +274,11 @@ export default function Page() {
                             background: c.status === "ON" ? "#0a4d1e" : c.status === "OFF" ? "#4d4d4d" : "#3a2f0a",
                             color: c.status === "ON" ? "#7dffa8" : c.status === "OFF" ? "#ccc" : "#ffd97d",
                           }}>{c.status ?? "?"}</span>
+                          {c.delivery && (
+                            <span style={{ marginLeft: 6, fontSize: 10, opacity: 0.75 }}>
+                              {c.delivery === "Active" ? "🟢" : "⛔"} {c.delivery}
+                            </span>
+                          )}
                           <button style={{ marginLeft: 8 }} onClick={(e) => { e.stopPropagation(); loadSessions(c.campaignId); }}>
                             {sessionsLoading === c.campaignId ? "…" : "Sessions"}
                           </button>

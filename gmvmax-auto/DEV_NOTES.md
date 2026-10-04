@@ -262,6 +262,47 @@ try except tsc catches I fixed in minutes. Owner ended curious ("why fetch
 only 14→15?", "why fire with no gmv?") — the sparring contract is working;
 keep earning it with numbers, not adjectives.
 
+## Checkpoint 10 — 04 Oct 2026 night (closeout: Total msg, buttons, delivery, probes, docs)
+
+> Next-you: this session ran LONG (dozens of deploys, all green first-try except
+> tsc catches). Start at Resume below, then Checkpoint 9 for the morning's context.
+
+**Vibe / frequency.** Same terse loop all day: I deploy → owner tests on prod URL /
+Telegram topic → screenshot or one-liner → I fix. Owner decides fast ("ok go",
+"ok c", "ok try") and corrects fast ("not 10.00 → 0.20", "use 🔛", "2 per line,
+dashboard on top"). Sparring mode held both ways: I talked them OUT of jar-only
+hourly (kept candy+jar hybrid) and OUT of repo media folder (Vercel auth blocks
+Telegram fetches); they talked ME out of over-engineering (URL buttons beat
+callback photos for now). Match it: short replies, numbers first, one action per
+message. Owner reads screenshots, not paragraphs. Plan mode was entered/exited
+~6 times — each time the rule held (talk-only inside, build on "go").
+
+**Standing orders (still active).** (1) Sparring partner mode. (2) Shop 1 only.
+(3) No suggestion engine — POC only. (4) `1-MASTER/BIGMASTERPLAN.md` read-first
+rule dangles (file does not exist — do not chase it). (5) `tiktok-creative-analysis/data/accounts.json`
+got modified this session by SOMETHING (not us — never stage/commit it).
+
+**What shipped after Checkpoint 9.**
+- Total message (3rd): Live + Product jar rows, combined verdict, dashboard button.
+- Chart buttons: top-7 movers as URL links (QuickChart per-campaign trends) + 📊 Dashboard on top, pairs below. Multi-buttons-blocks VERIFIED working. Callback-photo handler built (tap → inline chart photo) then parked dormant per owner (URL links won).
+- Covers saga: raw.githubusercontent URLs good (verified 200 image/png), but in-blocks photo NUKED Product's tables while Live survived → fail-open split (photo as separate send). Then covers removed entirely per owner (detached look disliked). Lesson bottled (see Bugs).
+- Heading/marked/quote redesign + verdict line B (`🔥 … · ⚠️ N stagnant` / `▪ steady hour`). Marked-as-object unprobed — accepted the fallback risk openly.
+- ROI on Steady (`H·D`) + Earlier-today tables.
+- `011_campaign_delivery.sql` + enum→label map (API speaks `CAMPAIGN_STATUS_*`; `ENABLE`=Active, `TTS_TT_ASSET_UNAVAILABLE`=Asset unavailable, + identity/product/auth codes) + Telegram `· Active` suffix + dashboard delivery line + account-row rollups (ON if any child ON, delivery badges, Identity hidden on collapsed per owner).
+- Rich probe rounds 1–2 (9/10 pass; anchor EMPTY-alone is correct behavior), stripe verdict (desktop-only), `tg-rich-messages.md` batches 1–4 complete (~100 classes), `telegram_message.md` Works/Partial/Not-working sections.
+
+**Bugs found + fixed (do not regress).**
+30. **Edit-tool clobbers (twice).** Two edits ate neighboring lines (telegram.ts `sendDirect` signature; gmv.ts `interface` line) — oldString boundaries. Caught both by re-reading the region before verifying. LESSON (extends bug 10/12): re-read the edited region after EVERY structural edit, no exceptions; tsc only catches syntax, not lost declarations (the gmv.ts one WAS caught by tsc — missing interface — good).
+31. **Unbalanced paren in hand-rolled sums.** Jar-header rewrite left `(... : 0;` — tsc red, fixed in one pass. LESSON: keep aggregates dead simple (`list.reduce`), never clever ternaries in message builders.
+32. **In-blocks photo fails the WHOLE message.** Product cover fetch hiccup → entire rich send rejected → legacy fallback (tables lost), while Live rendered. LESSON: never put fallible media inside an all-or-nothing blocks send — covers travel as separate `sendPhoto` (fail-open) or not at all.
+33. **Guessed rich type strings.** `section_heading`/`block_quotation`/etc. rejected — spec discriminators are `heading`/`blockquote`/etc. + `size` required + list items need `blocks[]` + map needs `location{}` + photo needs media object. LESSON: read the anchor sections first (they're all in the API page), probe second. All corrected shapes verified in round 2.
+34. **github blob URL ≠ image bytes.** `.../blob/...?raw=true` serves HTML → Telegram rejects. `raw.githubusercontent.com/...` serves bytes. LESSON: verify media URLs by content-type header (`image/*`), never by "it opens in my browser".
+35. **Plan-mode file rule.** Plan files live ONLY in `C:\Users\darkv\.opencode\plan` (outside repo, uncommitted by design) — `rich-probe-round2.md` stays there.
+
+**Mood at close.** Owner ended on UI polish + "complex?" gut-check, then closeout ritual. Energy good — everything they asked to see today rendered. Next session opens with the dashboard redesign (owner deferred; Tailwind-vs-inline decision pending — I recommended polish-inline first).
+
+**Resume.** (1) Dashboard redesign (deferred to next session). (2) 🔥 floor gate (dGmv>0). (3) OFF per-type split. (4) Export-method demo → relock ref rows (143,941 still PROVISIONAL). (5) Shop approval watch → retry `shop_auth.py`. (6) cron-job.org ping. (7) Commit/push ritual (this closeout included — ask).
+
 ## Checkpoint 9 — 04 Oct 2026 (M9b: divergence closed, jar+ROI+budget live)
 
 - Divergence #1 CLOSED with 04-Oct same-minute proof (Live+Product excels + both dashboard shots + Telegram). LIVE: Excel 164.19/1,734.82/16 vs dash ~166.45 (+2.26 cost, GMV+ord exact). Product: Excel 122.71/1,088.91/10 vs dash ~119.81 (−2.90). Net −0.64 (~0.2%). Culprit = grain scope; OFF/unmapped ~0; RM2-3 = pull-time drift. Standing rule updated: BOTH cost+GMV revise intraday (old "cost stable" rule from 01 Oct flipped by today's data).

@@ -6,7 +6,7 @@
 ## Online version (Vercel, `marketer-hw.vercel.app`, login required)
 
 - Shop / Metric / Date / Fetch Data: Total (LIVE + Product split in two tables), LIVE, Product, TTAM (manual spend only), ROAS (with SST+WHT actual), **Hourly** (per-campaign hour tables + trend graphs), Shop GMV (shop-order truth, needs shop login — otherwise shows the locked reference).
-- Each campaign row shows a green ON / grey OFF pill (from TikTok) + a Sessions button (live rooms x day, on demand).
+- Each campaign row shows a green ON / grey OFF pill (from TikTok) plus what TikTok says about delivery (🟢 Active, ⛔ Asset unavailable, …). Closed account rows roll up: ON if anything inside is ON, plus any delivery warnings. A Sessions button shows live rooms x day, on demand.
 - Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then resync.
 - Numbers can move slightly during the day (TikTok settles sales figures over hours while spend stays fixed). If a number looks off versus an hour ago, press Fetch Data again — newest wins, nothing is lost.
 
@@ -18,10 +18,12 @@
 
 ## Telegram reports (group topic, every hour)
 
-- Two messages per hour: 📹 LIVE and 📦 Product. Each has totals, a table of campaigns that moved, steady ones collapsed (`N steady — tap to expand`), and earlier-hours history collapsed the same way.
-- 🔥 = biggest sales jump that hour. ⚠️ = spent ≥ RM5 with zero sales back.
+- **Three messages per hour:** 📹 LIVE, 📦 Product, and Total (LIVE + Product in one table). Each opens with a verdict line (🔥 biggest sales jump · ⚠️ stuck spenders, or ▪ steady hour), then the movers table, steady ones collapsed (`N steady — tap to expand`), earlier-hours history collapsed the same way.
+- Table rows show the day so far: money spent then vs now, sales then vs now, ROI this hour vs whole day, orders, and % of daily budget used.
+- Chart buttons sit under each table (top movers + dashboard link) — tap one to open that campaign's hour-by-hour chart.
+- 🔥 = biggest sales jump that hour (only when sales actually grew). ⚠️ = spent ≥ RM5 with zero sales back. 🔛 = spending normally.
 - Messages show ON campaigns only (dashboard keeps everything). Footnote says how many OFF are excluded.
-- Type **`/fetch`** in the topic anytime for a fresh pull — tables arrive in ~30–60s. Hourly rhythm continues on its own.
+- Type **`/fetch_hourly`** for the latest hour, **`/fetch`** for the whole day so far — tables arrive in ~10–30s. Hourly rhythm continues on its own.
 
 ## What you get today (P0 local, live numbers)
 - **One screen** (`http://127.0.0.1:8082/`) with two tables:

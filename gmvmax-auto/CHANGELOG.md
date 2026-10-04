@@ -2,6 +2,15 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 04 Oct 2026 — M9c Telegram maturity II (Total msg, buttons, delivery, probes)
+
+- Third message `Total GMV Max` (Live + Product jar rows, combined verdict, dashboard button; no steady/earlier — details stay in type messages).
+- Chart buttons: top-7 movers as QuickChart trend links + 📊 Dashboard on top, pairs below (multi-buttons-blocks verified live). Callback-photo tap handler built, parked dormant (URL links won). Covers saga: raw.githubusercontent URLs verified, in-blocks photo nuked Product tables → fail-open split → covers removed per owner (detached look).
+- Heading/marked/quote redesign + verdict B + ROI on Steady/Earlier tables. Marked-as-object unprobed (fallback risk accepted openly).
+- `011_campaign_delivery.sql` + `formatDelivery` enum map (`ENABLE`=Active, `TTS_TT_ASSET_UNAVAILABLE`=Asset unavailable, identity/product/auth codes) → Telegram `· Active` suffix + dashboard delivery line + account rollups (ON-if-any, delivery badges, Identity hidden collapsed per owner).
+- Rich probes round 1–2 (9/10; anchor-EMPTY is correct behavior), stripe verdict (desktop-only), `tg-rich-messages.md` batches 1–4 (~100 classes), `telegram_message.md` Works/Partial/Not-working.
+- Still open: dashboard redesign (next session, Tailwind-vs-inline), 🔥 floor gate, OFF per-type split, export demo (143,941 PROVISIONAL), shop approval watch, cron ping, commit ritual.
+
 ## 04 Oct 2026 — M9b Telegram maturity (divergence closed, jar rows, ROI, budget%)
 
 - Divergence #1 CLOSED (04-Oct same-minute proof): LIVE Excel 164.19/1,734.82/16 vs dashboard ~166.45 (GMV+ord exact, cost +2.26); Product Excel 122.71/1,088.91/10 vs dashboard ~119.81 (cost −2.90); net −0.64 (~0.2%). Culprit = grain scope (hour vs day); OFF/unmapped ~0 that day; RM2-3 = pull-time drift. Rule: both cost+GMV revise intraday — re-pull same grain first.
