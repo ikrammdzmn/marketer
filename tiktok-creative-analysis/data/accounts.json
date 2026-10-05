@@ -100,6 +100,16 @@
     "updatedAt": "2026-09-17T16:45:52"
   },
   {
+    "name": "DrSamhanOfficial5",
+    "username": "affiliatedrsamhan5",
+    "accountId": "7519783051975622674",
+    "note": "",
+    "active": true,
+    "live": true,
+    "topAffiliate": false,
+    "updatedAt": "2026-10-04T16:58:39"
+  },
+  {
     "name": "mallegacy00",
     "username": "mallegacy00",
     "accountId": "",
@@ -163,16 +173,6 @@
     "name": "anotheraffiliate1",
     "username": "anotheraffiliate1",
     "accountId": "7641461490507186196",
-    "note": "",
-    "active": false,
-    "live": false,
-    "topAffiliate": false,
-    "updatedAt": "2026-09-17T15:55:13"
-  },
-  {
-    "name": "affiliatedrsamhan5",
-    "username": "affiliatedrsamhan5",
-    "accountId": "7519783051975622674",
     "note": "",
     "active": false,
     "live": false,
