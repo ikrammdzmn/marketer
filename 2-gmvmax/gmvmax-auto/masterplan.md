@@ -80,7 +80,7 @@ Folder name `gmvmax-auto/` assumed. Next: P0 checklist + Neon `acct` dual-write.
 ## 12. New-session handoff (read these first)
 If starting a fresh chat, attach/read in this order:
 1. This file (`gmvmax-auto/masterplan.md`) — decisions + plan.
-2. `0.0 TIKTOK/gmvmax/gmvmax.md` — raw GMV Max operational realities.
+2. `1-knowledge/0-0-tiktok/gmvmax/gmvmax.md` — raw GMV Max operational realities.
 3. `tiktok-account/AGENTS.md` + `tiktok-account/NEON_NOTE.md` — folder conventions + Neon ownership (`acct` schema, tester frozen, encryption rules).
 
 ## Appendix A — Full Q&A history (verbatim decisions)
@@ -88,7 +88,7 @@ If starting a fresh chat, attach/read in this order:
 - A1 Goal Q: educate / dashboard+auto-adjust / full auto → A: Dashboard + auto-adjust.
 - A2 Data source Q: manual UI / already API / no access → A: No API access yet.
 - A3 Users Q: internal / external / both; LIVE+Product? → A: Internal team.
-- A4 Proceed Q: review 0.0 TIKTOK/gmvmax/ now? → A: Hold, more context.
+- A4 Proceed Q: review 1-knowledge/0-0-tiktok/gmvmax/ now? → A: Hold, more context.
 - A5 Owner: "want system can automatically make adjustment if needed."
 - A6 Triggers Q (multi): ROAS/GMV/spend, budget/pacing, creative/product → A: all three + future custom.
 - A7 Actions Q (multi): budget / ROAS target / pause-scale / other → A: Change budget only.

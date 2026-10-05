@@ -32,7 +32,7 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
   (`metrics.json`) with in-UI manager. Pure HTML/vanilla JS, localhost :8123
   (creative keeps :8000). Spec `metric.md`, plan `metric-plan.md`, own
   `AGENTS.md`/`feature.md`/`DEV_NOTES.md`/`CHANGELOG.md`.
-- `1-1-sales/Sales Performance Analysis System/` — sales analysis (plan v0 only
+- `1-1-sales/sales-performance-analysis/` — sales analysis (plan v0 only
   05 Oct, uncommitted): 1–5 Oct Him.DrSamhan TTAM (RM20,668, 0 sales, CPM/Impr
   verdicts) + GMV Max (RM61,515, 9.29x, ROI 7.0 cut/boost) + L3-exclusion math
   (2.42x→3.27x). Distinct from Metric Scorer. Statuses in its `plan.md`.

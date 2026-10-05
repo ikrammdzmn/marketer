@@ -70,5 +70,5 @@
 ## 6. Open items for implementer
 
 - [x] Confirm `tiktok-strategy/` already moved? (YES — moved 05 Oct Phase 1 into `1-knowledge/`, git shows `R tiktok-strategy/ → 1-knowledge/tiktok-strategy/`).
-- [ ] Subfolder dash names under `1-1-sales/` + `1-2-tools/` (e.g. `sales-performance-analysis` vs `sales_performance`)?
+- [x] Subfolder dash names under `1-1-sales/` DONE 05 Oct (`sales-order-processor/`, `sales-performance-analysis/`).
 - [x] `tiktok-shop` vs `tiktok-shop-hourly` overlap: DECIDED 05 Oct — kept separate in `1-1-sales/`.

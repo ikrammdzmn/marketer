@@ -100,8 +100,8 @@ tiktok-creative-analysis; see B5).
 
 ## Open threads for next window
 
-- `plan.md` (Sales Performance Analysis System draft) — owner moving manually to
-  `1.1 Sales\Sales Performance Analysis System\plan.md`. `metric.md` §"Related:
+- `plan.md` (Sales Performance Analysis System draft) — owner moved to
+  `1-1-sales\sales-performance-analysis\plan.md` (restructure Phase 1). `metric.md` §"Related:
   plan.md" will dangle; fix the ref when convenient.
 - Auto-recalibrate (metric-plan.md §Scope-2: p25/med/p75 → proposed bands with
   verdict-shift preview) is still unbuilt — highest-value next feature.

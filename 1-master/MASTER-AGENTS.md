@@ -85,7 +85,7 @@ additional prompt Do not delete this part
   + manifest) + JSON metric registry with in-UI manager. Static, :8123 only.
   Bands-from-quartiles rule; `Total of` rows dropped on ingest. Statuses in
   `metric-plan.md`; spec in `metric.md`.
-- `1-1-sales/Sales Performance Analysis System/` — sales analysis (plan v0 only):
+- `1-1-sales/sales-performance-analysis/` — sales analysis (plan v0 only):
   TTAM 0-sales CPM/Impr verdicts + GMV Max ROI-7.0 cut/boost + L3-exclusion math;
   full campaign names; distinct from Metric Scorer. Statuses in `plan.md`.
 - `2-gmvmax/tiktok-account/` — Display API dashboard (`dashboard/`; `tester.py` FROZEN; link-mismatch guard + throttled/merged pulls + stream progress popup + fetched_at; releases in `CHANGELOG.md`) + `sync/` daily Sheets bridge (own AGENTS.md: path-import reuse, `X()` retry, dry-run purity, lengths-only secrets).

@@ -1,7 +1,7 @@
 # Custom Metrics v3 — TikTok Ads Manager (Focused View + LIVE)
 
 Date: 2026-10-05 | Source: `source-file/GMV MAX VOL2-Campaign Report-2026-10-01 to 2026-10-05 (1) TEST COLUMN.xlsx` (Sheet1, 67 rows, MYR) | Scored: `source-file/GMV MAX VOL2-SCORED-v3.xlsx` (67x45, value+flag+OVERALL)
-Related: Sales Performance Analysis System `plan.md` (moved to `1.1 Sales\Sales Performance Analysis System\` — ref pending cleanup)
+Related: Sales Performance Analysis System `plan.md` (at `1-1-sales\sales-performance-analysis\`)
 
 ## 1. Column mapping (use consistently)
 - Hook/ACS/CES/VVES/RVS/HRQ/RES/BC = `6-second focused views` (Focused View objective)

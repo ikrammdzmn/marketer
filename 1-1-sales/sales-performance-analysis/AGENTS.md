@@ -9,7 +9,7 @@ Static sales analysis tool (plan only, no code yet). Pure HTML/CSS/vanilla JS wh
 - `feature.md` — non-technical guide (TTAM = reach, GMV Max = sales, ROI 7.0).
 - `CHANGELOG.md` — release record, newest first (v0 plan only).
 - `source-file/` (future) — input xlsx, read-only. Never hand-edit.
-- Distinct from `3. TTAM/campaign-performance-analysis/` (Metric Scorer, 11 OMTM, :8123) — do not merge unasked.
+- Distinct from `3-ttam/campaign-performance-analysis/` (Metric Scorer, 11 OMTM, :8123) — do not merge unasked.
 
 ## Data quirks (do not re-derive)
 

@@ -6,20 +6,21 @@ Rule: whoever ships a folder release adds one line here the same session.
 
 ## 05 Oct 2026
 
-- `1.1 Sales/Sales Performance Analysis System` v0 (plan only, uncommitted):
+- Repo restructure Phases 1+2 (committed + pushed): dash folders (`1-master/`, `1-knowledge/`, `1-1-sales/`, `1-2-tools/`, `2-gmvmax/`, `3-ttam/`, `0-0-tiktok/`); low-risk moves (event, strategy, shop, shop-hourly, sheet-tools, calculator, live) then high-risk trio (`gmvmax-auto/` with `deploy_online.py` ROOT fix, `tiktok-creative-analysis/` + `tiktok-account/` as pair); Vercel Root Dir redeployed + Telegram `/tg-probe` 18/21 + `/fetch` live-verified; `collector_task.bat` path fixed (scheduler task action still needs owner update). Detail: root `repo-restructureplan.md`.
+- `1-1-sales/sales-performance-analysis` v0 (plan only, uncommitted):
   1–5 Oct Him.DrSamhan analysis (TTAM RM20,668 0-sales CPM verdicts + GMV Max
   RM61,515 9.29x ROI-7.0 cut/boost + L3-exclusion 2.42x→3.27x) + docs
   (`plan.md` owner-moved + `DEV_NOTES.md` handoff/bugs 1–6 + `feature.md` +
   `AGENTS.md` + `CHANGELOG.md`)
-  -> `1.1 Sales/Sales Performance Analysis System/CHANGELOG.md`
-- `3. TTAM/campaign-performance-analysis` v1–v4 (NEW track, uncommitted):
+  -> `1-1-sales/sales-performance-analysis/CHANGELOG.md`
+- `3-ttam/campaign-performance-analysis` v1–v4 (NEW track, uncommitted):
   Metric Scorer (11 TikTok OMTM: ERRI/HPS/ACS/CES/EDS/VVES/RVS/HRQ/RES/LQS/BCE)
   — upload/drag-drop campaign xlsx, quartile-calibrated v3 bands, KILL/WATCH/
   SCALE flags + OVERALL verdict/reason, kill-list with 50/30/20% cut simulator,
   CSV export; v2 port fix (:8123, creative keeps :8000); v3 `metrics.json`
   registry + in-UI manager; v4 one-JSON-per-preset split
   (`presets/` manifest + switcher); pure HTML/vanilla JS, localhost only
-  -> `3. TTAM/campaign-performance-analysis/CHANGELOG.md`
+  -> `3-ttam/campaign-performance-analysis/CHANGELOG.md`
 
 ## 04 Oct 2026
 
