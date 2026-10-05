@@ -1,7 +1,7 @@
 # Repo Restructure Plan — numbered folders + dashes (Phase 1 low-risk / Phase 2 high-risk)
 
 > Agreed 05 Oct 2026. Scope: full move (Option B) + dash names. High-risk moves deferred to Phase 2.
-> Status: Phase 1 low-risk COMMITTED 05 Oct 2026 as `7ee3133` (88 files, renames 100%, local only — NOT pushed). Phase 2 parked.
+> Status: Phase 1 COMMITTED (`7ee3133` + `7133367`) and Phase 2 COMMITTED (`fab6495`, 124 files, local only — NOT pushed). All M0–M7 ticked.
 > Mirror of `C:\Users\darkv\.opencode\plan\repo-restructureplan.md`.
 
 ## Milestones
