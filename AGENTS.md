@@ -7,6 +7,7 @@
 ## Folder index
 - `tiktok-creative-analysis/` — creative analytics (authoritative `data/accounts.json`).
 - `tiktok-shop-hourly/` — shop hourly reporting (shop 1; fetcher userscript + viewer with DEAD/GOLDEN/WATCH scorecard; quirks + guardrails in its AGENTS.md).
+- `1.1 Sales/Sales Performance Analysis System/` — sales analysis (plan v0 only 05 Oct, 1–5 Oct Him.DrSamhan: TTAM 0-sales CPM verdicts + GMV Max ROI cut/boost; distinct from Metric Scorer; own docs).
 - `3. TTAM/campaign-performance-analysis/` — Metric Scorer (11 TikTok OMTM verdicts + kill-list cut simulator; bands from JSON presets, metrics from JSON registry; static, :8123 only; spec `metric.md`, plan `metric-plan.md`).
 - `tiktok-account/` - Display API dashboard (8080, `tester.py` FROZEN, `NEON_NOTE.md` for `acct` schema) + `sync/` daily Sheets bridge (12 sheets, Dashboard No col + numbered tabs, Creative-age col + menu-7 seeder, own docs; v21-v24 committed `8ec64f0`).
 - `gmvmax-auto/` — GMV Max auto-adjust (online M9 hourly live 04 Oct `marketer-hw.vercel.app`, shop 1 + P0 local read-only 21 Sep; read `DEV_NOTES.md` first for vibe + portal lessons + bugs 23–35).

@@ -6,6 +6,12 @@ Rule: whoever ships a folder release adds one line here the same session.
 
 ## 05 Oct 2026
 
+- `1.1 Sales/Sales Performance Analysis System` v0 (plan only, uncommitted):
+  1–5 Oct Him.DrSamhan analysis (TTAM RM20,668 0-sales CPM verdicts + GMV Max
+  RM61,515 9.29x ROI-7.0 cut/boost + L3-exclusion 2.42x→3.27x) + docs
+  (`plan.md` owner-moved + `DEV_NOTES.md` handoff/bugs 1–6 + `feature.md` +
+  `AGENTS.md` + `CHANGELOG.md`)
+  -> `1.1 Sales/Sales Performance Analysis System/CHANGELOG.md`
 - `3. TTAM/campaign-performance-analysis` v1–v4 (NEW track, uncommitted):
   Metric Scorer (11 TikTok OMTM: ERRI/HPS/ACS/CES/EDS/VVES/RVS/HRQ/RES/LQS/BCE)
   — upload/drag-drop campaign xlsx, quartile-calibrated v3 bands, KILL/WATCH/

@@ -32,6 +32,10 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
   (`metrics.json`) with in-UI manager. Pure HTML/vanilla JS, localhost :8123
   (creative keeps :8000). Spec `metric.md`, plan `metric-plan.md`, own
   `AGENTS.md`/`feature.md`/`DEV_NOTES.md`/`CHANGELOG.md`.
+- `1.1 Sales/Sales Performance Analysis System/` — sales analysis (plan v0 only
+  05 Oct, uncommitted): 1–5 Oct Him.DrSamhan TTAM (RM20,668, 0 sales, CPM/Impr
+  verdicts) + GMV Max (RM61,515, 9.29x, ROI 7.0 cut/boost) + L3-exclusion math
+  (2.42x→3.27x). Distinct from Metric Scorer. Statuses in its `plan.md`.
 - `opencode.json` (committed 23 Sep `2663c7a`) - opencode MCP pointer: `google-sheets`
   local via absolute WinGet `uv.exe` (forward slashes) + local `tools/` path, secret-free
   (`{env:GOOGLE_SHEETS_CRED}` only). Antigravity counterpart
