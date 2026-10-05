@@ -28,8 +28,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PARENT = os.path.dirname(HERE)
 ACCOUNTS_PATH = os.path.abspath(os.path.join(
     PARENT, "..", "tiktok-creative-analysis", "data", "accounts.json"))
-# When repo layout is <root>/tiktok-account/dashboard, PARENT is tiktok-account;
-# accounts live at <root>/tiktok-creative-analysis/data/accounts.json:
+# When repo layout is <root>/2-gmvmax/tiktok-account/dashboard, PARENT is tiktok-account;
+# accounts live at <root>/2-gmvmax/tiktok-creative-analysis/data/accounts.json:
 if not os.path.exists(ACCOUNTS_PATH):
     ACCOUNTS_PATH = os.path.abspath(os.path.join(
         HERE, "..", "..", "tiktok-creative-analysis", "data", "accounts.json"))
@@ -798,7 +798,7 @@ def main():
         raise SystemExit(2)
     print("Dashboard: %d accounts from accounts.json" % len(names))
     print("Open http://127.0.0.1:%d/ — Link each account once, then select + Refresh." % PORT)
-    print("Tester fallback stays available: python tiktok-account/tester.py --account X --port 8081")
+    print("Tester fallback stays available: python 2-gmvmax/tiktok-account/tester.py --account X --port 8081")
     srv = HTTPServer(("127.0.0.1", PORT), H)
     try:
         srv.serve_forever()

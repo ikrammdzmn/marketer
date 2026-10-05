@@ -104,12 +104,12 @@ in the portal; only Sandbox secret stays in the local file.
 Run (one account per run, default port 8080 to match the Desktop URI):
 
 ```powershell
-python tiktok-account/tester.py --account TestDummy
+python 2-gmvmax/tiktok-account/tester.py --account TestDummy
 ```
 
 Then open `http://127.0.0.1:8080/` → click `1) Login...` → log in as that
 same TikTok account → Authorize `video.list` → lands on `/callback` →
-`Done: N videos`, saved to `tiktok-account/csvs/<Account>_videos.csv`.
+`Done: N videos`, saved to `2-gmvmax/tiktok-account/csvs/<Account>_videos.csv`.
 Repeat per account (`DrSamhanWellness` → `@drsamhanwellness`, etc.).
 
 Rules: exactly ONE tester process at a time; leave its PowerShell open until

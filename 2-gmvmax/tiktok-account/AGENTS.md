@@ -36,10 +36,10 @@ owner's laptop (`127.0.0.1` only, never published as-is).
   lives in `sync/AGENTS.md`, not here.
 - `.gitignore` — `csvs/`, `.local_secrets.json`, `__pycache__/`.
 - `.local_secrets.EXAMPLE.json` — keys template (real file never in git).
-- `../docs/terms.html` + `../docs/privacy.html` (repo root) — TikTok app-review
+- `../../docs/terms.html` + `../../docs/privacy.html` (repo root) — TikTok app-review
   pages (Himwellness internal-use wording). Do not move without updating the
   TikTok app form URLs.
-- `../tiktok*.txt` (repo root, 3 files) — TikTok domain-verification files. Must
+- `../../tiktok*.txt` (repo root, 3 files) — TikTok domain-verification files. Must
   stay at root (serve at `/marketer/tiktok*.txt`); never rename.
 
 ## Accounts
@@ -52,8 +52,8 @@ This folder never duplicates that list — dashboard reads it live per request
 ## Run / verify
 
 ```powershell
-python tiktok-account/dashboard/dashboard.py          # owns 8080
-python tiktok-account/tester.py --account X --port 8081   # fallback only
+python 2-gmvmax/tiktok-account/dashboard/dashboard.py          # owns 8080
+python 2-gmvmax/tiktok-account/tester.py --account X --port 8081   # fallback only
 # open http://127.0.0.1:8080/
 ```
 

@@ -1,17 +1,17 @@
 # MASTER-PLAN — marketer repo overview
 
 > Read this first in any new session. Then read the folder plan for where you will work.
-> Detailed GMV auto plan lives in `gmvmax-auto/masterplan.md` (not duplicated here).
+> Detailed GMV auto plan lives in `2-gmvmax/gmvmax-auto/masterplan.md` (not duplicated here).
 
 ## 1. Repo map (what lives where)
-- `tiktok-creative-analysis/` — Static creative analytics (single + bulk dialects, multi-file compare ≤31 with auto-pick Combine/diff, trend per creative: day columns + line chart + sparklines + solo popup + ROI/CPM/AOV metrics, dot-only chart hover with vs-prev moves, insight engine + verdict filter + `?insight` links, exploration guide + clickable pills + status-by-day KPIs/chart with green-red deltas + 7 on-demand stages, SOP bars, folder-grouped filename-chip picker, click-to-copy Post IDs, manager CSV export, shop daily trend (GMV-Max cards +
+- `2-gmvmax/tiktok-creative-analysis/` — Static creative analytics (single + bulk dialects, multi-file compare ≤31 with auto-pick Combine/diff, trend per creative: day columns + line chart + sparklines + solo popup + ROI/CPM/AOV metrics, dot-only chart hover with vs-prev moves, insight engine + verdict filter + `?insight` links, exploration guide + clickable pills + status-by-day KPIs/chart with green-red deltas + 7 on-demand stages, SOP bars, folder-grouped filename-chip picker, click-to-copy Post IDs, manager CSV export, shop daily trend (GMV-Max cards +
 dashboard-pattern calendar + vs-previous deltas), loading spinner + locked
 load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative `data/accounts.json` (20 entries × {name,username,accountId,note,active,live,topAffiliate,updatedAt}, exact-match on name); `data/catalog.json` (4 campaigns + 18 products, user-named); `data/targets.json` (SOP topN/minImpr/maxCPM, null = auto). Local `server.py` (127.0.0.1, accounts+targets savers, silent `/health` + probe quiet list) + `start-server.bat`; loader auto-picks newest `source-file/*.xlsx` by end-date. Statuses in its `plan.md`; releases in `CHANGELOG.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
-- `tiktok-account/` - Display API dashboard (own videos + post times). Python stdlib + Tailwind, localhost 8080. `tester.py` FROZEN. 17 Sep: 429 throttle/retry, range + limit pulls (merged cache), unlink, calendar UX, thumbnails, link-mismatch guard. 20 Sep: live Refresh progress popup (stream, same-connection) + last-fetch stamps + `#`-first CSV export (committed `4f9a792`); `sync/` daily Sheets bridge committed 23 Sep (`2663c7a`, v19: progress, abort, re-sort, Video-ID-first, Creative-age col). 23 Sep: picker shows `active` from accounts.json (uncommitted). Statuses in its `plan.md`; releases in `CHANGELOG.md`. Agent note: `NEON_NOTE.md`. 28 Sep: `sync/` v21 (Dashboard No col, numbered tabs, canonical order, uncommitted).
+- `2-gmvmax/tiktok-account/` - Display API dashboard (own videos + post times). Python stdlib + Tailwind, localhost 8080. `tester.py` FROZEN. 17 Sep: 429 throttle/retry, range + limit pulls (merged cache), unlink, calendar UX, thumbnails, link-mismatch guard. 20 Sep: live Refresh progress popup (stream, same-connection) + last-fetch stamps + `#`-first CSV export (committed `4f9a792`); `sync/` daily Sheets bridge committed 23 Sep (`2663c7a`, v19: progress, abort, re-sort, Video-ID-first, Creative-age col). 23 Sep: picker shows `active` from accounts.json (uncommitted). Statuses in its `plan.md`; releases in `CHANGELOG.md`. Agent note: `NEON_NOTE.md`. 28 Sep: `sync/` v21 (Dashboard No col, numbered tabs, canonical order, uncommitted).
 - `1-knowledge/tiktok-strategy/` — Himwellness Growth OS playbook (`himwellness-playbook.html` + `full-strategy.md`). Business guardrails live here: ROI ≥7.0, CPA ≤RM21.18, 1 campaign/SKU, TTAM feeder role, dayparting windows, payday surge. Offline, localStorage.
 - `1-knowledge/tiktok-event/` — HIMCOFFEE RACI MASTER (`index.html`, vanilla single-file, local-only, no build). Timeline 2026–2030 + RACI Worksheet + 5T/3M Blueprint + workload + CSV + local PIN seats. Reference: `raci_campaign_dashboard.tsx` (React+Firebase, FROZEN) + `tiktok-prd` (PRD v1.0.0). Statuses in its `plan.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
 - `1-knowledge/0-0-tiktok/gmvmax/` — Knowledge only: `gmvmax.md` (algo realities, §3 points at product glossary) + `product/exploration-status.md` (canonical TikTok stages + `Available` exclusion rule) + `product/*.xlsx`. No code goes here.
-- `gmvmax-auto/` — GMV Max hourly live 04 Oct (`marketer-hw.vercel.app`, shop 1): M7 views (Total/LIVE/Product/TTAM/ROAS, sessions drill, ON/OFF pills + delivery badges/rollups) + M9 hourly (Neon hour rows `001–011`, dashboard Hourly metric + Chart.js graphs, Telegram 3-message set + `/fetch` day + `/fetch_hourly` hour + Total, jar rows, ROI H·D, Bud%, verdict, chart buttons, real-time partial tags, ON-filter) + P0 local read-only (prod OAuth, net ROI locked fee 25%, 30m scheduler). Shop-token route parked (Custom app review pending); true-ROAS ref provisional (export method pending). Next: dashboard redesign. Code: `collector.py` + `live_view.py` + `prod_auth.py` + `shop_auth.py` + `dashboard/` 8082 + migrations `001–011`. See `gmvmax-auto/plan.md` + `DEV_NOTES.md` + `feature.md` + `telegram_message.md`.
+- `2-gmvmax/gmvmax-auto/` — GMV Max hourly live 04 Oct (`marketer-hw.vercel.app`, shop 1): M7 views (Total/LIVE/Product/TTAM/ROAS, sessions drill, ON/OFF pills + delivery badges/rollups) + M9 hourly (Neon hour rows `001–011`, dashboard Hourly metric + Chart.js graphs, Telegram 3-message set + `/fetch` day + `/fetch_hourly` hour + Total, jar rows, ROI H·D, Bud%, verdict, chart buttons, real-time partial tags, ON-filter) + P0 local read-only (prod OAuth, net ROI locked fee 25%, 30m scheduler). Shop-token route parked (Custom app review pending); true-ROAS ref provisional (export method pending). Next: dashboard redesign. Code: `collector.py` + `live_view.py` + `prod_auth.py` + `shop_auth.py` + `dashboard/` 8082 + migrations `001–011`. See `gmvmax-auto/plan.md` + `DEV_NOTES.md` + `feature.md` + `telegram_message.md`.
 - `docs/` — `terms.html` + `privacy.html` (GitHub Pages, TikTok app review). `tiktok*.txt` at root = domain verification. Never move/rename without updating TikTok app form.
 - `1-2-tools/g-sheet_tools/` — Sheets Apps Script tools (bound scripts, no server, own
   `AGENTS.md`): `aff-notify/` 4x-daily Affiliate Collection digest
@@ -50,7 +50,7 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
   `AGENTS.md`/`DEV_NOTES.md`/`feature.md`. Next Sheets work roots in that repo.
   Still open: IDE restart + in-IDE `get_spreadsheet_info`; `gh` not installed.
 - `1-master/` — this file + `MASTER-CHANGELOG.md` (repo rollup) + `MASTER-AGENTS.md` (shared conventions) + `antigravity-aistudio.md` (IDE transfer guide, not product code).
-- Restructure 05 Oct Phase 1 (staged, uncommitted): dash folders; `1-1-sales/tiktok-shop/`, `2-gmvmax/tiktok-calculator/`, `2-gmvmax/tiktok-live/` moved; `gmvmax-auto/`, `tiktok-creative-analysis/`, `tiktok-account/` stay at root until Phase 2. Detail: root `repo-restructureplan.md`.
+- Restructure 05 Oct Phase 1+2 (staged, uncommitted): dash folders; all live tools in numbered homes. Owner steps still open: Vercel dashboard Root Directory → `2-gmvmax/gmvmax-auto/online` + redeploy (`npx vercel login` first) + Telegram `/tg-probe?keep=1` + `/fetch` re-test. Detail: root `repo-restructureplan.md`.
 
 ## 2. Current status (2026-09-20, midday)
 
@@ -85,14 +85,14 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
   (`testNotify` works), then v2 Telegram sender + v3 two-bucket priority
   (both surfaces, mention ping, style pick open, all stub-tested);
   triggers pending install; sheet F-formulas still fixed ranges.
-  27 Sep: `tiktok-account/sync` v20 (Dashboard col I Total Ticked, same
+  27 Sep: `2-gmvmax/tiktok-account/sync` v20 (Dashboard col I Total Ticked, same
   batchGet, menu 6 relabeled; mock-verified, uncommitted).
-  28 Sep: `tiktok-account/sync` v21 (Dashboard No col A + numbered tabs +
+  28 Sep: `2-gmvmax/tiktok-account/sync` v21 (Dashboard No col A + numbered tabs +
   canonical tab-strip/Dashboard order; fake-grid verified, uncommitted).
-  29 Sep: `tiktok-account/sync` v22+v23 (`--seed-age` formula seeder +
+  29 Sep: `2-gmvmax/tiktok-account/sync` v22+v23 (`--seed-age` formula seeder +
   `C2:C10000` clear fix; stub-verified; committed `8ec64f0`).
 
-- `tiktok-account` dashboard liveliness landed (committed `4f9a792` 20 Sep
+- `2-gmvmax/tiktok-account` dashboard liveliness landed (committed `4f9a792` 20 Sep
   09:09 +0800): stream progress popup + fetched_at stamps + `#` export.
   Sibling-built `sync/` daily Sheets bridge live (UNTRACKED, own docs):
   11 sheets, first `--all --days 7` 10/10; owner ran `--today --all`,
@@ -106,11 +106,11 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
   wiring bugs fixed (check_setup false-negative, API-disabled 403, Drive URL
   shape, flaky ls-remote). IDE restart + in-IDE info test still open.
   Detail: `../tools/DEV_NOTES.md`.
-- `tiktok-account` dashboard ready local-only; 20-entry accounts.json (live-read); 429-hardened range/limit pulls; link-mismatch guard live; 20 Sep: stream popup + fetched_at + `#` export (committed `4f9a792`); UNTRACKED `sync/` Sheets bridge (own docs); accounts not all linked; Production app unapproved (demo video still the next big step).
-- `tiktok-creative-analysis` v23–v49 local-only, verified over HTTP, UNCOMMITTED: source subfolders + folder `[id]` labels, newest-by-date, up to 31 files, trend per creative (day columns, line chart, sparklines, solo popup, Post ID column, Post-ID legend, ROI/CPM/AOV metrics with ratio-safe totals, dot-only hover + vs-prev moves), exploration guide + clickable pills + status-by-day KPIs/chart + green-red deltas + 7 on-demand stages, click-to-copy Post IDs everywhere, auto-pick Combine for disjoint dated files, manager CSV export (with Last updated stamp). `source-file/` on disk: himcoffee dailies 09-13→09-22 (user-added 09-20/21/22 + range 09-15→09-22) + `BULK DATA/` subfolder (user pruned olds, added bulk 09-14~09-21). `catalog.json` shows worktree edits (user may have started naming — re-read before naming work). Backlog: exploration exit signals (`plan.md` §6). Releases → `tiktok-creative-analysis/CHANGELOG.md`.
-- `tiktok-strategy` playbook content complete (static).
-- `tiktok-event` built 17 Sep (vanilla RACI board + docs), UNTRACKED. Backlog: structured due-dates, C/I columns, shared Firebase seats, mobile cards.
-- `gmvmax-auto` P0 skeleton landed 19 Sep (UNCOMMITTED): Neon `TIKTOK DATA` SG with `production` + persistent `dev`, `001–004` applied (`acct`=2, `gmv`=7 both branches; 004 fixed public-schema + reserved-`window`→`win` bugs), collector stub + 8082 dashboard verified offline-first, keys gitignored (lengths-only check). Business API `TIKTOK GMV MAX` PENDING approval — expected non-issue 20 Sep, P0 holds file-first (sandbox locked); Shop Custom app created (MY). Next: sandbox GET wiring → 48×30m snapshots → P0 exit. Detail: `gmvmax-auto/plan.md`, `DEV_NOTES.md`, `CHANGELOG.md`.
+- `2-gmvmax/tiktok-account` dashboard ready local-only; 20-entry accounts.json (live-read); 429-hardened range/limit pulls; link-mismatch guard live; 20 Sep: stream popup + fetched_at + `#` export (committed `4f9a792`); UNTRACKED `sync/` Sheets bridge (own docs); accounts not all linked; Production app unapproved (demo video still the next big step).
+- `2-gmvmax/tiktok-creative-analysis` v23–v49 local-only, verified over HTTP, UNCOMMITTED: source subfolders + folder `[id]` labels, newest-by-date, up to 31 files, trend per creative (day columns, line chart, sparklines, solo popup, Post ID column, Post-ID legend, ROI/CPM/AOV metrics with ratio-safe totals, dot-only hover + vs-prev moves), exploration guide + clickable pills + status-by-day KPIs/chart + green-red deltas + 7 on-demand stages, click-to-copy Post IDs everywhere, auto-pick Combine for disjoint dated files, manager CSV export (with Last updated stamp). `source-file/` on disk: himcoffee dailies 09-13→09-22 (user-added 09-20/21/22 + range 09-15→09-22) + `BULK DATA/` subfolder (user pruned olds, added bulk 09-14~09-21). `catalog.json` shows worktree edits (user may have started naming — re-read before naming work). Backlog: exploration exit signals (`plan.md` §6). Releases → `2-gmvmax/tiktok-creative-analysis/CHANGELOG.md`.
+- `1-knowledge/tiktok-strategy` playbook content complete (static).
+- `1-knowledge/tiktok-event` built 17 Sep (vanilla RACI board + docs), UNTRACKED. Backlog: structured due-dates, C/I columns, shared Firebase seats, mobile cards.
+- `2-gmvmax/gmvmax-auto` P0 skeleton landed 19 Sep (UNCOMMITTED): Neon `TIKTOK DATA` SG with `production` + persistent `dev`, `001–004` applied (`acct`=2, `gmv`=7 both branches; 004 fixed public-schema + reserved-`window`→`win` bugs), collector stub + 8082 dashboard verified offline-first, keys gitignored (lengths-only check). Business API `TIKTOK GMV MAX` PENDING approval — expected non-issue 20 Sep, P0 holds file-first (sandbox locked); Shop Custom app created (MY). Next: sandbox GET wiring → 48×30m snapshots → P0 exit. Detail: `2-gmvmax/gmvmax-auto/plan.md`, `DEV_NOTES.md`, `CHANGELOG.md`.
 - Git: branch `main`. HEAD `2663c7a` (23 Sep night, sync v19 + entry
   hardening + session docs). Worktree holds UNCOMMITTED evening work:
   dashboard active badge (`dashboard.py`/`.html`, `feature.md`), portable
@@ -119,7 +119,7 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
   (new), xlsx 09-22/09-23. No secrets in set. Commit only when asked.
 
 ## 3. Relations each AGENTS.md must know
-- **Accounts source:** `tiktok-creative-analysis/data/accounts.json` is authoritative. `tiktok-account/dashboard` reads it live — never duplicate the list. `tiktok-creative-analysis/data/catalog.json` (friendly campaign/product labels) and `data/targets.json` (SOP bars) are creative-analysis-only, display-local, not shared. `gmvmax-auto` will resolve campaigns against shop/account names from the same source of truth via `core` schema later.
+- **Accounts source:** `2-gmvmax/tiktok-creative-analysis/data/accounts.json` is authoritative. `2-gmvmax/tiktok-account/dashboard` reads it live — never duplicate the list. `tiktok-creative-analysis/data/catalog.json` (friendly campaign/product labels) and `data/targets.json` (SOP bars) are creative-analysis-only, display-local, not shared. `gmvmax-auto` will resolve campaigns against shop/account names from the same source of truth via `core` schema later.
 - **Business rules source:** `1-knowledge/tiktok-strategy/AGENTS.md` owns ROI ≥7.0, CPA RM21.18, scale ≤20–25%/24h, no changes 16:00–17:30, dead zones 02:00–08:00, payday surge 25th–2nd. `gmvmax-auto` decider MUST obey these — never re-derive.
 - **API separation:** `tiktok-account` = Display/Login Kit (`video.list`, own accounts). `gmvmax-auto` = Business Marketing API + Shop Open API (ads/budget/GMV). Different dev apps, keys, approvals. Scopes are NOT interchangeable.
 - **Shared secrets rule:** nothing secret in git, chat screenshots, or error pastes. `tokens/`, `csvs/`, `.local_secrets.json` gitignored. Production secret once pasted in chat → rotate.
@@ -137,6 +137,6 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
 8. Committing/pushing unasked, or committing secrets — never.
 
 ## 5. Where to work next (pointer, not a start)
-- GMV auto detail: `gmvmax-auto/masterplan.md` §9 phases (P0 first, on explicit go).
-- Neon rollout: `tiktok-account/NEON_NOTE.md` (dual-write, then cutover).
+- GMV auto detail: `2-gmvmax/gmvmax-auto/masterplan.md` §9 phases (P0 first, on explicit go).
+- Neon rollout: `2-gmvmax/tiktok-account/NEON_NOTE.md` (dual-write, then cutover).
 - New-session handoff order: `1-master/MASTER-PLAN.md` → folder plan → `1-knowledge/0-0-tiktok/gmvmax/gmvmax.md` if touching GMV logic.

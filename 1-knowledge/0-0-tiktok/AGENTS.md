@@ -1,18 +1,18 @@
-# AGENTS.md — 0.0 TIKTOK master info hub
+# AGENTS.md — 0-0-tiktok master info hub
 
 > Index only, no code. Master pointer for the TikTok ads ecosystem.
-> Conventions: `1-MASTER/MASTER-AGENTS.md`. Status: `1-MASTER/MASTER-PLAN.md`.
+> Conventions: `1-master/MASTER-AGENTS.md`. Status: `1-master/MASTER-PLAN.md`.
 
 ## What lives here
 
 - `gmvmax/` — knowledge only, no code (`gmvmax.md` algo realities + `product/exploration-status.md` canonical stages + `product/*.xlsx`).
 
-## Ecosystem (stays at root, only pointed to from here)
+## Ecosystem (numbered homes since restructure Phase 1+2, only pointed to from here)
 
-- `tiktok-creative-analysis/` — authoritative `data/accounts.json`.
-- `tiktok-account/` — Display API dashboard + `sync/` Sheets bridge.
-- `gmvmax-auto/` — auto budget-adjust service (P0 live).
-- `tiktok-shop/`, `tiktok-shop-hourly/`, `tiktok-live/`, `tiktok-calculator/`, `tiktok-strategy/`, `tiktok-event/`.
+- `2-gmvmax/tiktok-creative-analysis/` — authoritative `data/accounts.json`.
+- `2-gmvmax/tiktok-account/` — Display API dashboard + `sync/` Sheets bridge.
+- `2-gmvmax/gmvmax-auto/` — auto budget-adjust service (P0 live).
+- `1-1-sales/tiktok-shop/`, `1-1-sales/tiktok-shop-hourly/`, `2-gmvmax/tiktok-live/`, `2-gmvmax/tiktok-calculator/`, `1-knowledge/tiktok-strategy/`, `1-knowledge/tiktok-event/`.
 
 ## Rules
 

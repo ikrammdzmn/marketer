@@ -29,7 +29,7 @@ use Sandbox until the app is approved.)
 ## 3. Start + link (once per account)
 
 ```powershell
-python tiktok-account/dashboard/dashboard.py
+python 2-gmvmax/tiktok-account/dashboard/dashboard.py
 ```
 
 Open `http://127.0.0.1:8080/` → Link each account once (log in as that exact
@@ -47,12 +47,12 @@ chat/email/cloud), wipe the stick after. The app key must be the SAME
 one the tokens were issued under (refresh flow uses it).
 
 Copy (portable):
-- `tiktok-account/dashboard/tokens/*.json` (the 10 logins)
-- `tiktok-account/.local_secrets.json`
-- `tiktok-account/sync/.sheet_id.json` (sync only)
+- `2-gmvmax/tiktok-account/dashboard/tokens/*.json` (the 10 logins)
+- `2-gmvmax/tiktok-account/.local_secrets.json`
+- `2-gmvmax/tiktok-account/sync/.sheet_id.json` (sync only)
 - service-account JSON to `%USERPROFILE%\.config\spreadsheet-mcp\`
   (sync/MCP only) + set `GOOGLE_SHEETS_CRED` to its local path
-- `gmvmax-auto/.local_secrets.json` (GMV Max only, if used there)
+- `2-gmvmax/gmvmax-auto/.local_secrets.json` (GMV Max only, if used there)
 
 Clone fresh, never USB-copy:
 - `marketer/` + `tools/` repos (`.venv/` rebuilds on first `uv run`)

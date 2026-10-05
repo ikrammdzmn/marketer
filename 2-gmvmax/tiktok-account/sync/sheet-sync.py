@@ -92,11 +92,13 @@ def _load_dashboard():
 
 
 def _mcp_src_on_path():
-    for cand in (
-        os.path.join(os.path.dirname(MARKETER), "tools",
-                     "spreadsheet-mcp", "src"),
-        os.environ.get("SPREADSHEET_MCP_DIR", ""),
-    ):
+    cands = [os.environ.get("SPREADSHEET_MCP_DIR", "")]
+    d = HERE  # walk up: sibling ../tools lives beside the repo root at any depth
+    for _ in range(6):
+        cands.append(os.path.join(d, "..", "tools",
+                                  "spreadsheet-mcp", "src"))
+        d = os.path.dirname(d)
+    for cand in cands:
         src = cand if cand.endswith("src") else os.path.join(cand, "src")
         if src and os.path.isdir(src) and src not in sys.path:
             sys.path.insert(0, src)

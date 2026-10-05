@@ -7,7 +7,7 @@ Note: folder files have NOT been trimmed yet (deliberately — dedupe happens
 gradually when each folder is next touched, to avoid churn breakage).
 
 additional prompt Do not delete this part
--Read 1-MASTER/BIGMASTERPLAN.md, then read relevant folders AGENTS.md, DEV_NOTES.md, plan.md, — then continue
+-Read 1-master/BIGMASTERPLAN.md, then read relevant folders AGENTS.md, DEV_NOTES.md, plan.md, — then continue
 
 ## 1. Runtime (all folders)
 
@@ -37,7 +37,7 @@ additional prompt Do not delete this part
 - `plan.md` — live status checklist, ticked per change (the user reads it).
 - `feature.md` — non-technical user guide, updated when UI behaviour changes.
 - `DEV_NOTES.md` — private session handoff (vibe + facts + bugs + lessons).
-- `CHANGELOG.md` (folder) + `1-MASTER/MASTER-CHANGELOG.md` (rollup) — one line
+- `CHANGELOG.md` (folder) + `1-master/MASTER-CHANGELOG.md` (rollup) — one line
   per release, same session. Counters keep rising, never renumber.
 - Replies: short. Feasibility questions ("just answer, do not edit") get words
   only; code only on explicit "proceed/go/build".
@@ -53,10 +53,10 @@ additional prompt Do not delete this part
 
 ## 6. Cross-folder contracts
 
-- **Accounts source:** `tiktok-creative-analysis/data/accounts.json` is
-  authoritative (exact `name` match). Never duplicate the list — `tiktok-account`
+- **Accounts source:** `2-gmvmax/tiktok-creative-analysis/data/accounts.json` is
+  authoritative (exact `name` match). Never duplicate the list — `2-gmvmax/tiktok-account`
   reads it live; future schemas resolve against it.
-- **Business rules source:** `tiktok-strategy/AGENTS.md` owns ROI ≥7.0, CPA
+- **Business rules source:** `1-knowledge/tiktok-strategy/AGENTS.md` owns ROI ≥7.0, CPA
   ≤RM21.18, scale ≤20–25%/24h, no changes 16:00–17:30, dead zones 02:00–08:00,
   payday surge 25th–2nd. Automation MUST obey these — never re-derive.
 - **API separation:** `tiktok-account` = Display/Login Kit (own videos).
@@ -70,33 +70,33 @@ additional prompt Do not delete this part
 
 ## 7. Folder index (specifics live in each folder's AGENTS.md)
 
-- `tiktok-creative-analysis/` — static creative analytics (multi-file compare ≤31,
+- `2-gmvmax/tiktok-creative-analysis/` — static creative analytics (multi-file compare ≤31,
   bulk dialect, insight engine, SOP bars, `?insight` links, picker chips,
   status-by-day with 7 on-demand stages, shop daily trend + dashboard-pattern
   calendar + loading busy state, silent `/health`).
-- `tiktok-shop-hourly/` — static shop-hourly reporting (shop 1 first):
+- `1-1-sales/tiktok-shop-hourly/` — static shop-hourly reporting (shop 1 first):
   same-origin Tampermonkey fetcher (day-by-day, max 31) + viewer
   (totals strip, hourly table, Chart.js lines, DEAD/GOLDEN/WATCH scorecard,
   CSV in/out); feed quirks (flat ROAS recomputed, allocated spend
   shape-only) + strategy guardrails stamped in-UI. Statuses in its `plan.md`.
-- `3. TTAM/campaign-performance-analysis/` — Metric Scorer (11 TikTok OMTM):
+- `3-ttam/campaign-performance-analysis/` — Metric Scorer (11 TikTok OMTM):
   xlsx upload/drag-drop, quartile-calibrated bands, KILL/WATCH/SCALE + OVERALL
   verdict, kill-list cut simulator, CSV export; JSON presets (one per campaign
   + manifest) + JSON metric registry with in-UI manager. Static, :8123 only.
   Bands-from-quartiles rule; `Total of` rows dropped on ingest. Statuses in
   `metric-plan.md`; spec in `metric.md`.
-- `1.1 Sales/Sales Performance Analysis System/` — sales analysis (plan v0 only):
+- `1-1-sales/Sales Performance Analysis System/` — sales analysis (plan v0 only):
   TTAM 0-sales CPM/Impr verdicts + GMV Max ROI-7.0 cut/boost + L3-exclusion math;
   full campaign names; distinct from Metric Scorer. Statuses in `plan.md`.
-- `tiktok-account/` — Display API dashboard (`dashboard/`; `tester.py` FROZEN; link-mismatch guard + throttled/merged pulls + stream progress popup + fetched_at; releases in `CHANGELOG.md`) + `sync/` daily Sheets bridge (own AGENTS.md: path-import reuse, `X()` retry, dry-run purity, lengths-only secrets).
-- `tiktok-strategy/` — Growth OS playbook (guardrails owner, §6 above).
-- `tiktok-event/` — RACI board, vanilla single-file (`raci_campaign_dashboard.tsx`
+- `2-gmvmax/tiktok-account/` — Display API dashboard (`dashboard/`; `tester.py` FROZEN; link-mismatch guard + throttled/merged pulls + stream progress popup + fetched_at; releases in `CHANGELOG.md`) + `sync/` daily Sheets bridge (own AGENTS.md: path-import reuse, `X()` retry, dry-run purity, lengths-only secrets).
+- `1-knowledge/tiktok-strategy/` — Growth OS playbook (guardrails owner, §6 above).
+- `1-knowledge/tiktok-event/` — RACI board, vanilla single-file (`raci_campaign_dashboard.tsx`
   FROZEN as spec source; localStorage only; PIN is courtesy, not security).
-- `0.0 TIKTOK/gmvmax/` — knowledge only, no code.
-- `g-sheet_tools/` — Sheets Apps Script tools (bound scripts, no server):
+- `1-knowledge/0-0-tiktok/gmvmax/` — knowledge only, no code.
+- `1-2-tools/g-sheet_tools/` — Sheets Apps Script tools (bound scripts, no server):
   `aff-notify/` 4x-daily Affiliate Collection digest (email `code.gs` +
   Telegram `tg_bot/` group-topic sender, own AGENTS.md).
-- `gmvmax-auto/` — GMV Max online M9 live 04 Oct (`marketer-hw.vercel.app`: M7 views + delivery badges/rollups + Hourly metric with Chart.js graphs + Telegram 3-message set with verdict + chart buttons + `/fetch` day + `/fetch_hourly` hour, shop 1, real-time partial tags, ON-filter) + P0 local read-only (prod OAuth, net ROI locked, 30m task). Shop-token route parked (app review pending). Sparring mode ON for this folder. Deploys from repo root (`deploy_online.py`, Windows `npx.cmd` fix, CLI login expires — re-login on 401/Not-authorized). Docs: `DEV_NOTES.md` (handoff + discoveries, Checkpoint 10 newest, bugs 23–35) + `feature.md` (user guide) + `telegram_message.md` + `tg-rich-messages.md` (rich catalog).
+- `2-gmvmax/gmvmax-auto/` — GMV Max online M9 live 04 Oct (`marketer-hw.vercel.app`: M7 views + delivery badges/rollups + Hourly metric with Chart.js graphs + Telegram 3-message set with verdict + chart buttons + `/fetch` day + `/fetch_hourly` hour, shop 1, real-time partial tags, ON-filter) + P0 local read-only (prod OAuth, net ROI locked, 30m task). Shop-token route parked (app review pending). Sparring mode ON for this folder. Deploys from repo root (`deploy_online.py`, Windows `npx.cmd` fix, CLI login expires — re-login on 401/Not-authorized). Docs: `DEV_NOTES.md` (handoff + discoveries, Checkpoint 10 newest, bugs 23–35) + `feature.md` (user guide) + `telegram_message.md` + `tg-rich-messages.md` (rich catalog).
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, branch `main`) — local MCP runners. `spreadsheet-mcp`
   (27 Sheets tools, `uv`, stdio `127.0.0.1` only, IGNORED clone; nested upstream
   `.git` → `dudegladiator`, never push there). Secrets at

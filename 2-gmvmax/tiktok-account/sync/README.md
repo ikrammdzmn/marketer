@@ -15,7 +15,7 @@ First run only, if blocked: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 Manual equivalent (or scheduler / forwarded args):
 ```powershell
 $env:SHEET_ID='<see .sheet_id.json>'
-uv --directory ../tools/spreadsheet-mcp run python tiktok-account/sync/sheet-sync.py --all --days 7
+uv --directory ../../tools/spreadsheet-mcp run python 2-gmvmax/tiktok-account/sync/sheet-sync.py --all --days 7
 # launcher also forwards args: .\run-sync.ps1 --all --today --dry-run
 ```
 
