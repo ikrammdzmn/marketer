@@ -1,7 +1,7 @@
 # Repo Restructure Plan — numbered folders + dashes (Phase 1 low-risk / Phase 2 high-risk)
 
 > Agreed 05 Oct 2026. Scope: full move (Option B) + dash names. High-risk moves deferred to Phase 2.
-> Status: Phase 1 COMMITTED (`7ee3133` + `7133367`) and Phase 2 COMMITTED (`fab6495`, 124 files, local only — NOT pushed). All M0–M7 ticked.
+> Status: Phase 1 COMMITTED (`7ee3133` + `7133367`) and Phase 2 COMMITTED (`fab6495`) and PUSHED (`12633d5`, `main` in sync with `origin/main`). All M0–M7 ticked.
 > Mirror of `C:\Users\darkv\.opencode\plan\repo-restructureplan.md`.
 
 ## Milestones
@@ -27,12 +27,12 @@
 
 ## 2. Final homes (agreed)
 
-- [ ] `3-ttam/campaign-performance-analysis/` — TikTok Ads Manager scorer only (:8123). Already there.
+- [x] `3-ttam/campaign-performance-analysis/` — TikTok Ads Manager scorer only (:8123). Already there (verified in place, no move needed).
 - [x] `1-1-sales/sales-performance-analysis/` + `1-1-sales/tiktok-shop/` + `1-1-sales/tiktok-shop-hourly/` — shop sales reporting home.
-- [ ] `2-gmvmax/` — `gmvmax-auto/` + `tiktok-calculator/` + `tiktok-live/` + `tiktok-creative-analysis/` + `tiktok-account/` (pointer only to `tiktok-shop-hourly` in 1-1-sales).
+- [x] `2-gmvmax/` — `gmvmax-auto/` + `tiktok-calculator/` + `tiktok-live/` + `tiktok-creative-analysis/` + `tiktok-account/` (pointer only to `tiktok-shop-hourly` in 1-1-sales).
 - [x] `1-knowledge/` — existing `0-0-tiktok/` + `tiktok-strategy/` + `tiktok-event/` (both moved 05 Oct, history preserved via rename detection).
 - [x] `1-2-tools/` — `g-sheet_tools/aff-notify/` + `tg_bot/` + `ROW-COL-HIGHLIGHT/` + `row_highlight-keyword/`.
-- [ ] STAY at repo root always: `docs/` + `tiktok*.txt` (TikTok app review / Pages `/(root)` frozen) + `.vercel/` + `opencode.json` + `.env.local` + `.gitignore`.
+- [x] STAY at repo root always: `docs/` + `tiktok*.txt` (TikTok app review / Pages `/(root)` frozen) + `.vercel/` + `opencode.json` + `.env.local` + `.gitignore` (verified untouched, still at root).
 
 ## 3. Phase 1 — low-risk (do now)
 
@@ -48,12 +48,12 @@
 - [x] 4. Pointers: `README.md` shims at old root paths DONE then REMOVED (dirs held shim only, verified) — old paths fully gone; root `AGENTS.md` index + `1-master/MASTER-PLAN.md` §1/§2/§5 refs DONE (old-forms grep absent, case-sensitive).
 - [x] 5. Verify P1: `node --check` 5/5 `.gs→.js` OK, `1-2-tools` ASCII-clean, `git status` shows no secrets.
 
-## 4. Phase 2 — high-risk (EXECUTED 05 Oct 2026, staged; owner Vercel/Telegram steps open)
+## 4. Phase 2 — high-risk (EXECUTED + COMMITTED + PUSHED 05 Oct 2026; owner Vercel/Telegram steps DONE)
 
 - [x] 1. `gmvmax-auto/` → `2-gmvmax/gmvmax-auto/`:
   - [x] Fix `deploy_online.py`: `ROOT` now walks up 2 levels to repo root (verified resolves + `ONLINE` exists, `py_compile` OK).
-  - [ ] Vercel Dashboard Root Directory: `gmvmax-auto/online` → `2-gmvmax/gmvmax-auto/online`; re-link `.vercel/`, redeploy needs fresh `npx vercel login`. OWNER ACTION.
-  - [ ] Telegram: URLs stay `marketer-hw.vercel.app`; re-test `/tg-probe?keep=1` + `/fetch` + `/fetch_hourly` + chart callback. OWNER ACTION.
+  - [x] Vercel Dashboard Root Directory → `2-gmvmax/gmvmax-auto/online`; redeployed by owner 05 Oct (site loads, probe ran against new deployment).
+  - [x] Telegram: `/tg-probe?keep=1` 18/21 (3 fails = documented pre-existing API limits) + `/fetch` + `/fetch_hourly` live-verified by owner 05 Oct.
   - [x] `online/vercel.json` cron `/api/cron/nightly-sync` unchanged (path-relative); `tsc --noEmit` exit 0.
 - [x] 2. `tiktok-creative-analysis/` + `tiktok-account/` → `2-gmvmax/` AS A PAIR:
   - [x] `dashboard.py` sibling-relative accounts path resolves True (no code change needed); `sheet-sync.py` MCP lookup walks up (env override preserved); `py_compile` OK.
@@ -71,4 +71,4 @@
 
 - [x] Confirm `tiktok-strategy/` already moved? (YES — moved 05 Oct Phase 1 into `1-knowledge/`, git shows `R tiktok-strategy/ → 1-knowledge/tiktok-strategy/`).
 - [ ] Subfolder dash names under `1-1-sales/` + `1-2-tools/` (e.g. `sales-performance-analysis` vs `sales_performance`)?
-- [ ] `tiktok-shop` vs `tiktok-shop-hourly` overlap: both in 1-1-sales — merge or keep separate? (kept separate in this plan).
+- [x] `tiktok-shop` vs `tiktok-shop-hourly` overlap: DECIDED 05 Oct — kept separate in `1-1-sales/`.
