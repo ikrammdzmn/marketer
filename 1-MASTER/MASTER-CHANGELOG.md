@@ -4,6 +4,17 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 05 Oct 2026
+
+- `3. TTAM/campaign-performance-analysis` v1–v4 (NEW track, uncommitted):
+  Metric Scorer (11 TikTok OMTM: ERRI/HPS/ACS/CES/EDS/VVES/RVS/HRQ/RES/LQS/BCE)
+  — upload/drag-drop campaign xlsx, quartile-calibrated v3 bands, KILL/WATCH/
+  SCALE flags + OVERALL verdict/reason, kill-list with 50/30/20% cut simulator,
+  CSV export; v2 port fix (:8123, creative keeps :8000); v3 `metrics.json`
+  registry + in-UI manager; v4 one-JSON-per-preset split
+  (`presets/` manifest + switcher); pure HTML/vanilla JS, localhost only
+  -> `3. TTAM/campaign-performance-analysis/CHANGELOG.md`
+
 ## 04 Oct 2026
 
 - `gmvmax-auto` M9c Telegram maturity II (uncommitted): Total message + chart buttons (QuickChart links, dashboard-first pairs) + delivery status (`011`, enum map, Telegram suffix + dashboard badges/rollups) + heading/marked/quote redesign with verdict + ROI tables + rich probes round 1–2 + `tg-rich-messages.md` (~100 classes) — shop 1 only

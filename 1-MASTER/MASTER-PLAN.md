@@ -24,6 +24,14 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
   auth, max 31) + saved-JSON fallback, sums-vs-footer gate, recomputed ROAS,
   missing-vs-zero hours, Chart.js lines, combined CSV. Quirks: flat feed ROAS
   (recomputed), allocated hourly spend (shape-only). Statuses in its `plan.md`.
+- `3. TTAM/campaign-performance-analysis/` — Metric Scorer (NEW 05 Oct,
+  uncommitted): TikTok campaign-report xlsx in, 11 OMTM out (ERRI/HPS/ACS/CES/
+  EDS/VVES/RVS/HRQ/RES/LQS/BCE) with KILL/WATCH/SCALE flags + OVERALL verdict,
+  kill-list cut simulator, CSV export; bands from JSON presets (`presets/`,
+  one file per campaign + manifest), metrics from JSON registry
+  (`metrics.json`) with in-UI manager. Pure HTML/vanilla JS, localhost :8123
+  (creative keeps :8000). Spec `metric.md`, plan `metric-plan.md`, own
+  `AGENTS.md`/`feature.md`/`DEV_NOTES.md`/`CHANGELOG.md`.
 - `opencode.json` (committed 23 Sep `2663c7a`) - opencode MCP pointer: `google-sheets`
   local via absolute WinGet `uv.exe` (forward slashes) + local `tools/` path, secret-free
   (`{env:GOOGLE_SHEETS_CRED}` only). Antigravity counterpart
@@ -40,6 +48,14 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
 - `1-MASTER/` — this file + `MASTER-CHANGELOG.md` (repo rollup) + `MASTER-AGENTS.md` (shared conventions) + `antigravity-aistudio.md` (IDE transfer guide, not product code).
 
 ## 2. Current status (2026-09-20, midday)
+
+- 05 Oct: `3. TTAM/campaign-performance-analysis` v1–v4 (uncommitted): NEW
+  Metric Scorer built + verified (11 OMTM, quartile-calibrated v3 bands,
+  OVERALL verdict, kill-list cut simulator, CSV; :8123 port fix; metrics.json
+  registry; presets split). Folder moved from `sales-performance-analysis/`
+  (typo fixed). Sales Performance Analysis System `plan.md` relocating to
+  `1.1 Sales\` (owner, manual). Token note: full-sheet reads ~8-12k —
+  default to KILL/WATCH slices from chat.
 
 - 30 Sep: `tiktok-shop-hourly` v1–v4 (uncommitted): new track built + verified
   (viewer + same-origin userscript fetcher + scorecard + CSV loading;

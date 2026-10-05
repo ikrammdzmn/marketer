@@ -1,0 +1,19 @@
+{
+  "preset": "vol2-focused-v3",
+  "label": "VOL2 Focused v3 (calibrated)",
+  "updatedAt": "2026-10-05",
+  "note": "Calibrated to GMV MAX VOL2 01-05 Oct quartiles. Flat single-band schema.",
+  "metrics": [
+    { "id": "erri", "name": "Enter Room Rate Impression", "short": "ERRI", "format": "%", "inputs": ["live", "imp"], "expression": "imp ? live / imp * 100 : 0", "invert": false, "enabled": true, "params": {}, "band": { "k": 0.003, "s": 0.015 } },
+    { "id": "hps", "name": "HOOK POWER SCORE", "short": "HPS", "format": "%", "inputs": ["sfv", "imp"], "expression": "HR * 100", "invert": false, "enabled": true, "params": {}, "band": { "k": 20, "s": 35 } },
+    { "id": "acs", "name": "ATTENTION COST SCORE", "short": "ACS", "format": "RM", "inputs": ["spend", "sfv"], "expression": "ACS", "invert": true, "enabled": true, "params": {}, "band": { "k": 0.025, "s": 0.008 } },
+    { "id": "ces", "name": "CONSIDERATION EFFICIENCY SCORE", "short": "CES", "format": "numeric", "inputs": ["sfv", "imp", "prof", "sh", "com", "fol", "likes", "spend"], "expression": "ACS && ACS !== 999 ? cesX * HR * PVR * EDSraw / ACS : 0", "invert": false, "enabled": true, "params": { "cesX": 10000 }, "band": { "k": 15, "s": 60 } },
+    { "id": "eds", "name": "ENGAGEMENT DEPTH SCORE", "short": "EDS", "format": "%", "inputs": ["sh", "com", "fol", "likes"], "expression": "EDSraw * 100", "invert": false, "enabled": true, "params": {}, "band": { "k": 5, "s": 20 } },
+    { "id": "vves", "name": "VIDEO VIEW EFFICIENCY SCORE", "short": "VVES", "format": "numeric", "inputs": ["sfv", "imp", "awt", "spend"], "expression": "ACS && ACS !== 999 ? (HR * awt) / ACS : 0", "invert": false, "enabled": true, "params": {}, "band": { "k": 100, "s": 400 } },
+    { "id": "rvs", "name": "RETENTION VALUE SCORE", "short": "RVS", "format": "numeric", "inputs": ["awt", "spend", "sfv"], "expression": "ACS && ACS !== 999 ? awt / ACS : 0", "invert": false, "enabled": true, "params": {}, "band": { "k": 500, "s": 1500 } },
+    { "id": "hrq", "name": "HOOK REACH QUALITY", "short": "HRQ", "format": "%", "inputs": ["sfv", "reach"], "expression": "reach ? sfv / reach * 100 : 0", "invert": false, "enabled": true, "params": {}, "band": { "k": 25, "s": 40 } },
+    { "id": "res", "name": "REACH EFFICIENCY SCORE", "short": "RES", "format": "numeric", "inputs": ["sfv", "reach", "spend"], "expression": "reach && spend ? ((sfv / reach) * resX) / (spend / reach) : 0", "invert": false, "enabled": true, "params": { "resX": 10 }, "band": { "k": 400, "s": 1200 } },
+    { "id": "lqs", "name": "LIVE QUALITY SCORE", "short": "LQS", "format": "numeric", "inputs": ["live10", "spend"], "expression": "spend ? live10 / spend * 100 : 0", "invert": false, "enabled": true, "params": {}, "band": { "k": 1, "s": 3 } },
+    { "id": "bce", "name": "BC EFFICIENCY", "short": "BCE", "format": "numeric", "inputs": ["sfv", "imp", "prof", "spend"], "expression": "ACS && ACS !== 999 ? bcX * HR * PVR / ACS : 0", "invert": false, "enabled": true, "params": { "bcX": 1000 }, "band": { "k": 20, "s": 60 } }
+  ]
+}

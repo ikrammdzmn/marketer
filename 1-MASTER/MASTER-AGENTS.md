@@ -79,6 +79,12 @@ additional prompt Do not delete this part
   (totals strip, hourly table, Chart.js lines, DEAD/GOLDEN/WATCH scorecard,
   CSV in/out); feed quirks (flat ROAS recomputed, allocated spend
   shape-only) + strategy guardrails stamped in-UI. Statuses in its `plan.md`.
+- `3. TTAM/campaign-performance-analysis/` — Metric Scorer (11 TikTok OMTM):
+  xlsx upload/drag-drop, quartile-calibrated bands, KILL/WATCH/SCALE + OVERALL
+  verdict, kill-list cut simulator, CSV export; JSON presets (one per campaign
+  + manifest) + JSON metric registry with in-UI manager. Static, :8123 only.
+  Bands-from-quartiles rule; `Total of` rows dropped on ingest. Statuses in
+  `metric-plan.md`; spec in `metric.md`.
 - `tiktok-account/` — Display API dashboard (`dashboard/`; `tester.py` FROZEN; link-mismatch guard + throttled/merged pulls + stream progress popup + fetched_at; releases in `CHANGELOG.md`) + `sync/` daily Sheets bridge (own AGENTS.md: path-import reuse, `X()` retry, dry-run purity, lengths-only secrets).
 - `tiktok-strategy/` — Growth OS playbook (guardrails owner, §6 above).
 - `tiktok-event/` — RACI board, vanilla single-file (`raci_campaign_dashboard.tsx`
