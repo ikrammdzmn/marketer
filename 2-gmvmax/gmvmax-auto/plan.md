@@ -52,13 +52,15 @@ Neon reachable from dashboard cache → collector writes 48 consecutive 30m snap
 
 Live 21 Sep: Windows task `GMVMaxCollector30m` runs `collector_task.bat` every 30m (closed-window T-2h, quiet-hours skip + same-slot dedupe in code). Count grows on its own — check `/api/health` count.
 
+> NEXT SESSION: task lives on the owner's other PC (absent on `Pc_Ikram`). Update its action to `...\marketer\2-gmvmax\gmvmax-auto\collector_task.bat` (moved in restructure Phase 2; `.bat` contents already fixed). Until then, 30-min auto-pulls are stopped — snapshots only resume after the task update.
+
 ## 5. Non-goals (P1+)
 
 No decider writes, no Telegram actions, no approvals queue live, no monthly kill-switch enforcement, no email/PWA, no `acct` file→DB cutover.
 
 ## 6. Source of truth
 
-Detail: `gmvmax-auto/masterplan.md` §9 phases (P0 first, on explicit go). Neon rollout: `tiktok-account/NEON_NOTE.md`.
+Detail: `2-gmvmax/gmvmax-auto/masterplan.md` §9 phases (P0 first, on explicit go). Neon rollout: `2-gmvmax/tiktok-account/NEON_NOTE.md`.
 
 ## 7. Online version — Vercel + Neon (locked 29 Sep, replicates temp-marketplace)
 

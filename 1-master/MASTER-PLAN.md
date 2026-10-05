@@ -137,6 +137,7 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
 8. Committing/pushing unasked, or committing secrets — never.
 
 ## 5. Where to work next (pointer, not a start)
+- NEXT SESSION: update `GMVMaxCollector30m` task action on the owner's other PC → `...\marketer\2-gmvmax\gmvmax-auto\collector_task.bat` (30-min pulls stopped until then).
 - GMV auto detail: `2-gmvmax/gmvmax-auto/masterplan.md` §9 phases (P0 first, on explicit go).
 - Neon rollout: `2-gmvmax/tiktok-account/NEON_NOTE.md` (dual-write, then cutover).
 - New-session handoff order: `1-master/MASTER-PLAN.md` → folder plan → `1-knowledge/0-0-tiktok/gmvmax/gmvmax.md` if touching GMV logic.
