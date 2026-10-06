@@ -8,7 +8,13 @@ Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 - Outage debug: bot went silent post-restructure — `getWebhookInfo` showed 401s (secret drift → re-setWebhook with re-copied `CRON_SECRET`) then empty-body 401s (Vercel Deployment Protection in front). Fix kept: protection stays ON, webhook URL carries `?x-vercel-protection-bypass=` (query works, Telegram can't send headers). Probe 18/21 (3 fails = documented pre-existing API limits), `/fetch` + `/fetch_hourly` + `/start` live-green.
 - `/start` immediately proved value: hourly stops Oct 5 23:00 (~25h stale = stopped `GMVMaxCollector30m`; task action still pre-move on owner's other PC).
 
-## 06 Oct 2026 — M11 TTAM metrics + DB presets (shop 1, tsc-clean, deploy decides)
+## 07 Oct 2026 — deployment protection + preset write guard (owner verified)
+
+- Incognito test found Production public despite Vercel Authentication being enabled for Standard Protection (preview-only). Owner changed it to **All Deployments**; other profiles are now blocked.
+- `/api/ttam-presets` POST now requires dedicated `PRESET_WRITE_KEY` (not `CRON_SECRET`), fail-closed when absent; Vercel wall remains the actual identity gate because `NEXT_PUBLIC_PRESET_WRITE_KEY` is browser-visible. Env deployment delay caused temporary 401; owner reports the existing matching values work once deploy finished.
+- Next: Google OAuth evaluation/implementation + auth regression tests. No key values recorded here.
+
+## 06 Oct 2026 — M11 TTAM metrics + DB presets (shop 1, tsc-clean, committed/pushed `8665857`)
 
 - TTAM 3-level drills (`ttam.ts`: campaign/adgroup/ad, on-demand click-to-load, spend-only fail-open) + full 12-metric pulls + exact v3 OMTM scoring (`scoreTtamRow`) + flags/verdict on theory-v2 bands (provisional) + toggles + verdict filter + search + LEARNING guardrail + 3-day rule.
 - Preset system: `012_ttam_presets.sql` (new `ttam` schema, applied dev+prod, seed active) + `/api/ttam-presets` (CRUD + scorer export) + `/presets` manager page + TTAM-bar no-refetch picker + runtime custom-metric eval + full-name tooltips.
@@ -16,7 +22,7 @@ Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 - Bugs 36–40 (client/server import wall, drill dimension 40002, edit near-misses, stale vercel cache, overstated API knowledge) — see DEV_NOTES Checkpoint 11.
 - Still open: LQS verify, TTAM quartile recalibration, FUTURE UI items, A-vs-B sync, 🔥 floor, OFF per-type, export demo, shop approval, cron ping. All uncommitted.
 
-## 06 Oct 2026 — M10 dashboard overhaul (Tailwind + filters + calendar)
+## 06 Oct 2026 — M10 dashboard overhaul (Tailwind + filters + calendar; committed/pushed `8665857`)
 
 - Tailwind rewrite (cards, sticky header, KPI cards) + delivery pills green/grey + Sessions LIVE-only + Status filter/sort + Fetch/Drill spinners + 15s cooldown + v51-port calendar popup (31-day cap) + Dashboard|Presets nav.
 

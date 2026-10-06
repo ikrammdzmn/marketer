@@ -70,9 +70,19 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/ttam-presets {action:update|duplicate|activate, ...}
+// POST /api/ttam-presets {action:update|duplicate|activate|delete, ...}
+// Write guard: Bearer PRESET_WRITE_KEY (dedicated key, NOT the cron secret).
+// The browser page sends it via NEXT_PUBLIC_PRESET_WRITE_KEY — visible to
+// logged-in viewers by design, so this is a tripwire (drive-by curl, accidents,
+// CSRF), not a vault. The Vercel wall stays the real gate. Fail-closed: no key
+// configured → writes refuse.
 export async function POST(request: Request) {
   try {
+    const writeKey = (process.env.PRESET_WRITE_KEY ?? "").trim();
+    if (!writeKey) return NextResponse.json({ error: "writes disabled (no key)" }, { status: 503 });
+    if (request.headers.get("authorization") !== `Bearer ${writeKey}`) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
     const body = await request.json();
     const action = body.action ?? "";
     if (action === "activate") {

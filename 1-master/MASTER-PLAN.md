@@ -54,7 +54,9 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
 
 ## 2. Current status (2026-09-20, midday)
 
-- 06 Oct: `gmvmax-auto` M10+M11 (tsc-clean, uncommitted, deploy decides):
+- 07 Oct security: `marketer-hw.vercel.app` is protected with Vercel Authentication **All Deployments** (Standard Protection was preview-only and left prod public). Preset write Bearer guard is defense-in-depth. Owner requests Google OAuth as next session; keep current wall until OAuth is verified with signed-out, authorized, and unauthorized-user tests. See `2-gmvmax/gmvmax-auto/DEV_NOTES.md` Checkpoint 13.
+
+- 06 Oct: `gmvmax-auto` M10+M11 (tsc-clean, committed/pushed `8665857`; prod flow owner-tested):
   dashboard Tailwind overhaul + TTAM 3-level drills with 11 OMTM scores +
   flags/verdict + DB presets + `/presets` manager + scorer export; `012`
   applied dev+prod; probe-verified 27 metrics; open: LQS verify,

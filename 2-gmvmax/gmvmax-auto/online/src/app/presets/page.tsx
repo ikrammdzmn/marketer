@@ -53,7 +53,10 @@ export default function PresetsPage() {
     try {
       const r = await fetch(`/api/ttam-presets`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_PRESET_WRITE_KEY ?? ""}`,
+        },
         body: JSON.stringify({ action, key: presetKey, ...extra }),
       });
       const body = await r.json();

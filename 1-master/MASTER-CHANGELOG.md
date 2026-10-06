@@ -7,15 +7,15 @@ Rule: whoever ships a folder release adds one line here the same session.
 ## 07 Oct 2026
 
 - Bot `/start` status + unknown-command replies (deployed + live-verified): alive/DB/freshness per check, hint on bad `/cmd`; silence fixed via `CRON_SECRET` re-`setWebhook` + protection-bypass query in webhook URL (protection stays ON). `/start` shows hourly stale since Oct 5 23:00 → `GMVMaxCollector30m` task action still pre-move (owner's other PC).
+- Security follow-up: incognito exposed Production because Standard Protection covered previews only; owner switched Vercel Authentication to All Deployments and verified other profiles are blocked. Preset writes now require dedicated Bearer key (fail-closed); browser `NEXT_PUBLIC_*` key is defense-in-depth, not secret. Next session: Google OAuth + auth regression checks. Details: `2-gmvmax/gmvmax-auto/DEV_NOTES.md` Checkpoint 13.
 
 ## 06 Oct 2026
 
-- `gmvmax-auto` M10 dashboard overhaul (tsc-clean, uncommitted): Tailwind rewrite
+- `gmvmax-auto` M10 dashboard overhaul (tsc-clean, committed/pushed `8665857`): Tailwind rewrite
   + delivery green/grey + Sessions LIVE-only + Status filter/sort + spinners +
   15s cooldown + v51 calendar port + nav tabs
   -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
-- `gmvmax-auto` M11 TTAM metrics + DB presets (tsc-clean, deploy decides,
-  uncommitted): 3-level drills + 12-metric pulls + v3 scoring + flags/verdict
+- `gmvmax-auto` M11 TTAM metrics + DB presets (tsc-clean, committed/pushed `8665857`): 3-level drills + 12-metric pulls + v3 scoring + flags/verdict
   (theory provisional) + LEARNING guardrail + `012_ttam_presets.sql` (dev+prod)
   + `/presets` manager + scorer export + custom-metric eval; probe-verified
   27 metrics; open: LQS verify, recalibration, FUTURE items

@@ -96,7 +96,7 @@ additional prompt Do not delete this part
 - `1-2-tools/g-sheet_tools/` — Sheets Apps Script tools (bound scripts, no server):
   `aff-notify/` 4x-daily Affiliate Collection digest (email `code.gs` +
   Telegram `tg_bot/` group-topic sender, own AGENTS.md).
-- `2-gmvmax/gmvmax-auto/` — GMV Max online M10/M11 live 06 Oct (`marketer-hw.vercel.app`: Tailwind dashboard + status filter/sort + cooldown + v51 calendar + TTAM 3-level drills with 11 OMTM scores + flags/verdict + DB presets + `/presets` manager, shop 1) + P0 local read-only (prod OAuth, net ROI locked, 30m task). Shop-token route parked (app review pending). Sparring mode ON for this folder. Deploys from repo root (`deploy_online.py`, Windows `npx.cmd` fix, CLI login expires — re-login on 401/Not-authorized). Docs: `DEV_NOTES.md` (handoff + discoveries, Checkpoint 11 newest, bugs 36–40) + `feature.md` (user guide) + `telegram_message.md` + `tg-rich-messages.md` (rich catalog).
+- `2-gmvmax/gmvmax-auto/` — GMV Max online M10/M11 (`marketer-hw.vercel.app`: Tailwind dashboard, TTAM 3-level metrics/verdicts + DB presets manager) + P0 local read-only. Security: Vercel Authentication must cover All Deployments; public browser key is defense-in-depth only. Next owner-requested work: evaluate Google OAuth. Sparring mode ON. Deploy via repo-root `deploy_online.py`. Docs: `DEV_NOTES.md` (Checkpoint 13 newest, bugs 36–54), `feature.md`, `ttam-api-metrics-plan.md`, `telegram_message.md`, `tg-rich-messages.md`.
 - Sibling `../tools/` (private GitHub `ikrammdzmn/tools`, branch `main`) — local MCP runners. `spreadsheet-mcp`
   (27 Sheets tools, `uv`, stdio `127.0.0.1` only, IGNORED clone; nested upstream
   `.git` → `dudegladiator`, never push there). Secrets at

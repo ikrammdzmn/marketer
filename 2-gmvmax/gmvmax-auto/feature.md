@@ -56,6 +56,8 @@
 - After every Fetch the button rests ~15 seconds (countdown shown) so TikTok never
   rate-limits us. A spinner shows while loading.
 - Top tabs: Dashboard and Presets.
+- Access is limited by Vercel Authentication to signed-in members of the Vercel team. This is currently the login system; next session is planned to evaluate Google OAuth.
+- Preset saves use an additional write check. It is defense-in-depth only: the browser-visible key is not a secret, so Vercel's login wall is the actual access boundary.
 
 ## TTAM manual campaigns (Metric = TTAM, shop 1)
 

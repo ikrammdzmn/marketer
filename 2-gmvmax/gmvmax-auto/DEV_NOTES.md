@@ -1,7 +1,48 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 12 first (facts), then the vibe below it.
+> Next-you: read Checkpoint 13 first (facts), then the vibe below it.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
+
+## Checkpoint 13 — 07 Oct 2026 (security: public exposure → wall → write guard; NEXT: Google OAuth)
+
+**What happened.** Owner tested prod from an incognito profile — it opened with
+no login. Verified independently via server-side fetch: full dashboard HTML,
+zero auth. The site had been PUBLIC (spend/GMV/campaigns + unguarded
+`/api/ttam-presets` writes). Root cause: Deployment Protection was on
+"Standard Protection" = previews only; production was uncovered. Fix: switched
+to **All Deployments** (owner click, saved) — other profiles now hit the wall.
+Step 2 built and owner-tested after deploy completed: Bearer `PRESET_WRITE_KEY` guard on preset writes
+(dedicated key, never the cron secret; fail-closed 503 without it; reads stay
+open behind the wall). Browser sends `NEXT_PUBLIC_PRESET_WRITE_KEY` — same
+value in both vars. Commits from the parallel window landed mid-session
+(`80faa1b`: Checkpoint 12 + bugs 41–50 + /start) — numbering continues here.
+
+**Vibe.** Security arc inside a shipping day: owner found the hole themselves
+("i can open from incognito") — take such reports at face value and verify
+externally first, debate later. Mode-switching fatigue is real (~12 switches
+across both windows); owner compensates with one-liners ("goo", "ok done").
+"Explain like im 5" = I'm over-technical again: one analogy + one action.
+Key saga took 4 rounds (401s) before the obvious emerged (deploy timing) —
+state the boring hypothesis FIRST next time (env→save→deploy order), then dig.
+
+**Bugs found + fixed (do not regress).**
+51. **"Standard Protection" ≠ production.** Toggle ON but only previews covered;
+    prod served publicly. LESSON: verify every gate from outside (incognito +
+    logged-out fetch), never trust the toggle screenshot. Fixed = All Deployments.
+52. **NEXT_PUBLIC_* bakes at build time.** Env added → deploy → still 401 means
+    the live bundle predates the env. LESSON: env → Save → deploy, in that order;
+    "unauthorized" with correct setup = check deploy timing before anything else.
+53. **Vercel blocks sensitive-type NEXT_PUBLIC_ vars.** Fix = Config/plain type
+    (browser-sent keys are Config by design; real secrets stay Secret type).
+54. **Burned spare key.** Generated a replacement mid-debug that was never used —
+    it sits in chat history. LESSON: generate only at switch-over, one key at a
+    time; the unused string is dead, never paste it anywhere.
+
+**NEXT SESSION (owner order): Google OAuth.** Replaces/augments the Vercel wall
+with real accounts. Suggested shape: Auth.js + Google provider first (heaviest
+value, least code); email/password only if per-person identity is truly needed —
+full discussion + effort ladder is in this chat's 07 Oct scrollback. Start by
+reading it, then Checkpoint 12 (parallel window) for the bot/protection state.
 
 ## Checkpoint 12 — 06→07 Oct 2026 (restructure Phase 2 land + Telegram bot down→fixed + /start status)
 
