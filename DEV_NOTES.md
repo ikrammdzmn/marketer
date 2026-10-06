@@ -80,3 +80,53 @@ from screenshots alone.
 - 9 tokens were relinked - watch for expiry/revoke; never run live sync
   from two PCs at once.
 - Commit the evening's working tree when owner asks (no secrets in set).
+
+---
+
+# Session 06→07 Oct 2026 — repo-wide restructure + bot outage (read this first, then Checkpoint 12 in `2-gmvmax/gmvmax-auto/DEV_NOTES.md`)
+
+## Vibe (next-you: sync to this)
+
+Two back-to-back night windows, owner in full shipping flow: pings are
+one-liners ("ok", "goo", "fix all", "push"), zero ceremony, screenshots and
+command outputs doing the talking. The working contract that emerged — owner
+owns all portal/secret/dashboard surfaces, agent owns everything in git —
+held for the whole session and it's the thing to preserve. Never ask for a
+secret value; ask for command outputs. Owner redacts in chat and admits
+mistakes fast ("my mistake" x2 on the bypass placeholder) — respond by making
+the next command copy-paste atomic, not by lecturing. Short replies are the
+protocol: one action per message, facts first, numbers first. Sparring mode
+stays ON in gmvmax-auto. Mood at close: tired, green across the board, tree
+clean, pushed. Match it.
+
+## Facts
+
+- Restructure Phases 1+2 executed, committed, pushed (`7ee3133`, `fab6495`,
+  follow-ups). Root is now numbered folders + `docs/` only. All renames at
+  100% similarity (history preserved). Vercel Root Dir redeployed by owner;
+  Telegram `/tg-probe` 18/21 + `/fetch` + `/fetch_hourly` + `/start`
+  live-verified 06→07 Oct.
+- Bot now answers `/start` (alive + DB + hourly/daily freshness, solo
+  degrading) and unknown `/cmd` (hint reply); plain chatter ignored
+  (`7b02b1c`, `398edec`).
+- `/start` on 07 Oct 00:12 MYT showed hourly stale since Oct 5 23:00 —
+  `GMVMaxCollector30m` stopped (task lives on owner's other PC, action still
+  pre-move; `.bat` contents fixed, task update noted in
+  `2-gmvmax/gmvmax-auto/plan.md` + MASTER-PLAN §5).
+- Owner's parallel track in `online/` (M10/M11, ttam-presets, presets page,
+  `.vscode/`) was left untouched throughout — do not sweep it into
+  restructure commits.
+- Session bugs B41–B50 + lessons live in Checkpoint 12
+  (`2-gmvmax/gmvmax-auto/DEV_NOTES.md`) — the distilled rules: getWebhookInfo
+  first, bare-POST to separate protection vs route 401s, read-back every
+  setWebhook for PASTE, no backticks in PS strings, `-CaseSensitive` greps,
+  re-read whole functions after structural edits, checklist `.bat`/scheduler
+  paths on every move, prove negatives runnable, format DB values at the
+  chat boundary.
+
+## Open (next window)
+
+- `GMVMaxCollector30m` task action on owner's other PC (see plan.md note).
+- Owner's uncommitted `online/` work (`.env.example`, ttam-presets route,
+  presets page) — theirs to commit.
+- `/start` freshness should go green again once the collector resumes.

@@ -2,6 +2,12 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 07 Oct 2026 — bot `/start` status + unknown-command replies (tsc-clean, deployed + live-verified)
+
+- `/start` → system status in-topic (alive MYT + DB `SELECT 1` + `MAX(hour_slot)` + `MAX(date)`, each degrading solo, no secrets out; daily formatted `YYYY-MM-DD`). Unknown `/cmd` → hint reply; plain chatter stays ignored (`tg-webhook/route.ts`).
+- Outage debug: bot went silent post-restructure — `getWebhookInfo` showed 401s (secret drift → re-setWebhook with re-copied `CRON_SECRET`) then empty-body 401s (Vercel Deployment Protection in front). Fix kept: protection stays ON, webhook URL carries `?x-vercel-protection-bypass=` (query works, Telegram can't send headers). Probe 18/21 (3 fails = documented pre-existing API limits), `/fetch` + `/fetch_hourly` + `/start` live-green.
+- `/start` immediately proved value: hourly stops Oct 5 23:00 (~25h stale = stopped `GMVMaxCollector30m`; task action still pre-move on owner's other PC).
+
 ## 06 Oct 2026 — M11 TTAM metrics + DB presets (shop 1, tsc-clean, deploy decides)
 
 - TTAM 3-level drills (`ttam.ts`: campaign/adgroup/ad, on-demand click-to-load, spend-only fail-open) + full 12-metric pulls + exact v3 OMTM scoring (`scoreTtamRow`) + flags/verdict on theory-v2 bands (provisional) + toggles + verdict filter + search + LEARNING guardrail + 3-day rule.

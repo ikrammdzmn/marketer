@@ -1,7 +1,77 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 11 first (facts), then the vibe below it.
+> Next-you: read Checkpoint 12 first (facts), then the vibe below it.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
+
+## Checkpoint 12 — 06→07 Oct 2026 (restructure Phase 2 land + Telegram bot down→fixed + /start status)
+
+**Vibe this window (sync to this first).** Owner in pure shipping mode: terse
+pings ("ok", "goo", "fix all", "push"), night-owl MYT hours, zero small talk.
+Dynamic is split-brain and it works — owner owns every portal/dashboard/secret
+surface (Vercel clicks, token pastes, `/fetch` taps, screenshots-as-proof),
+agent owns everything in git. Never ask owner for a secret VALUE; always ask
+for command OUTPUTS. Owner redacts in chat (`$token='bot'`) — that's discipline,
+not evasiveness; work with masked values and verify via side-channels
+(`getWebhookInfo.url` shows whether a placeholder went in literally). When the
+owner says "my mistake" twice in a row, slow down and make the next command
+copy-paste atomic (all vars + verify in ONE block). Short replies are not
+rudeness, they're the protocol — match it: one action per message, facts first.
+
+**What shipped.**
+- Restructure Phase 2 landed under this folder's feet (`2-gmvmax/gmvmax-auto/`);
+  `deploy_online.py` ROOT walks up 2 (verified resolves); `sheet-sync.py`
+  sibling-`../tools` lookup now walks up (old depth broke under `2-gmvmax/`);
+  `dashboard.py` needed NO change (sibling layout preserved, path resolves True).
+- Bot commands (commits `7b02b1c`, `398edec`): `/start` → full system status
+  (alive MYT + `SELECT 1` + `MAX(hour_slot)` + `MAX(date)`, each degrading
+  independently, never leaks secrets); unknown `/commands` → hint reply;
+  non-slash chatter stays ignored. Daily freshness formatted `YYYY-MM-DD`
+  (was raw `Date.toString`). `tsc` exit 0. Redeployed by owner; `/start`
+  live-verified 07 Oct 00:12 MYT — and immediately proved value: hourly stops
+  at Oct 5 23:00 (~25h stale = stopped `GMVMaxCollector30m`, task action still
+  points pre-move on owner's other PC — see plan.md NEXT SESSION note).
+- Protection workaround (keep this): deployment stays behind Vercel
+  Authentication; webhook URL carries `?x-vercel-protection-bypass=` (query
+  works, Telegram can't send headers). Route ignores query params, still
+  demands its own secret header — no exposure added.
+
+**Bugs found + fixed (do not regress).**
+41. **Secret drift after redeploy (401, pending pile-up).** `secret_token`
+    registered at setWebhook time ≠ current `CRON_SECRET`. Diagnose FIRST with
+    `getWebhookInfo` — `last_error_message` names it. Fix = re-setWebhook with
+    re-COPIED secret (never retyped). LESSON: secret mismatch is the default
+    suspect for silent bots; the info endpoint tells you before you guess.
+42. **Protection 401 vs route 401 look identical in `getWebhookInfo`.**
+    Distinguish with a bare POST (no headers, exactly what Telegram sends):
+    JSON `{"error":"unauthorized"}` = route reached (env/secret issue);
+    empty-body 401 = Vercel gate in front (protection issue). LESSON: replicate
+    the caller's exact conditions, bypass headers included or not.
+43. **Placeholder went live twice.** `PASTE_…`/`PUT_THE_…` registered literally
+    (visible in `getWebhookInfo.url`). LESSON: every setWebhook must be
+    followed by a getWebhookInfo read-back checking for the word PASTE —
+    make it one atomic block, not two messages.
+44. **PowerShell backtick-t ate doc text.** `` `tiktok `` in double-quoted
+    strings became TAB+`iktok` (`2-gmvmax/README.md` said "iktok-…").
+    LESSON: never build file text with backticks in PS strings — use the
+    write tool for file content, always.
+45. **TDZ on moved declarations.** New `/start` branch used `chatId` declared
+    below it → would have 500'd every command. Caught on re-read before
+    shipping. LESSON: after structural edits, re-read the WHOLE function
+    (the folder rule already says this — this is why).
+46. **Depth-hardcoded sibling lookup.** `dirname(MARKETER)/tools` broke one
+    level deeper. Walk-up search replaces it (env override first, `isdir`
+    gate). LESSON: never hardcode `..` counts for cross-repo paths.
+47. **`collector_task.bat` double-stale.** Pointed at a previous PC's path AND
+    the pre-move relative path. Fixed contents; scheduler task action on
+    owner's other PC still open. LESSON: `.bat`/scheduler paths are part of
+    every move — checklist them like code.
+48. **Select-String is case-INsensitive by default.** Fake "clean" then fake
+    hits. LESSON: always `-CaseSensitive`, or verify with python `re`.
+49. **No-change needed is a finding, not a skip.** `dashboard.py` sibling
+    math survives the pair-move — verified by executing the path logic, not
+    by eyeballing. LESSON: prove negatives with runnable checks.
+50. **Raw `Date` in chat output.** `MAX(date)` printed GMT-longform.
+    LESSON: format every DB value at the boundary before it reaches chat.
 
 ## Checkpoint 11 — 06 Oct 2026 (M10 dashboard + M11 TTAM metrics/presets, all local-green, deploy decides)
 

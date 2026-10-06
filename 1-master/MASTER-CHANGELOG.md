@@ -4,6 +4,10 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 07 Oct 2026
+
+- Bot `/start` status + unknown-command replies (deployed + live-verified): alive/DB/freshness per check, hint on bad `/cmd`; silence fixed via `CRON_SECRET` re-`setWebhook` + protection-bypass query in webhook URL (protection stays ON). `/start` shows hourly stale since Oct 5 23:00 → `GMVMaxCollector30m` task action still pre-move (owner's other PC).
+
 ## 06 Oct 2026
 
 - `gmvmax-auto` M10 dashboard overhaul (tsc-clean, uncommitted): Tailwind rewrite
@@ -17,7 +21,7 @@ Rule: whoever ships a folder release adds one line here the same session.
   27 metrics; open: LQS verify, recalibration, FUTURE items
   -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
 
-## 05 Oct 2026
+## 07 Oct 2026
 
 - Repo restructure Phases 1+2 (committed + pushed): dash folders (`1-master/`, `1-knowledge/`, `1-1-sales/`, `1-2-tools/`, `2-gmvmax/`, `3-ttam/`, `0-0-tiktok/`); low-risk moves (event, strategy, shop, shop-hourly, sheet-tools, calculator, live) then high-risk trio (`gmvmax-auto/` with `deploy_online.py` ROOT fix, `tiktok-creative-analysis/` + `tiktok-account/` as pair); Vercel Root Dir redeployed + Telegram `/tg-probe` 18/21 + `/fetch` live-verified; `collector_task.bat` path fixed (scheduler task action still needs owner update). Detail: root `repo-restructureplan.md`.
 - `1-1-sales/sales-performance-analysis` v0 (plan only, uncommitted):
