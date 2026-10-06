@@ -45,8 +45,16 @@ async function buildStatusLines(): Promise<string[]> {
       `SELECT MAX(date) AS day FROM gmv.daily_shop_metrics WHERE shop_number = $1`,
       ["1"]
     );
-    const day = d.rows[0]?.day ?? null;
-    lines.push(`daily: ${day ?? "no rows yet"}`);
+    const rawDay = d.rows[0]?.day ?? null;
+    let day = "no rows yet";
+    if (rawDay !== null && rawDay !== undefined) {
+      try {
+        day = new Date(rawDay).toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+      } catch {
+        day = String(rawDay);
+      }
+    }
+    lines.push(`daily: ${day}`);
   } catch (e) {
     lines.push(`daily: check failed (${e instanceof Error ? e.message.slice(0, 60) : "error"})`);
   }
