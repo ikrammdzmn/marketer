@@ -46,6 +46,53 @@ export interface CampaignInfo {
   rawKeys: string[];
 }
 
+// ---- TTAM live metrics (preset-aligned) ----
+
+// Raw API metrics fetched per TTAM row. sfv has no exact API equivalent —
+// callers pass video_watched_6s as sfv and MUST surface sfvProxy so the UI
+// can label hook-family scores as proxy (spec: plain 6s double-counts).
+export const TTAM_METRICS = [
+  "spend", "impressions", "clicks", "reach",
+  "video_watched_6s", "average_video_play",
+  "likes", "comments", "shares", "follows", "profile_visits",
+  "live_views", "live_effective_views",
+];
+
+export interface TtamRaw {
+  spend: number; imp: number; clicks: number; reach: number;
+  sfv: number; prof: number; likes: number; sh: number; com: number; fol: number;
+  awt: number; live: number; live10: number | null;
+}
+
+// Score one row with the scorer's v3 formulas (app.js scoring block).
+// live10 null → LQS null. sfvProxy marks hook-family scores as proxy.
+export function scoreTtamRow(r: TtamRaw, sfvProxy: boolean): {
+  scores: Record<string, number | null>; sfvProxy: boolean;
+} {
+  const HR = r.imp ? r.sfv / r.imp : 0;
+  const PVR = r.imp ? r.prof / r.imp : 0;
+  const EDSraw = r.likes ? (r.sh + r.com + r.fol) / r.likes : 0;
+  const ACS = r.sfv ? r.spend / r.sfv : 999;
+  const ok = ACS !== 0 && ACS !== 999;
+  const scores: Record<string, number | null> = {
+    ERRI: r.imp ? (r.live / r.imp) * 100 : 0,
+    HPS: HR * 100,
+    ACS,
+    CES: ok ? (10000 * HR * PVR * EDSraw) / ACS : 0,
+    EDS: EDSraw * 100,
+    VVES: ok ? ((HR * r.awt) / ACS) : 0,
+    RVS: ok ? r.awt / ACS : 0,
+    HRQ: r.reach ? (r.sfv / r.reach) * 100 : 0,
+    RES: r.reach && r.spend ? ((r.sfv / r.reach) * 10) / (r.spend / r.reach) : 0,
+    LQS: r.spend && r.live10 !== null ? (r.live10 / r.spend) * 100 : null,
+    BCE: ok ? (1000 * HR * PVR) / ACS : 0,
+  };
+  for (const k of Object.keys(scores)) {
+    if (scores[k] !== null && !Number.isFinite(scores[k] as number)) scores[k] = null;
+  }
+  return { scores, sfvProxy };
+}
+
 // Status normalization: TikTok uses several vocabularies — map to ON/OFF,
 // anything else passes through raw so the UI shows truth, not a guess.
 export function normalizeStatus(v: unknown): string | null {
@@ -344,6 +391,48 @@ export async function getGMVMaxIds(accessToken: string, advertiserId: string): P
   return ids;
 }
 
+// Classic (manual/TTAM) campaigns for an advertiser: campaign/get returns
+// classic rows only (zero GMV rows — verified). Fail-open: on any error the
+// caller still shows spend rows with id-only names.
+export async function getManualCampaigns(
+  accessToken: string,
+  advertiserId: string
+): Promise<Map<string, { name: string; status: string | null }>> {
+  const out = new Map<string, { name: string; status: string | null }>();
+  let page = 1;
+  let hasMore = true;
+  while (hasMore) {
+    const params = new URLSearchParams({
+      advertiser_id: advertiserId,
+      page: String(page),
+      page_size: "100",
+    });
+    const res = await fetch(
+      `${BASE_URL}/open_api/${API_VERSION}/campaign/get/?${params.toString()}`,
+      { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
+    );
+    const body = await res.json();
+    if (body.code !== 0) throw new Error(`campaign/get code=${body.code}: ${body.message ?? ""}`);
+    for (const c of body.data?.list ?? []) {
+      const id = c.campaign_id ?? c.id;
+      if (!id) continue;
+      out.set(String(id), {
+        name: c.campaign_name ?? c.name ?? String(id),
+        status: normalizeStatus(
+          c.operation_status ?? c.status ?? c.campaign_status ?? c.delivery_status ?? null
+        ),
+      });
+    }
+    const total = body.data?.page_info?.total_page ?? 1;
+    if (page >= total) hasMore = false;
+    else {
+      page++;
+      await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+  return out;
+}
+
 // True manual (TTAM) spend: integrated report minus GMV Max campaigns.
 // Serialized + delayed: Ads API rate-limits parallel report calls.
 export async function fetchManualSpend(
@@ -351,45 +440,109 @@ export async function fetchManualSpend(
   advertiserId: string,
   startDate: string,
   endDate: string
-): Promise<{ spend: number; campaignCount: number }> {
+): Promise<{ spend: number; campaignCount: number; rows: { campaign_id: string; spend: number }[] }> {
   const gmvIds = await getGMVMaxIds(accessToken, advertiserId);
-  let spend = 0;
-  const seen = new Set<string>();
-  let page = 1;
-  let hasMore = true;
-  while (hasMore) {
-    const params = new URLSearchParams({
-      advertiser_id: advertiserId,
-      report_type: "BASIC",
-      data_level: "AUCTION_CAMPAIGN",
-      dimensions: JSON.stringify(["stat_time_day", "campaign_id"]),
-      metrics: JSON.stringify(["spend"]),
-      start_date: startDate,
-      end_date: endDate,
-      page: String(page),
-      page_size: "1000",
-    });
-    const res = await fetch(
-      `${BASE_URL}/open_api/${API_VERSION}/report/integrated/get/?${params.toString()}`,
-      { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
-    );
-    const body = await res.json();
-    if (body.code !== 0) throw new Error(`integrated/get code=${body.code}: ${body.message ?? ""}`);
-    for (const item of body.data?.list ?? []) {
-      const cid = item.dimensions?.campaign_id;
-      if (cid && !gmvIds.has(cid)) {
-        spend += parseFloat(item.metrics?.spend ?? 0);
-        seen.add(cid);
+  // Per-campaign raw sums. Extended metric set first, spend-only fallback.
+  const sums = new Map<string, Record<string, number>>();
+  const add = (cid: string, metrics: any) => {
+    let row = sums.get(cid);
+    if (!row) {
+      row = {};
+      for (const m of TTAM_METRICS) row[m] = 0;
+      sums.set(cid, row);
+    }
+    for (const m of TTAM_METRICS) {
+      const v = parseFloat(metrics?.[m] ?? 0);
+      if (Number.isFinite(v)) row[m] += v;
+    }
+  };
+  const pull = async (metrics: string[]) => {
+    let spend = 0;
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const params = new URLSearchParams({
+        advertiser_id: advertiserId,
+        report_type: "BASIC",
+        data_level: "AUCTION_CAMPAIGN",
+        dimensions: JSON.stringify(["stat_time_day", "campaign_id"]),
+        metrics: JSON.stringify(metrics),
+        start_date: startDate,
+        end_date: endDate,
+        page: String(page),
+        page_size: "1000",
+      });
+      const res = await fetch(
+        `${BASE_URL}/open_api/${API_VERSION}/report/integrated/get/?${params.toString()}`,
+        { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
+      );
+      const body = await res.json();
+      if (body.code !== 0) throw new Error(`integrated/get code=${body.code}: ${body.message ?? ""}`);
+      for (const item of body.data?.list ?? []) {
+        const cid = item.dimensions?.campaign_id;
+        if (cid && !gmvIds.has(cid)) {
+          add(cid, item.metrics ?? {});
+          const s = parseFloat(item.metrics?.spend ?? 0);
+          if (Number.isFinite(s)) spend += s;
+        }
+      }
+      const total = body.data?.page_info?.total_page ?? 1;
+      if (page >= total) hasMore = false;
+      else {
+        page++;
+        await new Promise((r) => setTimeout(r, 500));
       }
     }
-    const total = body.data?.page_info?.total_page ?? 1;
-    if (page >= total) hasMore = false;
-    else {
-      page++;
-      await new Promise((r) => setTimeout(r, 500));
-    }
+    return spend;
+  };
+  let spend: number;
+  let full = true;
+  try {
+    spend = await pull(TTAM_METRICS);
+  } catch {
+    sums.clear();
+    full = false;
+    spend = await pull(["spend"]);
   }
-  return { spend, campaignCount: seen.size };
+  const toRaw = (row: Record<string, number>): TtamRaw => ({
+    spend: row.spend ?? 0, imp: row.impressions ?? 0, clicks: row.clicks ?? 0,
+    reach: row.reach ?? 0, sfv: row.video_watched_6s ?? 0,
+    prof: row.profile_visits ?? 0, likes: row.likes ?? 0, sh: row.shares ?? 0,
+    com: row.comments ?? 0, fol: row.follows ?? 0,
+    awt: row.average_video_play ?? 0, live: row.live_views ?? 0,
+    // live10 presumed = live_effective_views (accepted at all grains, exact
+    // 10s meaning unverified — UI labels LQS as proxy until xlsx cross-check).
+    live10: row.live_effective_views ?? null,
+  });
+  const rows = [...sums.entries()]
+    .map(([campaign_id, row]) => {
+      const raw = toRaw(row);
+      const { scores } = scoreTtamRow(raw, true);
+      return { campaign_id, spend: raw.spend, metrics: full ? row : null, scores: full ? scores : null, sfvProxy: full };
+    })
+    .sort((a, b) => b.spend - a.spend);
+  return { spend, campaignCount: sums.size, rows };
+}
+
+// Active TTAM preset (bands + guardrails + notes). Fail-open: null →
+// callers fall back to hardcoded theory.
+export async function getActiveTtamPreset(): Promise<{
+  preset_key: string; label: string; metrics: any[]; guardrails: any; notes: string;
+} | null> {
+  try {
+    const r = await query(
+      `SELECT preset_key, label, metrics, guardrails, notes FROM ttam.presets WHERE active = true ORDER BY updated_at DESC LIMIT 1`
+    );
+    if (!r.rows.length) return null;
+    const p = r.rows[0];
+    return {
+      preset_key: p.preset_key, label: p.label,
+      metrics: Array.isArray(p.metrics) ? p.metrics : [],
+      guardrails: p.guardrails ?? {}, notes: p.notes ?? "",
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function getShopROAS(shopNumber: string, startDate: string, endDate: string) {
@@ -406,6 +559,18 @@ export async function getShopROAS(shopNumber: string, startDate: string, endDate
     ? await getShopReport(shopNumber, "PRODUCT_GMV_MAX", startDate, endDate)
     : null;
   const manual = await fetchManualSpend(creds.access_token, shop.advertiserId, startDate, endDate);
+  const preset = await getActiveTtamPreset();  // Campaign names + status (fail-open: spend rows show id-only on lookup error).
+  let manualCampaigns: { campaign_id: string; name: string; status: string | null; spend: number }[] = [];
+  try {
+    const info = await getManualCampaigns(creds.access_token, shop.advertiserId);
+    manualCampaigns = manual.rows.map((r) => ({
+      ...r,
+      name: info.get(r.campaign_id)?.name ?? r.campaign_id,
+      status: info.get(r.campaign_id)?.status ?? null,
+    }));
+  } catch {
+    manualCampaigns = manual.rows.map((r) => ({ ...r, name: r.campaign_id, status: null }));
+  }
   const gmv = (live?.gmv ?? 0) + (product?.gmv ?? 0);
   const gmvMaxCost = (live?.cost ?? 0) + (product?.cost ?? 0);
   const totalAdsSpend = gmvMaxCost + manual.spend;
@@ -431,6 +596,8 @@ export async function getShopROAS(shopNumber: string, startDate: string, endDate
     gmvMaxCost,
     manualCampaignSpend: manual.spend,
     manualCampaignCount: manual.campaignCount,
+    manualCampaigns,
+    preset,
     orderCount: (live?.orderCount ?? 0) + (product?.orderCount ?? 0),
     totalAdsSpend,
     sst, wht, totalCostWithTaxes,

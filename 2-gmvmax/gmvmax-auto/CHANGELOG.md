@@ -2,6 +2,18 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 06 Oct 2026 — M11 TTAM metrics + DB presets (shop 1, tsc-clean, deploy decides)
+
+- TTAM 3-level drills (`ttam.ts`: campaign/adgroup/ad, on-demand click-to-load, spend-only fail-open) + full 12-metric pulls + exact v3 OMTM scoring (`scoreTtamRow`) + flags/verdict on theory-v2 bands (provisional) + toggles + verdict filter + search + LEARNING guardrail + 3-day rule.
+- Preset system: `012_ttam_presets.sql` (new `ttam` schema, applied dev+prod, seed active) + `/api/ttam-presets` (CRUD + scorer export) + `/presets` manager page + TTAM-bar no-refetch picker + runtime custom-metric eval + full-name tooltips.
+- Probes: `/api/ttam-probe` verified 27 BASIC metrics at all 3 grains (mapping in `ttam-api-metrics-plan.md`); sfv has no exact API equal (plain-6s proxy, labeled); LQS presumed on live_effective_views (xlsx cross-check open).
+- Bugs 36–40 (client/server import wall, drill dimension 40002, edit near-misses, stale vercel cache, overstated API knowledge) — see DEV_NOTES Checkpoint 11.
+- Still open: LQS verify, TTAM quartile recalibration, FUTURE UI items, A-vs-B sync, 🔥 floor, OFF per-type, export demo, shop approval, cron ping. All uncommitted.
+
+## 06 Oct 2026 — M10 dashboard overhaul (Tailwind + filters + calendar)
+
+- Tailwind rewrite (cards, sticky header, KPI cards) + delivery pills green/grey + Sessions LIVE-only + Status filter/sort + Fetch/Drill spinners + 15s cooldown + v51-port calendar popup (31-day cap) + Dashboard|Presets nav.
+
 ## 04 Oct 2026 — M9c Telegram maturity II (Total msg, buttons, delivery, probes)
 
 - Third message `Total GMV Max` (Live + Product jar rows, combined verdict, dashboard button; no steady/earlier — details stay in type messages).

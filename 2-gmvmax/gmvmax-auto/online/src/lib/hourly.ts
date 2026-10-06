@@ -737,7 +737,7 @@ export async function getHourlyView(shopNumber: string, date: string) {
   );
   const rows = await query(
     `SELECT h.campaign_id, c.name AS campaign_name, h.promotion_type,
-            h.hour_slot, h.cost, h.gmv, h.orders, h.pulled_at
+            h.hour_slot, h.cost, h.gmv, h.orders, h.pulled_at, c.status AS status
      FROM gmv.hourly_campaign_metrics h
      LEFT JOIN gmv.gmv_campaigns c ON c.campaign_id = h.campaign_id
      WHERE h.shop_id = $1 AND h.hour_slot LIKE $2

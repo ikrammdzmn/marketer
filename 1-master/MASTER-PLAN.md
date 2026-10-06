@@ -11,7 +11,7 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
 - `1-knowledge/tiktok-strategy/` — Himwellness Growth OS playbook (`himwellness-playbook.html` + `full-strategy.md`). Business guardrails live here: ROI ≥7.0, CPA ≤RM21.18, 1 campaign/SKU, TTAM feeder role, dayparting windows, payday surge. Offline, localStorage.
 - `1-knowledge/tiktok-event/` — HIMCOFFEE RACI MASTER (`index.html`, vanilla single-file, local-only, no build). Timeline 2026–2030 + RACI Worksheet + 5T/3M Blueprint + workload + CSV + local PIN seats. Reference: `raci_campaign_dashboard.tsx` (React+Firebase, FROZEN) + `tiktok-prd` (PRD v1.0.0). Statuses in its `plan.md`; user guide `feature.md`; handoff `DEV_NOTES.md`.
 - `1-knowledge/0-0-tiktok/gmvmax/` — Knowledge only: `gmvmax.md` (algo realities, §3 points at product glossary) + `product/exploration-status.md` (canonical TikTok stages + `Available` exclusion rule) + `product/*.xlsx`. No code goes here.
-- `2-gmvmax/gmvmax-auto/` — GMV Max hourly live 04 Oct (`marketer-hw.vercel.app`, shop 1): M7 views (Total/LIVE/Product/TTAM/ROAS, sessions drill, ON/OFF pills + delivery badges/rollups) + M9 hourly (Neon hour rows `001–011`, dashboard Hourly metric + Chart.js graphs, Telegram 3-message set + `/fetch` day + `/fetch_hourly` hour + Total, jar rows, ROI H·D, Bud%, verdict, chart buttons, real-time partial tags, ON-filter) + P0 local read-only (prod OAuth, net ROI locked fee 25%, 30m scheduler). Shop-token route parked (Custom app review pending); true-ROAS ref provisional (export method pending). Next: dashboard redesign. Code: `collector.py` + `live_view.py` + `prod_auth.py` + `shop_auth.py` + `dashboard/` 8082 + migrations `001–011`. See `gmvmax-auto/plan.md` + `DEV_NOTES.md` + `feature.md` + `telegram_message.md`.
+- `2-gmvmax/gmvmax-auto/` — GMV Max hourly live 04 Oct (`marketer-hw.vercel.app`, shop 1): M7 views (Total/LIVE/Product/TTAM/ROAS, sessions drill, ON/OFF pills + delivery badges/rollups) + M9 hourly (Neon hour rows `001–011`, dashboard Hourly metric + Chart.js graphs, Telegram 3-message set + `/fetch` day + `/fetch_hourly` hour + Total, jar rows, ROI H·D, Bud%, verdict, chart buttons, real-time partial tags, ON-filter) + P0 local read-only (prod OAuth, net ROI locked fee 25%, 30m scheduler). Shop-token route parked (Custom app review pending); true-ROAS ref provisional (export method pending). Next: dashboard redesign. Code: `collector.py` + `live_view.py` + `prod_auth.py` + `shop_auth.py` + `dashboard/` 8082 + migrations `001–012` + TTAM preset store (`ttam.presets`). See `gmvmax-auto/plan.md` + `DEV_NOTES.md` + `feature.md` + `telegram_message.md`.
 - `docs/` — `terms.html` + `privacy.html` (GitHub Pages, TikTok app review). `tiktok*.txt` at root = domain verification. Never move/rename without updating TikTok app form.
 - `1-2-tools/g-sheet_tools/` — Sheets Apps Script tools (bound scripts, no server, own
   `AGENTS.md`): `aff-notify/` 4x-daily Affiliate Collection digest
@@ -53,6 +53,13 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
 - Restructure 05 Oct Phase 1+2 (staged, uncommitted): dash folders; all live tools in numbered homes. Owner steps still open: Vercel dashboard Root Directory → `2-gmvmax/gmvmax-auto/online` + redeploy (`npx vercel login` first) + Telegram `/tg-probe?keep=1` + `/fetch` re-test. Detail: root `repo-restructureplan.md`.
 
 ## 2. Current status (2026-09-20, midday)
+
+- 06 Oct: `gmvmax-auto` M10+M11 (tsc-clean, uncommitted, deploy decides):
+  dashboard Tailwind overhaul + TTAM 3-level drills with 11 OMTM scores +
+  flags/verdict + DB presets + `/presets` manager + scorer export; `012`
+  applied dev+prod; probe-verified 27 metrics; open: LQS verify,
+  recalibration, FUTURE items. Detail: `2-gmvmax/gmvmax-auto/DEV_NOTES.md`
+  Checkpoint 11 + `ttam-api-metrics-plan.md`.
 
 - 05 Oct: `3-ttam/campaign-performance-analysis` v1–v4 (uncommitted): NEW
   Metric Scorer built + verified (11 OMTM, quartile-calibrated v3 bands,

@@ -43,6 +43,38 @@
 - **Future buttons, greyed out** — rules editor and Approve/Edit/Reject queue
   are visible but disabled. They turn on in later phases.
 
+## Online dashboard redesign (06 Oct)
+
+- New dark look: sticky top bar (Shop / Metric / date range / Status / Fetch),
+  summary cards on top, tables in cards. Works on phones (tables scroll sideways).
+- Status dropdown: All, ON (plus new unknowns), or OFF only. ON rows always float
+  to the top; charts still rank by money.
+- The date boxes became one calendar button (`start – end 📅`): ready-made ranges
+  (Today, Yesterday, Last 7/14/30 days) or tap two days on the two-month calendar.
+  Max 31 days per fetch. Future days are greyed out.
+- After every Fetch the button rests ~15 seconds (countdown shown) so TikTok never
+  rate-limits us. A spinner shows while loading.
+- Top tabs: Dashboard and Presets.
+
+## TTAM manual campaigns (Metric = TTAM, shop 1)
+
+- One row per manual (non-GMV) campaign: name, ON/OFF pill, spend, verdict chip,
+  impressions, and 11 grades (EDS, ERRI, HPS, ACS, CES, VVES, RVS, HRQ, RES, BCE, LQS).
+  Hover any short grade for its full name.
+- Click a campaign to see its ad groups; click an ad group to see its ads —
+  each level carries the same grades and verdicts. Nothing loads until you click,
+  so it stays fast.
+- Verdicts: green SCALE (spend more), yellow WATCH, red KILL (with the reason if
+  you hover), blue LEARNING (too new/small to judge — needs RM30 spend and
+  1,000 impressions first). Ranges under 3 days show grades but no verdicts.
+- Grades with `~` use best-guess inputs (plain 6-second views stand in for
+  6-second focused views). EDS and ERRI are exact TikTok numbers.
+- Score switches hide grades you don't care about (hidden grades also leave the
+  verdict). Verdict dropdown + search box filter the tree.
+- Preset dropdown (appears with 2+ presets) repaints all flags instantly —
+  no re-fetch needed. The `/presets` tab edits bands, minimums, and notes, and
+  exports a file the scorer tool can read.
+
 ## How to use it
 1. Start the dashboard: `python gmvmax-auto/dashboard/dashboard.py`, open
    `http://127.0.0.1:8082/` in your browser.

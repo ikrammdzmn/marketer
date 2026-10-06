@@ -4,6 +4,19 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 06 Oct 2026
+
+- `gmvmax-auto` M10 dashboard overhaul (tsc-clean, uncommitted): Tailwind rewrite
+  + delivery green/grey + Sessions LIVE-only + Status filter/sort + spinners +
+  15s cooldown + v51 calendar port + nav tabs
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto` M11 TTAM metrics + DB presets (tsc-clean, deploy decides,
+  uncommitted): 3-level drills + 12-metric pulls + v3 scoring + flags/verdict
+  (theory provisional) + LEARNING guardrail + `012_ttam_presets.sql` (dev+prod)
+  + `/presets` manager + scorer export + custom-metric eval; probe-verified
+  27 metrics; open: LQS verify, recalibration, FUTURE items
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
 ## 05 Oct 2026
 
 - Repo restructure Phases 1+2 (committed + pushed): dash folders (`1-master/`, `1-knowledge/`, `1-1-sales/`, `1-2-tools/`, `2-gmvmax/`, `3-ttam/`, `0-0-tiktok/`); low-risk moves (event, strategy, shop, shop-hourly, sheet-tools, calculator, live) then high-risk trio (`gmvmax-auto/` with `deploy_online.py` ROOT fix, `tiktok-creative-analysis/` + `tiktok-account/` as pair); Vercel Root Dir redeployed + Telegram `/tg-probe` 18/21 + `/fetch` live-verified; `collector_task.bat` path fixed (scheduler task action still needs owner update). Detail: root `repo-restructureplan.md`.

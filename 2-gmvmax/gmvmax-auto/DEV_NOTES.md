@@ -1,5 +1,68 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
+> Next-you: read Checkpoint 11 first (facts), then the vibe below it.
+> Short replies, numbers first, one action per message. Sparring mode is ON.
+
+## Checkpoint 11 — 06 Oct 2026 (M10 dashboard + M11 TTAM metrics/presets, all local-green, deploy decides)
+
+**What shipped (tsc-clean, most undeployed at close).**
+- M10 dashboard overhaul: Tailwind rewrite (sticky header, KPI cards, section cards;
+  `tailwind.config.js` + `postcss.config.js` + `globals.css`); delivery pills green/grey;
+  Sessions button LIVE-only; Status filter (All/ON+unknown/OFF) + ON-first sort
+  everywhere (GMV/hourly/TTAM, charts keep cost order); Fetch spinner + drill
+  spinners + 15s cooldown; v51-port calendar popup (preset rail, two-month grid,
+  two-click/hover, future-disabled, 31-day cap); Dashboard|Presets nav tabs.
+- M11 TTAM metrics: 3-level campaign/adgroup/ad drills (`ttam.ts`, on-demand,
+  spend-first fail-open) + full 12-metric pulls + v3 OMTM scoring (`scoreTtamRow`,
+  exact port) + flags/verdict (theory-v2 bands, provisional) + toggles + verdict
+  filter + search + LEARNING guardrail (preset min_spend/min_impressions) +
+  3-day rule (scores always, verdicts need ≥3d).
+- Preset system: `012_ttam_presets.sql` (new `ttam` schema, applied dev+prod,
+  seed active) + `/api/ttam-presets` (list/get/update/duplicate/activate/delete
+  + scorer export) + `/presets` manager page (band/guardrail/notes editor,
+  add/delete metric, export download) + TTAM-bar preset picker (no-refetch
+  swap) + runtime custom-metric eval (`applyCustomScores`) + full-name tooltips.
+- Probes: `/api/ttam-probe` (25 → 27 metrics, all OK all grains) filled the
+  mapping table (`ttam-api-metrics-plan.md`, mirrored in plan dir).
+
+**Bugs found + fixed (do not regress).**
+36. **Client imports server chain.** Page imported `@/lib/ttam` → ads-credentials
+    → `db.ts` → `pg` → `dns/net/tls` missing in browser build (Vercel red, tsc
+    green). Fixed with pure `ttam-scores.ts` (zero imports). LESSON: client
+    components import ONLY from leaf modules; tsc never catches this, only
+    `next build` does. If Vercel says "Module not found: dns/net/tls", read the
+    import trace bottom-up — the fix is always moving pure code, never polyfills.
+37. **Parent+child dimension combos rejected (40002).** `campaign_id+adgroup_id`
+    at ADGROUP grain and `adgroup_id+ad_id` at AD grain are invalid despite each
+    dim being legal solo (probe proved solo OK). Fix: pull child grain alone,
+    filter client-side by the get-list ID set. LESSON: probe single dims AND the
+    exact combo before building drills.
+38. **Edit-tool near-misses (3x).** Ate `from "./gmv"`, duplicated RootLayout,
+    ate flagScore signature. All caught by re-reading the region (rule from bugs
+    10/12/30 holds — no exceptions, even for "trivial" edits).
+39. **Stale `.vercel/repo.json` after restructure.** Dashboard Root Directory was
+    saved correctly but CLI kept the old `gmvmax-auto/online` path from local
+    cache. Fixed by editing the gitignored cache file. LESSON: after any folder
+    move, check `.vercel/repo.json` `directory` when the CLI path looks stale.
+40. **Overstated API knowledge (mine).** Claimed integrated/get serves only
+    spend/impr/clicks; owner pushed back; docs proved 25 metrics. LESSON: probe
+    or read docs before declaring API limits — sparring works both ways.
+
+**Open threads (next session).**
+1. LQS verify: one ad's LQS vs xlsx "10-second LIVE views" (live_effective_views presumed).
+2. TTAM quartile recalibration (needs weeks of data) → then "provisional" off.
+3. FUTURE (in ttam-api-metrics-plan.md): compact mode, reason 2nd line, slim sub-rows, verdict-history snapshots, fetch-all generalization, monitor toggle.
+4. A-vs-B preset sync still open (dashboard reads DB; scorer needs manual export).
+5. Carried: 🔥 floor gate, OFF per-type, export demo (143,941 PROVISIONAL), shop approval, cron ping.
+6. Commit ritual: this whole session (M10+M11 + plans + 012) is UNCOMMITTED — ask.
+
+**Mood at close.** Long build day, owner in sprint mode (~8 plan/build switches,
+screenshots for every eyeball). "Explain like im 5" = signal I'm over-technical:
+drop to one analogy + one action. They verify with numbers, decide in one-liners.
+Everything green locally; prod eyeball is the remaining thrill.
+
+## Vibe — 01 Oct session (online M7 extras, read to sync)
+
 > Next-you: read this first, then `plan.md`, then `masterplan.md` §9. You are picking up
 > mid-P0 with a warm, hands-on owner. Tone below is the vibe, not just facts.
 
