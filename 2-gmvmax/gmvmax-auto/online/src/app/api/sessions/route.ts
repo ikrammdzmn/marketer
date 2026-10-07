@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCampaignSessions } from "@/lib/gmv";
+import { requireAllowlistedUser } from "@/lib/authz";
 
 // GET /api/sessions?shopNumber=1&campaignId=...&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 // On-demand live sessions drill (single campaign only).
-// Auth: Vercel Authentication (project login) is the gate for reads.
+// Access is checked against the live Google email allowlist.
 export async function GET(request: Request) {
+  const access = await requireAllowlistedUser();
+  if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";
   const campaignId = searchParams.get("campaignId") ?? "";

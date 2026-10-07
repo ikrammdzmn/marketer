@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdsCredentials } from "@/lib/ads-credentials";
 import { SHOPS } from "@/lib/shops";
+import { requireAllowlistedUser } from "@/lib/authz";
 
 const BASE_URL = "https://business-api.tiktok.com";
 const API_VERSION = "v1.3";
@@ -53,6 +54,8 @@ async function tryMetrics(
 // GET /api/ttam-probe?shopNumber=1 — verifies which BASIC metrics each grain
 // accepts. Tiny 1-day window, page_size 10. No secrets in the output.
 export async function GET(request: Request) {
+  const access = await requireAllowlistedUser();
+  if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";
   const date =

@@ -3,12 +3,14 @@
 > Internal team tool for our 1 Malaysia TikTok Shop. Runs on your own laptop.
 > Right now: **watch-only**. It does NOT change your ads by itself.
 
-## Online version (Vercel, `marketer-hw.vercel.app`, login required)
+## Online version (Vercel, `marketer-hw.vercel.app`, Google sign-in)
 
 - Shop / Metric / Date / Fetch Data: Total (LIVE + Product split in two tables), LIVE, Product, TTAM (manual spend only), ROAS (with SST+WHT actual), **Hourly** (per-campaign hour tables + trend graphs), Shop GMV (shop-order truth, needs shop login — otherwise shows the locked reference).
 - Each campaign row shows a green ON / grey OFF pill (from TikTok) plus what TikTok says about delivery (🟢 Active, ⛔ Asset unavailable, …). Closed account rows roll up: ON if anything inside is ON, plus any delivery warnings. A Sessions button shows live rooms x day, on demand.
 - Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then resync.
 - Numbers can move slightly during the day (TikTok settles sales figures over hours while spend stays fixed). If a number looks off versus an hour ago, press Fetch Data again — newest wins, nothing is lost.
+- Sign in with a Google account that the administrator has approved. Removing an account blocks its next dashboard-data request.
+- If you’re signed out, the main link opens Google sign-in first. Once signed in, it takes you to the dashboard; `/sign-in` is also available directly.
 
 ## Hourly watch (Metric = Hourly, shop 1)
 
@@ -55,9 +57,10 @@
   Max 31 days per fetch. Future days are greyed out.
 - After every Fetch the button rests ~15 seconds (countdown shown) so TikTok never
   rate-limits us. A spinner shows while loading.
-- Top tabs: Dashboard and Presets.
-- Access is limited by Vercel Authentication to signed-in members of the Vercel team. This is currently the login system; next session is planned to evaluate Google OAuth.
-- Preset saves use an additional write check. It is defense-in-depth only: the browser-visible key is not a secret, so Vercel's login wall is the actual access boundary.
+- Top tabs: Dashboard and Presets; **Access** appears for the fixed administrator.
+- Google access is limited to individual email addresses, not everyone at a company domain. The fixed administrator opens **Access** in the top bar to add or remove emails. The administrator address is set privately in Vercel and cannot be removed from that page.
+- Webhook and scheduled sync routes retain their separate server-side secret checks. Preset saves also retain their extra write check.
+- Google sign-in is the app’s access gate. Vercel Deployment Protection is a separate outer gate; when enabled, it may show a Vercel login before Google sign-in for people outside the Vercel team. Its setting is owner-managed. The checklist is in `online/README.md`.
 
 ## TTAM manual campaigns (Metric = TTAM, shop 1)
 

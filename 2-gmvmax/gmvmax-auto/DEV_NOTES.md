@@ -1,9 +1,115 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 13 first (facts), then the vibe below it.
+> Next-you: read Checkpoint 15 first (current facts), then Checkpoints 14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 
-## Checkpoint 13 — 07 Oct 2026 (security: public exposure → wall → write guard; NEXT: Google OAuth)
+## Checkpoint 15 — 07 Oct 2026 (signed-out shell exposure fixed + redeployed)
+
+**Owner report / intent.** Google OAuth and Vercel configuration were done;
+owner said real login worked, then noticed a signed-out Chrome profile could
+still see the dashboard layout. Treat that report as a real gate failure, not
+as a cosmetic preference. Owner asked to fix it and said “go”.
+
+**Root cause.** App Router is `online/src/app`, but Auth.js middleware had been
+written at `online/middleware.ts`. Next 15 did not discover/build it (the built
+`.next/server/middleware-manifest.json` had empty `middleware` and
+`sortedMiddleware`). The APIs themselves had route-level allowlist checks, so
+data endpoints were 401, but the dashboard client shell rendered unauthenticated.
+
+**Fix + proof.** Moved it to `online/src/middleware.ts` and updated the relative
+`auth.config` import. Rebuilt with Next 15.5.27; build output now lists
+`ƒ Middleware`. Local no-cookie smoke: `/` = 307 with Location `/sign-in`,
+`/api/hourly` = 401, `/api/access-list` = 401, `/api/health` = 200. Deployed to
+Production (`dpl_FDpqCvXJprdiMg2qXSQ57dCAHEB9`, alias
+`marketer-hw.vercel.app`). Live no-cookie smoke returned the same 307/401/200;
+`/sign-in` and `/api/auth/providers` both returned 200. No Vercel protection
+setting was changed by agent.
+
+**Unique verification lesson / bug 56.** Prior local smoke logged root HTTP
+200 and incorrectly called it “redirected”; curl was not following redirects,
+so 200 meant middleware never ran. A successful HTML status alone does NOT
+prove a redirect. Always inspect status + `Location`, confirm the built
+middleware manifest is populated, and hit a protected data API without cookies.
+For any repo with `src/app`, middleware belongs under `src/middleware.ts` on
+this Next version.
+
+**Still open.** Owner must retest real Google flow after this redeploy: admin
+login + `/access`, allowlisted user sees data, non-allowlisted user is denied,
+and a removed user gets denied on the next data request. There was an Edge build
+warning from Jose `CompressionStream`/`DecompressionStream`; basic unauthenticated
+production checks pass, but watch the actual authenticated callback/session.
+Vercel Protection is an owner setting; do not toggle it from code. Current
+`npm audit --omit=dev` = 0; full audit still has 7 Tailwind 3 build/dev findings
+(5 high, 2 moderate), with Tailwind 4.3.3 as the major suggested fix. No Tailwind
+upgrade, commit, or push.
+
+**Vibe.** User's terse correction (“but the user that had not sign in, they can
+see the dashboard layout”) was exactly the important security report. Own the
+smoke-test mistake directly, don't defend the old result. Owner prefers one
+concrete action at a time, plain words, and will handle portal settings. Next
+window should lead with the verified fix and ask for the Google allowlist tests,
+not redo OAuth setup.
+
+## Checkpoint 14 — 07 Oct 2026 (Google OAuth implementation stage; historical, before Checkpoint 15 deploy)
+
+**Owner order.** Continue Checkpoint 13: implement Google OAuth with an exact
+email allowlist and an admin page to manage it. Owner chose a separate fixed
+bootstrap admin email. Do not request its value in chat; owner sets
+`AUTH_ADMIN_EMAIL` privately in Vercel.
+
+**Implemented locally.** Auth.js Google provider (`online/auth.ts` + config and
+route), Google verified-email check, JWT session (8h), middleware sign-in gate,
+and live allowlist membership recheck on each dashboard data API. Fixed admin
+only can use `/access` and `/api/access-list` to add/remove emails. Rows live in
+`core.access_allowlist`; add/remove writes are audited to `core.audit`. The
+bootstrap admin is displayed as a fixed row and cannot be removed there.
+Webhook, cron, probe and campaign-sync endpoints are excluded from the login
+middleware only because they retain their existing server-secret checks;
+`/api/health` remains public and returns no business data. Preset POST keeps its
+extra write-key check. DB pool initialization is now lazy so auth-only pages can
+build without eagerly requiring Neon at module import.
+
+**Verification.** `npx tsc --noEmit` + Next 15.5.27 production build pass.
+Build warns about Auth.js/Jose `CompressionStream`/`DecompressionStream` imports
+in Edge middleware; basic middleware smoke passes, but retest real sign-in on the
+deployed app. Local HTTP smoke (dummy OAuth env): provider discovery 200, signed-
+out access/data APIs 401, health 200, root 307 to `/sign-in`. After moving the
+middleware, production deployment `dpl_FDpqCvXJprdiMg2qXSQ57dCAHEB9` succeeded;
+live signed-out smoke: root 307 to `/sign-in`, `/api/hourly` 401,
+`/api/access-list` 401, `/api/health` 200. Google sign-in and allowlist changes
+still need owner end-to-end checks.
+
+**Dependency review.** Next moved to 15.5.27 (React 18 peer-compatible) and
+PostCSS to 8.5.29 with an override for Next's pinned copy. `npm audit --omit=dev`
+is now clean (0). Full audit has 7 remaining findings (5 high, 2 moderate), all
+in the Tailwind 3 build/dev dependency tree. `npm audit fix --dry-run` proposes
+Tailwind 4.3.3 (major) and does NOT modify files; it was not applied. Remaining
+decision: a Tailwind 4 migration vs separately tested overrides or acceptance
+of documented build-only residual risk. Never use `npm audit fix --force`
+blindly. Production deployment proceeded after owner approval; agent did not run
+migrations or change portal settings. No commit or push.
+
+**Owner setup / rollout order.** Owner reports migration 013 exists in both
+Neon branches and Google/Vercel OAuth setup is complete. Agent did not access
+those values or change portals. Production code is now deployed; remaining:
+owner verifies sign-in, allowed/denied accounts, and removal revocation.
+Vercel Protection blocks Google callbacks for non-team users: once the app gate
+is deployed, owner may temporarily disable the Vercel wall for a controlled
+test window. Restore it immediately if any signed-out/allowlisted/denied/removal
+test fails; leave it off only after all app-level checks pass, if non-Vercel
+employees need access.
+
+**Deploy history.** First attempt returned `Not authorized`; owner completed
+Vercel login, then requested retry. Successful production deployment followed.
+No deployment settings were changed by agent; keep CLI tokens out of chat.
+
+**Vibe.** Owner was decisive: “go”, then fixed-email allowlist plus admin page.
+Keep the protocol: one action at a time, no secrets in chat. OAuth portal/Neon
+setup is owner-reported complete. Production signed-out gate is now verified;
+end-to-end Google allowlist tests remain. Production dependency audit is clean;
+7 Tailwind build/dev findings remain for separate decision.
+
+## Checkpoint 13 — 07 Oct 2026 (security: public exposure → wall → write guard; historical)
 
 **What happened.** Owner tested prod from an incognito profile — it opened with
 no login. Verified independently via server-side fetch: full dashboard HTML,

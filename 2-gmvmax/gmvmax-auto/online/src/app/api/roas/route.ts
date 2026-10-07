@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { getShopROAS } from "@/lib/gmv";
+import { requireAllowlistedUser } from "@/lib/authz";
 
 // GET /api/roas?shopNumber=1&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
-// Auth: Vercel Authentication (project login) is the gate for reads.
+// Access is checked against the live Google email allowlist.
 export async function GET(request: Request) {
+  const access = await requireAllowlistedUser();
+  if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";
   const startDate = searchParams.get("startDate") ?? "";

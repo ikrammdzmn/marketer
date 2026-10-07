@@ -8,7 +8,7 @@
 ## Folder index
 - `2-gmvmax/tiktok-creative-analysis/` — creative analytics (authoritative `data/accounts.json`).
 - `2-gmvmax/tiktok-account/` - Display API dashboard (8080, `tester.py` FROZEN, `NEON_NOTE.md` for `acct` schema) + `sync/` daily Sheets bridge (12 sheets, Dashboard No col + numbered tabs, Creative-age col + menu-7 seeder, own docs; v21-v24 committed `8ec64f0`).
-- `2-gmvmax/gmvmax-auto/` — GMV Max online M10/M11 + P0 local read-only (shop 1; bot `/start`, `/fetch`, `/fetch_hourly`). Vercel Authentication must cover All Deployments; next session: Google OAuth. Read folder `DEV_NOTES.md` first (Checkpoint 13, bugs 36–54) + folder `AGENTS.md`.
+- `2-gmvmax/gmvmax-auto/` — GMV Max online M10/M11 + P0 local read-only (shop 1; bot `/start`, `/fetch`, `/fetch_hourly`). Google OAuth + fixed-admin allowlist is deployed; signed-out page gate now verified. Read folder `DEV_NOTES.md` first (Checkpoint 15 newest) + folder `AGENTS.md`; owner end-to-end allowlist tests remain.
 - `1-1-sales/sales-performance-analysis/` — sales analysis (plan v0 only 05 Oct, 1–5 Oct Him.DrSamhan: TTAM 0-sales CPM verdicts + GMV Max ROI cut/boost; distinct from Metric Scorer; own docs).
 - `1-1-sales/tiktok-shop/` + `1-1-sales/tiktok-shop-hourly/` — shop sales reporting (hourly: shop 1; fetcher userscript + viewer with DEAD/GOLDEN/WATCH scorecard; quirks + guardrails in its AGENTS.md).
 - `3-ttam/campaign-performance-analysis/` — Metric Scorer (11 TikTok OMTM verdicts + kill-list cut simulator; bands from JSON presets, metrics from JSON registry; static, :8123 only; spec `metric.md`, plan `metric-plan.md`).

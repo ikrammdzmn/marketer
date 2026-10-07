@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
+import { requireAllowlistedUser } from "@/lib/authz";
 
 // Scorer file shape (from vol2-focused-v3 preset). DB remains the source for
 // bands/enabled/guardrails/notes; expressions/formats are static per metric.
@@ -49,6 +50,8 @@ function toScorerFile(p: any) {
 
 // GET /api/ttam-presets → list; ?key=K → full row; ?key=K&format=scorer → export shape
 export async function GET(request: Request) {
+  const access = await requireAllowlistedUser();
+  if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const key = searchParams.get("key") ?? "";
   const format = searchParams.get("format") ?? "";
@@ -73,10 +76,12 @@ export async function GET(request: Request) {
 // POST /api/ttam-presets {action:update|duplicate|activate|delete, ...}
 // Write guard: Bearer PRESET_WRITE_KEY (dedicated key, NOT the cron secret).
 // The browser page sends it via NEXT_PUBLIC_PRESET_WRITE_KEY — visible to
-// logged-in viewers by design, so this is a tripwire (drive-by curl, accidents,
-// CSRF), not a vault. The Vercel wall stays the real gate. Fail-closed: no key
+// logged-in viewers by design, so this is defense-in-depth, not a vault.
+// Google allowlist authorization is also required. Fail-closed: no key
 // configured → writes refuse.
 export async function POST(request: Request) {
+  const access = await requireAllowlistedUser();
+  if (!access.ok) return access.response;
   try {
     const writeKey = (process.env.PRESET_WRITE_KEY ?? "").trim();
     if (!writeKey) return NextResponse.json({ error: "writes disabled (no key)" }, { status: 503 });

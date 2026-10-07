@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { getTtamAds } from "@/lib/ttam";
+import { requireAllowlistedUser } from "@/lib/authz";
 
 // GET /api/ttam-ads?shopNumber=1&adgroupId=...&startDate=..&endDate=..
 export async function GET(request: Request) {
+  const access = await requireAllowlistedUser();
+  if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";
   const adgroupId = searchParams.get("adgroupId") ?? "";

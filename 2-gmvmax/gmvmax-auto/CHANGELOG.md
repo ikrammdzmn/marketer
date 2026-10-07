@@ -2,6 +2,13 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 07 Oct 2026 — Google sign-in + admin-managed email allowlist (deployed; owner tests pending)
+
+- Added Auth.js Google OAuth, verified-email allowlist checks, protected dashboard data APIs, and fixed-admin-only `/access` page to add/remove user emails. Allowlist changes are audited in `core.audit`; webhook/cron routes keep their existing secret guards.
+- Added `013_access_allowlist.sql` and setup/test instructions. Owner reports Neon dev+prod migration and Google/Vercel env complete. Next 15.5.27 production deployment `dpl_FDpqCvXJprdiMg2qXSQ57dCAHEB9` succeeded.
+- Fixed signed-out page gate: Next 15 with `src/app` ignored root `middleware.ts`; moved to `online/src/middleware.ts`. Verified built manifest includes middleware. Live smoke: `/` 307 to `/sign-in`, `/api/hourly` 401, `/api/access-list` 401, `/api/health` 200. Owner Google/allowed/denied/removal tests remain.
+- Dependency review: Next 14.2.35 → 15.5.27 (React 18 peer-compatible) + PostCSS 8.5.29 override resolves production-tree audit findings (`npm audit --omit=dev`: 0). Full audit still has 7 Tailwind 3 build/dev findings (5 high, 2 moderate); Tailwind 4.3.3 is a major change and remains a separate decision. No `--force` fix.
+
 ## 07 Oct 2026 — bot `/start` status + unknown-command replies (tsc-clean, deployed + live-verified)
 
 - `/start` → system status in-topic (alive MYT + DB `SELECT 1` + `MAX(hour_slot)` + `MAX(date)`, each degrading solo, no secrets out; daily formatted `YYYY-MM-DD`). Unknown `/cmd` → hint reply; plain chatter stays ignored (`tg-webhook/route.ts`).

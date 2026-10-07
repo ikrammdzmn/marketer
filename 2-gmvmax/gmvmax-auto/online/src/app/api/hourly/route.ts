@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { getHourlyView } from "@/lib/hourly";
+import { requireAllowlistedUser } from "@/lib/authz";
 
 // GET /api/hourly?shopNumber=1&date=YYYY-MM-DD — reads stored hourly rows.
 export async function GET(request: Request) {
+  const access = await requireAllowlistedUser();
+  if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";
   const date =

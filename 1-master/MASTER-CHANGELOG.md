@@ -7,7 +7,8 @@ Rule: whoever ships a folder release adds one line here the same session.
 ## 07 Oct 2026
 
 - Bot `/start` status + unknown-command replies (deployed + live-verified): alive/DB/freshness per check, hint on bad `/cmd`; silence fixed via `CRON_SECRET` re-`setWebhook` + protection-bypass query in webhook URL (protection stays ON). `/start` shows hourly stale since Oct 5 23:00 → `GMVMaxCollector30m` task action still pre-move (owner's other PC).
-- Security follow-up: incognito exposed Production because Standard Protection covered previews only; owner switched Vercel Authentication to All Deployments and verified other profiles are blocked. Preset writes now require dedicated Bearer key (fail-closed); browser `NEXT_PUBLIC_*` key is defense-in-depth, not secret. Next session: Google OAuth + auth regression checks. Details: `2-gmvmax/gmvmax-auto/DEV_NOTES.md` Checkpoint 13.
+- Security follow-up: incognito exposed Production because Standard Protection covered previews only; owner switched Vercel Authentication to All Deployments at that time. Preset writes require dedicated Bearer key (fail-closed); browser `NEXT_PUBLIC_*` key is defense-in-depth, not secret. Google OAuth app gate has since been deployed; owner allowlist regression tests remain. Details: `2-gmvmax/gmvmax-auto/DEV_NOTES.md` Checkpoints 13–15.
+- `gmvmax-auto`: Google OAuth + fixed-admin email allowlist deployed (`dpl_FDpqCvXJprdiMg2qXSQ57dCAHEB9`). Fixed signed-out shell exposure: Next ignored root middleware beside `src/app`; `online/src/middleware.ts` now redirects `/` to sign-in. Production smoke: data API 401, health 200. Owner Google/allowlist regression tests remain; 7 Tailwind build/dev advisories remain. Details: folder `CHANGELOG.md` + `plan.md`.
 
 ## 06 Oct 2026
 

@@ -1,4 +1,4 @@
-# SECURITY.md - marketer repo security notes (21 Sep 2026)
+# SECURITY.md - marketer repo security notes (07 Oct 2026)
 
 > Threat model + review findings + open incident. Secrets appear
 > lengths-only or truncated here, never values. Remote AnyDesk IDs are
@@ -8,8 +8,9 @@
 
 Covered: `tiktok-account/` login + sync (TikTok Display API OAuth,
 per-account tokens, `sheet-sync.py` Sheets bridge), Google service-account
-key, spreadsheet sharing. Out of scope: TikTok portal account hardening
-(owner's job, see checklist below), office network hardware.
+key, spreadsheet sharing, and `gmvmax-auto/online` Google sign-in + data API
+authorization. Out of scope: TikTok portal account hardening (owner's job, see
+checklist below), office network hardware.
 
 Design facts (verified in code, not assumed):
 
@@ -20,9 +21,9 @@ Design facts (verified in code, not assumed):
   logged-in `@username` against the slot and saves nothing on mismatch
   until explicit override (`/confirm-link` checkbox ack).
 - Tokens (`dashboard/tokens/*.json`: access + refresh) and client secret
-  (`.local_secrets.json` or env) are local files. No remote attack surface
-  exists in this system - theft requires the laptop, its cloud backup, or
-  pasted secrets.
+  (`.local_secrets.json` or env) are local files. For this local utility,
+  there is no remote attack surface; theft requires the laptop, its cloud
+  backup, or pasted secrets. The separate online GMV service is covered in §3c.
 
 Crown jewels, ranked:
 
@@ -76,6 +77,27 @@ Rule: lengths-only in git/chat/docs. Real values in untracked files or env.
 - SA key outside all repos; env fallback empty; no key files in trees.
 - RustDesk dormant since Apr 2026 (no recent logs). Parsec idle heartbeat
   only (Cloudflare backend, no sessions, no Sep-21 activity).
+
+### 3c. Online GMV dashboard (verified 07 Oct 2026)
+
+- Google OAuth is the app sign-in provider. Only verified exact email addresses
+  in `core.access_allowlist`, plus fixed `AUTH_ADMIN_EMAIL`, may access the app.
+- `AUTH_ADMIN_EMAIL` is held in Vercel environment only; it is the bootstrap
+  administrator and alone can manage `/access`. Do not paste OAuth client
+  secrets, `AUTH_SECRET`, or the admin email into git/chat.
+- Dashboard data APIs recheck current allowlist membership on every request;
+  removing an address denies its next request. Allowlist edits are recorded in
+  `core.audit`. `/api/health` is public but returns no business data.
+- Telegram webhook, cron, probe, and campaign-sync endpoints bypass the page
+  middleware only because each has its own server-side secret check. Preset
+  writes also require the allowlist and their dedicated write key.
+- **Bug 56 fixed:** with `src/app`, Next 15 ignored root `middleware.ts`; it must
+  be `online/src/middleware.ts`. Production signed-out checks: `/` → 307
+  `/sign-in`, data API → 401, health → 200. Authenticated admin/allowed/denied/
+  removal flows still require owner end-to-end verification.
+- Vercel Deployment Protection is separate from Google OAuth and can block
+  Google callbacks for non-team users. Any temporary bypass/disable is an owner
+  portal action; restore protection immediately if an auth test fails.
 
 ## 4. Open risks (low, tracked)
 
