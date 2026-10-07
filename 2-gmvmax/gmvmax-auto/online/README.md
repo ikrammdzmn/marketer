@@ -32,3 +32,20 @@ Env (Vercel dashboard only, never git): `NEON_URL_PROD`, `TIKTOK_ADS_ACCOUNT1_AC
   audit still reports 7 Tailwind 3 build/dev findings. The suggested Tailwind 4
   fix is a major migration; review/test it separately. Do not use `--force` as
   an automatic fix.
+
+## Campaign budgets
+
+- The dashboard budget columns are read-only. GMV Max budget info is fetched
+  only for ON campaigns present in the selected report, at most 15 missing
+  budgets per promotion type per Fetch; successful values are cached in Neon.
+  If the UI reports remaining lookups, Fetch again to fill another batch.
+- The per-campaign **Refresh budget** button calls the protected
+  `/api/gmv-max/budget` route, verifies the campaign is still ON for the selected
+  shop/type, GETs the latest budget from TikTok, and updates the existing Neon
+  cache. It never calls a TikTok budget-update endpoint.
+- TTAM uses a finite campaign-level budget when available; for campaigns with
+  no parent cap it sums compatible child ad-group budgets. Mixed/unlimited
+  modes do not get a fabricated total.
+- `% used` is displayed only for one-day ranges. Daily/dynamic daily budgets use
+  that day's spend divided by the current budget; lifetime, unlimited, and mixed
+  modes show no percent. Historical budget changes are not snapshotted.

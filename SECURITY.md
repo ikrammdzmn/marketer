@@ -88,6 +88,9 @@ Rule: lengths-only in git/chat/docs. Real values in untracked files or env.
 - Dashboard data APIs recheck current allowlist membership on every request;
   removing an address denies its next request. Allowlist edits are recorded in
   `core.audit`. `/api/health` is public but returns no business data.
+- The new GMV Max/TTAM budget columns are read-only: they use GET endpoints and
+  do not call TikTok budget-update APIs. They store/display budget metadata and
+  pacing only.
 - Telegram webhook, cron, probe, and campaign-sync endpoints bypass the page
   middleware only because each has its own server-side secret check. Preset
   writes also require the allowlist and their dedicated write key.

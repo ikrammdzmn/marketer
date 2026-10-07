@@ -11,11 +11,12 @@ export async function GET(request: Request) {
   const shopNumber = searchParams.get("shopNumber") ?? "1";
   const startDate = searchParams.get("startDate") ?? "";
   const endDate = searchParams.get("endDate") ?? "";
+  const includeCampaignBudgets = searchParams.get("includeCampaignBudgets") === "1";
   if (!startDate || !endDate) {
     return NextResponse.json({ error: "need startDate + endDate (YYYY-MM-DD)" }, { status: 400 });
   }
   try {
-    return NextResponse.json(await getShopROAS(shopNumber, startDate, endDate));
+    return NextResponse.json(await getShopROAS(shopNumber, startDate, endDate, includeCampaignBudgets));
   } catch (e) {
     const message = e instanceof Error ? e.message : "roas failed";
     console.error("[roas]", message);

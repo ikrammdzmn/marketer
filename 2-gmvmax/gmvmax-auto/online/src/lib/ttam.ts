@@ -1,6 +1,6 @@
 import { getAdsCredentials } from "./ads-credentials";
 import { SHOPS } from "./shops";
-import { normalizeStatus, TTAM_METRICS, scoreTtamRow } from "./gmv";
+import { budgetUsagePercent, normalizeStatus, parseBudgetAmount, TTAM_METRICS, scoreTtamRow } from "./gmv";
 import type { TtamRaw } from "./gmv";
 export { TTAM_THEORY_BANDS, flagScore, flagsForRow, verdictOf, bandsFromPreset } from "./ttam-scores";
 
@@ -41,6 +41,9 @@ export interface TtamAdgroup {
   name: string;
   status: string | null;
   spend: number;
+  budget: number | null;
+  budgetMode: string | null;
+  budgetUsagePct: number | null;
   adCount?: number | null;
   metrics: Record<string, number> | null;
   scores: Record<string, number | null> | null;
@@ -168,6 +171,14 @@ export async function getTtamAdgroups(
         name: g.adgroup_name ?? g.name ?? id,
         status: normalizeStatus(g.operation_status ?? g.status ?? g.secondary_status ?? null),
         spend: raw ? raw.spend : 0,
+        budget: parseBudgetAmount(g.budget),
+        budgetMode: g.budget_mode ? String(g.budget_mode).toUpperCase() : null,
+        budgetUsagePct: budgetUsagePercent(
+          raw ? raw.spend : 0,
+          parseBudgetAmount(g.budget),
+          g.budget_mode ? String(g.budget_mode).toUpperCase() : null,
+          startDate === endDate
+        ),
         metrics: full && row ? row : null,
         scores: scored ? scored.scores : null,
         sfvProxy: full,

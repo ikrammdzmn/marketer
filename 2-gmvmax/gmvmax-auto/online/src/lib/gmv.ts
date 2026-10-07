@@ -35,6 +35,49 @@ export function formatDelivery(raw: string | null): string | null {
   const pretty = raw.replace(/^CAMPAIGN_STATUS_/, "").toLowerCase().replace(/_/g, " ");
   return pretty.replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+export function parseBudgetAmount(raw: unknown): number | null {
+  if (raw === null || raw === undefined || raw === "") return null;
+  const amount = Number(raw);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+// Only daily-style budgets can be compared to a one-day spend total. Lifetime
+// and unlimited budgets keep their amount/mode but deliberately have no %.
+export function budgetUsagePercent(
+  spend: number,
+  budget: number | null,
+  budgetMode: string | null,
+  oneDay: boolean
+): number | null {
+  if (!oneDay || !budget || budget <= 0 || !Number.isFinite(spend)) return null;
+  const mode = String(budgetMode ?? "").toUpperCase();
+  if (mode !== "BUDGET_MODE_DAY" && mode !== "BUDGET_MODE_DYNAMIC_DAILY_BUDGET" && mode !== "MIXED_DAILY") return null;
+  return (spend / budget) * 100;
+}
+
+export async function fetchGmvMaxBudgetInfo(
+  accessToken: string,
+  advertiserId: string,
+  campaignId: string
+): Promise<{ budget: number; budgetMode: string }> {
+  const params = new URLSearchParams({ advertiser_id: advertiserId, campaign_id: campaignId });
+  const res = await fetch(
+    `${BASE_URL}/open_api/${API_VERSION}/campaign/gmv_max/info/?${params.toString()}`,
+    { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
+  );
+  const body = await res.json();
+  if (body.code !== 0) {
+    throw new Error(`gmv_max/info code=${body.code}: ${String(body.message ?? "").slice(0, 100)}`);
+  }
+  const budget = parseBudgetAmount(body.data?.budget ?? body.data?.daily_budget ?? body.data?.total_budget);
+  if (budget === null) throw new Error("TikTok returned no positive budget value");
+  return {
+    budget,
+    // GMV Max's info budget is the daily budget used by current pacing.
+    budgetMode: String(body.data?.budget_mode ?? "BUDGET_MODE_DAY").toUpperCase(),
+  };
+}
 export interface CampaignInfo {
   id: string;
   name: string;
@@ -274,11 +317,14 @@ async function fetchGMVMaxReport(
 }
 
 const FEE_RATE = 0.25; // net lock (plan.md §2): net = gross * (1 - fee)
+const MAX_ACTIVE_GMV_BUDGET_LOOKUPS = 15;
 
-export async function getShopReport(  shopNumber: string,
+export async function getShopReport(
+  shopNumber: string,
   promotionType: PromotionType,
   startDate: string,
-  endDate: string
+  endDate: string,
+  includeBudgetInfo = false
 ) {
   const shop = SHOPS[shopNumber];
   if (!shop) throw new Error(`invalid shopNumber: ${shopNumber}`);
@@ -291,17 +337,31 @@ export async function getShopReport(  shopNumber: string,
   let cmap;
   try {
     cmap = await query(
-      `SELECT campaign_id, name, account, status, delivery FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+      `SELECT campaign_id, name, account, status, delivery, budget FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
       [shop.shopId, promotionType]
     );
   } catch {
-    cmap = await query(
-      `SELECT campaign_id, name, account, status FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
-      [shop.shopId, promotionType]
-    );
+    try {
+      cmap = await query(
+        `SELECT campaign_id, name, account, status, budget FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+        [shop.shopId, promotionType]
+      );
+    } catch {
+      cmap = await query(
+        `SELECT campaign_id, name, account, status FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+        [shop.shopId, promotionType]
+      );
+    }
   }
-  const info = new Map<string, { name: string; account: string; status: string | null; delivery: string | null }>();
-  for (const r of cmap.rows) info.set(r.campaign_id, { name: r.name, account: r.account ?? "Other", status: r.status ?? null, delivery: r.delivery ?? null });
+  const info = new Map<string, {
+    name: string; account: string; status: string | null; delivery: string | null;
+    budget: number | null; budgetMode: string | null;
+  }>();
+  for (const r of cmap.rows) info.set(r.campaign_id, {
+    name: r.name, account: r.account ?? "Other", status: r.status ?? null,
+    delivery: r.delivery ?? null, budget: parseBudgetAmount(r.budget),
+    budgetMode: r.budget === null || r.budget === undefined ? null : "BUDGET_MODE_DAY",
+  });
 
   const rows = await fetchGMVMaxReport(
     creds.access_token, shop.advertiserId, shop.shopId, promotionType, startDate, endDate
@@ -322,26 +382,80 @@ export async function getShopReport(  shopNumber: string,
     c.cost += r.cost; c.gmv += r.gmv; c.orders += r.orders;
     byCampaign.set(r.campaignId, c);
   }
+
+  // GMV Max campaign/get has no budget for this account. Read the budget only
+  // for ON campaigns present in this report, at most 15 per dashboard fetch;
+  // successful values are cached so repeated fetches progressively fill rows.
+  if (includeBudgetInfo) {
+    const needBudget = [...byCampaign.entries()]
+      .filter(([campaignId]) => {
+        const meta = info.get(campaignId);
+        return meta?.status === "ON" && meta.budget === null;
+      })
+      .sort((a, b) => b[1].cost - a[1].cost)
+      .slice(0, MAX_ACTIVE_GMV_BUDGET_LOOKUPS);
+    for (let i = 0; i < needBudget.length; i++) {
+      const [campaignId] = needBudget[i];
+      try {
+        const fresh = await fetchGmvMaxBudgetInfo(creds.access_token, shop.advertiserId, campaignId);
+        const meta = info.get(campaignId);
+        if (meta) {
+          meta.budget = fresh.budget;
+          meta.budgetMode = fresh.budgetMode;
+        }
+        await query(
+          `UPDATE gmv.gmv_campaigns SET budget = $1, updated_at = now() WHERE campaign_id = $2`,
+          [fresh.budget, campaignId]
+        );
+      } catch {
+        // Read-only budget enrichment is fail-open; report metrics still render.
+      }
+      if (i + 1 < needBudget.length) await new Promise((r) => setTimeout(r, 350));
+    }
+  }
   const net = totalGMV * (1 - FEE_RATE);
   const accounts = [...byAccount.entries()].map(([name, d]) => ({
     name, ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0,
   })).sort((a, b) => b.gmv - a.gmv);
   const campaigns = [...byCampaign.entries()].map(([campaignId, d]) => {
-    const meta = info.get(campaignId) ?? { name: campaignId, account: "Other", status: null, delivery: null };
-    return { campaignId, campaignName: meta.name, accountName: meta.account, status: meta.status, delivery: meta.delivery, ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0 };
+    const meta = info.get(campaignId) ?? { name: campaignId, account: "Other", status: null, delivery: null, budget: null, budgetMode: null };
+    return {
+      campaignId, campaignName: meta.name, accountName: meta.account,
+      status: meta.status, delivery: meta.delivery,
+      budget: meta.status === "ON" ? meta.budget : null,
+      budgetMode: meta.budgetMode,
+      budgetSource: meta.status === "ON" && meta.budget !== null ? "campaign" : null,
+      budgetUsagePct: budgetUsagePercent(d.cost, meta.status === "ON" ? meta.budget : null, meta.budgetMode, startDate === endDate),
+      ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0,
+    };
   }).sort((a, b) => a.accountName.localeCompare(b.accountName) || b.gmv - a.gmv);
+  const budgetRefreshRemaining = campaigns.filter((c) => c.status === "ON" && c.budget === null).length;
   return {
     shopName: shop.name, promotionType,
     gmv: totalGMV, cost: totalCost, roi: totalCost > 0 ? totalGMV / totalCost : 0,
     net, net_roi: totalCost > 0 ? net / totalCost : 0,
     orderCount: totalOrders, campaignCount: filtered.length,
     currency: "MYR", dateRange: { start: startDate, end: endDate },
-    accounts, campaigns,
+    accounts, campaigns, budgetRefreshRemaining,
   };
 }
 
 // Live sessions drill (single campaign only): room_id x stat_time_day.
 // The report API accepts one campaign_id in filtering here; multi-ID fails.
+// Livestream status comes from a second livestream-level call (probe-verified
+// 07 Oct: dimensions ["room_id"], single-campaign filter, metrics
+// live_status/live_launched_time/live_duration). Status is current TikTok
+// state, not historical — launched_time is UTC, converted to MYT for display.
+// Fail-open: rows render without status if the lookup fails.
+function liveLaunchedMyt(raw: unknown): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/.exec(String(raw ?? ""));
+  if (!m) return null;
+  const utc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+  const myt = new Date(utc + 8 * 3600 * 1000);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${myt.getUTCFullYear()}-${p(myt.getUTCMonth() + 1)}-${p(myt.getUTCDate())} ${p(myt.getUTCHours())}:${p(myt.getUTCMinutes())} MYT`;
+}
+
 export async function getCampaignSessions(
   shopNumber: string,
   campaignId: string,
@@ -376,7 +490,51 @@ export async function getCampaignSessions(
     gmv: parseFloat(item.metrics?.gross_revenue ?? 0),
     orders: parseInt(item.metrics?.orders ?? 0, 10),
     roi: parseFloat(item.metrics?.roi ?? 0),
+    liveStatus: null as string | null,
+    liveLaunchedMyt: null as string | null,
+    liveDuration: null as string | null,
   }));
+  try {
+    const sparams = new URLSearchParams({
+      advertiser_id: shop.advertiserId,
+      store_ids: JSON.stringify([shop.shopId]),
+      gmv_max_promotion_type: "LIVE_GMV_MAX",
+      dimensions: JSON.stringify(["room_id"]),
+      filtering: JSON.stringify({ campaign_ids: [campaignId] }),
+      metrics: JSON.stringify(["live_status", "live_launched_time", "live_duration"]),
+      start_date: endDate,
+      end_date: endDate,
+      page: "1",
+      page_size: "100",
+    });
+    const sres = await fetch(
+      `${BASE_URL}/open_api/${API_VERSION}/gmv_max/report/get/?${sparams.toString()}`,
+      { headers: { "Access-Token": creds.access_token, "Content-Type": "application/json" } }
+    );
+    const sbody = await sres.json();
+    if (sbody.code === 0) {
+      const byRoom = new Map<string, { status: string; launched: string | null; duration: string | null }>();
+      for (const item of sbody.data?.list ?? []) {
+        const room = String(item.dimensions?.room_id ?? "");
+        if (!room) continue;
+        byRoom.set(room, {
+          status: String(item.metrics?.live_status ?? ""),
+          launched: liveLaunchedMyt(item.metrics?.live_launched_time),
+          duration: String(item.metrics?.live_duration ?? "") || null,
+        });
+      }
+      for (const s of sessions) {
+        const meta = byRoom.get(s.roomId);
+        if (meta) {
+          s.liveStatus = meta.status || null;
+          s.liveLaunchedMyt = meta.launched;
+          s.liveDuration = meta.duration;
+        }
+      }
+    }
+  } catch {
+    // Status enrichment is fail-open; spend rows still render.
+  }
   const totalCost = sessions.reduce((s: number, x: any) => s + x.cost, 0);
   const totalGMV = sessions.reduce((s: number, x: any) => s + x.gmv, 0);
   return { shopName: shop.name, campaignId, sessions, totalCost, totalGMV };
@@ -397,8 +555,14 @@ export async function getGMVMaxIds(accessToken: string, advertiserId: string): P
 export async function getManualCampaigns(
   accessToken: string,
   advertiserId: string
-): Promise<Map<string, { name: string; status: string | null }>> {
-  const out = new Map<string, { name: string; status: string | null }>();
+): Promise<Map<string, {
+  name: string; status: string | null; budget: number | null;
+  budgetMode: string | null; budgetOptimizeOn: boolean;
+}>> {
+  const out = new Map<string, {
+    name: string; status: string | null; budget: number | null;
+    budgetMode: string | null; budgetOptimizeOn: boolean;
+  }>();
   let page = 1;
   let hasMore = true;
   while (hasMore) {
@@ -421,6 +585,9 @@ export async function getManualCampaigns(
         status: normalizeStatus(
           c.operation_status ?? c.status ?? c.campaign_status ?? c.delivery_status ?? null
         ),
+        budget: parseBudgetAmount(c.budget),
+        budgetMode: c.budget_mode ? String(c.budget_mode).toUpperCase() : null,
+        budgetOptimizeOn: c.budget_optimize_on === true || c.budget_optimize_on === "true",
       });
     }
     const total = body.data?.page_info?.total_page ?? 1;
@@ -428,6 +595,78 @@ export async function getManualCampaigns(
     else {
       page++;
       await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+  return out;
+}
+
+type AdgroupBudgetSummary = {
+  budget: number | null;
+  budgetMode: string | null;
+};
+
+async function getManualAdgroupBudgetSummaries(
+  accessToken: string,
+  advertiserId: string,
+  campaignIds: string[]
+): Promise<Map<string, AdgroupBudgetSummary>> {
+  const grouped = new Map<string, { budget: number | null; mode: string | null }[]>();
+  const ids = [...new Set(campaignIds.filter(Boolean))];
+  for (let i = 0; i < ids.length; i += 50) {
+    const batch = ids.slice(i, i + 50);
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const params = new URLSearchParams({
+        advertiser_id: advertiserId,
+        filtering: JSON.stringify({ campaign_ids: batch }),
+        page: String(page),
+        page_size: "100",
+      });
+      const res = await fetch(
+        `${BASE_URL}/open_api/${API_VERSION}/adgroup/get/?${params.toString()}`,
+        { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
+      );
+      const body = await res.json();
+      if (body.code !== 0) throw new Error(`adgroup/get budget code=${body.code}: ${body.message ?? ""}`);
+      for (const row of body.data?.list ?? []) {
+        const campaignId = String(row.campaign_id ?? "");
+        if (!campaignId || !batch.includes(campaignId)) continue;
+        const values = grouped.get(campaignId) ?? [];
+        values.push({
+          budget: parseBudgetAmount(row.budget),
+          mode: row.budget_mode ? String(row.budget_mode).toUpperCase() : null,
+        });
+        grouped.set(campaignId, values);
+      }
+      const total = body.data?.page_info?.total_page ?? 1;
+      if (page >= total) hasMore = false;
+      else {
+        page++;
+        await new Promise((r) => setTimeout(r, 300));
+      }
+    }
+    if (i + 50 < ids.length) await new Promise((r) => setTimeout(r, 300));
+  }
+
+  const out = new Map<string, AdgroupBudgetSummary>();
+  for (const [campaignId, rows] of grouped) {
+    const modes = new Set(rows.map((r) => r.mode));
+    const allDaily = rows.length > 0 && rows.every((r) => r.budget !== null && (
+      r.mode === "BUDGET_MODE_DAY" || r.mode === "BUDGET_MODE_DYNAMIC_DAILY_BUDGET"
+    ));
+    const allLifetime = rows.length > 0 && rows.every((r) => r.budget !== null && r.mode === "BUDGET_MODE_TOTAL");
+    if (allDaily || allLifetime) {
+      out.set(campaignId, {
+        budget: rows.reduce((sum, r) => sum + (r.budget ?? 0), 0),
+        budgetMode: allLifetime
+          ? "BUDGET_MODE_TOTAL"
+          : modes.size === 1 ? rows[0].mode : "MIXED_DAILY",
+      });
+    } else {
+      // Do not invent a single limit when child groups mix capped and uncapped
+      // or daily and lifetime modes.
+      out.set(campaignId, { budget: null, budgetMode: modes.size === 1 ? rows[0].mode : "MIXED" });
     }
   }
   return out;
@@ -545,7 +784,12 @@ export async function getActiveTtamPreset(): Promise<{
   }
 }
 
-export async function getShopROAS(shopNumber: string, startDate: string, endDate: string) {
+export async function getShopROAS(
+  shopNumber: string,
+  startDate: string,
+  endDate: string,
+  includeCampaignBudgets = false
+) {
   const shop = SHOPS[shopNumber];
   if (!shop) throw new Error(`invalid shopNumber: ${shopNumber}`);
   const creds = await getAdsCredentials(shop.advertiserId);
@@ -560,16 +804,60 @@ export async function getShopROAS(shopNumber: string, startDate: string, endDate
     : null;
   const manual = await fetchManualSpend(creds.access_token, shop.advertiserId, startDate, endDate);
   const preset = await getActiveTtamPreset();  // Campaign names + status (fail-open: spend rows show id-only on lookup error).
-  let manualCampaigns: { campaign_id: string; name: string; status: string | null; spend: number }[] = [];
+  let manualCampaigns: {
+    campaign_id: string; name: string; status: string | null; spend: number;
+    budget: number | null; budgetMode: string | null; budgetSource: string | null;
+    budgetUsagePct: number | null;
+  }[] = [];
   try {
     const info = await getManualCampaigns(creds.access_token, shop.advertiserId);
-    manualCampaigns = manual.rows.map((r) => ({
-      ...r,
-      name: info.get(r.campaign_id)?.name ?? r.campaign_id,
-      status: info.get(r.campaign_id)?.status ?? null,
-    }));
+    const groupBudgetIds = includeCampaignBudgets
+      ? manual.rows.filter((r) => {
+        const campaign = info.get(String(r.campaign_id));
+        return !campaign?.budget || campaign.budgetMode === "BUDGET_MODE_INFINITE";
+      }).map((r) => String(r.campaign_id))
+      : [];
+    let groupBudgets = new Map<string, AdgroupBudgetSummary>();
+    if (groupBudgetIds.length > 0) {
+      try {
+        groupBudgets = await getManualAdgroupBudgetSummaries(
+          creds.access_token, shop.advertiserId, groupBudgetIds
+        );
+      } catch (e) {
+        console.error("[ttam-budget] adgroup budget lookup failed", e instanceof Error ? e.message : "failed");
+      }
+    }
+    manualCampaigns = manual.rows.map((r) => {
+      const campaignId = String(r.campaign_id);
+      const campaign = info.get(campaignId);
+      const groups = groupBudgets.get(campaignId);
+      const useCampaignBudget = !!campaign?.budget && campaign.budgetMode !== "BUDGET_MODE_INFINITE";
+      const budget = includeCampaignBudgets
+        ? useCampaignBudget ? campaign?.budget ?? null : groups?.budget ?? null
+        : null;
+      const budgetMode = includeCampaignBudgets
+        ? useCampaignBudget ? campaign?.budgetMode ?? null : groups?.budgetMode ?? campaign?.budgetMode ?? null
+        : null;
+      return {
+        ...r,
+        campaign_id: campaignId,
+        name: campaign?.name ?? campaignId,
+        status: campaign?.status ?? null,
+        budget,
+        budgetMode,
+        budgetSource: includeCampaignBudgets
+          ? useCampaignBudget ? "campaign" : groups ? "adgroups" : null
+          : null,
+        budgetUsagePct: includeCampaignBudgets
+          ? budgetUsagePercent(r.spend, budget, budgetMode, startDate === endDate)
+          : null,
+      };
+    });
   } catch {
-    manualCampaigns = manual.rows.map((r) => ({ ...r, name: r.campaign_id, status: null }));
+    manualCampaigns = manual.rows.map((r) => ({
+      ...r, name: r.campaign_id, status: null, budget: null,
+      budgetMode: null, budgetSource: null, budgetUsagePct: null,
+    }));
   }
   const gmv = (live?.gmv ?? 0) + (product?.gmv ?? 0);
   const gmvMaxCost = (live?.cost ?? 0) + (product?.cost ?? 0);

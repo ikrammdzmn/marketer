@@ -6,7 +6,8 @@
 ## Online version (Vercel, `marketer-hw.vercel.app`, Google sign-in)
 
 - Shop / Metric / Date / Fetch Data: Total (LIVE + Product split in two tables), LIVE, Product, TTAM (manual spend only), ROAS (with SST+WHT actual), **Hourly** (per-campaign hour tables + trend graphs), Shop GMV (shop-order truth, needs shop login — otherwise shows the locked reference).
-- Each campaign row shows a green ON / grey OFF pill (from TikTok) plus what TikTok says about delivery (🟢 Active, ⛔ Asset unavailable, …). Closed account rows roll up: ON if anything inside is ON, plus any delivery warnings. A Sessions button shows live rooms x day, on demand.
+- Each campaign row shows a green ON / grey OFF pill (from TikTok) plus delivery state: 🟢 Active when a live room is ongoing right now (checked automatically after Fetch, top spenders first) or TikTok reports Active; other flags show grey on rows that spent, ⛔ only when nothing spent — spend proves delivery. Account rows roll up the same way: ON if anything inside is ON, 🟢 Active if any room inside is ongoing now.
+- Sessions button sits on each LIVE campaign. Tap it and that campaign's rooms open **directly underneath it** (tap again to hide). Each room shows its spend/sales plus its current 🟢 ONGOING / ⚪ END pill — hover it for start time (MYT) + duration. Other campaigns stay untouched.
 - Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then resync.
 - Numbers can move slightly during the day (TikTok settles sales figures over hours while spend stays fixed). If a number looks off versus an hour ago, press Fetch Data again — newest wins, nothing is lost.
 - Sign in with a Google account that the administrator has approved. Removing an account blocks its next dashboard-data request.
@@ -59,6 +60,8 @@
   rate-limits us. A spinner shows while loading.
 - Top tabs: Dashboard and Presets; **Access** appears for the fixed administrator.
 - Google access is limited to individual email addresses, not everyone at a company domain. The fixed administrator opens **Access** in the top bar to add or remove emails. The administrator address is set privately in Vercel and cannot be removed from that page.
+- Campaign tables include a **Budget** column for GMV Max and TTAM. **% used** appears only for a one-day range, based on that day’s spend and the current daily budget. Lifetime, unlimited, and mixed TTAM budgets show no percentage; old-day percentages may differ if the budget has since changed. GMV Max budget details fill in for ON campaigns in small batches; if some show `—`, Fetch again to continue. Account totals currently show only when every campaign inside has a known budget — otherwise they show `—` so you never see a misleading partial total (ON-only partial totals are next).
+- Each ON GMV Max campaign has a **Refresh budget** button. Use it after changing the budget in TikTok to fetch the latest amount immediately. It only reads from TikTok; it never changes the budget.
 - Webhook and scheduled sync routes retain their separate server-side secret checks. Preset saves also retain their extra write check.
 - Google sign-in is the app’s access gate. Vercel Deployment Protection is a separate outer gate; when enabled, it may show a Vercel login before Google sign-in for people outside the Vercel team. Its setting is owner-managed. The checklist is in `online/README.md`.
 

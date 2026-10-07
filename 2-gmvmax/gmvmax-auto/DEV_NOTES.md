@@ -1,7 +1,307 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 15 first (current facts), then Checkpoints 14/13 and the vibe below them.
+> Next-you: read Checkpoint 26 first (current facts), then Checkpoints 25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
+> Read this first. It carries the vibe, not just the facts.
+
+DO NOT DELETE THIS PART!!! i ask you
+
+Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 26 — 07 Oct 2026 (session handoff; account-budget question open, no deploy)
+
+**To next-you: get back in this headspace instantly.** Owner drives with
+phone screenshots, not logs — three screenshots beat any stack trace tonight.
+They speak short ("ok fix it", "ok go", "why there are account that had
+budget"). You answer short: numbers first, one action per message, sparring
+ON, no fluff. Each deploy answers exactly one screenshot. They verify signed
+in; you only ever see 307/401 smoke (root 307, data APIs 401) — never owner
+data. No commit/push unless asked (repo sits past `92e6016` + `8665857` with
+uncommitted budget/session work; `git status` shows many Ms + two untracked
+API dirs — leave them alone).
+
+**Energy/mood.** Late-session, fast-iteration trust loop: probe → tiny fix →
+deploy → owner screenshot → next fix. Owner is happy ("ok good") but precise —
+they caught that Dr.Samhan needed manual open while HIMCoffee flipped alone,
+and that account budgets show for some accounts but not others. Mood is
+collaborative, not formal. Keep it that way: plain words, status codes as
+proof, ask for one signed-in check at a time.
+
+**Unique discoveries this arc (20→25).** `session/list` empty ≠ no
+livestreams (it lists max-delivery sessions, not delivered rooms). Room truth
+comes from livestream-level `gmv_max/report/get` filtered by single campaign,
+grouped by `room_id`: `live_status`/`live_launched_time`/`live_duration` —
+status is CURRENT TikTok state, not historical; launched UTC → MYT +8 (23:56
+UTC = 07:56 MYT verified vs Ads Manager). Spend proves delivery: ON +
+spending + `Asset unavailable` flag = grey info, ⛔ only on zero-spend rows.
+`campaignOngoing()` = any room `liveStatus === "ONGOING"` drives 🟢 Active on
+campaign + account. Auto-check cap 5 sequential (rate-limit safe); order
+matters so sort by spend desc. Inline `Fragment` per campaign beats popup for
+context. Account budget is all-or-nothing today (`budgetsComplete`), which is
+exactly why the owner asked the last question.
+
+**Open next session.** Owner approved: account budget = sum of ON campaigns
+only, ignore OFF; mark partial when an ON budget is still unknown; `% used`
+= ON spend ÷ ON budget, one-day only. NOT implemented yet — implement +
+verify + deploy on next go. Remind them Fetch may still need repeats (15
+missing infos per Fetch, highest-spend first, cached).
+
+**Bugs found/fixed + lessons (don't repeat).**
+- B57 edit ate `VerdictCell` signature (multi-line oldString). Lesson: after
+every structural edit, re-read the region before verifying (folder rule 8).
+- B58 auto-check reused stale sessions (React `setSessions({})` async +
+closure cache). Lesson: `loadSessions(id, force)` + sequential force-refresh
+on Fetch; manual button keeps cache path.
+- B59 auto-check first-5 report order skipped Dr.Samhan. Lesson: sort
+candidates by spend desc before slicing cap; caps need importance order, not
+report order.
+- B60 Sessions dumped below whole list. Lesson: one `Fragment` per campaign
+(campaign row + its rooms), `sessionsExpanded` set, `toggleSessions()`;
+background pill checks never expand rows.
+- B61 PowerShell `&&` + `head` fail on Win PS5.1. Lesson: `;` chaining,
+avoid unix pipes in shell tool.
+- B62 edit failed on MASTER-CHANGELOG long line (whitespace/emoji drift).
+Lesson: anchor tiny unique substrings, not whole paragraphs.
+- B56 carryover: curl 200 ≠ redirect; check status + Location + middleware
+manifest; middleware belongs at `online/src/middleware.ts` when `src/app`
+exists.
+- Account `—` is NOT missing data bug: strict `budgetsComplete` hides partial
+sums by design (`page.tsx:648`); OFF forces `budget: null` (`gmv.ts:425`).
+Next session changes this to ON-only partial by owner order.
+
+**Vibe.** Screenshots do the debugging. Display truth, don't mask it. Probe
+first, build third. No commit/push unless asked.
+
+## Checkpoint 25 — 07 Oct 2026 (inline per-campaign sessions; deployed)
+
+**Why.** Owner asked: Sessions button dumped all rooms below the whole campaign
+list, forcing scroll + guess which rooms belong where. Chose inline expand
+over popup to keep context beside the clicked campaign.
+
+**What shipped.** `sessionsExpanded` set + `toggleSessions()` in
+`online/src/app/page.tsx`: Sessions toggles to Hide, room rows render in a
+Fragment directly beneath that campaign only. Background auto-checks for 🟢
+Active pills never expand rows. Fetch clears expanded set with sessions.
+
+**Proof.** py_compile + tsc + build green. Deployed `dpl_Frr1y6Z6cjiqifeXL4KLwgED131r`. Live
+smoke: `/` 307, sessions API 401. Owner clicks Sessions on ot1 Dr.Samhan and
+confirms rooms appear beneath it, other campaigns untouched.
+
+**Vibe.** Same as 24. No commit/push unless asked.
+
+## Checkpoint 24 — 07 Oct 2026 (spend-priority auto-check; deployed)
+
+**Why.** ot1 Dr.Samhan (1862612348807426) needed manual Sessions open to flip
+🟢 Active while HIMCoffeedrsamhan flipped automatically. Root cause: auto-check
+took the first 5 ON LIVE campaigns in report order, so Dr.Samhan could miss
+the batch.
+
+**What shipped.** Fetch auto-check now collects ON LIVE candidates, sorts by
+spend desc, takes top 5, then force-refreshes sequentially. No API traffic
+increase; fail-open unchanged.
+
+**Proof.** py_compile + tsc + build green. Deployed `dpl_87bUfeDXeGMVZJY2G6UpL1hTjWJ8`. Live
+smoke: `/` 307, sessions API 401. Owner Fetches once and confirms both ot1
+rows read 🟢 Active with no clicks.
+
+**Vibe.** Same as 23. No commit/push unless asked.
+
+## Checkpoint 23 — 07 Oct 2026 (force-refresh room checks; deployed)
+
+**Why.** Owner showed pills only flip to 🟢 Active after opening Sessions per
+campaign. Root cause: auto-check reused cached session rows (React state reset
+is async), and parallel checks risked the Marketing API rate limit.
+
+**What shipped.** `loadSessions(id, force)` bypasses cache when forced;
+Fetch auto-check now force-refreshes ON LIVE campaigns sequentially
+(one at a time, cap 5). Manual Sessions button behavior unchanged.
+
+**Proof.** tsc + build green. Deployed `dpl_EwfNcXERGdcyezVMR3RaaNKQzkE7`. Live
+smoke: `/` 307, sessions API 401. Owner Fetches once and confirms ot1 +
+Dr.Samhan rows read 🟢 Active with no clicks.
+
+**Vibe.** Owner's screenshots do the debugging — three images pinpointed the
+stale-cache path faster than any log. No commit/push unless asked.
+
+## Checkpoint 22 — 07 Oct 2026 (🟢 Active from ongoing rooms; deployed)
+
+**Why.** Owner asked: account + campaign rows should show 🟢 Active when a room
+is ongoing. Grey info text wasn't enough — they want the Active pill.
+
+**What shipped.** `campaignOngoing()` derives live-delivery from loaded room
+state (any room `liveStatus === "ONGOING"`). Campaign and account rows show
+🟢 Active instead of the cached flag when true. Fetch auto-loads sessions for
+ON LIVE campaigns (cap 5, silent fail-open) so pills correct themselves with
+no clicks. Underlying flag data untouched.
+
+**Proof.** tsc + build green. Deployed `dpl_3gZRXQaE4iCfrGeBvvcBQf2S7qTA`. Live
+smoke: `/` 307, data API 401. Owner confirms on the ot1 + Dr.Samhan rows.
+
+**Vibe.** Small, sharp iterations win: each deploy answers one screenshot. No
+commit/push unless asked.
+
+## Checkpoint 21 — 07 Oct 2026 (spend-aware delivery badge; deployed)
+
+**Why.** Owner screenshot proved the false alarm: room ONGOING + spending, yet
+campaign row showed ON + ⛔ Asset unavailable. Spend proves delivery, so a
+diagnostic flag on a spending campaign must not render as a red alarm.
+
+**What shipped.** New `DeliveryPill` in `online/src/app/page.tsx`: Active stays
+🟢; any other flag on a row with cost > 0 in range renders grey info (hover
+explains TikTok still reports the flag); ⛔ appears only when the row spent
+nothing. Applied to campaign rows and account rollups. Flag data itself is
+untouched — display-only change.
+
+**Proof.** tsc + build green. Deployed `dpl_9mG9iNXKrnPx9UU5qEsT7Lcqs7qt`. Live
+smoke: `/` 307, data API 401. Owner rechecks the ot1 row signed in.
+
+**Vibe.** Display truth, don't mask it: the flag stays visible, just not red
+when spend contradicts it. Watch: if TikTok ever reports a flag WITH zero
+spend on an ON campaign, ⛔ still correctly shows.
+
+## Checkpoint 20 — 07 Oct 2026 (room live-status in Sessions drill; deployed)
+
+**Why.** Owner matched room 7693707778641169173 on both sides and asked if the
+drill can show ongoing-or-not. Probe proved `live_status`/`live_launched_time`/
+`live_duration` return per room (ONGOING + UTC launched time, verified against
+Ads Manager's 07:56 MYT start).
+
+**What shipped.** `getCampaignSessions` now makes one extra livestream-level
+call (single-campaign filter, group by room, fail-open) and attaches
+`liveStatus`/`liveLaunchedMyt`/`liveDuration` to each room row. UI shows
+🟢 ONGOING / ⚪ END pill with launched-MYT + duration in the hover title.
+Status is current TikTok state, not historical. Launched time converted
+UTC→MYT (verified: 23:56 UTC = 07:56 MYT).
+
+**Proof.** tsc + build green. Deployed `dpl_8TVzd8xbv8cWM3wKDwDZdr4x`. Live
+smoke: sessions API 401 signed-out, `/` 307. Owner opens Sessions on the LIVE
+campaign signed in to see pills.
+
+**Vibe.** Probe-first discipline paid off twice today (budget fields, now room
+status). Keep it: docs first, probe second, build third. No commit/push unless
+asked.
+
+## Checkpoint 19 — 07 Oct 2026 (session/list probe deployed; status columns next)
+
+**Why.** Sessions drill is report-based (room x day spend, no status). Ads
+Manager Livestreams tab shows LIVE name + Ongoing/Ended + start time for the
+same room ID. Owner asked to recheck room level for ongoing-or-not.
+
+**What shipped.** New allowlisted GET `/api/sessions/probe` calls
+`campaign/gmv_max/session/list/` (page_size 5) and returns code, data keys,
+item keys, and one truncated sample — no secrets. Field names still unverified
+until owner runs it signed in.
+
+**Proof.** tsc + build green (route listed). Deployed
+`dpl_B9sq3qGKfgr6mUCMnpRtmQ5rEvLt`. Live smoke: probe 401 signed-out, `/` 307,
+health 200. Extended with `roomId` branch (doc-grounded livestream metrics
+`live_status`, `live_launched_time`, `live_duration`); deployed
+`dpl_Fn3emPRsi8TSoW3ohKNDeG21oWgZ`, live signed-out probe still 401.
+
+**Next.** Owner opens (signed in)
+`/api/sessions/probe?shopNumber=1&campaignId=1862612348807426&roomId=7693707778641169173`
+and pastes back the JSON (`roomProbe` section: does `live_status` return
+Ongoing/Ended?). Then wire live status into the Sessions drill. Probe result so
+far: session/list is code 0 with empty `session_list` — that endpoint only
+covers max-delivery sessions created in the campaign, not delivered rooms.
+First room-metric attempt failed 40002 (missing campaign_id filter); second
+attempt failed 40002 (`room_ids` is not a supported filter). Probe now filters
+by single campaign and groups by room (`room_id`, then `room_id+day` fallback),
+deployed `dpl_3XWDiCYYb4uT2dACr9mNJY85EwWJ` (signed-out probe still 401).
+
+**Vibe.** Same as Checkpoint 18: short replies, verify with status codes, no
+portal changes by agent, no commit/push unless asked.
+
+## Checkpoint 18 — 07 Oct 2026 (Refresh-budget button deployed; owner live test next)
+
+**Why.** Dashboard showed cached Neon budget; normal Fetch never refreshed a
+stored value, so a GMV Max budget edit in TikTok stayed stale. Owner asked for a
+per-campaign refresh button.
+
+**What shipped.** ON GMV Max rows have Refresh budget. It POSTs to new
+`online/src/app/api/gmv-max/budget/route.ts` (allowlist + same-origin checks),
+verifies the campaign row is still ON for that shop/type, GETs
+`campaign/gmv_max/info` via `fetchGmvMaxBudgetInfo`, and UPDATEs only the
+existing `gmv.gmv_campaigns.budget` cache. No TikTok budget-update call, no
+migration. Button updates the row + one-day % in place and shows a status line.
+
+**Proof.** `npx tsc --noEmit` + `npx next build` green; build lists
+`/api/gmv-max/budget`. Local no-cookie smoke: refresh POST 401, data API 401,
+health 200. Deployed `dpl_48R5oJNjejGjoH5K7ZYwnV5QHw7A` (alias
+`marketer-hw.vercel.app`). Live no-cookie smoke: `/` 307 to `/sign-in`,
+refresh POST 401, `/api/gmv-max` 401. Authenticated refresh (owner, signed in)
+still open: change a LIVE budget in TikTok, press Refresh budget, compare row.
+
+**Vibe.** Owner tests in another Chrome profile and reports plainly; keep
+replies short, one action per message, verify with status codes not screenshots.
+Do not commit/push unless asked (already pushed `92e6016` earlier; these budget
+files are still uncommitted).
+
+## Checkpoint 17 — 07 Oct 2026 (budget columns deployed; value verification pending)
+
+**Owner spec.** Show budget amounts for GMV Max and TTAM campaign rows. Show
+`% used` only for a one-day range; calculate daily spend/current daily budget.
+GMV Max budget lookups should be restricted to ON campaigns. Lifetime, unlimited,
+and mixed TTAM modes show amount/mode but no one-day percentage. No TikTok
+budget-update calls are made; successful GET results are cached in Neon.
+
+**Implemented + deployed.** GMV Max campaign reports read the existing
+`gmv.gmv_campaigns.budget` cache, then fetch `campaign/gmv_max/info` only for ON
+campaigns in the report with no cached amount (max 15 per type/request); successful
+lookups are stored and the UI says when active budgets remain to fetch. TTAM
+campaign/get parses campaign budgets; campaigns without a finite campaign cap
+fetch matching adgroups in 50-ID batches and sum compatible daily/lifetime child
+budgets. The campaign table shows Budget/% used; expanded adgroups show their own
+budget too. No schema migration or TikTok budget-update call was added.
+
+**Verification.** TypeScript and Next 15.5.27 production build pass. Deployment
+`dpl_DStCPLP6hYsXmWoQXqX7B2iJDmCn` succeeded. No database budget API values could
+be authenticated/read by agent; only route/build behavior is verified. Owner
+should compare an ON GMV Max daily campaign, TTAM campaign-level budget, and
+TTAM adgroup-budget campaign against Ads Manager. If active GMV budgets remain
+uncached, repeat Fetch to process another batch. Old-day % uses current budget
+because no historical budget snapshots exist.
+
+**Vibe / next window.** User clarified “% used only shows when one day is
+selected” and accepted amount/mode without % for lifetime/unlimited/mixed. Keep
+the panel read-only. Do not treat API field presence as proof that the owner's
+campaigns return it; ask them to compare real rows before declaring verified.
+The remaining Tailwind dev audit items (7) are separate; production audit is 0.
+
+## Checkpoint 16 — 07 Oct 2026 (budget feature, pre-deploy)
+
+**Owner request.** Show each visible GMV Max and TTAM campaign's budget on the
+online dashboard, plus budget-use percentage only for a one-day selection.
+GMV Max budget lookups are restricted to campaigns whose stored TikTok status is
+ON. No budget modification/write behavior was requested or added.
+
+**What changed.** GMV campaign report responses now include cached budget data;
+when an ON campaign in the selected report has no cached amount, the endpoint
+fetches `campaign/gmv_max/info` for up to 15 such campaigns per type/request and
+caches successful values in the existing `gmv.gmv_campaigns.budget` column.
+UI reports remaining active lookups so Fetch can continue filling. TTAM campaign
+metadata now parses `budget`/`budget_mode`; if there is no finite campaign-level
+budget, it queries matching ad groups in batches and sums only compatible daily
+or lifetime budgets. TTAM ad-group drill rows also show their own budgets.
+
+`% used` is calculated only when `startDate === endDate`, and only for
+`BUDGET_MODE_DAY` / dynamic-daily amounts. Lifetime, unlimited, and mixed-mode
+budgets show no percent. A historical one-day selection is compared with the
+current budget, because no budget history is stored. Multi-day ranges still show
+the current budget amount but no percent. No DB migration or TikTok budget write
+was added.
+
+**Verification.** `npx tsc --noEmit` passed and `npx next build` passed on
+Next 15.5.27. Live account field values have NOT yet been compared against Ads
+Manager. If TikTok omits a budget/mode, the UI shows `—` or `Mixed` rather than
+inventing a percent. Owner should verify one ON GMV Max daily campaign, one TTAM
+campaign-level budget, and one TTAM campaign whose budget comes from ad groups.
+Production deployment remains pending this session's final handoff.
+
+**Vibe.** Owner narrowed the requirement precisely: “% used only shows when one
+day is selected” and limit GMV Max info calls to ON campaigns. Keep the UI
+display-only and explain missing values plainly. Ask for Ads Manager comparison
+after deploy; do not ask for secrets or budget-write permissions.
 
 ## Checkpoint 15 — 07 Oct 2026 (signed-out shell exposure fixed + redeployed)
 
@@ -165,6 +465,7 @@ copy-paste atomic (all vars + verify in ONE block). Short replies are not
 rudeness, they're the protocol — match it: one action per message, facts first.
 
 **What shipped.**
+
 - Restructure Phase 2 landed under this folder's feet (`2-gmvmax/gmvmax-auto/`);
   `deploy_online.py` ROOT walks up 2 (verified resolves); `sheet-sync.py`
   sibling-`../tools` lookup now walks up (old depth broke under `2-gmvmax/`);
@@ -223,6 +524,7 @@ rudeness, they're the protocol — match it: one action per message, facts first
 ## Checkpoint 11 — 06 Oct 2026 (M10 dashboard + M11 TTAM metrics/presets, all local-green, deploy decides)
 
 **What shipped (tsc-clean, most undeployed at close).**
+
 - M10 dashboard overhaul: Tailwind rewrite (sticky header, KPI cards, section cards;
   `tailwind.config.js` + `postcss.config.js` + `globals.css`); delivery pills green/grey;
   Sessions button LIVE-only; Status filter (All/ON+unknown/OFF) + ON-first sort
@@ -237,8 +539,8 @@ rudeness, they're the protocol — match it: one action per message, facts first
 - Preset system: `012_ttam_presets.sql` (new `ttam` schema, applied dev+prod,
   seed active) + `/api/ttam-presets` (list/get/update/duplicate/activate/delete
   + scorer export) + `/presets` manager page (band/guardrail/notes editor,
-  add/delete metric, export download) + TTAM-bar preset picker (no-refetch
-  swap) + runtime custom-metric eval (`applyCustomScores`) + full-name tooltips.
+    add/delete metric, export download) + TTAM-bar preset picker (no-refetch
+    swap) + runtime custom-metric eval (`applyCustomScores`) + full-name tooltips.
 - Probes: `/api/ttam-probe` (25 → 27 metrics, all OK all grains) filled the
   mapping table (`ttam-api-metrics-plan.md`, mirrored in plan dir).
 
@@ -266,6 +568,7 @@ rudeness, they're the protocol — match it: one action per message, facts first
     or read docs before declaring API limits — sparring works both ways.
 
 **Open threads (next session).**
+
 1. LQS verify: one ad's LQS vs xlsx "10-second LIVE views" (live_effective_views presumed).
 2. TTAM quartile recalibration (needs weeks of data) → then "provisional" off.
 3. FUTURE (in ttam-api-metrics-plan.md): compact mode, reason 2nd line, slim sub-rows, verdict-history snapshots, fetch-all generalization, monitor toggle.
@@ -296,6 +599,7 @@ Check the Project Knowledge and the current chat for context. This conversation 
 - Secrets held: CRON_SECRET handled terminal-only; tokens never pasted. `package-lock.json` appeared untracked (left alone — ask before committing).
 
 ## Vibe / dynamic / energy — sync to this frequency
+
 - Owner is Ikram (HIMWELLNESS, MY shop), non-DB beginner but fast executor: clicks through
   Neon/TikTok portals live and pastes back screenshots instead of words. Replies are short
   ("ok", "now", "ok done", screenshots). Match that: short replies, numbered steps, no lectures.
@@ -313,6 +617,7 @@ Check the Project Knowledge and the current chat for context. This conversation 
   No emojis unless asked. PowerShell 5.1, Windows paths, `127.0.0.1` only.
 
 ## Where P0 stands (facts, 19 Sep 2026 night MYT)
+
 - Skeleton LANDED + verified: `collector.py` (closed-window T-2h stub tick wrote
   `cache/snapshots.jsonl`), `dashboard/dashboard.py` (owns 8082, smoke 8099 OK:
   `/api/health` LOCAL-FILE, 1 snapshot), `dashboard.html` (picker, 30m/1h table,
@@ -347,6 +652,7 @@ Check the Project Knowledge and the current chat for context. This conversation 
 - Energy: late-session, get-it-landed. Sync cue: lead with numbers (owner lights up at ROI figures), keep portal steps to one action per message, never ask them to open terminal beyond copy-paste commands.
 
 ## Bugs found + fixed this session (do not regress)
+
 1. **Unqualified table names (002/003).** Wrote `CREATE TABLE acct_tokens` after
    `CREATE SCHEMA acct` — tables landed in `public`, so `WHERE table_schema='acct'`
    returned 0 while Neon said "already exists". Owner screenshots proved it
@@ -511,6 +817,7 @@ rule lives in MASTER-AGENTS (note: that file does not exist in repo — rule
 dangles; do not chase it, use MASTER-PLAN instead).
 
 **Discoveries (do not relitigate).**
+
 - `stat_time_hour` exists on `gmv_max/report/get` (code 0 verified); 1-day span
   max; returns full-day grid incl. future zero slots; slots are MYT.
 - Telegram Bot API 10.1+ Rich Messages are real and live on owner's client:
@@ -526,6 +833,7 @@ dangles; do not chase it, use MASTER-PLAN instead).
 - Vercel CLI login expires mid-session (twice) — `npx vercel login`, redeploy.
 
 **Open threads (next session).**
+
 1. Telegram-vs-dashboard divergence: 4 structural causes mapped (OFF inclusion,
    unmapped handling opposite, grain scope, pull-time drift) — awaiting owner's
    number pair to name the culprit.
@@ -563,6 +871,7 @@ rule dangles (file does not exist — do not chase it). (5) `tiktok-creative-ana
 got modified this session by SOMETHING (not us — never stage/commit it).
 
 **What shipped after Checkpoint 9.**
+
 - Total message (3rd): Live + Product jar rows, combined verdict, dashboard button.
 - Chart buttons: top-7 movers as URL links (QuickChart per-campaign trends) + 📊 Dashboard on top, pairs below. Multi-buttons-blocks VERIFIED working. Callback-photo handler built (tap → inline chart photo) then parked dormant per owner (URL links won).
 - Covers saga: raw.githubusercontent URLs good (verified 200 image/png), but in-blocks photo NUKED Product's tables while Live survived → fail-open split (photo as separate send). Then covers removed entirely per owner (detached look disliked). Lesson bottled (see Bugs).
@@ -606,9 +915,10 @@ got modified this session by SOMETHING (not us — never stage/commit it).
 - Rich tables live (probe-verified shapes: bold/string paragraph text, striped compact tables with is_header/align cells; `header` block unsupported, probe self-deletes): hourly messages now title + totals + real table (movers, 40 cap) + steady footer via sendRichMessage blocks, legacy HTML fallback. Deployed green.
 - Emoji mapping locked (stored in hourly.ts EMOJI const): 📹 LIVE / 📦 Product titles, 🔥 top GMV jump per type, ⚠️ stagnant (cost>=RM5, zero GMV), neutral ▲▼▪ (cost-up is bad, GMV-up is good — color carries judgment). Human headers ("12:00 → 13:00 MYT · pulled HH:MM MYT"). Deployed green.
 - Collapsible Details probe: all 3 shape variants accepted (summary object/string/title). Wired steady list + earlier-today per-type slot totals into Details blocks inside both hourly messages. Deployed green.
-- Real-time pivot per owner (lag rule dropped): edge = last active slot, newest pair tagged (partial); whole-message ON-filter (explicit OFF excluded, unknown stays, "excludes N OFF · status as of <sync>" footnote); dashboard keeps all. Deployed green.
+- Real-time pivot per owner (lag rule dropped): edge = last active slot, newest pair tagged (partial); whole-message ON-filter (explicit OFF excluded, unknown stays, "excludes N OFF · status as of <sync></sync>" footnote); dashboard keeps all. Deployed green.
 - On-demand `/fetch` in group topic: `/api/tg-webhook` (secret-token guard, reuses syncHourly, replies in-topic). Owner did privacy-mode + setWebhook. Deployed green.
 - Unpacked per owner (rich first): sender tries sendRichMessage {html} (Bot API 10.1+, 32k cap), auto-falls back to legacy sendMessage; sync result reports telegram_mode (rich-html+rich-html, legacy mix, or false). Content restructured: type totals + movers (|d|>=RM1 or orders moved) + steady count. Deployed green.
+
 ## Checkpoint 7 — 03 Oct 2026 (M8 token parked, numerator locked manually)
 
 - Shop-API token route PARKED: draft Custom app `HIMWELLNESS GMV MAX INTERNAL` region-blocks authorize even on MY seller login (4h duration shown, Authorize dead). Tried: Testing Tool app_key select (finance scope refused → switched to order API → still refused → Manage scope order-read added → authorize page → region restriction). Portal path exhausted for now; scaffold stays (`007_shop_tokens` applied dev, verified `to_regclass`; `/api/shop-gmv` deployed green, graceful unconfigured).
@@ -702,6 +1012,7 @@ got modified this session by SOMETHING (not us — never stage/commit it).
    cutover file→DB, monthly-spend reconciliation note (returns/cancels drift).
 
 ## Landmines / never-do
+
 - Never print/paste secret VALUES (lengths + key-names only). Never commit
   `.local_secrets.json`, `cache/`, `tokens/`, `csvs/`, `__pycache__/`.
 - Never edit applied migrations (001–004 frozen); new fix = 005+.

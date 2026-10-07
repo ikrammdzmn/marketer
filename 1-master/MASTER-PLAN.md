@@ -56,7 +56,7 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
 
 - 07 Oct security: Standard Protection had left Production public; owner switched Vercel Authentication to All Deployments. Google OAuth app gate is now deployed as a separate layer; page redirect + signed-out API checks pass. Vercel protection state remains owner-controlled; finish admin/allowed/denied/removal auth tests. See `2-gmvmax/gmvmax-auto/DEV_NOTES.md` Checkpoints 13–15.
 
-- 07 Oct: Google sign-in + fixed-admin email allowlist manager deployed for `gmvmax-auto` (`dpl_FDpqCvXJprdiMg2qXSQ57dCAHEB9`). Next 15.5.27/PostCSS upgrade passes build; production audit clean, 7 Tailwind dev/build advisories remain. Signed-out shell bug fixed by moving middleware into `src/`; production smoke confirms redirect + API 401. Owner real-account regression tests remain. See folder `online/README.md` + `plan.md`.
+- 07 Oct: Google sign-in + fixed-admin email allowlist and read-only GMV Max/TTAM budget columns + Refresh-budget button deployed for `gmvmax-auto` (latest `dpl_Frr1y6Z6cjiqifeXL4KLwgED131r`, adds 🟢 Active pills from ongoing rooms with force-refresh + spend-priority auto-check + inline per-campaign sessions). Next 15.5.27/PostCSS production audit clean; 7 Tailwind dev/build advisories remain. Signed-out shell bug fixed by placing middleware in `src/`; production smoke confirms redirect + API 401. Open next: account budget = ON-campaigns sum with partial label (owner-approved). Owner signed-in probe run + refresh + budget value checks remain. See folder `online/README.md` + `plan.md`.
 
 - 06 Oct: `gmvmax-auto` M10+M11 (tsc-clean, committed/pushed `8665857`; prod flow owner-tested):
   dashboard Tailwind overhaul + TTAM 3-level drills with 11 OMTM scores +

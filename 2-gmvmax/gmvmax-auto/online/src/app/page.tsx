@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Chart from "chart.js/auto";
 import DateRangePicker from "./DateRangePicker";
 import { flagsForRow, verdictOf, SCORE_NAMES, bandsFromPreset, applyCustomScores } from "@/lib/ttam-scores";
@@ -24,6 +24,38 @@ const METRICS = [
 
 const fmt = (n: number) =>
   (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function budgetModeLabel(mode: string | null | undefined): string {
+  switch (mode) {
+    case "BUDGET_MODE_DAY": return "daily";
+    case "BUDGET_MODE_DYNAMIC_DAILY_BUDGET": return "avg daily";
+    case "MIXED_DAILY": return "daily mix";
+    case "BUDGET_MODE_TOTAL": return "lifetime";
+    case "BUDGET_MODE_INFINITE": return "ad-group level";
+    case "MIXED": return "mixed";
+    default: return "";
+  }
+}
+
+function BudgetValue({ row }: { row: any }) {
+  const amount = Number(row?.budget);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return <span className="text-zinc-500">{row?.budgetMode === "MIXED" ? "Mixed" : row?.budgetMode === "BUDGET_MODE_INFINITE" && row?.budgetSource ? "Unlimited" : "—"}</span>;
+  }
+  const source = row?.budgetSource === "adgroups" ? " · groups total" : "";
+  const mode = budgetModeLabel(row?.budgetMode);
+  return (
+    <span title={`${mode || "budget"}${source}`}>
+      MYR {fmt(amount)}{mode ? <span className="ml-1 text-[10px] text-zinc-500">{mode}{source}</span> : null}
+    </span>
+  );
+}
+
+function BudgetUse({ value }: { value: number | null | undefined }) {
+  return value === null || value === undefined || !Number.isFinite(Number(value))
+    ? <span className="text-zinc-500">—</span>
+    : <span>{Number(value).toFixed(1)}%</span>;
+}
 
 function klToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
@@ -85,6 +117,17 @@ function ScoreCells({ r, vis, bands, cols, defs }: { r: any; vis: Set<string>; b
     })}
   </>);
 }
+function DeliveryPill({ delivery, spending }: { delivery: string; spending: boolean }) {
+  // Spend proves delivery: a TikTok diagnostic flag on a spending campaign is
+  // shown as grey info, never as a red alarm. Red ⛔ only when nothing spent.
+  if (delivery === "Active") {
+    return <span className="ml-1 rounded-full bg-emerald-900 px-2 py-0.5 text-[10px] text-emerald-200">🟢 {delivery}</span>;
+  }
+  if (spending) {
+    return <span title="TikTok reports this flag, but the campaign spent in this range — delivering." className="ml-1 rounded-full bg-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300">{delivery}</span>;
+  }
+  return <span className="ml-1 rounded-full bg-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300">⛔ {delivery}</span>;
+}
 function VerdictCell({ r, vis, bands, enough, learning, guard, defs }: { r: any; vis: Set<string>; bands: any; enough: boolean; learning: boolean; guard: any; defs: any[] }) {
   if (!enough || (r && !r.metrics)) {
     return <td className={tdCls}><span className="whitespace-nowrap rounded-full bg-zinc-700 px-2 py-0.5 text-[10px] text-zinc-300">not enough data</span></td>;
@@ -113,6 +156,9 @@ export default function Page() {
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Record<string, any>>({});
   const [sessionsLoading, setSessionsLoading] = useState<string | null>(null);
+  const [sessionsExpanded, setSessionsExpanded] = useState<Set<string>>(new Set());
+  const [budgetRefreshing, setBudgetRefreshing] = useState<Set<string>>(new Set());
+  const [budgetNotice, setBudgetNotice] = useState<string | null>(null);
   const [ttamExpanded, setTtamExpanded] = useState<Set<string>>(new Set());
   const [ttamAdgroups, setTtamAdgroups] = useState<Record<string, any>>({});
   const [ttamAgLoading, setTtamAgLoading] = useState<string | null>(null);
@@ -264,8 +310,9 @@ export default function Page() {
     return () => { chartsRef.current.forEach((c) => c.destroy()); chartsRef.current = []; };
   }, [data]);
 
-  async function loadSessions(campaignId: string) {
-    if (sessions[campaignId] || sessionsLoading === campaignId) return;
+  async function loadSessions(campaignId: string, force = false) {
+    if (sessionsLoading === campaignId) return;
+    if (!force && sessions[campaignId] && !sessions[campaignId].error) return;
     setSessionsLoading(campaignId);
     try {
       const q = `shopNumber=${shop}&campaignId=${campaignId}&startDate=${start}&endDate=${end}`;
@@ -277,6 +324,84 @@ export default function Page() {
       setSessions((p) => ({ ...p, [campaignId]: { error: e instanceof Error ? e.message : "sessions failed" } }));
     } finally {
       setSessionsLoading(null);
+    }
+  }
+
+  // A campaign counts as live-delivering when any of its rooms is ONGOING
+  // right now (current TikTok state, not historical). Drives the 🟢 Active
+  // pills on campaign + account rows.
+  function campaignOngoing(campaignId: string): boolean {
+    return ((sessions[campaignId]?.sessions ?? []) as any[]).some((s: any) => s.liveStatus === "ONGOING");
+  }
+
+  // Toggle per-campaign room rows directly beneath that campaign.
+  // Opening loads sessions on demand (cached); background auto-checks for
+  // pills never expand rows by themselves.
+  function toggleSessions(campaignId: string) {
+    if (sessionsExpanded.has(campaignId)) {
+      setSessionsExpanded((p) => {
+        const n = new Set(p);
+        n.delete(campaignId);
+        return n;
+      });
+      return;
+    }
+    setSessionsExpanded((p) => new Set(p).add(campaignId));
+    void loadSessions(campaignId);
+  }
+
+  async function refreshGmvBudget(campaign: any, promotionType: string, shopNumber: string) {
+    const key = `${shopNumber}:${promotionType}:${campaign.campaignId}`;
+    if (budgetRefreshing.has(key)) return;
+    setBudgetRefreshing((current) => new Set(current).add(key));
+    setBudgetNotice(null);
+    try {
+      const response = await fetch("/api/gmv-max/budget", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopNumber, campaignId: campaign.campaignId, promotionType }),
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error ?? "budget refresh failed");
+
+      setData((current: any) => {
+        if (!current || current.kind !== "gmv") return current;
+        let changed = false;
+        const sections = (current.sections ?? []).map((section: any) => {
+          if (section.key !== promotionType) return section;
+          return {
+            ...section,
+            campaigns: (section.campaigns ?? []).map((row: any) => {
+              if (row.campaignId !== campaign.campaignId) return row;
+              changed = true;
+              const mode = String(body.budgetMode ?? "BUDGET_MODE_DAY").toUpperCase();
+              const dailyMode = mode === "BUDGET_MODE_DAY" || mode === "BUDGET_MODE_DYNAMIC_DAILY_BUDGET";
+              return {
+                ...row,
+                budget: Number(body.budget),
+                budgetMode: mode,
+                budgetSource: "campaign",
+                budgetUsagePct: current.oneDay && dailyMode && Number(body.budget) > 0
+                  ? (Number(row.cost ?? 0) / Number(body.budget)) * 100
+                  : null,
+              };
+            }),
+          };
+        });
+        if (!changed) return current;
+        const budgetRefreshRemaining = sections.reduce((total: number, section: any) =>
+          total + (section.campaigns ?? []).filter((row: any) => row.status === "ON" && row.budget == null).length, 0);
+        return { ...current, sections, budgetRefreshRemaining };
+      });
+      setBudgetNotice(`Budget refreshed for ${campaign.campaignName}.`);
+    } catch (error) {
+      setBudgetNotice(error instanceof Error ? error.message : "budget refresh failed");
+    } finally {
+      setBudgetRefreshing((current) => {
+        const next = new Set(current);
+        next.delete(key);
+        return next;
+      });
     }
   }
 
@@ -315,8 +440,10 @@ export default function Page() {
   async function fetchData() {
     setLoading(true);
     setError(null);
+    setBudgetNotice(null);
     setExpanded(new Set());
     setSessions({});
+    setSessionsExpanded(new Set());
     setTtamExpanded(new Set());
     setTtamAdgroups({});
     setAdExpanded(new Set());
@@ -345,7 +472,7 @@ export default function Page() {
         return;
       }
       if (metric === "ttam") {
-        const r = await fetch(`/api/roas?${q}`);
+        const r = await fetch(`/api/roas?${q}&includeCampaignBudgets=1`);
         if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
         const body = await r.json();
         setData({ kind: "ttam", ...body });
@@ -377,9 +504,10 @@ export default function Page() {
       const net = gmv * 0.75;
       setFetchedAt(new Date().toISOString());
       setData({
-        kind: "gmv", shopName: parts[0]?.shopName, gmv, cost,
+        kind: "gmv", shopNumber: shop, shopName: parts[0]?.shopName, gmv, cost,
         roi: cost > 0 ? gmv / cost : 0, net, net_roi: cost > 0 ? net / cost : 0,
-        orders, currency: "MYR",
+        orders, currency: "MYR", oneDay: start === end,
+        budgetRefreshRemaining: parts.reduce((s, p) => s + Number(p.budgetRefreshRemaining ?? 0), 0),
         sections: parts.map((p) => ({
           key: p.promotionType,
           title: p.promotionType === "LIVE_GMV_MAX" ? "LIVE GMV Max" : "Product GMV Max",
@@ -389,6 +517,29 @@ export default function Page() {
         live: parts.find((p) => p.promotionType === "LIVE_GMV_MAX"),
         product: parts.find((p) => p.promotionType === "PRODUCT_GMV_MAX"),
       });
+      // Auto-check live rooms for ON LIVE campaigns (cap 5, silent fail-open)
+      // so campaign/account pills can reflect 🟢 Active without extra clicks.
+      // Prioritize ON + spending campaigns by spend desc so top-spend rows
+      // like Dr.Samhan get checked first; fill leftovers with other ON rows.
+      {
+        const cands: { campaignId: string; cost: number }[] = [];
+        for (const p of parts) {
+          if (p.promotionType !== "LIVE_GMV_MAX") continue;
+          for (const c of p.campaigns ?? []) {
+            if (c.status === "ON" && c.campaignId && !cands.some((x) => x.campaignId === c.campaignId)) {
+              cands.push({ campaignId: c.campaignId, cost: Number(c.cost ?? 0) });
+            }
+          }
+        }
+        cands.sort((a, b) => b.cost - a.cost);
+        const ids = cands.slice(0, 5).map((x) => x.campaignId);
+        // Force refresh because setSessions({}) is async and the closure may
+      // still hold session rows from a previous range/fetch. Queue requests
+      // sequentially to avoid hammering the Marketing API on the rate limit.
+      void (async () => {
+        for (const id of ids) await loadSessions(id, true);
+      })();
+      }
       setFetchedAt(new Date().toISOString());
     } catch (e) {
       setError(e instanceof Error ? e.message : "fetch failed");
@@ -446,6 +597,7 @@ export default function Page() {
 
       <div className="mx-auto max-w-6xl px-4 pb-16 pt-4">
         {error && <p className="mb-3 rounded-lg border border-red-900 bg-red-950 px-3 py-2 text-sm text-red-200">Error: {error}</p>}
+        {budgetNotice && <p role="status" className="mb-3 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300">{budgetNotice}</p>}
 
         {data && data.kind === "gmv" && (
           <>
@@ -465,12 +617,16 @@ export default function Page() {
               </div>
             )}
             <h3 className="mb-2 text-sm font-semibold text-zinc-200">Breakdown by Account (click a row to expand)</h3>
+            <p className="mb-2 text-[11px] text-zinc-500">Campaign budget shows the current daily amount for ON campaigns. % used is shown only for one selected day (day spend ÷ current daily budget; historical budget changes aren’t tracked). Uncached budget lookups fill in batches of 15 as you fetch again.</p>
+            {Number(data.budgetRefreshRemaining ?? 0) > 0 && (
+              <p className="mb-2 text-[11px] text-amber-300">{data.budgetRefreshRemaining} active campaign budget(s) still need an API lookup. Fetch again to continue filling the cache.</p>
+            )}
             {(data.sections ?? []).map((sec: any) => (
               <div key={sec.key} className="mb-4 overflow-hidden rounded-xl border border-zinc-800">
                 <div className="border-b border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-medium">{sec.title}</div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead><tr className="text-zinc-400"><th className={thCls}></th><th className={thCls}>Account</th><th className={`${thCls} text-right`}>Cost</th><th className={`${thCls} text-right`}>GMV</th><th className={`${thCls} text-right`}>Orders</th><th className={`${thCls} text-right`}>ROI</th></tr></thead>
+                    <thead><tr className="text-zinc-400"><th className={thCls}></th><th className={thCls}>Account</th><th className={`${thCls} text-right`}>Cost</th><th className={`${thCls} text-right`}>GMV</th><th className={`${thCls} text-right`}>Orders</th><th className={`${thCls} text-right`}>ROI</th><th className={`${thCls} text-right`}>Budget (MYR)</th><th className={`${thCls} text-right`} title="Shown only for a single-day selection; daily spend divided by current daily budget">% used</th></tr></thead>
                     <tbody>
                       {[...(sec.accounts ?? [])]
                         .map((a: any) => ({
@@ -489,6 +645,11 @@ export default function Page() {
                         .map(({ a, rows }: any) => {
                         const key = `${sec.key}:${a.name}`;
                         const open = expanded.has(key);
+                        const budgetsComplete = rows.length > 0 && rows.every((c: any) => Number(c.budget) > 0);
+                        const accountBudget = rows.reduce((sum: number, c: any) => sum + (Number(c.budget) > 0 ? Number(c.budget) : 0), 0);
+                        const accountSpend = rows.reduce((sum: number, c: any) => sum + Number(c.cost ?? 0), 0);
+                        const accountBudgetUse = start === end && budgetsComplete && accountBudget > 0
+                          ? (accountSpend / accountBudget) * 100 : null;
                         return (
                           <>
                             <tr key={key} onClick={() => setExpanded((p) => {
@@ -500,6 +661,7 @@ export default function Page() {
                               <td className={tdCls}>{a.name}
                                 {(() => {
                                   const hasON = rows.some((c: any) => c.status === "ON");
+                                  const accountOngoing = rows.some((c: any) => campaignOngoing(c.campaignId));
                                   const dels = [...new Set(rows.map((c: any) => c.delivery).filter(Boolean))].filter(
                                     (d) => d !== "Identity in use" && d !== "Identity in use (live)"
                                   ) as string[];
@@ -507,28 +669,35 @@ export default function Page() {
                                     {hasON && (
                                       <span className="ml-2 rounded-full bg-emerald-900 px-2 py-0.5 text-[10px] text-emerald-200">ON</span>
                                     )}
-                                    {dels.map((d) => (
-                                      <span key={d} className={`ml-1 rounded-full px-2 py-0.5 text-[10px] ${d === "Active" ? "bg-emerald-900 text-emerald-200" : "bg-zinc-700 text-zinc-300"}`}>
-                                        {d === "Active" ? "🟢" : "⛔"} {d}
-                                      </span>
-                                    ))}
+                                    {accountOngoing ? (
+                                      <span title="a live room is ongoing now" className="ml-1 rounded-full bg-emerald-900 px-2 py-0.5 text-[10px] text-emerald-200">🟢 Active</span>
+                                    ) : (
+                                      dels.map((d) => (
+                                        <DeliveryPill key={d} delivery={d} spending={Number(a.cost ?? 0) > 0} />
+                                      ))
+                                    )}
                                   </>);
                                 })()}
                               </td><td className={numCls}>{fmt(a.cost)}</td><td className={numCls}>{fmt(a.gmv)}</td><td className={numCls}>{a.orders}</td><td className={numCls}>{a.roi.toFixed(2)}</td>
+                              <td className={numCls}>{budgetsComplete ? <BudgetValue row={{ budget: accountBudget, budgetMode: "BUDGET_MODE_DAY" }} /> : "—"}</td>
+                              <td className={numCls}><BudgetUse value={accountBudgetUse} /></td>
                             </tr>
                             {open && rows.map((c: any) => (
-                              <tr key={c.campaignId} className="border-t border-zinc-800 bg-zinc-900/60">
+                              <Fragment key={c.campaignId}>
+                              <tr className="border-t border-zinc-800 bg-zinc-900/60">
                                 <td className={tdCls}></td>
                                 <td className={`${tdCls} text-xs`}>{c.campaignName} <span className="text-zinc-500">({c.campaignId})</span>
                                   <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] ${c.status === "ON" ? "bg-emerald-900 text-emerald-200" : c.status === "OFF" ? "bg-zinc-700 text-zinc-200" : "bg-amber-900 text-amber-200"}`}>{c.status ?? "?"}</span>
-                                  {c.delivery && (
-                                    <span className={`ml-1 rounded-full px-2 py-0.5 text-[10px] ${c.delivery === "Active" ? "bg-emerald-900 text-emerald-200" : "bg-zinc-700 text-zinc-300"}`}>
-                                      {c.delivery === "Active" ? "🟢" : "⛔"} {c.delivery}
-                                    </span>
+                                  {campaignOngoing(c.campaignId) ? (
+                                    <span title="a live room is ongoing now" className="ml-1 rounded-full bg-emerald-900 px-2 py-0.5 text-[10px] text-emerald-200">🟢 Active</span>
+                                  ) : (
+                                    c.delivery && (
+                                      <DeliveryPill delivery={c.delivery} spending={Number(c.cost ?? 0) > 0} />
+                                    )
                                   )}
                                   {sec.key === "LIVE_GMV_MAX" && (
-                                  <button className="ml-2 rounded border border-zinc-700 px-1.5 text-[11px] hover:bg-zinc-800" onClick={(e) => { e.stopPropagation(); loadSessions(c.campaignId); }}>
-                                    {sessionsLoading === c.campaignId ? <Spin /> : "Sessions"}
+                                  <button className="ml-2 rounded border border-zinc-700 px-1.5 text-[11px] hover:bg-zinc-800" onClick={(e) => { e.stopPropagation(); toggleSessions(c.campaignId); }}>
+                                    {sessionsLoading === c.campaignId ? <Spin /> : sessionsExpanded.has(c.campaignId) ? "Hide" : "Sessions"}
                                   </button>
                                   )}
                                   {sec.key === "LIVE_GMV_MAX" && sessions[c.campaignId] && !sessions[c.campaignId].error && (
@@ -539,15 +708,36 @@ export default function Page() {
                                   )}
                                 </td>
                                 <td className={numCls}>{fmt(c.cost)}</td><td className={numCls}>{fmt(c.gmv)}</td><td className={numCls}>{c.orders}</td><td className={numCls}>{c.roi.toFixed(2)}</td>
+                                <td className={numCls}>
+                                  <div className="flex flex-col items-end gap-1">
+                                    <BudgetValue row={c} />
+                                    {c.status === "ON" && (
+                                      <button
+                                        type="button"
+                                        disabled={budgetRefreshing.has(`${data.shopNumber ?? shop}:${sec.key}:${c.campaignId}`)}
+                                        onClick={(event) => { event.stopPropagation(); refreshGmvBudget(c, sec.key, data.shopNumber ?? shop); }}
+                                        className="rounded border border-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+                                      >{budgetRefreshing.has(`${data.shopNumber ?? shop}:${sec.key}:${c.campaignId}`) ? "Refreshing…" : "Refresh budget"}</button>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className={numCls}><BudgetUse value={c.budgetUsagePct} /></td>
                               </tr>
-                            ))}
-                            {open && rows.map((c: any) => (sessions[c.campaignId]?.sessions ?? []).map((s: any, i: number) => (
+                              {sessionsExpanded.has(c.campaignId) && (sessions[c.campaignId]?.sessions ?? []).map((s: any, i: number) => (
                               <tr key={`${c.campaignId}-s${i}`} className="border-t border-zinc-800 bg-black/40">
                                 <td className={tdCls}></td>
-                                <td className={`${tdCls} pl-7 text-[11px]`}>room {s.roomId || "(none)"} · {s.day}</td>
-                                <td className={numCls}>{fmt(s.cost)}</td><td className={numCls}>{fmt(s.gmv)}</td><td className={numCls}>{s.orders}</td><td className={numCls}>{Number(s.roi ?? 0).toFixed(2)}</td>
+                                <td className={`${tdCls} pl-7 text-[11px]`}>room {s.roomId || "(none)"} · {s.day}
+                                  {s.liveStatus && (
+                                    <span title={`${s.liveLaunchedMyt ?? ""}${s.liveDuration ? ` · ${s.liveDuration}` : ""}`} className={`ml-2 rounded-full px-2 py-0.5 text-[10px] ${s.liveStatus === "ONGOING" ? "bg-emerald-900 text-emerald-200" : "bg-zinc-700 text-zinc-300"}`}>
+                                      {s.liveStatus === "ONGOING" ? "🟢 ONGOING" : "⚪ END"}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className={numCls}>{fmt(s.cost)}</td><td className={numCls}>{fmt(s.gmv)}</td><td className={numCls}>{s.orders}</td><td className={numCls}>{Number(s.roi ?? 0).toFixed(2)}</td><td className={numCls}></td><td className={numCls}></td>
                               </tr>
-                            )))}
+                              ))}
+                              </Fragment>
+                            ))}
                           </>
                         );
                       })}
@@ -597,9 +787,10 @@ export default function Page() {
             </select>
             <input value={ttamQuery} onChange={(e) => setTtamQuery(e.target.value)} placeholder="Search name or ID…" className={`${inputCls} w-40 text-[11px]`} />
           </div>
+            <p className="mb-2 px-3 text-[11px] text-zinc-500">Budget is shown at campaign level when set there, otherwise as the sum of compatible daily ad-group budgets. % used appears only for one-day selections (day spend ÷ current budget); lifetime, unlimited, or mixed modes show no percentage.</p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="text-zinc-400"><th className={thCls}></th><th className={thCls}>Campaign</th><th className={thCls}>Status</th><th className={`${thCls} text-right`}>Spend</th><th className={thCls}>Verdict</th><ScoreHeads vis={visibleScores} cols={cols} /></tr></thead>
+                <thead><tr className="text-zinc-400"><th className={thCls}></th><th className={thCls}>Campaign</th><th className={thCls}>Status</th><th className={`${thCls} text-right`}>Spend</th><th className={`${thCls} text-right`}>Budget (MYR)</th><th className={`${thCls} text-right`} title="Shown only for a single-day selection and daily-style budgets">% used</th><th className={thCls}>Verdict</th><ScoreHeads vis={visibleScores} cols={cols} /></tr></thead>
                 <tbody>
                   {(sortByStatus(data.manualCampaigns ?? [], (c: any) => Number(c.spend ?? 0)))
                     .filter((c: any) => verdictFilter === "ALL" || rowState(c) === verdictFilter)
@@ -634,6 +825,8 @@ export default function Page() {
                             <span className={`rounded-full px-2 py-0.5 text-[10px] ${c.status === "ON" ? "bg-emerald-900 text-emerald-200" : c.status === "OFF" ? "bg-zinc-700 text-zinc-200" : "bg-amber-900 text-amber-200"}`}>{c.status ?? "?"}</span>
                           </td>
                           <td className={numCls}>{fmt(c.spend)}</td>
+                          <td className={numCls}><BudgetValue row={c} /></td>
+                          <td className={numCls}><BudgetUse value={c.budgetUsagePct} /></td>
                           <VerdictCell r={c} vis={visibleScores} bands={bands} enough={enoughDays} learning={isLearning(c)} guard={guard} defs={presetMetrics} />
                           <ScoreCells r={c} vis={visibleScores} bands={bands} cols={cols} defs={presetMetrics} />
                         </tr>
@@ -668,6 +861,8 @@ export default function Page() {
                                   <span className={`rounded-full px-2 py-0.5 text-[10px] ${g.status === "ON" ? "bg-emerald-900 text-emerald-200" : g.status === "OFF" ? "bg-zinc-700 text-zinc-200" : "bg-amber-900 text-amber-200"}`}>{g.status ?? "?"}</span>
                                 </td>
                                 <td className={numCls}>{fmt(g.spend)}</td>
+                                <td className={numCls}><BudgetValue row={{ ...g, budgetSource: "adgroups" }} /></td>
+                                <td className={numCls}><BudgetUse value={g.budgetUsagePct} /></td>
                                 <VerdictCell r={g} vis={visibleScores} bands={bands} enough={enoughDays} learning={isLearning(g)} guard={guard} defs={presetMetrics} />
                                 <ScoreCells r={g} vis={visibleScores} bands={bands} cols={cols} defs={presetMetrics} />
                               </tr>
@@ -679,6 +874,7 @@ export default function Page() {
                                     <span className={`rounded-full px-2 py-0.5 text-[10px] ${a.status === "ON" ? "bg-emerald-900 text-emerald-200" : a.status === "OFF" ? "bg-zinc-700 text-zinc-200" : "bg-amber-900 text-amber-200"}`}>{a.status ?? "?"}</span>
                                   </td>
                                   <td className={numCls}>{fmt(a.spend)}</td>
+                                  <td className={numCls}></td><td className={numCls}></td>
                                   <VerdictCell r={a} vis={visibleScores} bands={bands} enough={enoughDays} learning={isLearning(a)} guard={guard} defs={presetMetrics} />
                                   <ScoreCells r={a} vis={visibleScores} bands={bands} cols={cols} defs={presetMetrics} />
                                 </tr>

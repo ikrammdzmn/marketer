@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     );
   }
   try {
-    const result = await getShopReport(shopNumber, promotionType as PromotionType, startDate, endDate);
+    const result = await getShopReport(shopNumber, promotionType as PromotionType, startDate, endDate, true);
     return NextResponse.json(result);
   } catch (e) {
     const message = e instanceof Error ? e.message : "report failed";
