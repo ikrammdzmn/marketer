@@ -27,3 +27,10 @@ export async function requireAllowlistAdmin(): Promise<AccessResult> {
   }
   return access;
 }
+
+// Shop-token gate (one swap point for the future per-module model):
+// today = bootstrap admin only; later = allowlist modules[] contains
+// 'shop-token'. Callers must use this, never inline the admin check.
+export async function requireShopTokenAccess(): Promise<AccessResult> {
+  return requireAllowlistAdmin();
+}

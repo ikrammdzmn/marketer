@@ -159,6 +159,9 @@ export default function Page() {
   const [sessionsExpanded, setSessionsExpanded] = useState<Set<string>>(new Set());
   const [budgetRefreshing, setBudgetRefreshing] = useState<Set<string>>(new Set());
   const [budgetNotice, setBudgetNotice] = useState<string | null>(null);
+  const [shopToken, setShopToken] = useState<any>(null);
+  const [shopTokenRefreshing, setShopTokenRefreshing] = useState(false);
+  const [shopTokenNotice, setShopTokenNotice] = useState<string | null>(null);
   const [ttamExpanded, setTtamExpanded] = useState<Set<string>>(new Set());
   const [ttamAdgroups, setTtamAdgroups] = useState<Record<string, any>>({});
   const [ttamAgLoading, setTtamAgLoading] = useState<string | null>(null);
@@ -437,6 +440,25 @@ export default function Page() {
     }
   }
 
+  async function refreshShopTokenAction() {
+    if (shopTokenRefreshing) return;
+    setShopTokenRefreshing(true);
+    setShopTokenNotice(null);
+    try {
+      const r = await fetch("/api/shop-token", { method: "POST" });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error ?? "token refresh failed");
+      setShopToken((p: any) => ({ ...p, ...body, isAdmin: true }));
+      setShopTokenNotice(
+        body.seeded ? "Token stored in Neon and refreshed." : "Shop token refreshed."
+      );
+    } catch (e) {
+      setShopTokenNotice(e instanceof Error ? e.message : "token refresh failed");
+    } finally {
+      setShopTokenRefreshing(false);
+    }
+  }
+
   async function fetchData() {
     setLoading(true);
     setError(null);
@@ -455,6 +477,12 @@ export default function Page() {
         if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
         setData({ kind: "shop-gmv", ...(await r.json()) });
         setFetchedAt(new Date().toISOString());
+        try {
+          const tr = await fetch(`/api/shop-token`);
+          if (tr.ok) setShopToken(await tr.json());
+        } catch {
+          // token panel stays hidden; shop numbers still render
+        }
         return;
       }
       if (metric === "hourly") {
@@ -617,7 +645,7 @@ export default function Page() {
               </div>
             )}
             <h3 className="mb-2 text-sm font-semibold text-zinc-200">Breakdown by Account (click a row to expand)</h3>
-            <p className="mb-2 text-[11px] text-zinc-500">Campaign budget shows the current daily amount for ON campaigns. % used is shown only for one selected day (day spend ÷ current daily budget; historical budget changes aren’t tracked). Uncached budget lookups fill in batches of 15 as you fetch again.</p>
+            <p className="mb-2 text-[11px] text-zinc-500">Campaign budget shows the current daily amount for ON campaigns. Account budget is the sum of ON campaigns only (OFF ignored); marked partial when an ON budget is still unknown. % used is shown only for one selected day (ON day spend / ON budget sum; historical budget changes are not tracked). Uncached budget lookups fill in batches of 15 as you fetch again.</p>
             {Number(data.budgetRefreshRemaining ?? 0) > 0 && (
               <p className="mb-2 text-[11px] text-amber-300">{data.budgetRefreshRemaining} active campaign budget(s) still need an API lookup. Fetch again to continue filling the cache.</p>
             )}
@@ -645,10 +673,12 @@ export default function Page() {
                         .map(({ a, rows }: any) => {
                         const key = `${sec.key}:${a.name}`;
                         const open = expanded.has(key);
-                        const budgetsComplete = rows.length > 0 && rows.every((c: any) => Number(c.budget) > 0);
-                        const accountBudget = rows.reduce((sum: number, c: any) => sum + (Number(c.budget) > 0 ? Number(c.budget) : 0), 0);
-                        const accountSpend = rows.reduce((sum: number, c: any) => sum + Number(c.cost ?? 0), 0);
-                        const accountBudgetUse = start === end && budgetsComplete && accountBudget > 0
+                        const onRows = rows.filter((c: any) => c.status === "ON");
+                        const knownOn = onRows.filter((c: any) => Number(c.budget) > 0);
+                        const accountBudget = knownOn.reduce((sum: number, c: any) => sum + Number(c.budget), 0);
+                        const accountSpend = onRows.reduce((sum: number, c: any) => sum + Number(c.cost ?? 0), 0);
+                        const accountPartial = onRows.length > 0 && knownOn.length < onRows.length;
+                        const accountBudgetUse = start === end && accountBudget > 0
                           ? (accountSpend / accountBudget) * 100 : null;
                         return (
                           <>
@@ -679,7 +709,7 @@ export default function Page() {
                                   </>);
                                 })()}
                               </td><td className={numCls}>{fmt(a.cost)}</td><td className={numCls}>{fmt(a.gmv)}</td><td className={numCls}>{a.orders}</td><td className={numCls}>{a.roi.toFixed(2)}</td>
-                              <td className={numCls}>{budgetsComplete ? <BudgetValue row={{ budget: accountBudget, budgetMode: "BUDGET_MODE_DAY" }} /> : "—"}</td>
+                              <td className={numCls}>{onRows.length > 0 && accountBudget > 0 ? (<span><BudgetValue row={{ budget: accountBudget, budgetMode: "BUDGET_MODE_DAY" }} />{accountPartial ? <span className="ml-1 text-[10px] text-amber-300" title={`${onRows.length - knownOn.length} ON campaign(s) still need a budget lookup - Fetch again`}>partial</span> : null}</span>) : "—"}</td>
                               <td className={numCls}><BudgetUse value={accountBudgetUse} /></td>
                             </tr>
                             {open && rows.map((c: any) => (
@@ -965,6 +995,25 @@ export default function Page() {
                   <div className="text-zinc-400">TRUE ROAS</div><div>{data.trueRoas.toFixed(2)}x</div>
                   <div className="text-zinc-400">TRUE ACTUAL</div><div>{data.trueActualRoas.toFixed(2)}x</div>
                   <div className="text-zinc-400">Ads ROAS (ref)</div><div>{data.adsRoas.toFixed(2)}x / {data.adsActualRoas.toFixed(2)}x</div>
+                  {shopToken?.isAdmin && (
+                    <>
+                      <div className="text-zinc-400">Shop token</div>
+                      <div className="text-xs">
+                        {shopToken.accessExpiresAt
+                          ? `valid until ${String(shopToken.accessExpiresAt).slice(0, 10)}`
+                          : shopToken.hasRow === false
+                            ? "env fallback (not yet in Neon)"
+                            : "expiry unknown"}
+                        <button
+                          type="button"
+                          disabled={shopTokenRefreshing}
+                          onClick={refreshShopTokenAction}
+                          className="ml-2 rounded border border-zinc-700 px-1.5 py-0.5 text-[11px] text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                        >{shopTokenRefreshing ? "Refreshing…" : "Refresh shop token"}</button>
+                        {shopTokenNotice && <div className="mt-1 text-zinc-400">{shopTokenNotice}</div>}
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </div>

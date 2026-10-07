@@ -4,6 +4,11 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 08 Oct 2026
+
+- `gmvmax-auto`: account budget = ON-only sum + `partial` label (`dpl_5rKQ`); Shop API authorized + exchanged (local probe code 0; 24–27 Sep shop 163,540/988 vs ads 169,805/1,012 = -3.7%, manual-gap recheck parked); admin one-tap shop-token refresh `/api/shop-token` with epoch-expiry fix (`marketer-2uf7h9ja4`, signed-out 401; owner button test next)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
 ## 07 Oct 2026
 
 - Bot `/start` status + unknown-command replies (deployed + live-verified): alive/DB/freshness per check, hint on bad `/cmd`; silence fixed via `CRON_SECRET` re-`setWebhook` + protection-bypass query in webhook URL (protection stays ON). `/start` shows hourly stale since Oct 5 23:00 → `GMVMaxCollector30m` task action still pre-move (owner's other PC).

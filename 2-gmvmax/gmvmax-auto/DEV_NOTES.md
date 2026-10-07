@@ -8,6 +8,73 @@ DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
 
+## Checkpoint 29 — 08 Oct 2026 (admin one-tap shop-token refresh; deployed)
+
+**Why.** Shop access token expires ~Oct 13–14 and prod ran on env fallback
+(no auto-refresh). Owner asked for a one-tap dashboard refresh like the
+reference repo (`tiktok-account` silent-refresh + button), admin-only for
+now, per-module later.
+
+**What shipped.** `requireShopTokenAccess()` in `authz.ts` (single swap
+point: admin today, modules[] later). New `/api/shop-token`: GET returns
+expiry info to allowlisted users (lengths only); POST is admin +
+same-origin, seeds the Neon row from env on first run, refreshes via
+`token/refresh`, UPDATEs `credentials.shop_tokens`, audits best-effort.
+Fixed an epoch bug: TikTok v2 `access_token_expire_in` is absolute epoch,
+so `shopTokenExpiryMs()` normalizes epoch vs duration (else auto-refresh
+would never fire). Shop GMV card shows `valid until <date>` + Refresh
+button for admin only; others see nothing.
+
+**Proof.** tsc 0 + build green (lists `/api/shop-token` + Middleware).
+Deployed `marketer-2uf7h9ja4`. Live smoke: `/` 307, shop-token 401
+signed-out. Owner signed-in test open: Shop GMV Fetch shows expiry line;
+Refresh stores + refreshes (first click also seeds Neon row).
+
+**Vibe.** Same. No commit/push unless asked.
+
+## Checkpoint 28 — 07 Oct 2026 (shop token live locally + prod env set; shop-gmv verify next)
+
+**Why.** Owner authorized the Custom app via `Copy authorization link`
+(Auth ID 7693937668253943570, Active/Unlimited/MY) and pasted the
+`localhost:8082/callback?code=ROW_...` URL. Exchanged locally via
+`auth.tiktok-shops.com/api/v2/token/get` (code 0): access token (122) +
+refresh (79) saved to gitignored `.local_secrets.json`; cipher came from
+`GET /authorization/202309/shops` (code 0, shop 7495...0274 Dr Samhan MY),
+not from the token response (it carries no shops/cipher). Local
+`orders/search` probe 24–27 Sep: code 0, pages flow, real order keys.
+
+**Prod.** Owner added the 3 Production env vars; redeployed
+(`marketer-222abg5k1`, Ready). Live smoke: `/` 307, shop-gmv 401
+signed-out. Signed-in verify 07 Oct night: 24–27 Sep shop API gives
+163,540.29 / 988 vs ads 169,805.12 / 1,012 (-3.7%, TRUE ROAS 3.71x/3.19x).
+Ads side ties locked ref exactly; shop side does NOT (manual export said
+143,941.26 / 1,016). Gap parked to next session — owner rechecks against
+the old system's export method/status filter.
+
+**Vibe.** Same as 27. No commit/push unless asked.
+
+## Checkpoint 27 — 07 Oct 2026 (account-budget ON-only partial; built green, deploy blocked)
+
+**Why.** Owner asked why some accounts show a budget and others show `—`.
+Root cause: `budgetsComplete` hid the whole account sum unless every row had
+a budget (`page.tsx:648`), and OFF rows forced `budget: null` (`gmv.ts:425`).
+Owner approved: account budget = sum of ON campaigns only, ignore OFF; mark
+partial when an ON budget is still unknown; `% used` = ON spend / ON budget,
+one-day only.
+
+**What changed.** `online/src/app/page.tsx`: `onRows`/`knownOn` replace
+`budgetsComplete`; `accountBudget` = known-ON sum; `accountSpend` = ON-only
+spend; `partial` flag when `knownOn < onRows`; cell shows sum + amber
+`partial` (hover = N ON campaigns need lookup) when `accountBudget > 0`,
+else `—`. Header copy updated to ON-only + partial wording.
+
+**Proof.** `npx tsc --noEmit` exit 0. `npx next build` green (all routes +
+Middleware listed). Deployed `dpl_5rKQahzdGM1KbsfvrfN6xva1J832` (alias
+`marketer-hw.vercel.app`). Live smoke: `/` 307 to `/sign-in`, data API 401.
+Owner Fetches one-day range signed in and confirms partial sums + % on ot1 rows.
+
+**Vibe.** Same as 26. No commit/push unless asked.
+
 ## Checkpoint 26 — 07 Oct 2026 (session handoff; account-budget question open, no deploy)
 
 **To next-you: get back in this headspace instantly.** Owner drives with

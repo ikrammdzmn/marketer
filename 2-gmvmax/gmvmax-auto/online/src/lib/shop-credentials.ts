@@ -36,11 +36,8 @@ export async function getShopCredentials(
       // Auto-refresh when past expiry-1h (default 24h window).
       let needsRefresh = false;
       if (row.updated_at && appKey && appSecret) {
-        const expireSec = row.access_token_expire_in
-          ? Number(row.access_token_expire_in)
-          : 86400;
-        const expiry = new Date(row.updated_at).getTime() + expireSec * 1000;
-        if (Date.now() >= expiry - 3600_000) needsRefresh = true;
+        const expiry = shopTokenExpiryMs(row.updated_at, row.access_token_expire_in ?? 86400);
+        if (expiry !== null && Date.now() >= expiry - 3600_000) needsRefresh = true;
       }
       if (needsRefresh && row.refresh_token) {
         const fresh = await refreshShopToken(
@@ -81,6 +78,19 @@ export async function getShopCredentials(
     };
   }
   return null;
+}
+
+// TikTok Shop v2 returns access_token_expire_in as an absolute epoch
+// (seconds), not a duration — a duration-only read would place expiry in
+// 2083 and silently disable auto-refresh. Normalize both shapes here.
+export function shopTokenExpiryMs(updatedAt: unknown, expireIn: unknown): number | null {
+  const base = new Date(updatedAt as string).getTime();
+  const v = Number(expireIn);
+  if (!Number.isFinite(v) || v <= 0) return null;
+  if (v > 1e12) return v; // ms epoch
+  if (v > 3e7) return v * 1000; // sec epoch (~past 1970+1y)
+  if (!Number.isFinite(base)) return null;
+  return base + v * 1000; // duration seconds
 }
 
 // GET https://auth.tiktok-shops.com/api/v2/token/refresh (proven pattern).

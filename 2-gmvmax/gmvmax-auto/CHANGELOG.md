@@ -2,6 +2,12 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 08 Oct 2026 — account-budget ON-only partial + shop token live + admin refresh button (deployed)
+
+- Account budget = sum of ON campaigns only (OFF ignored), amber `partial` label when an ON budget is still unknown; `% used` = ON spend / ON budget, one-day only (`page.tsx`: `onRows`/`knownOn`; backend already nulled OFF budgets). Header copy updated. Deployed `dpl_5rKQahzdGM1KbsfvrfN6xva1J832`; live smoke `/` 307, data API 401.
+- Shop API authorized (Custom app `HIMWELLNESS GMV MAX INTERNAL`, Auth ID Active/Unlimited/MY) → exchanged `code=ROW_...` via `auth.tiktok-shops.com/api/v2/token/get` (code 0, token 122 + refresh 79); cipher from `GET /authorization/202309/shops` (code 0, Dr Samhan 7495...0274). Tokens in gitignored `.local_secrets.json` + 3 Vercel Production env vars. Local `orders/search` probe code 0. Signed-in 24–27 Sep: shop 163,540.29 / 988 vs ads 169,805.12 / 1,012 (-3.7%, TRUE ROAS 3.71x/3.19x); ads ties locked ref, shop side differs from manual 143,941 / 1,016 — parked for owner recheck vs old system.
+- Admin one-tap **Refresh shop token**: `requireShopTokenAccess()` in `authz.ts` (single swap point for future per-module model); `/api/shop-token` GET = expiry info (lengths only), POST = admin + same-origin, seeds Neon row from env on first run, refreshes, audits best-effort. Fixed epoch bug: TikTok v2 `access_token_expire_in` is absolute epoch, normalized in `shopTokenExpiryMs()` (else auto-refresh never fires). Shop GMV card shows `valid until` + button for admin only. Access token ~7-day life (expires ~Oct 13–14). Deployed `marketer-2uf7h9ja4`; live smoke `/` 307, shop-token 401. Owner signed-in button test next.
+
 ## 07 Oct 2026 — Google sign-in + admin-managed email allowlist (deployed; owner tests pending)
 
 - Added Auth.js Google OAuth, verified-email allowlist checks, protected dashboard data APIs, and fixed-admin-only `/access` page to add/remove user emails. Allowlist changes are audited in `core.audit`; webhook/cron routes keep their existing secret guards.
