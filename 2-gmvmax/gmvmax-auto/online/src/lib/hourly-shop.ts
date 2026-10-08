@@ -107,7 +107,7 @@ export async function refreshShopHourly(shopNumber: string, date: string) {
   };
 }
 
-export async function getHourlyShopView(shopNumber: string, date: string) {
+export async function getHourlyShopView(shopNumber: string, date: string, startDate?: string, endDate?: string) {
   const shop = SHOPS[shopNumber];
   if (!shop) throw new Error(`invalid shopNumber: ${shopNumber}`);
   let cached: Array<{ hour: number; shop_gmv: number; shop_orders: number; updated_at: unknown }> = [];
@@ -158,5 +158,87 @@ export async function getHourlyShopView(shopNumber: string, date: string) {
     hours,
     cachedHours: cmap.size,
     updatedAt: [...cmap.values()][0]?.u ?? null,
+    ...(await getShopHourlyScorecardBlock(shopNumber, startDate ?? date, endDate ?? date)),
   };
+}
+
+export interface ShopHourScore {
+  hour: string;
+  days: number;
+  avgGmv: number;
+  avgOrders: number;
+  roas: number | null;
+  cpa: number | null;
+}
+
+// Range scorecard (selected range, cap 31): per-hour averages over cached
+// days present. Future slots of today excluded; explicit zeros stay.
+async function getShopHourlyScorecardBlock(shopNumber: string, startDate: string, endDate: string) {
+  const days: string[] = [];
+  const d = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  while (d <= end && days.length < 31) {
+    days.push(d.toISOString().slice(0, 10));
+    d.setTime(d.getTime() + 86400000);
+  }
+  if (!days.length) return { scorecard: [], rangeDays: 0, startDate, endDate };
+  const today = klToday();
+  const nowH = klNowHour();
+  let rows: Array<{ hh: number; days: number; g: number; o: number }> = [];
+  try {
+    const r = await query(
+      `SELECT s.hour AS hh, COUNT(DISTINCT s.date)::int AS days,
+              SUM(s.shop_gmv)::float AS g, SUM(s.shop_orders)::float AS o
+       FROM gmv.shop_hourly_orders s
+       WHERE s.shop_number = $1 AND s.date::text = ANY($2)
+         AND NOT (s.date::text = $3 AND s.hour > $4)
+       GROUP BY 1 ORDER BY 1`,
+      [parseInt(shopNumber, 10), days, today, nowH]
+    );
+    rows = r.rows;
+  } catch {
+    return { scorecard: [], rangeDays: 0, startDate, endDate };
+  }
+  // Ads spend per hour across the same days (fail-open 0).
+  const spend = new Map<number, number>();
+  try {
+    const shopId = SHOPS[shopNumber]?.shopId;
+    if (shopId) {
+      const sr = await query(
+        `SELECT SUBSTRING(hour_slot, 12, 2)::int AS hh, SUM(cost)::float AS c
+         FROM gmv.hourly_campaign_metrics
+         WHERE shop_id = $1 AND SUBSTRING(hour_slot, 1, 10) = ANY($2)
+           AND hour_slot <= $3
+         GROUP BY 1`,
+        [shopId, days, `${today} ${String(nowH).padStart(2, "0")}:00:00`]
+      );
+      for (const x of sr.rows) spend.set(Number(x.hh), Number(x.c ?? 0));
+    }
+  } catch {
+    // spend stays 0
+  }
+  const rangeDays = new Set<string>();
+  try {
+    const dr = await query(
+      `SELECT DISTINCT date::text AS d FROM gmv.shop_hourly_orders
+       WHERE shop_number = $1 AND date::text = ANY($2)`,
+      [parseInt(shopNumber, 10), days]
+    );
+    for (const x of dr.rows) rangeDays.add(x.d);
+  } catch {
+    // rangeDays stays 0
+  }
+  const scorecard: ShopHourScore[] = rows.map((x) => {
+    const n = Number(x.days ?? 0) || 1;
+    const g = Number(x.g ?? 0), o = Number(x.o ?? 0), s = spend.get(Number(x.hh)) ?? 0;
+    return {
+      hour: `${String(Number(x.hh)).padStart(2, "0")}:00`,
+      days: Number(x.days ?? 0),
+      avgGmv: g / n,
+      avgOrders: o / n,
+      roas: s > 0 ? g / s : null,
+      cpa: o > 0 ? s / o : null,
+    };
+  });
+  return { scorecard, rangeDays: rangeDays.size, startDate, endDate };
 }

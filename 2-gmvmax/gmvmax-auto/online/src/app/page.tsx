@@ -175,6 +175,7 @@ export default function Page() {
   const [hourSyncing, setHourSyncing] = useState(false);
   const [shopHourlyShowSpend, setShopHourlyShowSpend] = useState(true);
   const [shopHourlyRefreshing, setShopHourlyRefreshing] = useState(false);
+  const [hourPickShop, setHourPickShop] = useState<string | null>(null);
   const [ttamExpanded, setTtamExpanded] = useState<Set<string>>(new Set());
   const [ttamAdgroups, setTtamAdgroups] = useState<Record<string, any>>({});
   const [ttamAgLoading, setTtamAgLoading] = useState<string | null>(null);
@@ -532,7 +533,11 @@ export default function Page() {
     const spend = hours.map((h: any) => Number(h.adSpend ?? 0));
     const roas = hours.map((h: any) => (h.trueRoas === null || h.trueRoas === undefined ? null : Number(h.trueRoas)));
     const datasets: any[] = [
-      { type: "bar", label: "Shop GMV (RM)", data: gmv, backgroundColor: "#6366f1", yAxisID: "y" },
+      {
+        type: "bar", label: "Shop GMV (RM)", data: gmv,
+        backgroundColor: hours.map((h: any) => hourPickShop && h.hour === hourPickShop ? "#a5b4fc" : "#6366f1"),
+        yAxisID: "y",
+      },
     ];
     if (shopHourlyShowSpend) {
       datasets.push({ type: "line", label: "Ad spend (RM)", data: spend, borderColor: "#c084fc", borderDash: [6, 4], tension: 0.3, spanGaps: true, yAxisID: "y" });
@@ -552,7 +557,7 @@ export default function Page() {
     });
     shopHourlyChartsRef.current.push(c);
     return () => { c.destroy(); shopHourlyChartsRef.current = shopHourlyChartsRef.current.filter((x) => x !== c); };
-  }, [data, shopHourlyShowSpend]);
+  }, [data, shopHourlyShowSpend, hourPickShop]);
 
   async function refreshShopHourlyAction() {
     if (shopHourlyRefreshing) return;
@@ -564,11 +569,14 @@ export default function Page() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ shopNumber: shop, date: end }),
       });
-      const body = await r.json();
-      if (!r.ok) throw new Error(body.error ?? "hourly shop refresh failed");
-      setData({ kind: "hourly-shop", ...body });
+      const post = await r.json();
+      if (!r.ok) throw new Error(post.error ?? "hourly shop refresh failed");
+      const g = await fetch(`/api/hourly-shop?shopNumber=${shop}&date=${end}&startDate=${start}&endDate=${end}`);
+      if (!g.ok) throw new Error((await g.json()).error ?? "fetch failed");
+      setData({ kind: "hourly-shop", ...(await g.json()) });
+      setHourPickShop(null);
       setFetchedAt(new Date().toISOString());
-      const rf = body.refreshed ?? {};
+      const rf = post.refreshed ?? {};
       setBudgetNotice(
         `Shop hourly refreshed for ${end}: day MYR ${fmt(rf.dayTotal ?? 0)}` +
         (rf.tied ? " (tied)" : ` (untied Δ ${fmt(rf.diff ?? 0)}, ${rf.unparseable ?? 0} unparseable — check create_time)`) + "."
@@ -671,9 +679,10 @@ export default function Page() {
         return;
       }
       if (metric === "hourly-shop") {
-        const r = await fetch(`/api/hourly-shop?shopNumber=${shop}&date=${end}`);
+        const r = await fetch(`/api/hourly-shop?shopNumber=${shop}&date=${end}&startDate=${start}&endDate=${end}`);
         if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
         setData({ kind: "hourly-shop", ...(await r.json()) });
+        setHourPickShop(null);
         setFetchedAt(new Date().toISOString());
         return;
       }
@@ -1254,12 +1263,73 @@ export default function Page() {
               {(data.updatedAt) && <span className="text-xs text-zinc-500">Cached {String(data.updatedAt).slice(0, 16).replace("T", " ")}</span>}
             </div>
             <div className={`${cardCls} mb-3`}><h4 className="mb-2 text-sm font-medium">Performance Over Time ({data.date})</h4><canvas ref={shopHourlyRef} /></div>
+            {(() => {
+              const score: any[] = data.scorecard ?? [];
+              const rangeDays: number = data.rangeDays ?? 0;
+              const golden = new Set([...score].sort((a: any, b: any) => Number(b.avgGmv ?? 0) - Number(a.avgGmv ?? 0)).slice(0, 5).map((d: any) => d.hour));
+              const tagOf = (d: any) =>
+                Number(d.avgOrders ?? 0) < 2 ? "DEAD" : golden.has(d.hour) ? "GOLDEN" : (d.cpa !== null && d.cpa !== undefined && Number(d.cpa) > 50) ? "WATCH" : "–";
+              const ready = rangeDays >= 3;
+              return (
+                <div className={`${cardCls} mb-3`}>
+                  <h4 className="mb-1 text-sm font-medium">Hour scorecard ({data.startDate ?? data.date} – {data.endDate ?? data.date}, missing excluded)</h4>
+                  {!ready ? (
+                    <p className="text-xs text-zinc-500">Need {3 - rangeDays} more cached day(s) for tags (have {rangeDays}) — Refresh more days first. Tags on thin history mislead.</p>
+                  ) : (
+                    <>
+                      <p className="mb-2 text-[11px] text-amber-200/70">DEAD = &lt;2 orders/day · GOLDEN = top-5 avg GMV · WATCH = CPA &gt;RM50. Spend is real ad cost.</p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead><tr className="text-zinc-400"><th className={thCls}>Hour</th><th className={`${thCls} text-right`}>Days</th><th className={`${thCls} text-right`}>Avg GMV</th><th className={`${thCls} text-right`}>Avg orders</th><th className={`${thCls} text-right`}>ROAS</th><th className={`${thCls} text-right`}>CPA</th><th className={thCls}>Tag</th></tr></thead>
+                          <tbody>
+                            {score.map((d: any) => {
+                              const t = tagOf(d);
+                              return (
+                                <tr key={d.hour} className={`border-t border-zinc-800 hover:bg-zinc-900 ${hourPickShop === d.hour ? "bg-zinc-900" : ""}`}>
+                                  <td className={tdCls}>{d.hour}</td>
+                                  <td className={numCls}>{d.days}</td>
+                                  <td className={numCls}>{fmt(d.avgGmv)}</td>
+                                  <td className={numCls}>{Number(d.avgOrders ?? 0).toFixed(1)}</td>
+                                  <td className={numCls}>{d.roas === null || d.roas === undefined ? "n/a" : `${Number(d.roas).toFixed(2)}x`}</td>
+                                  <td className={numCls}>{d.cpa === null || d.cpa === undefined ? "n/a" : fmt(d.cpa)}</td>
+                                  <td className={tdCls}><span className={`rounded-full px-2 py-0.5 text-[10px] ${t === "GOLDEN" ? "bg-emerald-900 text-emerald-200" : t === "WATCH" ? "bg-amber-900 text-amber-200" : t === "DEAD" ? "bg-zinc-700 text-zinc-300" : "text-zinc-500"}`}>{t}</span></td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })()}
+            <div className={`${cardCls} mb-3`}>
+              <h4 className="mb-2 text-sm font-medium">Hour picker ({data.date})</h4>
+              <div className="flex flex-wrap gap-1">
+                <button
+                  type="button"
+                  onClick={() => setHourPickShop(null)}
+                  className={`rounded px-1.5 py-0.5 text-xs ${hourPickShop === null ? "bg-zinc-100 text-zinc-900" : "bg-zinc-800 text-zinc-200"}`}
+                >All</button>
+                {(data.hours ?? []).map((h: any) => (
+                  <button
+                    key={h.hour}
+                    type="button"
+                    disabled={h.missing}
+                    onClick={() => setHourPickShop(h.hour)}
+                    title={h.missing ? "future hour" : h.hour}
+                    className={`rounded px-1.5 py-0.5 text-xs tabular-nums ${hourPickShop === h.hour ? "bg-zinc-100 text-zinc-900" : h.missing ? "bg-zinc-900 text-zinc-600" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"}`}
+                  >{h.hour.slice(0, 2)}</button>
+                ))}
+              </div>
+            </div>
             <div className={`${cardCls} mb-4`}>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead><tr className="text-zinc-400"><th className={thCls}>Hour</th><th className={`${thCls} text-right`}>Shop GMV</th><th className={`${thCls} text-right`}>Orders</th><th className={`${thCls} text-right`}>Ad spend</th><th className={`${thCls} text-right`}>TRUE ROAS</th></tr></thead>
                   <tbody>
-                    {(data.hours ?? []).map((h: any) => (
+                    {(data.hours ?? []).filter((h: any) => hourPickShop === null || h.hour === hourPickShop).map((h: any) => (
                       <tr key={h.hour} className={`border-t border-zinc-800 ${h.missing ? "text-zinc-600" : "hover:bg-zinc-900"}`}>
                         <td className={tdCls}>{h.hour}{h.missing ? " · future" : ""}</td>
                         <td className={numCls}>{h.missing ? "—" : fmt(h.shopGmv)}</td>

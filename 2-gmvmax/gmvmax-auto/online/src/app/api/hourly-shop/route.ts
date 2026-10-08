@@ -13,8 +13,10 @@ export async function GET(request: Request) {
     searchParams.get("date") ??
     searchParams.get("endDate") ??
     new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+  const startDate = searchParams.get("startDate") ?? date;
+  const endDate = searchParams.get("endDate") ?? date;
   try {
-    return NextResponse.json(await getHourlyShopView(shopNumber, date));
+    return NextResponse.json(await getHourlyShopView(shopNumber, date, startDate, endDate));
   } catch (e) {
     const message = e instanceof Error ? e.message : "hourly shop failed";
     console.error("[hourly-shop]", message);
