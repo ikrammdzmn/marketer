@@ -567,7 +567,7 @@ export default function Page() {
       const r = await fetch("/api/hourly-shop/refresh", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shopNumber: shop, date: end }),
+        body: JSON.stringify({ shopNumber: shop, startDate: start, endDate: end }),
       });
       const post = await r.json();
       if (!r.ok) throw new Error(post.error ?? "hourly shop refresh failed");
@@ -576,10 +576,13 @@ export default function Page() {
       setData({ kind: "hourly-shop", ...(await g.json()) });
       setHourPickShop(null);
       setFetchedAt(new Date().toISOString());
-      const rf = post.refreshed ?? {};
+      const rr = post.rangeRefresh ?? {};
+      const fails = (rr.failed ?? []).length;
+      const untied = (rr.untied ?? []).length;
       setBudgetNotice(
-        `Shop hourly refreshed for ${end}: day MYR ${fmt(rf.dayTotal ?? 0)}` +
-        (rf.tied ? " (tied)" : ` (untied Δ ${fmt(rf.diff ?? 0)}, ${rf.unparseable ?? 0} unparseable — check create_time)`) + "."
+        `Shop hourly refreshed: ${(rr.refreshed ?? []).length} day(s)` +
+        (fails > 0 ? `, ${fails} failed (old rows kept)` : "") +
+        (untied > 0 ? `, ${untied} untied (check create_time)` : " (tied)") + "."
       );
     } catch (e) {
       setBudgetNotice(e instanceof Error ? e.message : "hourly shop refresh failed");
