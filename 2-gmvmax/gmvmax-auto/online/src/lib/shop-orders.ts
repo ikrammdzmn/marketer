@@ -28,20 +28,17 @@ interface ShopOrderFetch {
 // shop_cipher/shop_id/version + sign/timestamp, header x-tts-access-token,
 // body { create_time_ge, create_time_lt }. Numerator = line_items
 // (sale_price + platform_discount), CANCELLED/REFUNDED excluded.
-async function fetchShopOrders(
+async function fetchRawShopOrders(
   appKey: string,
   appSecret: string,
   accessToken: string,
   shopCipher: string,
   startDate: string,
   endDate: string
-): Promise<ShopOrderFetch> {
+): Promise<{ orders: any[]; sampleKeys: string[]; pages: number }> {
   const from = Math.floor(new Date(`${startDate}T00:00:00+08:00`).getTime() / 1000);
   const to = Math.floor(new Date(`${endDate}T23:59:59+08:00`).getTime() / 1000);
 
-  let gmv = 0;
-  let cancelledGMV = 0;
-  let cancelledCount = 0;
   let allOrders: any[] = [];
   let sampleKeys: string[] = [];
   let pageToken = "";
@@ -89,7 +86,24 @@ async function fetchShopOrders(
     if (!pageToken) break;
     await new Promise((r) => setTimeout(r, 400));
   }
+  return { orders: allOrders, sampleKeys, pages };
+}
 
+async function fetchShopOrders(
+  appKey: string,
+  appSecret: string,
+  accessToken: string,
+  shopCipher: string,
+  startDate: string,
+  endDate: string
+): Promise<ShopOrderFetch> {
+  const { orders: allOrders, sampleKeys, pages } = await fetchRawShopOrders(
+    appKey, appSecret, accessToken, shopCipher, startDate, endDate
+  );
+
+  let gmv = 0;
+  let cancelledGMV = 0;
+  let cancelledCount = 0;
   for (const o of allOrders) {
     let orderTotal = 0;
     for (const item of o.line_items ?? []) {
@@ -110,6 +124,16 @@ async function fetchShopOrders(
     cancelledCount, cancelledGMV,
     sampleKeys, pages,
   };
+}
+
+export async function fetchShopRawDayOrders(date: string): Promise<{ orders: any[]; sampleKeys: string[]; pages: number } | null> {
+  // Fail-open raw day pull for the hourly-shop bucketer (015).
+  const appKey = cleanEnv(process.env.SHOP_APP_KEY);
+  const appSecret = cleanEnv(process.env.SHOP_APP_SECRET);
+  if (!appKey || !appSecret) return null;
+  const creds = await getShopCredentials("1");
+  if (!creds || !creds.shop_cipher) return null;
+  return fetchRawShopOrders(appKey, appSecret, creds.access_token, creds.shop_cipher, date, date);
 }
 
 export async function fetchShopDayOrders(date: string): Promise<ShopOrderFetch | null> {

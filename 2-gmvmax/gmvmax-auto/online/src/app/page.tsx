@@ -19,6 +19,7 @@ const METRICS = [
   { id: "ttam", name: "TTAM (Manual, excl GMV)" },
   { id: "roas", name: "ROAS (Return on Ad Spend)" },
   { id: "hourly", name: "Hourly (per campaign, shop 1)" },
+  { id: "hourly-shop", name: "Hourly shop (Shop API, shop 1)" },
   { id: "shop-gmv", name: "Shop GMV (Shop API, shop 1)" },
 ];
 
@@ -172,6 +173,8 @@ export default function Page() {
   const [shopDailyRefreshing, setShopDailyRefreshing] = useState(false);
   const [hourPick, setHourPick] = useState<string | null>(null);
   const [hourSyncing, setHourSyncing] = useState(false);
+  const [shopHourlyShowSpend, setShopHourlyShowSpend] = useState(true);
+  const [shopHourlyRefreshing, setShopHourlyRefreshing] = useState(false);
   const [ttamExpanded, setTtamExpanded] = useState<Set<string>>(new Set());
   const [ttamAdgroups, setTtamAdgroups] = useState<Record<string, any>>({});
   const [ttamAgLoading, setTtamAgLoading] = useState<string | null>(null);
@@ -262,6 +265,8 @@ export default function Page() {
   const barRef = useRef<HTMLCanvasElement | null>(null);
   const shopDailyRef = useRef<HTMLCanvasElement | null>(null);
   const shopChartsRef = useRef<Chart[]>([]);
+  const shopHourlyRef = useRef<HTMLCanvasElement | null>(null);
+  const shopHourlyChartsRef = useRef<Chart[]>([]);
 
   // Hourly graphs (shop-hourly style): per-type GMV bars + spend dashed
   // line + ROAS line, dual axis; top-12 bars follow the picked hour.
@@ -513,6 +518,68 @@ export default function Page() {
     }
   }
 
+  // Hourly-shop chart (shop-hourly style): shop GMV bars + ads spend
+  // dashed line (toggleable) + TRUE ROAS line, dual axis.
+  useEffect(() => {
+    shopHourlyChartsRef.current.forEach((c) => c.destroy());
+    shopHourlyChartsRef.current = [];
+    if (!data || data.kind !== "hourly-shop") return;
+    if (!shopHourlyRef.current) return;
+    const hours: any[] = (data.hours ?? []).filter((h: any) => !h.missing);
+    if (!hours.length) return;
+    const labels = hours.map((h: any) => h.hour);
+    const gmv = hours.map((h: any) => Number(h.shopGmv ?? 0));
+    const spend = hours.map((h: any) => Number(h.adSpend ?? 0));
+    const roas = hours.map((h: any) => (h.trueRoas === null || h.trueRoas === undefined ? null : Number(h.trueRoas)));
+    const datasets: any[] = [
+      { type: "bar", label: "Shop GMV (RM)", data: gmv, backgroundColor: "#6366f1", yAxisID: "y" },
+    ];
+    if (shopHourlyShowSpend) {
+      datasets.push({ type: "line", label: "Ad spend (RM)", data: spend, borderColor: "#c084fc", borderDash: [6, 4], tension: 0.3, spanGaps: true, yAxisID: "y" });
+    }
+    datasets.push({ type: "line", label: "TRUE ROAS (x)", data: roas, borderColor: "#22c55e", tension: 0.3, spanGaps: true, yAxisID: "y1" });
+    const c = new Chart(shopHourlyRef.current, {
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#eee" } } },
+        scales: {
+          x: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
+          y: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
+          y1: { position: "right", ticks: { color: "#999" }, grid: { drawOnChartArea: false } },
+        },
+      },
+    });
+    shopHourlyChartsRef.current.push(c);
+    return () => { c.destroy(); shopHourlyChartsRef.current = shopHourlyChartsRef.current.filter((x) => x !== c); };
+  }, [data, shopHourlyShowSpend]);
+
+  async function refreshShopHourlyAction() {
+    if (shopHourlyRefreshing) return;
+    setShopHourlyRefreshing(true);
+    setBudgetNotice(null);
+    try {
+      const r = await fetch("/api/hourly-shop/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopNumber: shop, date: end }),
+      });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error ?? "hourly shop refresh failed");
+      setData({ kind: "hourly-shop", ...body });
+      setFetchedAt(new Date().toISOString());
+      const rf = body.refreshed ?? {};
+      setBudgetNotice(
+        `Shop hourly refreshed for ${end}: day MYR ${fmt(rf.dayTotal ?? 0)}` +
+        (rf.tied ? " (tied)" : ` (untied Δ ${fmt(rf.diff ?? 0)}, ${rf.unparseable ?? 0} unparseable — check create_time)`) + "."
+      );
+    } catch (e) {
+      setBudgetNotice(e instanceof Error ? e.message : "hourly shop refresh failed");
+    } finally {
+      setShopHourlyRefreshing(false);
+    }
+  }
+
   async function refreshShopDailyAction() {
     if (shopDailyRefreshing) return;
     setShopDailyRefreshing(true);
@@ -600,6 +667,13 @@ export default function Page() {
         if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
         setData({ kind: "hourly", ...(await r.json()) });
         setHourPick(null);
+        setFetchedAt(new Date().toISOString());
+        return;
+      }
+      if (metric === "hourly-shop") {
+        const r = await fetch(`/api/hourly-shop?shopNumber=${shop}&date=${end}`);
+        if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
+        setData({ kind: "hourly-shop", ...(await r.json()) });
         setFetchedAt(new Date().toISOString());
         return;
       }
@@ -1156,6 +1230,48 @@ export default function Page() {
                 </div>
               </>);
             })()}
+          </>
+        )}
+
+        {data && data.kind === "hourly-shop" && (
+          <>
+            <p className="mb-3 text-xs text-zinc-400">
+              Shop-order GMV by MYT create hour (day-pull bucketed, CANCELLED/REFUNDED excluded) + cached ads spend by hour. TRUE ROAS = shop gmv / ads spend, recomputed. Blank = future hour.
+            </p>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShopHourlyShowSpend((v) => !v)}
+                className={`rounded-full px-2.5 py-0.5 text-xs ${shopHourlyShowSpend ? "bg-zinc-100 text-zinc-900" : "bg-zinc-800 text-zinc-300"}`}
+              >{shopHourlyShowSpend ? "Spend: on" : "Spend: off"}</button>
+              <button
+                type="button"
+                disabled={shopHourlyRefreshing}
+                onClick={refreshShopHourlyAction}
+                className="rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+              >{shopHourlyRefreshing ? "Refreshing…" : `Refresh ${end}`}</button>
+              {(data.cachedHours ?? 0) === 0 && <span className="text-xs text-zinc-500">Cache empty — press Refresh (pulls the day live, then buckets).</span>}
+              {(data.updatedAt) && <span className="text-xs text-zinc-500">Cached {String(data.updatedAt).slice(0, 16).replace("T", " ")}</span>}
+            </div>
+            <div className={`${cardCls} mb-3`}><h4 className="mb-2 text-sm font-medium">Performance Over Time ({data.date})</h4><canvas ref={shopHourlyRef} /></div>
+            <div className={`${cardCls} mb-4`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="text-zinc-400"><th className={thCls}>Hour</th><th className={`${thCls} text-right`}>Shop GMV</th><th className={`${thCls} text-right`}>Orders</th><th className={`${thCls} text-right`}>Ad spend</th><th className={`${thCls} text-right`}>TRUE ROAS</th></tr></thead>
+                  <tbody>
+                    {(data.hours ?? []).map((h: any) => (
+                      <tr key={h.hour} className={`border-t border-zinc-800 ${h.missing ? "text-zinc-600" : "hover:bg-zinc-900"}`}>
+                        <td className={tdCls}>{h.hour}{h.missing ? " · future" : ""}</td>
+                        <td className={numCls}>{h.missing ? "—" : fmt(h.shopGmv)}</td>
+                        <td className={numCls}>{h.missing ? "—" : h.shopOrders}</td>
+                        <td className={numCls}>{h.missing ? "—" : fmt(h.adSpend)}</td>
+                        <td className={numCls}>{h.missing || h.trueRoas === null || h.trueRoas === undefined ? "n/a" : `${Number(h.trueRoas).toFixed(2)}x`}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </>
         )}
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getShopROAS } from "@/lib/gmv";
+import { refreshShopHourly } from "@/lib/hourly-shop";
 import { fetchShopDayOrders } from "@/lib/shop-orders";
 import { SHOPS } from "@/lib/shops";
 
@@ -92,6 +93,17 @@ async function syncOne(shopNumber: string, date: string) {
   return { shop: r.shopName, gmv: r.gmv, spend: r.totalAdsSpend, shopGmv };
 }
 
+async function syncShopHourly(shopNumber: string, date: string) {
+  // 015 hourly-shop fill, fail-open (extra day-pull, nightly only).
+  if (shopNumber !== "1") return null;
+  try {
+    return await refreshShopHourly(shopNumber, date);
+  } catch (e) {
+    console.error("[nightly-sync] shop hourly failed, daily row kept", e instanceof Error ? e.message : "failed");
+    return null;
+  }
+}
+
 // GET /api/cron/nightly-sync?date=YYYY-MM-DD&shopNumber=1
 // Vercel cron sends Authorization: Bearer <CRON_SECRET> automatically.
 export async function GET(request: Request) {
@@ -108,6 +120,7 @@ export async function GET(request: Request) {
   try {
     for (const s of shops) {
       results[`shop_${s}_${date}`] = await syncOne(s, date);
+      results[`hourly_shop_${s}_${date}`] = await syncShopHourly(s, date);
       await new Promise((r) => setTimeout(r, 500));
     }
     // Guard-heal: past 2 days, missing rows only.
