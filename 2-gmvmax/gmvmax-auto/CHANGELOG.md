@@ -2,6 +2,15 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## Undeployed — Shop GMV multi-day (014 + Refresh) + hourly date fix + hourly autopinger
+
+- Hourly Fetch now sends `date=${end}` (`page.tsx:489`); `/api/hourly` also accepts `endDate/startDate` fallback. Oct-07 range previously queried Oct-08 (empty) — that was the blank-charts bug, not missing data.
+- `014_shop_orders_daily.sql` (NEW, owner runs DEV then PROD): `shop_order_gmv/count` + `shop_cancelled_gmv/count` on `gmv.daily_shop_metrics`. All writers tolerate pre-014 DBs (ads-only fallback, no 500).
+- Shop GMV tab: `daily` cache series on GET + `POST /api/shop-gmv/refresh` (allowlisted, ≤31 days, per-day fail-open) + `Refresh daily cache` button; multi-day Performance chart (GMV bars + spend dashed line + ROAS line, recomputed) with `Shop truth | Ads attributed` toggle + daily table. `nightly-sync` now stores the shop side too (fail-open).
+- `vercel.json`: hourly cron `15 * * * *` → `/api/cron/hourly-sync?shopNumber=1` (Hobby runs it daily at most); `.github/workflows/hourly-sync.yml` (NEW): true hourly pinger, skips 02–06 MYT, needs Actions secret `CRON_SECRET` (+ optional `VERCEL_BYPASS`). `tsc` exit 0. Deploy pending (CLI token expired last session).
+- NOTE 08 Oct late: Vercel Hobby rejects sub-daily crons at deploy time, so the hourly `vercel.json` entry was reverted (nightly only). Hourly automation = GitHub Actions pinger alone. Alternative is Pro upgrade (owner call).
+- Hourly tab rebuild (shop-hourly style): trend charts now GMV bars + spend dashed line + ROAS line per type (dual axis, ROAS recomputed); 24-hour picker (future/no-data chips disabled, bars + campaign table follow the pick, default latest); range scorecard card (Hour/Days/AvgGMV/AvgOrders/ROAS/CPA + DEAD/GOLDEN/WATCH, missing excluded, spend is real cost); `POST /api/hourly/sync` + `Sync now` button (live TikTok pull, Telegram silent, fails back to cache). `GET /api/hourly` takes `startDate/endDate` and returns `scorecard`. `tsc` 0 + `next build` green (lists `/api/hourly/sync`, `/api/shop-gmv/refresh`, Middleware).
+
 ## 08 Oct 2026 — account-budget ON-only partial + shop token live + admin refresh button (deployed)
 
 - Account budget = sum of ON campaigns only (OFF ignored), amber `partial` label when an ON budget is still unknown; `% used` = ON spend / ON budget, one-day only (`page.tsx`: `onRows`/`knownOn`; backend already nulled OFF budgets). Header copy updated. Deployed `dpl_5rKQahzdGM1KbsfvrfN6xva1J832`; live smoke `/` 307, data API 401.

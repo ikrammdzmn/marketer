@@ -112,6 +112,18 @@ async function fetchShopOrders(
   };
 }
 
+export async function fetchShopDayOrders(date: string): Promise<ShopOrderFetch | null> {
+  // Fail-open day helper for cache writers (nightly-sync, refresh route).
+  // Returns null when the shop side is unconfigured instead of throwing,
+  // so ads-attributed rows still land and shop columns stay 0.
+  const appKey = cleanEnv(process.env.SHOP_APP_KEY);
+  const appSecret = cleanEnv(process.env.SHOP_APP_SECRET);
+  if (!appKey || !appSecret) return null;
+  const creds = await getShopCredentials("1");
+  if (!creds || !creds.shop_cipher) return null;
+  return fetchShopOrders(appKey, appSecret, creds.access_token, creds.shop_cipher, date, date);
+}
+
 export async function getShopGMV(shopNumber: string, startDate: string, endDate: string) {
   const shop = SHOPS[shopNumber];
   if (!shop) throw new Error(`invalid shopNumber: ${shopNumber}`);

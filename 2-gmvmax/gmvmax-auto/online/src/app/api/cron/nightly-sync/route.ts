@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getShopROAS } from "@/lib/gmv";
+import { fetchShopDayOrders } from "@/lib/shop-orders";
 import { SHOPS } from "@/lib/shops";
 
 export const dynamic = "force-dynamic";
@@ -22,28 +23,73 @@ function subDaysKL(dateStr: string, n: number): string {
 
 async function syncOne(shopNumber: string, date: string) {
   const r = await getShopROAS(shopNumber, date, date);
-  await query(
-    `INSERT INTO gmv.daily_shop_metrics
-       (shop_number, shop_name, date, gmv, live_cost, product_cost, manual_spend,
-        spend_before_tax, spend_after_tax, roas_before_tax, roas_after_tax,
-        order_count, updated_at)
-     VALUES ($1,$2,$3::date,$4,$5,$6,$7,$8,$9,$10,$11,$12,now())
-     ON CONFLICT (shop_number, date) DO UPDATE SET
-       shop_name = EXCLUDED.shop_name, gmv = EXCLUDED.gmv,
-       live_cost = EXCLUDED.live_cost, product_cost = EXCLUDED.product_cost,
-       manual_spend = EXCLUDED.manual_spend,
-       spend_before_tax = EXCLUDED.spend_before_tax,
-       spend_after_tax = EXCLUDED.spend_after_tax,
-       roas_before_tax = EXCLUDED.roas_before_tax,
-       roas_after_tax = EXCLUDED.roas_after_tax,
-       order_count = EXCLUDED.order_count, updated_at = now()`,
-    [
-      parseInt(shopNumber, 10), r.shopName, date, r.gmv,
-      r.liveGMVMaxCost, r.productGMVMaxCost, r.manualCampaignSpend,
-      r.totalAdsSpend, r.totalCostWithTaxes, r.roas, r.actualRoas, r.orderCount,
-    ]
-  );
-  return { shop: r.shopName, gmv: r.gmv, spend: r.totalAdsSpend };
+  // Shop-truth side is fail-open (014 columns): unconfigured/token-less
+  // nights still store the ads-attributed row with shop columns at 0.
+  let shopGmv = 0, shopOrders = 0, shopCancelGmv = 0, shopCancelCount = 0;
+  if (shopNumber === "1") {
+    try {
+      const o = await fetchShopDayOrders(date);
+      if (o) {
+        shopGmv = o.gmv; shopOrders = o.orderCount;
+        shopCancelGmv = o.cancelledGMV; shopCancelCount = o.cancelledCount;
+      }
+    } catch (e) {
+      console.error("[nightly-sync] shop orders failed, ads row kept", e instanceof Error ? e.message : "failed");
+    }
+  }
+  const params = [
+    parseInt(shopNumber, 10), r.shopName, date, r.gmv,
+    r.liveGMVMaxCost, r.productGMVMaxCost, r.manualCampaignSpend,
+    r.totalAdsSpend, r.totalCostWithTaxes, r.roas, r.actualRoas, r.orderCount,
+    shopGmv, shopOrders, shopCancelGmv, shopCancelCount,
+  ];
+  try {
+    await query(
+      `INSERT INTO gmv.daily_shop_metrics
+         (shop_number, shop_name, date, gmv, live_cost, product_cost, manual_spend,
+          spend_before_tax, spend_after_tax, roas_before_tax, roas_after_tax,
+          order_count, updated_at,
+          shop_order_gmv, shop_order_count, shop_cancelled_gmv, shop_cancelled_count)
+       VALUES ($1,$2,$3::date,$4,$5,$6,$7,$8,$9,$10,$11,$12,now(),$13,$14,$15,$16)
+       ON CONFLICT (shop_number, date) DO UPDATE SET
+         shop_name = EXCLUDED.shop_name, gmv = EXCLUDED.gmv,
+         live_cost = EXCLUDED.live_cost, product_cost = EXCLUDED.product_cost,
+         manual_spend = EXCLUDED.manual_spend,
+         spend_before_tax = EXCLUDED.spend_before_tax,
+         spend_after_tax = EXCLUDED.spend_after_tax,
+         roas_before_tax = EXCLUDED.roas_before_tax,
+         roas_after_tax = EXCLUDED.roas_after_tax,
+         order_count = EXCLUDED.order_count, updated_at = now(),
+         shop_order_gmv = EXCLUDED.shop_order_gmv,
+         shop_order_count = EXCLUDED.shop_order_count,
+         shop_cancelled_gmv = EXCLUDED.shop_cancelled_gmv,
+         shop_cancelled_count = EXCLUDED.shop_cancelled_count`,
+      params
+    );
+  } catch (e) {
+    // Pre-014 DBs lack the shop columns: keep the ads row, drop shop side.
+    const msg = e instanceof Error ? e.message : "";
+    if (!/shop_order|shop_cancelled/i.test(msg)) throw e;
+    console.error("[nightly-sync] 014 columns missing, ads-only row kept (run 014 migration)");
+    await query(
+      `INSERT INTO gmv.daily_shop_metrics
+         (shop_number, shop_name, date, gmv, live_cost, product_cost, manual_spend,
+          spend_before_tax, spend_after_tax, roas_before_tax, roas_after_tax,
+          order_count, updated_at)
+       VALUES ($1,$2,$3::date,$4,$5,$6,$7,$8,$9,$10,$11,$12,now())
+       ON CONFLICT (shop_number, date) DO UPDATE SET
+         shop_name = EXCLUDED.shop_name, gmv = EXCLUDED.gmv,
+         live_cost = EXCLUDED.live_cost, product_cost = EXCLUDED.product_cost,
+         manual_spend = EXCLUDED.manual_spend,
+         spend_before_tax = EXCLUDED.spend_before_tax,
+         spend_after_tax = EXCLUDED.spend_after_tax,
+         roas_before_tax = EXCLUDED.roas_before_tax,
+         roas_after_tax = EXCLUDED.roas_after_tax,
+         order_count = EXCLUDED.order_count, updated_at = now()`,
+      params.slice(0, 12)
+    );
+  }
+  return { shop: r.shopName, gmv: r.gmv, spend: r.totalAdsSpend, shopGmv };
 }
 
 // GET /api/cron/nightly-sync?date=YYYY-MM-DD&shopNumber=1

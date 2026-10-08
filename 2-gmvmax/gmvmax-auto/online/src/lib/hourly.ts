@@ -97,7 +97,8 @@ export interface HourDiff {
 // Hourly POC (shop 1 only): pull today's hour slots for both types, drop the
 // newest 2 slots (closed-window lag edge), upsert the rest (rewrite-on-revise),
 // diff the latest closed slot vs the previous stored slot, push Telegram.
-export async function syncHourly(shopNumber: string, date: string) {
+// opts.silent skips the Telegram triple-send (dashboard Sync now button).
+export async function syncHourly(shopNumber: string, date: string, opts?: { silent?: boolean }) {
   const shop = SHOPS[shopNumber];
   if (!shop) throw new Error(`invalid shopNumber: ${shopNumber}`);
   if (shopNumber !== "1") throw new Error("hourly POC is shop-1-only");
@@ -711,17 +712,18 @@ export async function syncHourly(shopNumber: string, date: string) {
       { type: "buttons", buttons: [{ text: "📊 Dashboard", url: DASHBOARD_URL }] },
       { type: "paragraph", text: syncedNote },
     ];
-    const r1 = await sendTelegramFull(
+    const r1 = opts?.silent ? null : await sendTelegramFull(
       summarize(`${EMOJI.live} LIVE GMV Max (shop 1)`, liveD, earlierLive), true, buildBlocks(`${EMOJI.live} LIVE GMV Max (shop 1)`, liveD, earlierLive, chartsLive)
     );
-    const r2 = await sendTelegramFull(
+    const r2 = opts?.silent ? null : await sendTelegramFull(
       summarize(`${EMOJI.product} Product GMV Max (shop 1)`, prodD, earlierProd), true, buildBlocks(`${EMOJI.product} Product GMV Max (shop 1)`, prodD, earlierProd, chartsProd)
     );
-    const r3 = await sendTelegramFull(totalLegacy, true, totalBlocks);
-    telegram =
-      r1.ok && r2.ok && r3.ok
+    const r3 = opts?.silent ? null : await sendTelegramFull(totalLegacy, true, totalBlocks);
+    telegram = opts?.silent
+      ? "silent"
+      : r1 && r2 && r3 && r1.ok && r2.ok && r3.ok
         ? `${r1.mode}+${r2.mode}+${r3.mode}`
-        : `failed live=${r1.mode}:${r1.error ?? "?"} prod=${r2.mode}:${r2.error ?? "?"} total=${r3.mode}:${r3.error ?? "?"}`;
+        : `failed live=${r1?.mode}:${r1?.error ?? "?"} prod=${r2?.mode}:${r2?.error ?? "?"} total=${r3?.mode}:${r3?.error ?? "?"}`;
   }
 
   return { shop: shop.name, date, slots: ordered.length, closedSlots: closed.length, stored, slot, diffs, pulledAt, telegram };
@@ -745,4 +747,59 @@ export async function getHourlyView(shopNumber: string, date: string) {
     [shop.shopId, `${date}%`]
   );
   return { shopName: shop.name, date, slots: slots.rows.map((r) => r.hour_slot), rows: rows.rows };
+}
+
+export interface HourScore {
+  hour: string;
+  days: number;
+  avgGmv: number;
+  avgOrders: number;
+  roas: number | null;
+  cpa: number | null;
+}
+
+// Scorecard across a date range (selected range, cap 31 days): per hour SHOP
+// (00:00-23:00) totals averaged over days present. Future slots of today are
+// missing (excluded); explicit zeros stay. ROAS/CPA recomputed, never averaged.
+export async function getHourlyScorecard(
+  shopNumber: string, startDate: string, endDate: string
+): Promise<HourScore[]> {
+  const shop = SHOPS[shopNumber];
+  if (!shop) throw new Error(`invalid shopNumber: ${shopNumber}`);
+  const days: string[] = [];
+  const d = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  while (d <= end && days.length < 31) {
+    days.push(d.toISOString().slice(0, 10));
+    d.setTime(d.getTime() + 86400000);
+  }
+  if (!days.length) return [];
+  const parts: Record<string, string> = {};
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit",
+    day: "2-digit", hour: "2-digit", hour12: false,
+  }).formatToParts(new Date()).forEach((p) => { parts[p.type] = p.value; });
+  const cutoff = `${parts.year}-${parts.month}-${parts.day} ${String(Number(parts.hour) % 24).padStart(2, "0")}:00:00`;
+  const r = await query(
+    `SELECT SUBSTRING(hour_slot, 12, 5) AS hh,
+            COUNT(DISTINCT SUBSTRING(hour_slot, 1, 10))::int AS days,
+            SUM(cost)::float AS g, SUM(gmv)::float AS v, SUM(orders)::float AS o
+     FROM gmv.hourly_campaign_metrics
+     WHERE shop_id = $1 AND SUBSTRING(hour_slot, 1, 10) = ANY($2)
+       AND hour_slot <= $3
+     GROUP BY 1 ORDER BY 1`,
+    [shop.shopId, days, cutoff]
+  );
+  return r.rows.map((x) => {
+    const g = Number(x.v ?? 0), s = Number(x.g ?? 0), o = Number(x.o ?? 0);
+    const n = Number(x.days ?? 0) || 1;
+    return {
+      hour: String(x.hh),
+      days: Number(x.days ?? 0),
+      avgGmv: g / n,
+      avgOrders: o / n,
+      roas: s > 0 ? g / s : null,
+      cpa: o > 0 ? s / o : null,
+    };
+  });
 }

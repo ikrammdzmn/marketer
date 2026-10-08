@@ -60,6 +60,12 @@ function BudgetUse({ value }: { value: number | null | undefined }) {
 function klToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
 }
+function klNowHour(): number {
+  const p: Record<string, string> = {};
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", hour12: false })
+    .formatToParts(new Date()).forEach((x) => { p[x.type] = x.value; });
+  return Number(p.hour ?? 0) % 24;
+}
 
 const inputCls =
   "bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-zinc-100";
@@ -162,6 +168,10 @@ export default function Page() {
   const [shopToken, setShopToken] = useState<any>(null);
   const [shopTokenRefreshing, setShopTokenRefreshing] = useState(false);
   const [shopTokenNotice, setShopTokenNotice] = useState<string | null>(null);
+  const [shopGmvMode, setShopGmvMode] = useState<"shop" | "ads">("shop");
+  const [shopDailyRefreshing, setShopDailyRefreshing] = useState(false);
+  const [hourPick, setHourPick] = useState<string | null>(null);
+  const [hourSyncing, setHourSyncing] = useState(false);
   const [ttamExpanded, setTtamExpanded] = useState<Set<string>>(new Set());
   const [ttamAdgroups, setTtamAdgroups] = useState<Record<string, any>>({});
   const [ttamAgLoading, setTtamAgLoading] = useState<string | null>(null);
@@ -250,8 +260,11 @@ export default function Page() {
   const trendLiveRef = useRef<HTMLCanvasElement | null>(null);
   const trendProdRef = useRef<HTMLCanvasElement | null>(null);
   const barRef = useRef<HTMLCanvasElement | null>(null);
+  const shopDailyRef = useRef<HTMLCanvasElement | null>(null);
+  const shopChartsRef = useRef<Chart[]>([]);
 
-  // Hourly graphs: slot-trend footsteps (cost + gmv lines per type) + latest-slot candy bars.
+  // Hourly graphs (shop-hourly style): per-type GMV bars + spend dashed
+  // line + ROAS line, dual axis; top-12 bars follow the picked hour.
   useEffect(() => {
     chartsRef.current.forEach((c) => c.destroy());
     chartsRef.current = [];
@@ -265,53 +278,94 @@ export default function Page() {
       if (!el) return;
       chartsRef.current.push(new Chart(el, cfg));
     };
-    const line = (label: string, color: string, vals: number[]) => ({
-      label, data: vals, borderColor: color, backgroundColor: color, tension: 0.3, pointRadius: 2,
-    });
-    if (trendLiveRef.current) {
-      mk(trendLiveRef.current, {
-        type: "line",
+    const grid = { color: "#27272a" };
+    const axes: any = {
+      x: { ticks: { color: "#999" }, grid },
+      y: { ticks: { color: "#999" }, grid },
+      y1: { position: "right", ticks: { color: "#999" }, grid: { drawOnChartArea: false } },
+    };
+    const trend = (el: HTMLCanvasElement | null, type: string, name: string) => {
+      if (!el) return;
+      const gmv = asc.map((s) => sumBy(s, type, "gmv"));
+      const spend = asc.map((s) => sumBy(s, type, "cost"));
+      const roas = asc.map((_, i) => (spend[i] > 0 ? gmv[i] / spend[i] : null));
+      mk(el, {
         data: {
           labels: asc.map(short),
           datasets: [
-            line("LIVE cost", "#60a5fa", asc.map((s) => sumBy(s, "LIVE_GMV_MAX", "cost"))),
-            line("LIVE gmv", "#4ade80", asc.map((s) => sumBy(s, "LIVE_GMV_MAX", "gmv"))),
+            { type: "bar", label: `${name} GMV (RM)`, data: gmv, backgroundColor: "#6366f1", yAxisID: "y" },
+            { type: "line", label: `${name} spend (RM)`, data: spend, borderColor: "#c084fc", borderDash: [6, 4], tension: 0.3, spanGaps: true, pointRadius: 2, yAxisID: "y" },
+            { type: "line", label: `${name} ROAS (x)`, data: roas, borderColor: "#22c55e", tension: 0.3, spanGaps: true, pointRadius: 2, yAxisID: "y1" },
           ],
         },
-        options: { plugins: { legend: { labels: { color: "#eee" } } }, scales: { x: { ticks: { color: "#999" } }, y: { ticks: { color: "#999" } } } },
+        options: { responsive: true, plugins: { legend: { labels: { color: "#eee" } } }, scales: axes },
       });
-    }
-    if (trendProdRef.current) {
-      mk(trendProdRef.current, {
-        type: "line",
-        data: {
-          labels: asc.map(short),
-          datasets: [
-            line("Product cost", "#60a5fa", asc.map((s) => sumBy(s, "PRODUCT_GMV_MAX", "cost"))),
-            line("Product gmv", "#4ade80", asc.map((s) => sumBy(s, "PRODUCT_GMV_MAX", "gmv"))),
-          ],
-        },
-        options: { plugins: { legend: { labels: { color: "#eee" } } }, scales: { x: { ticks: { color: "#999" } }, y: { ticks: { color: "#999" } } } },
-      });
-    }
+    };
+    trend(trendLiveRef.current, "LIVE_GMV_MAX", "LIVE");
+    trend(trendProdRef.current, "PRODUCT_GMV_MAX", "Product");
     if (barRef.current && (data.slots ?? []).length > 0) {
-      const latest = (data.slots ?? [])[0];
-      const top = [...(data.rows ?? []).filter((r: any) => r.hour_slot === latest)]
+      const slots: string[] = data.slots ?? [];
+      const pickedSlot = hourPick && slots.includes(`${data.date} ${hourPick}:00`)
+        ? `${data.date} ${hourPick}:00`
+        : slots[0];
+      const top = [...(data.rows ?? []).filter((r: any) => r.hour_slot === pickedSlot)]
         .sort((a: any, b: any) => Number(b.cost) - Number(a.cost)).slice(0, 12);
       mk(barRef.current, {
         type: "bar",
         data: {
           labels: top.map((r: any) => String(r.campaign_name ?? r.campaign_id).slice(0, 24)),
           datasets: [
-            { label: `cost @ ${short(latest)}`, data: top.map((r: any) => Number(r.cost)), backgroundColor: "#60a5fa" },
-            { label: `gmv @ ${short(latest)}`, data: top.map((r: any) => Number(r.gmv)), backgroundColor: "#4ade80" },
+            { label: `cost @ ${short(pickedSlot)}`, data: top.map((r: any) => Number(r.cost)), backgroundColor: "#60a5fa" },
+            { label: `gmv @ ${short(pickedSlot)}`, data: top.map((r: any) => Number(r.gmv)), backgroundColor: "#4ade80" },
           ],
         },
         options: { plugins: { legend: { labels: { color: "#eee" } } }, scales: { x: { ticks: { color: "#999", maxRotation: 60, minRotation: 60 } }, y: { ticks: { color: "#999" } } } },
       });
     }
     return () => { chartsRef.current.forEach((c) => c.destroy()); chartsRef.current = []; };
-  }, [data]);
+  }, [data, hourPick]);
+
+  // Shop GMV multi-day chart (shop-hourly style): GMV bars + spend dashed
+  // line + ROAS line, dual axis. Toggle picks the numerator; ROAS is always
+  // recomputed (gmv/spend), never averaged.
+  useEffect(() => {
+    shopChartsRef.current.forEach((c) => c.destroy());
+    shopChartsRef.current = [];
+    if (!data || data.kind !== "shop-gmv") return;
+    if (!shopDailyRef.current) return;
+    const daily: any[] = data.daily ?? [];
+    if (daily.length < 2) return;
+    const useShop = shopGmvMode === "shop";
+    const labels = daily.map((d: any) => String(d.date).slice(5));
+    const gmv = daily.map((d: any) => Number(useShop ? d.shopGmv : d.adsGmv) || 0);
+    const spend = daily.map((d: any) => Number(d.spend) || 0);
+    const roas = daily.map((d: any) => {
+      const s = Number(d.spend) || 0;
+      if (s <= 0) return null;
+      return (Number(useShop ? d.shopGmv : d.adsGmv) || 0) / s;
+    });
+    const c = new Chart(shopDailyRef.current, {
+      data: {
+        labels,
+        datasets: [
+          { type: "bar", label: useShop ? "Shop GMV (RM)" : "Ads GMV (RM)", data: gmv, backgroundColor: "#6366f1", yAxisID: "y" },
+          { type: "line", label: "Ad spend (RM)", data: spend, borderColor: "#c084fc", borderDash: [6, 4], tension: 0.3, spanGaps: true, yAxisID: "y" },
+          { type: "line", label: "ROAS (x)", data: roas, borderColor: "#22c55e", tension: 0.3, spanGaps: true, yAxisID: "y1" },
+        ],
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#eee" } } },
+        scales: {
+          x: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
+          y: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
+          y1: { position: "right", ticks: { color: "#999" }, grid: { drawOnChartArea: false } },
+        },
+      },
+    });
+    shopChartsRef.current.push(c);
+    return () => { c.destroy(); shopChartsRef.current = shopChartsRef.current.filter((x) => x !== c); };
+  }, [data, shopGmvMode]);
 
   async function loadSessions(campaignId: string, force = false) {
     if (sessionsLoading === campaignId) return;
@@ -459,6 +513,62 @@ export default function Page() {
     }
   }
 
+  async function refreshShopDailyAction() {
+    if (shopDailyRefreshing) return;
+    setShopDailyRefreshing(true);
+    setBudgetNotice(null);
+    try {
+      const r = await fetch("/api/shop-gmv/refresh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopNumber: shop, startDate: start, endDate: end }),
+      });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error ?? "daily refresh failed");
+      const g = await fetch(`/api/shop-gmv?shopNumber=${shop}&startDate=${start}&endDate=${end}`);
+      if (!g.ok) throw new Error((await g.json()).error ?? "fetch failed");
+      setData({ kind: "shop-gmv", ...(await g.json()) });
+      setFetchedAt(new Date().toISOString());
+      const fails = (body.failed ?? []).length;
+      setBudgetNotice(
+        `Daily cache refreshed: ${(body.refreshed ?? []).length} day(s)` +
+        (fails > 0 ? `, ${fails} failed (old rows kept)` : "") + "."
+      );
+    } catch (e) {
+      setBudgetNotice(e instanceof Error ? e.message : "daily refresh failed");
+    } finally {
+      setShopDailyRefreshing(false);
+    }
+  }
+
+  async function syncHourlyAction() {
+    if (hourSyncing) return;
+    setHourSyncing(true);
+    setBudgetNotice(null);
+    try {
+      const r = await fetch("/api/hourly/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopNumber: shop, date: end }),
+      });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error ?? "hourly sync failed");
+      setData(body);
+      setHourPick(null);
+      setFetchedAt(new Date().toISOString());
+      const g = await fetch(`/api/hourly?shopNumber=${shop}&date=${end}&startDate=${start}&endDate=${end}`);
+      if (g.ok) {
+        const range = await g.json();
+        setData((cur: any) => ({ ...cur, scorecard: range.scorecard, startDate: range.startDate, endDate: range.endDate }));
+      }
+      setBudgetNotice(`Hourly synced for ${end}: slot ${body.synced?.slot ?? "?"} (${body.synced?.stored ?? 0} rows). Newest slot is partial.`);
+    } catch (e) {
+      setBudgetNotice(e instanceof Error ? e.message : "hourly sync failed");
+    } finally {
+      setHourSyncing(false);
+    }
+  }
+
   async function fetchData() {
     setLoading(true);
     setError(null);
@@ -486,9 +596,10 @@ export default function Page() {
         return;
       }
       if (metric === "hourly") {
-        const r = await fetch(`/api/hourly?${q}`);
+        const r = await fetch(`/api/hourly?shopNumber=${shop}&date=${end}&startDate=${start}&endDate=${end}`);
         if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
         setData({ kind: "hourly", ...(await r.json()) });
+        setHourPick(null);
         setFetchedAt(new Date().toISOString());
         return;
       }
@@ -926,24 +1037,95 @@ export default function Page() {
         {data && (data.kind === "hourly") && (
           <>
             <p className="mb-3 text-xs text-zinc-400">
-              Hour slots are real-time MYT (newest pair tagged partial — intraday numbers revise). Message shows ON campaigns only; dashboard shows all. % shows only when prev hour spend ≥ RM50 / gmv ≥ RM200, else absolute-only.
+              Hour slots are real-time MYT (newest slot partial — intraday numbers revise). % shows only when prev hour spend ≥ RM50 / gmv ≥ RM200, else absolute-only.
+              {hourSyncing ? " Syncing live…" : ""}
             </p>
-            <div className="mb-3 grid gap-3 md:grid-cols-2">
-              <div className={cardCls}><h4 className="mb-2 text-sm font-medium">LIVE trend (cost vs gmv)</h4><canvas ref={trendLiveRef} /></div>
-              <div className={cardCls}><h4 className="mb-2 text-sm font-medium">Product trend (cost vs gmv)</h4><canvas ref={trendProdRef} /></div>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={hourSyncing}
+                onClick={syncHourlyAction}
+                className="rounded-lg border border-emerald-700 px-3 py-1.5 text-sm text-emerald-200 hover:bg-emerald-900 disabled:opacity-50"
+              >{hourSyncing ? "Syncing…" : `Sync ${end} now`}</button>
+              <span className="text-xs text-zinc-500">Live TikTok pull, Telegram silent. Empty today? Sync, then charts fill.</span>
             </div>
-            <div className={`${cardCls} mb-4`}><h4 className="mb-2 text-sm font-medium">Latest slot bars (top 12 by cost)</h4><canvas ref={barRef} /></div>
-            {(data.slots ?? []).map((slot: string) => {
-              const prevSlot = (data.slots ?? [])[(data.slots ?? []).indexOf(slot) + 1];
-              const prev = (data.rows ?? []).filter((r: any) => r.hour_slot === prevSlot);
+            <div className="mb-3 grid gap-3 md:grid-cols-2">
+              <div className={cardCls}><h4 className="mb-2 text-sm font-medium">LIVE trend (gmv, spend & roas)</h4><canvas ref={trendLiveRef} /></div>
+              <div className={cardCls}><h4 className="mb-2 text-sm font-medium">Product trend (gmv, spend & roas)</h4><canvas ref={trendProdRef} /></div>
+            </div>
+            {(() => {
+              const slots: string[] = data.slots ?? [];
+              const present = new Set(slots.map((s: string) => s.slice(11, 16)));
+              const isToday = data.date === klToday();
+              const nowH = klNowHour();
+              const latest = slots.length > 0 ? slots[0].slice(11, 16) : null;
+              const picked = hourPick && present.has(hourPick) ? hourPick : latest;
+              const pickedSlot = picked ? `${data.date} ${picked}:00` : null;
+              const prevSlot = pickedSlot ? slots[slots.indexOf(pickedSlot) + 1] : null;
+              const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0") + ":00");
+              const prev = prevSlot ? (data.rows ?? []).filter((r: any) => r.hour_slot === prevSlot) : [];
               const pmap = new Map(prev.map((r: any) => [r.campaign_id, r]));
-              const rows = sortByStatus(
-                (data.rows ?? []).filter((r: any) => r.hour_slot === slot),
+              const rows = pickedSlot ? sortByStatus(
+                (data.rows ?? []).filter((r: any) => r.hour_slot === pickedSlot),
                 (r: any) => Number(r.cost ?? 0)
-              );
-              return (
-                <div key={slot} className="mb-4 overflow-hidden rounded-xl border border-zinc-800">
-                  <div className="border-b border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-medium">{slot} vs {prevSlot ?? "—"}</div>
+              ) : [];
+              const score: any[] = data.scorecard ?? [];
+              const golden = new Set([...score].sort((a: any, b: any) => Number(b.avgGmv ?? 0) - Number(a.avgGmv ?? 0)).slice(0, 5).map((d: any) => d.hour));
+              const tagOf = (d: any) =>
+                Number(d.avgOrders ?? 0) < 2 ? "DEAD" : golden.has(d.hour) ? "GOLDEN" : (d.cpa !== null && d.cpa !== undefined && Number(d.cpa) > 50) ? "WATCH" : "–";
+              const multiDay = (data.startDate ?? data.date) !== (data.endDate ?? data.date);
+              return (<>
+                <div className={`${cardCls} mb-3`}>
+                  <h4 className="mb-2 text-sm font-medium">Hour picker ({data.date})</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {hours.map((h) => {
+                      const has = present.has(h);
+                      const future = isToday && parseInt(h.slice(0, 2), 10) > nowH;
+                      const disabled = !has || future;
+                      const active = picked === h;
+                      return (
+                        <button
+                          key={h}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => setHourPick(h)}
+                          title={future ? "future hour" : has ? h : "no data"}
+                          className={`rounded px-1.5 py-0.5 text-xs tabular-nums ${active ? "bg-zinc-100 text-zinc-900" : disabled ? "bg-zinc-900 text-zinc-600" : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"}`}
+                        >{h.slice(0, 2)}</button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1 text-[11px] text-zinc-500">Grey = {isToday ? "future hour or" : ""} no stored slot. Bars + table below follow the pick{picked ? ` (${picked})` : ""}.</p>
+                </div>
+                <div className={`${cardCls} mb-4`}><h4 className="mb-2 text-sm font-medium">Slot bars (top 12 by cost{picked ? ` @ ${picked}` : ""})</h4><canvas ref={barRef} /></div>
+                <div className={`${cardCls} mb-4`}>
+                  <h4 className="mb-1 text-sm font-medium">Hour scorecard (across {multiDay ? `${data.startDate} – ${data.endDate}` : data.date}, missing excluded)</h4>
+                  <p className="mb-2 text-[11px] text-amber-200/70">DEAD = &lt;2 orders/day · GOLDEN = top-5 avg GMV · WATCH = CPA &gt;RM50. Spend here is real ad cost (not allocated shape).{multiDay ? "" : " Single day — averages use n=1."}</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="text-zinc-400"><th className={thCls}>Hour</th><th className={`${thCls} text-right`}>Days</th><th className={`${thCls} text-right`}>Avg GMV</th><th className={`${thCls} text-right`}>Avg orders</th><th className={`${thCls} text-right`}>ROAS</th><th className={`${thCls} text-right`}>CPA</th><th className={thCls}>Tag</th></tr></thead>
+                      <tbody>
+                        {score.length === 0 && <tr><td className={`${tdCls} text-zinc-500`} colSpan={7}>No scorecard rows — sync the range first.</td></tr>}
+                        {score.map((d: any) => {
+                          const t = tagOf(d);
+                          return (
+                            <tr key={d.hour} className={`border-t border-zinc-800 hover:bg-zinc-900 ${picked === d.hour ? "bg-zinc-900" : ""}`}>
+                              <td className={tdCls}>{d.hour}</td>
+                              <td className={numCls}>{d.days}</td>
+                              <td className={numCls}>{fmt(d.avgGmv)}</td>
+                              <td className={numCls}>{Number(d.avgOrders ?? 0).toFixed(1)}</td>
+                              <td className={numCls}>{d.roas === null || d.roas === undefined ? "n/a" : `${Number(d.roas).toFixed(2)}x`}</td>
+                              <td className={numCls}>{d.cpa === null || d.cpa === undefined ? "n/a" : fmt(d.cpa)}</td>
+                              <td className={tdCls}><span className={`rounded-full px-2 py-0.5 text-[10px] ${t === "GOLDEN" ? "bg-emerald-900 text-emerald-200" : t === "WATCH" ? "bg-amber-900 text-amber-200" : t === "DEAD" ? "bg-zinc-700 text-zinc-300" : "text-zinc-500"}`}>{t}</span></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="mb-4 overflow-hidden rounded-xl border border-zinc-800">
+                  <div className="border-b border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-medium">{pickedSlot ?? "—"} vs {prevSlot ?? "—"}</div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead><tr className="text-zinc-400"><th className={thCls}>Campaign</th><th className={thCls}>Type</th><th className={thCls}>Status</th><th className={`${thCls} text-right`}>Cost (Δ, %)</th><th className={`${thCls} text-right`}>GMV (Δ, %)</th><th className={`${thCls} text-right`}>Orders (Δ)</th></tr></thead>
@@ -972,12 +1154,13 @@ export default function Page() {
                     </table>
                   </div>
                 </div>
-              );
-            })}
+              </>);
+            })()}
           </>
         )}
 
         {data && data.kind === "shop-gmv" && (
+          <>
           <div className={`${cardCls} text-sm`}>
             <div className="grid grid-cols-2 gap-2">
               <div className="text-zinc-400">Shop Name</div><div>{data.shopName}</div>
@@ -1018,6 +1201,60 @@ export default function Page() {
               )}
             </div>
           </div>
+          {data.configured && (data.dateRange?.start !== data.dateRange?.end || (data.daily ?? []).length > 0) && (
+            <div className={`${cardCls} mt-3`}>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <h4 className="text-sm font-medium">Performance Over Time</h4>
+                <span className="text-xs text-zinc-500">Daily GMV, Ad Spend & ROAS {(data.daily ?? []).length > 1 ? `(${(data.daily ?? []).length} days, cache)` : "(cache empty — refresh below)"}</span>
+                <span className="ml-auto inline-flex gap-1 text-xs">
+                  {(["shop", "ads"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setShopGmvMode(m)}
+                      className={`rounded-full px-2.5 py-0.5 ${shopGmvMode === m ? "bg-zinc-100 text-zinc-900" : "bg-zinc-800 text-zinc-300"}`}
+                    >{m === "shop" ? "Shop truth" : "Ads attributed"}</button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={shopDailyRefreshing}
+                    onClick={refreshShopDailyAction}
+                    className="rounded-full border border-zinc-700 px-2.5 py-0.5 text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                  >{shopDailyRefreshing ? "Refreshing…" : "Refresh daily cache"}</button>
+                </span>
+              </div>
+              {(data.daily ?? []).length >= 2 ? (
+                <canvas ref={shopDailyRef} />
+              ) : (
+                <p className="text-xs text-zinc-500">Cache empty for this range — press Refresh daily cache above (re-pulls each day live, ≤31 days).</p>
+              )}
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead><tr className="text-zinc-400"><th className={thCls}>Date</th><th className={`${thCls} text-right`}>GMV</th><th className={`${thCls} text-right`}>Ad spend</th><th className={`${thCls} text-right`}>ROAS</th><th className={`${thCls} text-right`}>Orders</th></tr></thead>
+                  <tbody>
+                    {(data.daily ?? []).map((d: any) => {
+                      const useShop = shopGmvMode === "shop";
+                      const g = Number(useShop ? d.shopGmv : d.adsGmv) || 0;
+                      const s = Number(d.spend) || 0;
+                      const r = useShop ? d.shopRoas : d.adsRoas;
+                      const o = useShop ? d.shopOrders : d.adsOrders;
+                      return (
+                        <tr key={d.date} className="border-t border-zinc-800">
+                          <td className={tdCls}>{d.date}</td>
+                          <td className={numCls}>{fmt(g)}</td>
+                          <td className={numCls}>{fmt(s)}</td>
+                          <td className={numCls}>{r === null || r === undefined ? "n/a" : `${Number(r).toFixed(2)}x`}</td>
+                          <td className={numCls}>{o}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-1 text-[11px] text-zinc-500">Cache rows; Refresh re-pulls the range live (≤31 days). ROAS recomputed per day, never averaged.</p>
+            </div>
+          )}
+          </>
         )}
 
       {data && data.kind === "roas" && (

@@ -1,0 +1,48 @@
+name: hourly-sync
+
+# Hourly pinger for GMV Max hourly DB (shop 1).
+# /api/hourly on the dashboard is DB-read only, so without this the
+# Oct-08-style blank charts return. Vercel Cron on Hobby only runs daily,
+# this Actions schedule gives the true hourly cadence; the vercel.json cron
+# entry stays as a second trigger (same Bearer check, no conflict).
+#
+# Setup (owner, one time):
+#   GitHub repo Settings -> Secrets and variables -> Actions -> New secret
+#   CRON_SECRET = same value as Vercel env CRON_SECRET (required)
+#   VERCEL_BYPASS = Vercel "Protection Bypass for Automation" token (only if
+#     Vercel Deployment Protection blocks this ping with an HTML login wall)
+
+on:
+  schedule:
+    - cron: "15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Skip 02-06 MYT quiet window
+        run: |
+          H=$(TZ=Asia/Kuala_Lumpur date +%H)
+          H=$((10#$H))
+          if [ "$H" -ge 2 ] && [ "$H" -lt 6 ]; then
+            echo "quiet window ${H} MYT, skipping"
+            echo "SKIP=1" >> "$GITHUB_ENV"
+          else
+            echo "SKIP=0" >> "$GITHUB_ENV"
+          fi
+      - name: Ping hourly-sync
+        if: env.SKIP != '1'
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          VERCEL_BYPASS: ${{ secrets.VERCEL_BYPASS }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then echo "CRON_SECRET missing"; exit 1; fi
+          URL="https://marketer-hw.vercel.app/api/cron/hourly-sync?shopNumber=1"
+          if [ -n "$VERCEL_BYPASS" ]; then URL="$URL&x-vercel-protection-bypass=$VERCEL_BYPASS"; fi
+          CODE=$(curl -sS -o /tmp/hourly.json -w "%{http_code}" -m 90 \
+            -H "Authorization: Bearer $CRON_SECRET" "$URL") || exit 1
+          head -c 500 /tmp/hourly.json; echo
+          echo "http=$CODE"
+          [ "$CODE" = "200" ]
