@@ -13,6 +13,7 @@ Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 - Hourly shop metric (015): `gmv.shop_hourly_orders` cache (015 migration, owner runs dev+prod) fed by day-pull `orders/search` bucketed on MYT `create_time` (CANCELLED/REFUNDED excluded, tie-check reported); `GET /api/hourly-shop` (24-hour view: shop GMV + cached ads spend + TRUE ROAS, future blank) + `POST /api/hourly-shop/refresh` + dashboard metric with spend on/off toggle + Refresh button; nightly fills yesterday. `tsc` 0 + `next build` green (lists `/api/hourly-shop`, `/api/hourly-shop/refresh`).
 - Hourly shop parity: 24-hour picker (All + hour chips, future disabled; table filters, picked chart bar spotlights) + range scorecard (same DEAD/GOLDEN/WATCH rules, gated on ≥3 cached days with a need-more-days note below that). `GET /api/hourly-shop` takes `startDate/endDate` and returns `scorecard` + `rangeDays`.
 - Hourly shop range Refresh: `POST /api/hourly-shop/refresh` now loops `startDate→endDate` (cap 31, per-day fail-open + untied reporting) — one press backfills the scorecard window.
+- All combo charts share one treatment (`hoverLinePlugin` + `comboOpts`/`barOpts` in `page.tsx`): lines draw in front of bars (`order`), index-mode hover with vertical rule, RM/x tooltip rows. Covers Hourly LIVE/Product trends + slot bars, Shop GMV daily, Hourly shop.
 
 ## 08 Oct 2026 — account-budget ON-only partial + shop token live + admin refresh button (deployed)
 

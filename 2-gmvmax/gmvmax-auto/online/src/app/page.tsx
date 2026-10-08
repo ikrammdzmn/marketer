@@ -68,6 +68,55 @@ function klNowHour(): number {
   return Number(p.hour ?? 0) % 24;
 }
 
+// Shared combo-chart treatment: lines draw in front of bars (order),
+// index-mode hover (one tooltip for the whole slot) with a vertical rule,
+// RM/x tooltip rows. Applied to every GMV/spend/ROAS chart.
+const hoverLinePlugin: any = {
+  id: "gmvHoverLine",
+  afterDatasetsDraw(chart: any) {
+    const active = chart.getActiveElements ? chart.getActiveElements() : [];
+    if (!active.length) return;
+    const area = chart.chartArea;
+    if (!area) return;
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(active[0].element.x, area.top);
+    ctx.lineTo(active[0].element.x, area.bottom);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+const tipLabel = (ctx: any) => {
+  const v = ctx.parsed?.y;
+  const txt = v === null || v === undefined || !Number.isFinite(Number(v))
+    ? "n/a" : Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const tag = String(ctx.dataset?.label ?? "");
+  return /roas/i.test(tag) ? ` ${tag}: ${txt}x` : ` ${tag}: RM ${txt}`;
+};
+const comboScales = (): any => ({
+  x: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
+  y: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
+  y1: { position: "right", ticks: { color: "#999" }, grid: { drawOnChartArea: false } },
+});
+const comboOpts = (): any => ({
+  responsive: true,
+  interaction: { mode: "index", intersect: false },
+  plugins: { legend: { labels: { color: "#eee" } }, tooltip: { callbacks: { label: tipLabel } } },
+  scales: comboScales(),
+});
+const barOpts = (): any => ({
+  responsive: true,
+  interaction: { mode: "index", intersect: false },
+  plugins: { legend: { labels: { color: "#eee" } }, tooltip: { callbacks: { label: tipLabel } } },
+  scales: {
+    x: { ticks: { color: "#999", maxRotation: 60, minRotation: 60 }, grid: { color: "#27272a" } },
+    y: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
+  },
+});
+
 const inputCls =
   "bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-zinc-100";
 const cardCls = "bg-zinc-900 border border-zinc-800 rounded-xl p-3";
@@ -284,27 +333,22 @@ export default function Page() {
       if (!el) return;
       chartsRef.current.push(new Chart(el, cfg));
     };
-    const grid = { color: "#27272a" };
-    const axes: any = {
-      x: { ticks: { color: "#999" }, grid },
-      y: { ticks: { color: "#999" }, grid },
-      y1: { position: "right", ticks: { color: "#999" }, grid: { drawOnChartArea: false } },
-    };
     const trend = (el: HTMLCanvasElement | null, type: string, name: string) => {
       if (!el) return;
       const gmv = asc.map((s) => sumBy(s, type, "gmv"));
       const spend = asc.map((s) => sumBy(s, type, "cost"));
       const roas = asc.map((_, i) => (spend[i] > 0 ? gmv[i] / spend[i] : null));
       mk(el, {
+        plugins: [hoverLinePlugin],
         data: {
           labels: asc.map(short),
           datasets: [
-            { type: "bar", label: `${name} GMV (RM)`, data: gmv, backgroundColor: "#6366f1", yAxisID: "y" },
-            { type: "line", label: `${name} spend (RM)`, data: spend, borderColor: "#c084fc", borderDash: [6, 4], tension: 0.3, spanGaps: true, pointRadius: 2, yAxisID: "y" },
-            { type: "line", label: `${name} ROAS (x)`, data: roas, borderColor: "#22c55e", tension: 0.3, spanGaps: true, pointRadius: 2, yAxisID: "y1" },
+            { type: "bar", label: `${name} GMV (RM)`, data: gmv, backgroundColor: "#6366f1", yAxisID: "y", order: 1 },
+            { type: "line", label: `${name} spend (RM)`, data: spend, borderColor: "#c084fc", borderDash: [6, 4], borderWidth: 2, tension: 0.3, spanGaps: true, pointRadius: 2, yAxisID: "y", order: 2 },
+            { type: "line", label: `${name} ROAS (x)`, data: roas, borderColor: "#22c55e", borderWidth: 2.5, tension: 0.3, spanGaps: true, pointRadius: 3, yAxisID: "y1", order: 3 },
           ],
         },
-        options: { responsive: true, plugins: { legend: { labels: { color: "#eee" } } }, scales: axes },
+        options: comboOpts(),
       });
     };
     trend(trendLiveRef.current, "LIVE_GMV_MAX", "LIVE");
@@ -318,6 +362,7 @@ export default function Page() {
         .sort((a: any, b: any) => Number(b.cost) - Number(a.cost)).slice(0, 12);
       mk(barRef.current, {
         type: "bar",
+        plugins: [hoverLinePlugin],
         data: {
           labels: top.map((r: any) => String(r.campaign_name ?? r.campaign_id).slice(0, 24)),
           datasets: [
@@ -325,7 +370,7 @@ export default function Page() {
             { label: `gmv @ ${short(pickedSlot)}`, data: top.map((r: any) => Number(r.gmv)), backgroundColor: "#4ade80" },
           ],
         },
-        options: { plugins: { legend: { labels: { color: "#eee" } } }, scales: { x: { ticks: { color: "#999", maxRotation: 60, minRotation: 60 } }, y: { ticks: { color: "#999" } } } },
+        options: barOpts(),
       });
     }
     return () => { chartsRef.current.forEach((c) => c.destroy()); chartsRef.current = []; };
@@ -351,23 +396,16 @@ export default function Page() {
       return (Number(useShop ? d.shopGmv : d.adsGmv) || 0) / s;
     });
     const c = new Chart(shopDailyRef.current, {
+      plugins: [hoverLinePlugin],
       data: {
         labels,
         datasets: [
-          { type: "bar", label: useShop ? "Shop GMV (RM)" : "Ads GMV (RM)", data: gmv, backgroundColor: "#6366f1", yAxisID: "y" },
-          { type: "line", label: "Ad spend (RM)", data: spend, borderColor: "#c084fc", borderDash: [6, 4], tension: 0.3, spanGaps: true, yAxisID: "y" },
-          { type: "line", label: "ROAS (x)", data: roas, borderColor: "#22c55e", tension: 0.3, spanGaps: true, yAxisID: "y1" },
+          { type: "bar", label: useShop ? "Shop GMV (RM)" : "Ads GMV (RM)", data: gmv, backgroundColor: "#6366f1", yAxisID: "y", order: 1 },
+          { type: "line", label: "Ad spend (RM)", data: spend, borderColor: "#c084fc", borderDash: [6, 4], borderWidth: 2, tension: 0.3, spanGaps: true, yAxisID: "y", order: 2 },
+          { type: "line", label: "ROAS (x)", data: roas, borderColor: "#22c55e", borderWidth: 2.5, tension: 0.3, spanGaps: true, pointRadius: 3, yAxisID: "y1", order: 3 },
         ],
       },
-      options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: "#eee" } } },
-        scales: {
-          x: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
-          y: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
-          y1: { position: "right", ticks: { color: "#999" }, grid: { drawOnChartArea: false } },
-        },
-      },
+      options: comboOpts(),
     });
     shopChartsRef.current.push(c);
     return () => { c.destroy(); shopChartsRef.current = shopChartsRef.current.filter((x) => x !== c); };
@@ -536,24 +574,17 @@ export default function Page() {
       {
         type: "bar", label: "Shop GMV (RM)", data: gmv,
         backgroundColor: hours.map((h: any) => hourPickShop && h.hour === hourPickShop ? "#a5b4fc" : "#6366f1"),
-        yAxisID: "y",
+        yAxisID: "y", order: 1,
       },
     ];
     if (shopHourlyShowSpend) {
-      datasets.push({ type: "line", label: "Ad spend (RM)", data: spend, borderColor: "#c084fc", borderDash: [6, 4], tension: 0.3, spanGaps: true, yAxisID: "y" });
+      datasets.push({ type: "line", label: "Ad spend (RM)", data: spend, borderColor: "#c084fc", borderDash: [6, 4], borderWidth: 2, tension: 0.3, spanGaps: true, yAxisID: "y", order: 2 });
     }
-    datasets.push({ type: "line", label: "TRUE ROAS (x)", data: roas, borderColor: "#22c55e", tension: 0.3, spanGaps: true, yAxisID: "y1" });
+    datasets.push({ type: "line", label: "TRUE ROAS (x)", data: roas, borderColor: "#22c55e", borderWidth: 2.5, tension: 0.3, spanGaps: true, pointRadius: 3, yAxisID: "y1", order: 3 });
     const c = new Chart(shopHourlyRef.current, {
+      plugins: [hoverLinePlugin],
       data: { labels, datasets },
-      options: {
-        responsive: true,
-        plugins: { legend: { labels: { color: "#eee" } } },
-        scales: {
-          x: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
-          y: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
-          y1: { position: "right", ticks: { color: "#999" }, grid: { drawOnChartArea: false } },
-        },
-      },
+      options: comboOpts(),
     });
     shopHourlyChartsRef.current.push(c);
     return () => { c.destroy(); shopHourlyChartsRef.current = shopHourlyChartsRef.current.filter((x) => x !== c); };
