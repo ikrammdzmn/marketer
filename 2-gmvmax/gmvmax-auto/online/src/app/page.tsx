@@ -1261,7 +1261,7 @@ export default function Page() {
                 disabled={shopHourlyRefreshing}
                 onClick={refreshShopHourlyAction}
                 className="rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
-              >{shopHourlyRefreshing ? "Refreshing…" : `Refresh ${end}`}</button>
+              >{shopHourlyRefreshing ? "Refreshing…" : `Refresh ${start === end ? end : `${start}–${end}`}`}</button>
               {(data.cachedHours ?? 0) === 0 && <span className="text-xs text-zinc-500">Cache empty — press Refresh (pulls the day live, then buckets).</span>}
               {(data.updatedAt) && <span className="text-xs text-zinc-500">Cached {String(data.updatedAt).slice(0, 16).replace("T", " ")}</span>}
             </div>
