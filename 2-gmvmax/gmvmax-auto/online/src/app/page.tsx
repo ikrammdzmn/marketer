@@ -343,9 +343,9 @@ export default function Page() {
         data: {
           labels: asc.map(short),
           datasets: [
-            { type: "bar", label: `${name} GMV (RM)`, data: gmv, backgroundColor: "#6366f1", yAxisID: "y", order: 1 },
+            { type: "bar", label: `${name} GMV (RM)`, data: gmv, backgroundColor: "#6366f1", yAxisID: "y", order: 3 },
             { type: "line", label: `${name} spend (RM)`, data: spend, borderColor: "#c084fc", borderDash: [6, 4], borderWidth: 2, tension: 0.3, spanGaps: true, pointRadius: 2, yAxisID: "y", order: 2 },
-            { type: "line", label: `${name} ROAS (x)`, data: roas, borderColor: "#22c55e", borderWidth: 2.5, tension: 0.3, spanGaps: true, pointRadius: 3, yAxisID: "y1", order: 3 },
+            { type: "line", label: `${name} ROAS (x)`, data: roas, borderColor: "#22c55e", borderWidth: 2.5, tension: 0.3, spanGaps: true, pointRadius: 3, yAxisID: "y1", order: 1 },
           ],
         },
         options: comboOpts(),
@@ -400,9 +400,9 @@ export default function Page() {
       data: {
         labels,
         datasets: [
-          { type: "bar", label: useShop ? "Shop GMV (RM)" : "Ads GMV (RM)", data: gmv, backgroundColor: "#6366f1", yAxisID: "y", order: 1 },
+          { type: "bar", label: useShop ? "Shop GMV (RM)" : "Ads GMV (RM)", data: gmv, backgroundColor: "#6366f1", yAxisID: "y", order: 3 },
           { type: "line", label: "Ad spend (RM)", data: spend, borderColor: "#c084fc", borderDash: [6, 4], borderWidth: 2, tension: 0.3, spanGaps: true, yAxisID: "y", order: 2 },
-          { type: "line", label: "ROAS (x)", data: roas, borderColor: "#22c55e", borderWidth: 2.5, tension: 0.3, spanGaps: true, pointRadius: 3, yAxisID: "y1", order: 3 },
+          { type: "line", label: "ROAS (x)", data: roas, borderColor: "#22c55e", borderWidth: 2.5, tension: 0.3, spanGaps: true, pointRadius: 3, yAxisID: "y1", order: 1 },
         ],
       },
       options: comboOpts(),
@@ -574,13 +574,13 @@ export default function Page() {
       {
         type: "bar", label: "Shop GMV (RM)", data: gmv,
         backgroundColor: hours.map((h: any) => hourPickShop && h.hour === hourPickShop ? "#a5b4fc" : "#6366f1"),
-        yAxisID: "y", order: 1,
+        yAxisID: "y", order: 3,
       },
     ];
     if (shopHourlyShowSpend) {
       datasets.push({ type: "line", label: "Ad spend (RM)", data: spend, borderColor: "#c084fc", borderDash: [6, 4], borderWidth: 2, tension: 0.3, spanGaps: true, yAxisID: "y", order: 2 });
     }
-    datasets.push({ type: "line", label: "TRUE ROAS (x)", data: roas, borderColor: "#22c55e", borderWidth: 2.5, tension: 0.3, spanGaps: true, pointRadius: 3, yAxisID: "y1", order: 3 });
+    datasets.push({ type: "line", label: "TRUE ROAS (x)", data: roas, borderColor: "#22c55e", borderWidth: 2.5, tension: 0.3, spanGaps: true, pointRadius: 3, yAxisID: "y1", order: 1 });
     const c = new Chart(shopHourlyRef.current, {
       plugins: [hoverLinePlugin],
       data: { labels, datasets },
