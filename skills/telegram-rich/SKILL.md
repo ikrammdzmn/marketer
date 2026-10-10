@@ -44,6 +44,10 @@ media object). `\n` → `<br/>` for the rich pipe only (legacy keeps `\n`).
   what Telegram sends; `getWebhookInfo` names secret mismatches first).
 - Webhook: re-copy secrets, never retype; `drop_pending_updates=true`
   on re-register (5 queued = 5 duplicate syncs).
+- Webhook gone? `getUpdates` returning messages proves NO webhook
+  (conflict error = active); `getWebhookInfo url:""` confirms. Bare
+  `setWebhook` passes but the Vercel wall eats deliveries — `url=` must
+  carry percent-encoded `?x-vercel-protection-bypass=`. (B73–74)
 
 ## Hourly message contract
 

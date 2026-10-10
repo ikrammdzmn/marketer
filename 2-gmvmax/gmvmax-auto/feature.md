@@ -116,6 +116,9 @@
 - Preset dropdown (appears with 2+ presets) repaints all flags instantly —
   no re-fetch needed. The `/presets` tab edits bands, minimums, and notes, and
   exports a file the scorer tool can read.
+- How to decide: online is the radar (hourly watch, alerts, history), TikTok is
+  the trigger (true focused-6s numbers). Online KILL means kill (its ~14% hot
+  proxy bias works against KILL); online SCALE gets confirmed in TikTok first.
 
 ## How to use it
 1. Start the dashboard: `python gmvmax-auto/dashboard/dashboard.py`, open

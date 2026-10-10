@@ -80,6 +80,11 @@ Time-posted at creative grain.
 - Full-set-first, singles-on-failure; fail-open enrichment; rewrite-on-revise
   (TikTok restates intraday — cost revises too, not just GMV).
 - Shop token v2 `access_token_expire_in` is absolute epoch (normalize).
+- `video_watched_6s` is PLAIN 6s, not focused — measured 10 Oct on live data:
+  plain 1,254,217 vs focused 1,100,460 (~14% hot). sfv-family scores inherit
+  it; CES squares it (`sfv²/spend`, ~30% hot). ACS reads cheap (SCALE bias).
+  Rule: online-KILL trusted (bias works against KILL), online-SCALE needs
+  TikTok confirmation. EDS/ERRI use exact inputs — no gap.
 - Skip `"-"` placeholder rows. Hobby kills at 60s — batch writes (500/chunk),
   chunk syncs (≤7d), external pinger for hourly.
 - Chart.js `order`: higher = BEHIND. PowerShell: `;` chaining, no unix pipes.

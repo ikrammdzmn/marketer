@@ -1,0 +1,210 @@
+{
+  "preset": "ttam-omtm-original-v1",
+  "label": "One Metric That Matters (original, reference)",
+  "updatedAt": "2026-10-10",
+  "note": "Ground reference 10 Oct: OMTM original table verbatim (full names, inactive). Flags kept as given: ACS band-vs-x100 scale mismatch; EDS /follows differs from its own explanation (/likes); CES multiplicative pre-fix; ERRI/LQS/BCE bands unset (WATCH by default, add bands in /presets before Save).",
+  "metrics": [
+    {
+      "id": "erri-o",
+      "name": "Enter Room Rate Impression",
+      "short": "ENTER_ROOM_RATE_IMPRESSION",
+      "format": "%",
+      "inputs": [
+        "live",
+        "imp"
+      ],
+      "expression": "imp ? live / imp * 100 : null",
+      "invert": false,
+      "enabled": true,
+      "params": {},
+      "band": {}
+    },
+    {
+      "id": "hps-o",
+      "name": "HOOK POWER SCORE",
+      "short": "HOOK_POWER_SCORE",
+      "format": "%",
+      "inputs": [
+        "sfv",
+        "imp"
+      ],
+      "expression": "imp ? sfv / imp * 100 : null",
+      "invert": false,
+      "enabled": true,
+      "params": {},
+      "band": {
+        "k": 25,
+        "s": 45
+      }
+    },
+    {
+      "id": "acs-o",
+      "name": "ATTENTION COST SCORE",
+      "short": "ATTENTION_COST_SCORE",
+      "format": "%",
+      "inputs": [
+        "spend",
+        "sfv"
+      ],
+      "expression": "sfv ? spend / sfv * 100 : null",
+      "invert": true,
+      "enabled": true,
+      "params": {},
+      "band": {
+        "k": 0.05,
+        "s": 0.01
+      }
+    },
+    {
+      "id": "ces-o",
+      "name": "CONSIDERATION EFFICIENCY SCORE",
+      "short": "CONSIDERATION_EFFICIENCY_SCORE",
+      "format": "numeric",
+      "inputs": [
+        "sfv",
+        "imp",
+        "prof",
+        "sh",
+        "com",
+        "fol",
+        "likes",
+        "spend"
+      ],
+      "expression": "imp && sfv && likes ? ((prof / imp) * sfv * ((com * sh * fol) / likes)) / (spend / sfv) : null",
+      "invert": false,
+      "enabled": true,
+      "params": {},
+      "band": {
+        "k": 5,
+        "s": 30
+      }
+    },
+    {
+      "id": "eds-o",
+      "name": "ENGAGEMENT DEPTH SCORE",
+      "short": "ENGAGEMENT_DEPTH_SCORE",
+      "format": "%",
+      "inputs": [
+        "sh",
+        "com",
+        "fol"
+      ],
+      "expression": "fol ? (sh + com + fol) / fol : null",
+      "invert": false,
+      "enabled": true,
+      "params": {},
+      "band": {
+        "k": 5,
+        "s": 20
+      }
+    },
+    {
+      "id": "vves-o",
+      "name": "VIDEO VIEW EFFECIENCY SCORE",
+      "short": "VIDEO_VIEW_EFFICIENCY_SCORE",
+      "format": "numeric",
+      "inputs": [
+        "sfv",
+        "imp",
+        "awt",
+        "spend"
+      ],
+      "expression": "imp && sfv ? ((sfv / imp) * awt) / (spend / sfv) : null",
+      "invert": false,
+      "enabled": true,
+      "params": {},
+      "band": {
+        "k": 100,
+        "s": 400
+      }
+    },
+    {
+      "id": "rvs-o",
+      "name": "RETENTION VALUE SCORE",
+      "short": "RETENTION_VALUE_SCORE",
+      "format": "numeric",
+      "inputs": [
+        "awt",
+        "spend",
+        "sfv"
+      ],
+      "expression": "sfv ? awt / (spend / sfv) : null",
+      "invert": false,
+      "enabled": true,
+      "params": {},
+      "band": {
+        "k": 500,
+        "s": 1500
+      }
+    },
+    {
+      "id": "hrq-o",
+      "name": "HOOK REACH QUALITY",
+      "short": "HOOK_REACH_QUALITY",
+      "format": "%",
+      "inputs": [
+        "sfv",
+        "reach"
+      ],
+      "expression": "reach ? sfv / reach * 100 : null",
+      "invert": false,
+      "enabled": true,
+      "params": {},
+      "band": {
+        "k": 2,
+        "s": 12
+      }
+    },
+    {
+      "id": "res-o",
+      "name": "REACH EFFICIENCY SCORE",
+      "short": "REACH_EFFICIENCY_SCORE",
+      "format": "numeric",
+      "inputs": [
+        "sfv",
+        "reach",
+        "spend"
+      ],
+      "expression": "reach && spend ? ((sfv / reach) * 100) / (spend / reach) : null",
+      "invert": false,
+      "enabled": true,
+      "params": {},
+      "band": {
+        "k": 100,
+        "s": 600
+      }
+    },
+    {
+      "id": "lqs-o",
+      "name": "LIVE QUALITY SCORE",
+      "short": "LIVE_QUALITY_SCORE",
+      "format": "numeric",
+      "inputs": [
+        "live10",
+        "spend"
+      ],
+      "expression": "spend ? live10 / spend * 100 : null",
+      "invert": false,
+      "enabled": true,
+      "params": {},
+      "band": {}
+    },
+    {
+      "id": "bce-o",
+      "name": "BC EFFICIENCY (Brand Consideration)",
+      "short": "BC_EFFICIENCY",
+      "format": "numeric",
+      "inputs": [
+        "sfv",
+        "imp",
+        "prof",
+        "spend"
+      ],
+      "expression": "imp && sfv ? 100 * ((sfv / imp) * (prof / imp)) / (spend / sfv) : null",
+      "invert": false,
+      "enabled": true,
+      "params": {},
+      "band": {}
+    }
+  ]
+}

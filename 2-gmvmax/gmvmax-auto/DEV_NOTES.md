@@ -1,12 +1,57 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 32 first (current facts), then Checkpoints 31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 34 first (current facts), then Checkpoints 33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 34 — 10 Oct 2026 (TTAM presets arc: BASIC + units + OMTM original/v3 + proxy-gap proof; 2 deploys, ritual pending)
+
+**To next-you: get back in this headspace instantly.** Owner drove the whole arc in short bursts: custom metric ask → BASIC IMP/CPM via 019 → activate-does-nothing → units/format ask → OMTM table version ID (v1 draft vs v2 vs v3 vs new v4-RM) → 020 reference → v3 directives (three revisions!) → 021 trial → preset registry → "which metric/version is better" → implement → TikTok custom-metric screenshots → number-mismatch hunt → proxy-gap proof → decision rule → wrap up. Sparring stayed ON (talked them out of importing v1 as live scoring; RM-scale flags caught by sample-checking every table before seeding). Mood: pleased, brisk, precise — pastes screenshots, not logs.
+
+**What shipped (all verified, deploys green).**
+- `019_ttam_basic_metrics.sql` (NEW, owner ran it — `ttam-basic-v1` visible): duplicates ACTIVE preset + IMP (`imp`, k1000/s5000) + CPM (`spend/imp*1000`, invert k30/s15). Caught pre-ship: bare `imp` false-KILLs spend-only rows → null-safe.
+- Activate-trap fix (`ab3f8da`, `dpl_HW1mtSDhZbJmRxYc7W5ifD42TS75`): button acted on loaded preset + stale pill → optimistic pill + no-store fetches. Smoke 307/401/200.
+- Units + formulas (`e58882e`, `dpl_3FM4k4Hzbre6M8cS3Jv971v8X2Cb`): `formatScore` leaf (`%/RM/numeric`, ACS 4dp), header unit tooltips, per-row formula lines + input legend in `/presets`, formula tables in feature + plan doc. Smoke 307/401/200.
+- `020_ttam_omtm_original.sql` (NEW, uncommitted, owner-run pending): verbatim v1 table, full-name shorts, flagged warts, ERRI/LQS/BCE bandless (WATCH default, Save needs bands).
+- `021_ttam_omtm_v3.sql` (NEW, uncommitted, owner-run pending): v3 trial (RM, ERRI 0.3/1.5, VVES 20/80, RVS 100/300, RES 80/240, ACS 0.025/0.008 strict, HPS 20/35 unproven).
+- Scorer side: `presets/omtm-original.json` + manifest line (uncommitted) so the dropdown lists OMTM Original; verified `node --check` + HTTP 200s on :8131, server stopped after. Owner's own export `presets/ttam-omtm-original-v1.json` sits untracked (theirs, never touch). Two Oct04-09 xlsx files untracked (owner data).
+- Proxy-gap proof (measured, not theorized): plain 1,254,217 vs focused 1,100,460 (~14% hot); left-column numbers reproduced to the cent (ACS 0.78, BCE 7.77, CES 169.24M) from screenshot inputs. Standing rule: online = radar, TikTok = trigger; online-KILL trusted, online-SCALE confirmed in TikTok.
+
+**Bugs + lessons (don't repeat).**
+- B75 Activate targets the LOADED preset, not the clicked row (presets `page.tsx:253` sends `presetKey` state). Lesson: action buttons must name their target; after any write, repaint optimistically AND no-store the refetch.
+- B76 dashboard ignored `format` (`ScoreCells` printed raw `toFixed(2)`). Lesson: display contracts live with the data (preset `format`), not beside it — check the renderer reads every field the writer stores.
+- B77 scorer all-0.00-KILL on user file = single-column name-only export. Lesson: read the file's actual headers (`openpyxl`, all sheets) before touching code — screenshot showed a DIFFERENT file (two twins, one with ` (1)`).
+- B78 scorer `loadBundled` is a hardcoded path (`app.js:438`), no picker. Lesson: say so in one line instead of debugging the file.
+- TikTok `%` format auto-×100s (Excel-style); ours appends the sign only → ×100 must live in the expression. Lesson: when transcribing platform formulas, port the FORMAT SEMANTICS, not just the math.
+- Cross-preset numbers never compare (EDS 100× + ACS unit mismatch prove mixed rulers). Lesson: one preset, re-fetch both sides, then compare; EDS/ERRI agreement is the setup check.
+- B61 family again (PS quoting vs inline scripts) → temp-file scripts, deleted after. Lesson stands.
+
+**Open.** Owner runs 020/021 dev+prod → trials BASIC/v3 → quartile recalibration from live distributions, then lock (standing M11). Webhook bypass re-register still owner-pending from Cp33. Manual-gap recheck parked since 28. `.vscode/settings.json` deletion uncommitted (not mine). Everything this checkpoint uncommitted except `697d93a`/`ab3f8da`/`e58882e`.
+
+**Vibe.** Longest single arc yet, all owner-driven, zero wasted builds (every migration sample-checked in node before writing). Ritual, then stop.
+
+## Checkpoint 33 — 10 Oct 2026 (hourly on-the-hour + footer MYT date + webhook-gone diagnosis; pushed + deployed)
+
+**To next-you: get back in this headspace instantly.** Owner asked why hourly Telegram lands at :30, then why the footer reads `hu Oct 08 2026`. Both answered, both fixed, pushed (`697d93a`), deployed (`dpl_po7TdziUVii985L8QwLZ9eucZFTU`, smoke `/` 307, `/api/hourly` 401, `/api/health` 200). Then owner reported `/start` + `/fetch` dead and pasted `getUpdates` output showing both commands sitting unprocessed — diagnosed from that paste alone: `getUpdates` returning messages proves NO webhook (conflict error = active). `getWebhookInfo` confirmed `url:""`, pending 2. Owner re-registered bare (ok:true) and it still died — missing bypass, re-set with encoded `?x-vercel-protection-bypass=` is owner-pending. Mood: brisk, satisfied ("ok push and deploy", "ok wrap up"). Sparring stayed ON.
+
+**What shipped.**
+- Cron `15 * * * *` → `0 * * * *` (`.github/workflows/hourly-sync.yml:17`): the :30 was schedule-:15 + GitHub queue lag + fetch minutes (header stamps send-time `pulledMYT`). Honest note: the flip was already sitting in the working copy when this session started (not my edit) — committed it as the fix anyway.
+- Footer garble fixed (`hourly.ts:261-274`): `String(syncedAt).slice(0,16)` assumed ISO; `pg` returns `Thu Oct 08…` → chopped `T` gave `hu Oct 08 2026`. Now parses as Date → `YYYY-MM-DD HH:mm MYT` (verified ISO/long/Date/null via node), one edit covers all 3 messages (shared `syncedNote`). `excludes 183 OFF` is correct ON-only filter, not a bug.
+- `tsc` exit 0. Commit explicitly asked + pushed + deployed same session.
+
+**Bugs + lessons (don't repeat).**
+- B73 `getUpdates`-with-messages = webhook ABSENT. Lesson: never debug the route first — `getWebhookInfo` (`url` empty? pending count? `last_error_message`) names it before any code reading.
+- B74 bare `setWebhook` returns ok:true yet commands die under All-Deployments wall. Lesson: `url=` must carry percent-encoded `?x-vercel-protection-bypass=`; unencoded `?` truncates the registration.
+- B61 repeats (×5): `head` in PS5.1 + PS7-only `-SkipHttpErrorCheck` flag. Lesson stands; `curl.exe -w` is the smoke tool now.
+- Commit-hygiene lesson: `git diff` before `git add` — question any hunk you didn't author instead of narrating it as yours.
+
+**Open.** Owner finishes bypass `setWebhook` re-register + read-back (`url` set, no PASTE) + `/start` reply check; if silent, `last_error_message` decides. `.vscode/settings.json` deletion sits uncommitted (not mine, never stage). Manual-gap recheck still parked since 28. Phase B (creative KPIs/verdicts/trend) unstarted.
+
+**Vibe.** Short diagnostic arc, owner drives with pastes, agent answers with evidence. Ritual, then stop.
 
 ## Checkpoint 32 — 10 Oct 2026 (creative module: probes 1–6 green → Phase A sync + managers modal + skills shelf; deployed, uncommitted)
 

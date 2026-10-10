@@ -2,6 +2,18 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 10 Oct 2026 — TTAM presets arc (2 deploys; 020/021 owner-run pending)
+
+- 019 BASIC trial preset (IMP k1000/s5000 + CPM invert k30/s15, null-safe) + Activate instant-pill + no-store fix (`ab3f8da`, `dpl_HW1mtSDhZbJmRxYc7W5ifD42TS75`, smoke 307/401/200).
+- Score units (`%/RM/numeric` via `formatScore`, ACS 4dp) + per-row formulas + input legend in `/presets` + formula tables in docs (`e58882e`, `dpl_3FM4k4Hzbre6M8cS3Jv971v8X2Cb`, smoke 307/401/200).
+- 020 OMTM-original reference + 021 OMTM-v3-RM trial (migrations written + node-verified, uncommitted; owner runs dev+prod). Proxy-gap measured: plain 6s ~14% hot vs focused, squared in CES; decision rule = online radar, TikTok trigger (KILL trusted, SCALE confirmed).
+
+## 10 Oct 2026 — hourly on-the-hour + footer date fix (pushed + deployed)
+
+- Hourly pinger `.github/workflows/hourly-sync.yml`: `15 * * * *` → `0 * * * *` (the :30 arrivals were schedule-:15 + GitHub queue lag + fetch minutes; header stamps send time). Commit `697d93a`, pushed.
+- Telegram footer `hu Oct 08 2026` fixed (`hourly.ts`): `synced_at` now formats `YYYY-MM-DD HH:mm MYT` for ISO/long-string/Date alike (was `slice(0,16)`, assumed ISO). `excludes N OFF` is the correct ON-only filter. Deployed `dpl_po7TdziUVii985L8QwLZ9eucZFTU` (smoke `/` 307, `/api/hourly` 401, `/api/health` 200).
+- Bot commands diagnosis: `getUpdates` returning messages = no webhook (`getWebhookInfo url:""` + pending 2); bare re-register passes but Vercel wall eats deliveries — re-set needs encoded `?x-vercel-protection-bypass=` (owner-pending).
+
 ## 10 Oct 2026 — creative module Phase A + managers modal + skills shelf (deployed, uncommitted)
 
 - `/creative` tab + `/api/creative-probe` rounds 1–6: GMV creative grain verified (`item_id` + dual campaign/item-group filter, full attribute + delivery sets incl. cost/roi/cpo); AUCTION_AD numbers + quartiles; membership via `filters[]`; identity via `ad/get`. Ceiling ~20/24 xlsx columns; posted-time/source/secondary-status derived. Deploys `dpl_J2wuSJQb`→`dpl_Afw2SW5A`.

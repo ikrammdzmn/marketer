@@ -2,6 +2,7 @@
   "default": "vol2-focused-v3",
   "presets": [
     { "id": "vol2-focused-v3", "file": "vol2-focused-v3.json", "label": "VOL2 Focused v3 (calibrated)" },
-    { "id": "theory-v2", "file": "theory-v2.json", "label": "Theory v2 (original)" }
+    { "id": "theory-v2", "file": "theory-v2.json", "label": "Theory v2 (original)" },
+    { "id": "omtm-original", "file": "omtm-original.json", "label": "OMTM Original (reference)" }
   ]
 }

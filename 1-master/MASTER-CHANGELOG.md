@@ -4,6 +4,13 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 10 Oct 2026
+
+- `gmvmax-auto` TTAM presets arc: 019 BASIC trial + activate-pill fix (`ab3f8da`, `dpl_HW1mtSDhZbJmRxYc7W5ifD42TS75`); score units + formula visibility (`e58882e`, `dpl_3FM4k4Hzbre6M8cS3Jv971v8X2Cb`); 020 OMTM-original + 021 OMTM-v3-RM trial migrations (node-verified, owner-run pending); proxy-gap measured (~14% hot, CES squares it); rule = online radar, TikTok trigger
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto`: hourly pinger on-the-hour (`0 * * * *`) + Telegram footer date fix (`YYYY-MM-DD HH:mm MYT`) — commit `697d93a` pushed, deployed `dpl_po7TdziUVii985L8QwLZ9eucZFTU` (smoke 307/401/200); bot-commands outage diagnosed as deleted webhook (bypass re-register owner-pending)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
 ## 08 Oct 2026
 
 - `gmvmax-auto`: account budget = ON-only sum + `partial` label (`dpl_5rKQ`); Shop API authorized + exchanged (local probe code 0; 24–27 Sep shop 163,540/988 vs ads 169,805/1,012 = -3.7%, manual-gap recheck parked); admin one-tap shop-token refresh `/api/shop-token` with epoch-expiry fix (`marketer-2uf7h9ja4`, signed-out 401; owner button test next)
