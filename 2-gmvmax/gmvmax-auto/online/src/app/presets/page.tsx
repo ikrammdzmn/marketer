@@ -23,7 +23,7 @@ export default function PresetsPage() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   async function loadPresetList(selectKey?: string) {
-    const r = await fetch(`/api/ttam-presets`);
+    const r = await fetch(`/api/ttam-presets`, { cache: "no-store" });
     if (!r.ok) throw new Error((await r.json()).error ?? "presets failed");
     const body = await r.json();
     const list = body.presets ?? [];
@@ -33,7 +33,7 @@ export default function PresetsPage() {
   }
 
   async function loadPreset(key: string) {
-    const r = await fetch(`/api/ttam-presets?key=${encodeURIComponent(key)}`);
+    const r = await fetch(`/api/ttam-presets?key=${encodeURIComponent(key)}`, { cache: "no-store" });
     if (!r.ok) throw new Error((await r.json()).error ?? "preset failed");
     const body = await r.json();
     const p = body.preset;
@@ -62,6 +62,10 @@ export default function PresetsPage() {
       const body = await r.json();
       if (!r.ok) throw new Error(body.error ?? "preset action failed");
       setMsg(`${action} ok: ${body.preset?.preset_key ?? ""}`);
+      if (action === "activate" && presetKey) {
+        const k = presetKey;
+        setPresetsList((prev) => (prev ?? []).map((p: any) => ({ ...p, active: p.preset_key === k })));
+      }
       if (action === "delete") {
         setPresetKey(null);
         setDraft(null);
