@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SCORE_NAMES } from "@/lib/ttam-scores";
+import { SCORE_NAMES, SCORE_EXPRESSIONS, EXPRESSION_KEYS } from "@/lib/ttam-scores";
 
 const inputCls =
   "bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-zinc-100";
@@ -181,12 +181,13 @@ export default function PresetsPage() {
                     ))}
                   </div>
                   <div className="mb-2 overflow-x-auto">
+                    <p className="mb-1 text-[11px] text-zinc-500">Formula inputs: {EXPRESSION_KEYS}. Custom rows evaluate their own expression; built-ins use the scorer formulas below.</p>
                     <table className="w-full text-xs">
                       <thead><tr className="text-zinc-400"><th className={thCls}>Metric</th><th className={`${thCls} text-right`}>K (kill)</th><th className={`${thCls} text-right`}>S (scale)</th><th className={thCls}>Invert</th><th className={thCls}>On</th><th className={thCls}></th></tr></thead>
                       <tbody>
                         {(draft.metrics ?? []).map((m: any, i: number) => (
                           <tr key={m.short} className="border-t border-zinc-800">
-                            <td className={tdCls}>{m.short} <span className="text-zinc-500">· {m.name ?? SCORE_NAMES[m.short] ?? ""}</span></td>
+                            <td className={tdCls}>{m.short} <span className="text-zinc-500">· {m.name ?? SCORE_NAMES[m.short] ?? ""}</span><br /><span className="font-mono text-[10px] text-zinc-500">{m.expression ?? SCORE_EXPRESSIONS[m.short] ?? "server-computed"}</span></td>
                             <td className={numCls}><input type="number" step="any" value={m.k} onChange={(e) => { const ms = [...draft.metrics]; ms[i] = { ...m, k: Number(e.target.value) }; setDraft({ ...draft, metrics: ms }); }} className={`${inputCls} w-24 text-right`} /></td>
                             <td className={numCls}><input type="number" step="any" value={m.s} onChange={(e) => { const ms = [...draft.metrics]; ms[i] = { ...m, s: Number(e.target.value) }; setDraft({ ...draft, metrics: ms }); }} className={`${inputCls} w-24 text-right`} /></td>
                             <td className={tdCls}><input type="checkbox" checked={!!m.invert} onChange={(e) => { const ms = [...draft.metrics]; ms[i] = { ...m, invert: e.target.checked }; setDraft({ ...draft, metrics: ms }); }} /></td>

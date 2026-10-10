@@ -46,8 +46,8 @@
 - Table rows show the day so far: money spent then vs now, sales then vs now, ROI this hour vs whole day, orders, and % of daily budget used.
 - Chart buttons sit under each table (top movers + dashboard link) — tap one to open that campaign's hour-by-hour chart.
 - 🔥 = biggest sales jump that hour (only when sales actually grew). ⚠️ = spent ≥ RM5 with zero sales back. 🔛 = spending normally.
-- Messages show ON campaigns only (dashboard keeps everything). Footnote says how many OFF are excluded.
-- Type **`/fetch_hourly`** for the latest hour, **`/fetch`** for the whole day so far — tables arrive in ~10–30s. Hourly rhythm continues on its own.
+- Messages show ON campaigns only (dashboard keeps everything). Footnote says how many OFF are excluded + when campaign statuses were last synced (MYT date + time).
+- Type **`/fetch_hourly`** for the latest hour, **`/fetch`** for the whole day so far — tables arrive in ~10–30s. Hourly rhythm continues on its own (near the top of each hour, skips 2–6am).
 - Type **`/start`** any time to check the system is healthy. It answers with: the current time, database OK (or a clear UNREACHABLE warning), the newest hour of data it has, and the newest day of data. **If the newest hour is many hours old, the auto-collector on the other PC has stopped** — that one line is the first thing to check whenever numbers look frozen. Typing any other `/command` gets a short hint listing these three — plain chat messages are always ignored, so the topic never gets spammed.
 
 ## What you get today (P0 local, live numbers)
@@ -102,6 +102,17 @@
   6-second focused views). EDS and ERRI are exact TikTok numbers.
 - Score switches hide grades you don't care about (hidden grades also leave the
   verdict). Verdict dropdown + search box filter the tree.
+- Units: ERRI, HPS, EDS, HRQ show as % (e.g. 12.50%); ACS shows as RM
+  (e.g. RM 0.0234); the rest are plain numbers. Hover a grade header for its unit.
+- Formulas (same words the `/presets` tab shows under each grade):
+  ERRI = live views ÷ impressions × 100; HPS = 6s views ÷ impressions × 100;
+  ACS = spend ÷ 6s views; EDS = (shares + comments + follows) ÷ likes × 100;
+  CES = 10000 × hook × profile-rate × engagement ÷ ACS;
+  VVES = hook × avg play ÷ ACS; RVS = avg play ÷ ACS;
+  HRQ = 6s views ÷ reach × 100;
+  RES = (6s views ÷ reach × 10) ÷ (spend ÷ reach);
+  LQS = 10s live views ÷ spend × 100; BCE = 1000 × hook × profile-rate ÷ ACS
+  (hook = 6s views ÷ impressions; profile-rate = profile visits ÷ impressions).
 - Preset dropdown (appears with 2+ presets) repaints all flags instantly —
   no re-fetch needed. The `/presets` tab edits bands, minimums, and notes, and
   exports a file the scorer tool can read.

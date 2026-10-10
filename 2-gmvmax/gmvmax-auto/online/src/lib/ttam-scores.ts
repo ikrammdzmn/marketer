@@ -118,3 +118,42 @@ export function applyCustomScores(
   }
   return out;
 }
+
+// Display units per score short. Mirrors the static scorer shapes
+// (ttam-presets route SCORER_SHAPE); DB preset `format` wins at render.
+export const SCORE_FORMATS: Record<string, string> = {
+  ERRI: "%", HPS: "%", EDS: "%", HRQ: "%",
+  ACS: "RM",
+};
+
+// Human-readable formulas per built-in short (transcribed from
+// scoreTtamRow in gmv.ts + the static scorer shapes). Custom metrics
+// show their own DB `expression` instead.
+export const SCORE_EXPRESSIONS: Record<string, string> = {
+  ERRI: "imp ? live / imp * 100 : 0",
+  HPS: "HR * 100  (HR = sfv / imp)",
+  ACS: "sfv ? spend / sfv : 999",
+  CES: "cesX * HR * PVR * EDSraw / ACS  (cesX = 10000)",
+  EDS: "EDSraw * 100  (EDSraw = (sh + com + fol) / likes)",
+  VVES: "(HR * awt) / ACS",
+  RVS: "awt / ACS",
+  HRQ: "reach ? sfv / reach * 100 : 0",
+  RES: "((sfv / reach) * resX) / (spend / reach)  (resX = 10)",
+  LQS: "spend ? live10 / spend * 100 : null",
+  BCE: "bcX * HR * PVR / ACS  (bcX = 1000)",
+};
+
+// Raw input keys usable in custom expressions (INPUT_MAP) plus the
+// precomputed intermediates. Shown as a legend in /presets.
+export const EXPRESSION_KEYS =
+  "spend, imp, clicks, reach, sfv, prof, likes, sh, com, fol, awt, live, live10 + HR, PVR, EDSraw, ACS + preset params";
+
+// One renderer for every score cell: "%" → 12.50%, "RM" → RM 0.0234
+// (ACS keeps 4 decimals, other money 2), else plain 2 decimals.
+// Non-finite → "–" (same empty glyph the tables already use).
+export function formatScore(short: string, format: string | null | undefined, v: number | null | undefined): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "–";
+  if (format === "%") return `${v.toFixed(2)}%`;
+  if (format === "RM") return `RM ${v.toFixed(short === "ACS" ? 4 : 2)}`;
+  return v.toFixed(2);
+}

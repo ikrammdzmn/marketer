@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import Chart from "chart.js/auto";
 import DateRangePicker from "./DateRangePicker";
-import { flagsForRow, verdictOf, SCORE_NAMES, bandsFromPreset, applyCustomScores } from "@/lib/ttam-scores";
+import { flagsForRow, verdictOf, SCORE_NAMES, SCORE_FORMATS, formatScore, bandsFromPreset, applyCustomScores } from "@/lib/ttam-scores";
 
 const SHOPS = [
   { value: "1", label: "Him.DrSamhan" },
@@ -153,24 +153,26 @@ const statusRank = (s: string | null | undefined) => (s === "ON" ? 0 : s === "OF
 // is confirmed.
 const SCORE_COLS = ["EDS", "ERRI", "HPS", "ACS", "CES", "VVES", "RVS", "HRQ", "RES", "BCE", "LQS"] as const;
 const EXACT_SCORES = ["EDS", "ERRI"];
-function ScoreHeads({ vis, cols }: { vis: Set<string>; cols: string[] }) {
+function ScoreHeads({ vis, cols, defs }: { vis: Set<string>; cols: string[]; defs: any[] }) {
+  const fmtOf = (k: string) =>
+    (defs ?? []).find((m: any) => m.short === k)?.format ?? SCORE_FORMATS[k] ?? "numeric";
   return (<>
     <th className={`${thCls} text-right`}>Impr</th>
     {cols.filter((k) => vis.has(k)).map((k) => (
-      <th key={k} title={SCORE_NAMES[k] ?? k} className={`${thCls} text-right`}>{k}{EXACT_SCORES.includes(k) ? "" : "~"}</th>
+      <th key={k} title={`${SCORE_NAMES[k] ?? k} · unit: ${fmtOf(k)}`} className={`${thCls} text-right`}>{k}{EXACT_SCORES.includes(k) ? "" : "~"}</th>
     ))}
   </>);
 }
 function ScoreCells({ r, vis, bands, cols, defs }: { r: any; vis: Set<string>; bands: any; cols: string[]; defs: any[] }) {
   const scores = applyCustomScores(r?.scores, r?.metrics, defs);
   const flags = flagsForRow(scores, vis, bands);
+  const fmtOf = (k: string) =>
+    (defs ?? []).find((m: any) => m.short === k)?.format ?? SCORE_FORMATS[k] ?? "numeric";
   return (<>
     <td className={numCls}>{r?.metrics ? Math.round(r.metrics.impressions ?? 0).toLocaleString() : "–"}</td>
     {cols.filter((k) => vis.has(k)).map((k) => {
       const v = scores?.[k];
-      const txt = v === null || v === undefined || !Number.isFinite(v)
-        ? "–"
-        : k === "ACS" ? v.toFixed(4) : v.toFixed(2);
+      const txt = formatScore(k, fmtOf(k), v === null || v === undefined ? null : Number(v));
       const f = flags[k];
       const proxy = r?.sfvProxy && !EXACT_SCORES.includes(k);
       const color = txt === "–" ? "" : f === "KILL" ? " text-red-400" : f === "SCALE" ? " text-emerald-300" : " text-amber-200";
@@ -1055,7 +1057,7 @@ export default function Page() {
             <p className="mb-2 px-3 text-[11px] text-zinc-500">Budget is shown at campaign level when set there, otherwise as the sum of compatible daily ad-group budgets. % used appears only for one-day selections (day spend ÷ current budget); lifetime, unlimited, or mixed modes show no percentage.</p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead><tr className="text-zinc-400"><th className={thCls}></th><th className={thCls}>Campaign</th><th className={thCls}>Status</th><th className={`${thCls} text-right`}>Spend</th><th className={`${thCls} text-right`}>Budget (MYR)</th><th className={`${thCls} text-right`} title="Shown only for a single-day selection and daily-style budgets">% used</th><th className={thCls}>Verdict</th><ScoreHeads vis={visibleScores} cols={cols} /></tr></thead>
+                <thead><tr className="text-zinc-400"><th className={thCls}></th><th className={thCls}>Campaign</th><th className={thCls}>Status</th><th className={`${thCls} text-right`}>Spend</th><th className={`${thCls} text-right`}>Budget (MYR)</th><th className={`${thCls} text-right`} title="Shown only for a single-day selection and daily-style budgets">% used</th><th className={thCls}>Verdict</th><ScoreHeads vis={visibleScores} cols={cols} defs={presetMetrics} /></tr></thead>
                 <tbody>
                   {(sortByStatus(data.manualCampaigns ?? [], (c: any) => Number(c.spend ?? 0)))
                     .filter((c: any) => verdictFilter === "ALL" || rowState(c) === verdictFilter)

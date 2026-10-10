@@ -20,6 +20,29 @@ the Metric Scorer presets define, so the dashboard shows the same numbers as
 - Preset bands do NOT transfer (VOL2 GMV quartiles ≠ TTAM manual). Formulas
   yes, bands no.
 
+## Score formulas + units (code truth: `scoreTtamRow` in `src/lib/gmv.ts`, surfaced read-only in `/presets`)
+
+| Short | Unit | Formula (raw keys: spend, imp, clicks, reach, sfv, prof, likes, sh, com, fol, awt, live, live10) |
+|---|---|---|
+| ERRI | % | `imp ? live / imp * 100 : 0` |
+| HPS | % | `HR * 100` where `HR = sfv / imp` |
+| ACS | RM (4dp) | `sfv ? spend / sfv : 999` (invert: high KILL) |
+| CES | numeric | `cesX * HR * PVR * EDSraw / ACS`, `cesX = 10000`, `PVR = prof / imp` |
+| EDS | % | `EDSraw * 100` where `EDSraw = (sh + com + fol) / likes` |
+| VVES | numeric | `(HR * awt) / ACS` |
+| RVS | numeric | `awt / ACS` |
+| HRQ | % | `reach ? sfv / reach * 100 : 0` |
+| RES | numeric | `((sfv / reach) * resX) / (spend / reach)`, `resX = 10` |
+| LQS | numeric | `spend ? live10 / spend * 100 : null` (null until 10s-live metric confirmed) |
+| BCE | numeric | `bcX * HR * PVR / ACS`, `bcX = 1000` |
+| IMP | numeric | `imp ? imp : null` (custom, null-safe: empty rows stay WATCH) |
+| CPM | RM (2dp) | `imp ? spend / imp * 1000 : null` (custom, invert) |
+
+Dashboard renders units via `formatScore` (`src/lib/ttam-scores.ts`) from each
+preset row's `format`, falling back to the built-in map above. Custom metrics
+evaluate their own DB `expression` client-side (`applyCustomScores`); `: null`
+(not `: 0`) keeps fail-open rows on WATCH.
+
 ## Open decision (owner)
 - New metrics may be added via the scorer `index.html` manager. Two paths:
   A. Dashboard reads the preset JSON (default from `presets/index.json`
