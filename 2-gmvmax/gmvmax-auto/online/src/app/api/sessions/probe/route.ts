@@ -16,7 +16,7 @@ const API_VERSION = "v1.3";
 //    live_duration). Single room + single ID dimension, per the attribute
 //    metrics rule; full set first, singles only on failure.
 // Access is checked against the live Google email allowlist.
-const ROOM_METRIC_CANDIDATES = ["live_status", "live_launched_time", "live_duration"];
+const ROOM_METRIC_CANDIDATES = ["live_status", "live_launched_time", "live_duration", "live_name"];
 
 async function tryRoomMetrics(
   accessToken: string,

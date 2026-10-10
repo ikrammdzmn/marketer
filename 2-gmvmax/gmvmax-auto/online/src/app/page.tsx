@@ -53,9 +53,14 @@ function BudgetValue({ row }: { row: any }) {
 }
 
 function BudgetUse({ value }: { value: number | null | undefined }) {
-  return value === null || value === undefined || !Number.isFinite(Number(value))
-    ? <span className="text-zinc-500">—</span>
-    : <span>{Number(value).toFixed(1)}%</span>;
+  const v = Number(value);
+  if (value === null || value === undefined || !Number.isFinite(v)) return <span className="text-zinc-500">—</span>;
+  const txt = `${v.toFixed(1)}%`;
+  if (v > 100) return <span className="animate-pulse rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">{txt}</span>;
+  if (v >= 90) return <span className="animate-pulse rounded-full bg-red-900 px-2 py-0.5 text-[11px] text-white">{txt}</span>;
+  if (v >= 80) return <span className="font-medium text-red-400">{txt}</span>;
+  if (v >= 70) return <span className="text-amber-300">{txt}</span>;
+  return <span>{txt}</span>;
 }
 
 function klToday(): string {
@@ -984,12 +989,14 @@ export default function Page() {
                               {sessionsExpanded.has(c.campaignId) && (sessions[c.campaignId]?.sessions ?? []).map((s: any, i: number) => (
                               <tr key={`${c.campaignId}-s${i}`} className="border-t border-zinc-800 bg-black/40">
                                 <td className={tdCls}></td>
-                                <td className={`${tdCls} pl-7 text-[11px]`}>room {s.roomId || "(none)"} · {s.day}
+                                <td className={`${tdCls} pl-7 text-[11px]`}>
+                                  <span className="font-medium text-zinc-100">{s.liveTitle || `room ${s.roomId || "(none)"}`}</span>
                                   {s.liveStatus && (
                                     <span title={`${s.liveLaunchedMyt ?? ""}${s.liveDuration ? ` · ${s.liveDuration}` : ""}`} className={`ml-2 rounded-full px-2 py-0.5 text-[10px] ${s.liveStatus === "ONGOING" ? "bg-emerald-900 text-emerald-200" : "bg-zinc-700 text-zinc-300"}`}>
                                       {s.liveStatus === "ONGOING" ? "🟢 ONGOING" : "⚪ END"}
                                     </span>
                                   )}
+                                  <div className="mt-0.5 text-zinc-500">{s.liveTitle ? `room ${s.roomId || "(none)"} · ` : ""}started {s.liveLaunchedMyt ?? s.day}{s.liveDuration ? ` · ${s.liveDuration}` : ""}{(s.days ?? 1) > 1 ? ` · ${s.days}d (${s.firstDay}→${s.lastDay})` : ""}</div>
                                 </td>
                                 <td className={numCls}>{fmt(s.cost)}</td><td className={numCls}>{fmt(s.gmv)}</td><td className={numCls}>{s.orders}</td><td className={numCls}>{Number(s.roi ?? 0).toFixed(2)}</td><td className={numCls}></td><td className={numCls}></td>
                               </tr>

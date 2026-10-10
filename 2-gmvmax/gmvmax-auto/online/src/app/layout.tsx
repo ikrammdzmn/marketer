@@ -22,6 +22,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-1 px-4 py-2 text-sm">
             <Link href="/" className="rounded-lg px-3 py-1.5 hover:bg-zinc-800">Dashboard</Link>
             <Link href="/presets" className="rounded-lg px-3 py-1.5 hover:bg-zinc-800">Presets</Link>
+            <Link href="/creative" className="rounded-lg px-3 py-1.5 hover:bg-zinc-800">Creative</Link>
             {isAdmin && <Link href="/access" className="rounded-lg px-3 py-1.5 hover:bg-zinc-800">Access</Link>}
             <span className="ml-auto px-2 text-xs text-zinc-400">{email || ""}</span>
             {email ? (

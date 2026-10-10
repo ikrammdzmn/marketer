@@ -2,6 +2,18 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 10 Oct 2026 — creative module Phase A + managers modal + skills shelf (deployed, uncommitted)
+
+- `/creative` tab + `/api/creative-probe` rounds 1–6: GMV creative grain verified (`item_id` + dual campaign/item-group filter, full attribute + delivery sets incl. cost/roi/cpo); AUCTION_AD numbers + quartiles; membership via `filters[]`; identity via `ad/get`. Ceiling ~20/24 xlsx columns; posted-time/source/secondary-status derived. Deploys `dpl_J2wuSJQb`→`dpl_Afw2SW5A`.
+- Phase A sync: `018_creative_daily.sql` (owner ran dev+prod) + `lib/creative.ts` (Neon campaign IDs, rewrite-on-revise, ≤7d fail-open) + `/api/creative-sync` (scoped picker, himcoffee default) + rows table. Deploys `dpl_GMzufUwbt`→`dpl_P49BNdXg`.
+- Managers modal: 016/017 (owner ran dev+prod; 22 accounts, 5 campaigns, 18 products) + grouped tables, SOP strip, changed-only stamps, drag, column chips + headers, downloads, auto-load. Deploys `dpl_AZbMHBz7`→`dpl_Ar3uHZAt`.
+- Repo-local skills shelf (`skills/*/SKILL.md`, 8): tiktok (+MCP diff: video/get, VIDEO_INSIGHT, file/video/info candidates), tiktok-shop, vercel-deploy, neon-db, creative-analysis, telegram-rich, session-handoff (+standing skill-delta protocol), calendar-picker.
+
+## 08 Oct 2026 — sessions live-title + grouping + cleanup + budget tiers (deployed, uncommitted)
+
+- Sessions drill: meta call tries `live_name` with fail-open fallback; room×day rows collapse to one row per room (sums + recomputed ROI, GMV-desc); row shows live title + ONGOING/END pill + `started … MYT · duration` (untitled rooms fall back to `room {id}` — empty `live_name` is TikTok data). Probe includes `live_name`. Deployed `dpl_8oW49tw1` (live tie: PROMO OCTOBER 14:00 MYT = Ads Manager 14:00:17); cleanup `dpl_7nhrxi91` (no double room id, no midnight-bucket tail). Live smoke `/` 307, probe 401.
+- Budget `% used` color tiers in single `BudgetUse` (`page.tsx:55`, all 4 spots): <70 plain, 70–79 amber, 80–89 red text, 90–100 red pill + white + pulse, >100 brighter-red bold pill + pulse. Deployed `dpl_AWLvFgew`.
+
 ## Undeployed — Shop GMV multi-day (014 + Refresh) + hourly date fix + hourly autopinger
 
 - Hourly Fetch now sends `date=${end}` (`page.tsx:489`); `/api/hourly` also accepts `endDate/startDate` fallback. Oct-07 range previously queried Oct-08 (empty) — that was the blank-charts bug, not missing data.

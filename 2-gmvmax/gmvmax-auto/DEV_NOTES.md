@@ -1,12 +1,77 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 26 first (current facts), then Checkpoints 25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 32 first (current facts), then Checkpoints 31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 32 — 10 Oct 2026 (creative module: probes 1–6 green → Phase A sync + managers modal + skills shelf; deployed, uncommitted)
+
+**To next-you: get back in this headspace instantly.** Owner opened with "next big addition" and chose creative-analysis-online, no-export (fetch from GMV Max), separate tab. Then drove with docs in hand — pasted the `creative_delivery_statuses` filter section, then dimensions, then the full metrics article. Those three pastes did more than a week of guessing: `item_id` = Post ID grain, creative-level metric tables, dual-filter rule. Protocol held (screenshots/pastes > logs, one action per message, plan/build switches on owner order — four this session). Two trust wobbles, both answered with evidence: "don't see any light" → scoped himcoffee sync (2 calls, seconds); "(0)+(0) but I ran 016/017" → counts proof (22/5/18) then auto-load. Mood at close: satisfied, shelf-building ("what skills can be added?", "re ask", one-by-one through 8 skills). Sparring stayed ON (serie: talked them OUT of running the MCP, INTO the diff-then-skill sequence).
+
+**What shipped (tsc 0 throughout, ~15 deploys, ALL UNCOMMITTED).**
+- `/creative` tab + `/api/creative-probe` rounds 1–6 (dpl_J2wuSJQb→dpl_Afw2SW5A): video/product grains dead (40002) → AUCTION_AD numbers OK (+quartiles p25–p100, conversion_rate) → `filters[]` fix (membership OK, ~50 GMV ad rows) → `ad/get` identity (`tiktok_item_id`, URL-tail Post ID, `ad_text`, `app_name`, `create_time`) → doc-grounded `item_id` dual-filter (campaign+item_group) FULL GREEN incl. `cost/roi/cpo` the docs omit. Final ceiling: ~20/24 columns fetchable; Time-posted/Creative-source/secondary-status stay derived.
+- Phase A (`018_creative_daily.sql`, `lib/creative.ts`, `/api/creative-sync`, rows table; dpl_GMzufUwbt→dpl_P49BNdXg): per-creative nightly rows, rewrite-on-revise, ≤7d fail-open sync, campaign picker default himcoffee (scoped sync = 2 calls, kills the 60s timeout class). Neon IDs after `campaign/get` drift (B70).
+- Managers modal (dpl_AZbMHBz7→dpl_Ar3uHZAt): `016` accounts (22 seeded) + catalog + `017` targets; grouped tables, SOP strip, changed-only stamps, drag reorder, column chips + headers, downloads, auto-load, single Manage button. Owner ran 016/017/018 dev+prod; edits verified working.
+- Skills shelf (8, repo-local, `skills/*/` + AGENTS pointers): tiktok, tiktok-shop, vercel-deploy, neon-db, creative-analysis, telegram-rich, session-handoff (+standing skill-delta protocol), calendar-picker. Diff pass fed tiktok skill (video/get, VIDEO_INSIGHT, file/video/info candidates).
+
+**Bugs + lessons (don't repeat).**
+- B70 `campaign/get` param drift: identical shape demanded `store_ids`, then `dimensions`, while dashboard's passes — contextual validation, not worth chasing. Lesson: campaign IDs come from the Neon cache (the map reports already filter by); never re-prove list endpoints from new code.
+- B71 edit ate the `sleep` declaration (round-5 block replaced it), then duplicate-restore confusion; caught by tsc, resolved by ground-truth read. Lesson stands from B57/B67: after structural edits grep the identifier count, not just re-read the region.
+- B72 glob brackets: `[18589...]` in a path is a character class — `glob` returns 0 silently. Lesson: `os.listdir` for bracketed paths, always.
+- B61 repeats (×3): `head`/`tail`/`wc`/`&&` in shell tool on PS5.1. Lesson stands; consider it a pre-flight check now.
+- UX lessons: empty states must name the next action ("No cached rows — press Sync", not "run 018"); Load buttons die once auto-load lands; `-1` item rows are real (unattributed bucket), label them.
+
+**Open.** Phase B (KPIs/verdicts/trend on creative rows) unstarted. Copy-JSON probe button queued. Manual-gap recheck still parked since 28. Everything uncommitted (14 tracked + creative routes + migrations 016–018 + `skills/` + owner-touched accounts.json + stray `postman/`, `start-viewer.bat` — all theirs, never stage).
+
+**Vibe.** Docs-driven day: owner's three pastes were the whole critical path. End state: creative numbers flow without exports, managers mirror the local tool, knowledge is shelved in skills. Ritual run via the new skill, then stop.
+
+## Checkpoint 31 — 08 Oct 2026 (sessions live-title + grouping + cleanup + budget tiers; deployed, uncommitted)
+
+**To next-you: get back in this headspace instantly.** Same owner, same protocol (screenshots > logs, one action per message, Plan/Build mode switches by owner order — three this session: plan → build → plan → build). Session shape: owner pasted Ads Manager Livestreams screenshot (PROMO OCTOBER / Ongoing / 14:00:17) next to our Sessions drill showing `room … · 2026-10-08 00:00:00` and asked "can the API fetch start time, duration, live title?" Answer was yes-2-of-3 already in code: `live_launched_time`/`live_duration` fetched since Checkpoint 20 but buried in hover title, day-bucket rendered as if it were start time; only `live_name` was new. Owner verified via probe JSON themselves, then "ok good", then color-tier ask with exact bands, then ritual. Mood: pleased, brisk, precise — "ok go" / "ok good" / "ok i see".
+
+**What shipped (tsc 0, build green, all deployed, all UNCOMMITTED — no commit/push unless asked).**
+- Sessions live title + grouping (`gmv.ts`, `dpl_8oW49tw1`): 2nd meta call tries `["live_status","live_launched_time","live_duration","live_name"]` first, falls back without `live_name` on 40002 (fail-open both hops); room×day rows collapse to one row per room (cost/gmv/orders summed, ROI recomputed, sorted GMV desc, `days/firstDay/lastDay` kept). Probe extended with `live_name` (`sessions/probe/route.ts`). Proof: `PROMO OCTOBER 🔥‼️ · started 2026-10-08 14:00 MYT` ties Ads Manager's `14:00:17` exactly (06:00:17 UTC +8).
+- Sessions cleanup (`page.tsx`, `dpl_7nhrxi91`): line 1 = title (or `room {id}` when untitled) + pill; line 2 = `started … MYT · duration` (+ `room {id} ·` prefix only when titled, `Nd range` only when multi-day). Midnight-bucket tail gone.
+- Budget `% used` tiers (`BudgetUse`, `page.tsx:55`, `dpl_AWLvFgew` — one renderer, all 4 spots: GMV account/campaign, TTAM campaign/adgroup): <70 plain, 70–79 amber, 80–89 red text, 90–100 red pill + white + pulse, >100 brighter-red bold pill + pulse. Owner chose: pulse on 90%+ only, stronger style for overspend.
+
+**Bugs + lessons (don't repeat).**
+- B68 day-bucket rendered as event time (`room {id} · {s.day}` read as start time). Lesson: grain columns (`stat_time_day`) are never event times — display the attribute metric (`live_launched_time`), keep the bucket as secondary at most.
+- B69 probe `roomId=` param is label-only (filter is `campaign_ids:[single]`, group by room — per-room filters 40002 per Checkpoint 19). Lesson: don't "fix" the probe to return one room; the full-campaign list IS the answer, read the matching row.
+- Empty `live_name:""` is valid TikTok data (3 untitled END rooms this probe), not a fetch failure — fallback to `room {id}` by design, no retry loop will fill it.
+- B61 repeat: `head` in shell tool fails on Win PS5.1 (used again, failed again). Lesson stands: no unix pipes in shell tool, ever.
+
+**Open.** Manual-gap recheck (shop API vs old system) still parked since 28. Everything this session deployed but uncommitted (code: probe route, `gmv.ts`, `page.tsx`; docs: this file + friends). Owner deploys from Checkpoint 30 arc presumably done (these three deploys went through on current CLI auth — no `vercel login` needed this time).
+
+**Vibe.** Short sharp verification loop: screenshot → probe JSON → screenshot → "ok good". Sparring stayed ON (talked through pulse-tier noise tradeoff via question tool: pulse-90-only won, stronger-style for >100). End-of-day ritual requested by name — done thoroughly, then stop.
+
+## Checkpoint 30 — 08 Oct 2026 (hourly date-fix + shop multi-day + hourly rebuild + hourly-shop + pinger; pushed, deploy pending)
+
+**To next-you: get back in this headspace instantly.** Same owner, same protocol (screenshots > logs, one action per message, no commit/push unless asked — except this arc explicitly approved pushes). The day's shape: each user message unlocked exactly one build ("fix it", "ok do A", "ok good 014 + refresh", "ok go", restyle/silent/push/range answers, "use b", "fill all the graph, yes"). Sparring stayed ON; two plan-mode interludes (hourly-why + shop-hourly-where) resolved into separate-metric + cache+refresh before any code. Push is now routine (approved) but slow — `git push` tails hang 2–5 min on this network; wait it out with `--progress`, verify with `git status -sb`, never assume the timeout means failure.
+
+**What shipped (commits `d247e65` → `e75163a`, all pushed; deploy needs owner `npx vercel login` + run).**
+- Hourly blank-charts bug: `page.tsx` sent `startDate/endDate`, `/api/hourly` read `date` → always queried today (empty). Fixed: frontend sends `date=${end}`; route falls back `date ?? endDate ?? startDate`.
+- `014_shop_orders_daily.sql` (self-sufficient CREATE + ALTERs — dev branch lacked the 005 table entirely after a branch recreate; owner saw `42P01`, then clean skip-notices on rerun). Writers tolerate pre-014 DBs (ads-only fallback).
+- Shop GMV multi-day: GET returns `daily` cache series; `POST /api/shop-gmv/refresh` (≤31d, per-day fail-open); tab has Shop-truth|Ads toggle + daily Performance chart + table + Refresh button. UI bug caught post-deploy: panel hid when cache empty (exactly when Refresh was needed) — gate is now multi-day-range OR non-empty daily.
+- Hourly rebuild (shop-hourly style): GMV bars + spend dashed + ROAS lines, 24-hour picker (future/no-data disabled, bars+table follow pick), range scorecard (DEAD/GOLDEN/WATCH, missing excluded), `POST /api/hourly/sync` + Sync-now (Telegram-silent). GET takes startDate/endDate → `scorecard`.
+- `015_shop_hourly_orders.sql` + Hourly shop metric: day-pull `orders/search` bucketed on MYT `create_time` (CANCELLED/REFUNDED out, tie-check `tied/diff/unparseable` reported); GET 24-hour view (shop GMV + cached ads spend + TRUE ROAS, future blank, spend toggle); range Refresh (backfills scorecard window); nightly fills yesterday; picker + spotlight + ≥3-day-gated scorecard added for parity.
+- `.github/workflows/hourly-sync.yml`: true hourly pinger (Hobby cron is daily-only AND rejects sub-daily expressions at deploy — `vercel.json` hourly entry reverted after a failed deploy). Needs Actions secret `CRON_SECRET` (+ optional `VERCEL_BYPASS`). First manual run #1 Success 27s. GitHub-ToS question answered: scheduled hourly syncs are explicitly supported, ~60 free min/mo.
+- Chart treatment shared (`hoverLinePlugin` + `comboOpts`/`barOpts` + RM/x tips, all 5 graphs): then the z-order saga — bars still covered lines until source-read proved `_drawDatasets` iterates ascending-sorted metasets in REVERSE (higher `order` = behind). Bars `order: 3`, spend 2, ROAS 1.
+
+**Bugs + lessons (don't repeat).**
+- B63 param-name mismatch across the fetch boundary (startDate/endDate vs date). Lesson: when a dashboard control "does nothing", compare the exact query string sent vs the exact params read before anything else.
+- B64 render gate hiding its own recovery path (Refresh inside `daily.length > 0`). Lesson: empty-state CTAs must live outside the non-empty condition — test every panel with an empty cache.
+- B65 Vercel Hobby rejects sub-daily crons AT DEPLOY (not at runtime). Lesson: Hobby = daily cron max, confirmed by deploy error; external pinger is the only hourly path short of Pro.
+- B66 Chart.js `order` is inverted vs intuition (higher = behind, reverse-iteration). Lesson: never trust "higher = front" memory — read `_drawDatasets` in the installed dist (10 lines) before shipping z-order.
+- B67 triple-hop edit left a dangling `rf` reference (caught by re-read, would have been a runtime ReferenceError tsc misses? — no, tsc DID catch nothing; caught on manual re-read). Lesson stands from B57: re-read after structural edits, especially multi-step ones.
+- Slow-push discipline: `git push` timing out ≠ failed; `git status -sb` (ahead 1 vs clean) is the verdict, then retry with `--progress`.
+
+**Open.** Owner deploys (login first), runs 015 prod, adds `CRON_SECRET` secret (done? run #1 Success suggests yes), Refreshes shop caches, eyeballs picker/scorecard/charts. Manual-gap recheck (shop API vs old system) still parked from 28. `DEV_NOTES.md` itself is still dirty locally (pre-existing, never staged — keep it that way until asked).
+
+**Vibe.** Long shipping arc, owner precise and pleased ("ok good"). End-of-day ritual requested by name — do it thoroughly, then stop.
 
 ## Checkpoint 29 — 08 Oct 2026 (admin one-tap shop-token refresh; deployed)
 
@@ -27,8 +92,8 @@ button for admin only; others see nothing.
 
 **Proof.** tsc 0 + build green (lists `/api/shop-token` + Middleware).
 Deployed `marketer-2uf7h9ja4`. Live smoke: `/` 307, shop-token 401
-signed-out. Owner signed-in test open: Shop GMV Fetch shows expiry line;
-Refresh stores + refreshes (first click also seeds Neon row).
+signed-out. Owner signed-in test DONE 08 Oct: card showed env-fallback,
+one tap seeded Neon + refreshed → `valid until 2026-10-14`.
 
 **Vibe.** Same. No commit/push unless asked.
 

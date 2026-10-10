@@ -1,0 +1,34 @@
+{
+    "code": 0,
+    "message": "OK",
+    "request_id": "20261010105758304F8BB7B43526A412CD",
+    "data": {
+        "store_list": [
+            {
+                "exclusive_authorized_advertiser_info": {
+                    "advertiser_id": "7505228077656621057",
+                    "advertiser_name": "GMV MAX VOL2",
+                    "advertiser_status": "STATUS_ENABLE"
+                },
+                "is_gmv_max_available": true,
+                "is_owner_bc": true,
+                "store_authorized_bc_id": "7420347515893071888",
+                "store_authorized_bc_info": {
+                    "bc_id": "7420347515893071888",
+                    "bc_name": "KOPI DR SAMHAN 1",
+                    "bc_profile_image": "",
+                    "user_role": "ADMIN"
+                },
+                "store_code": "MYLCQHLWW9",
+                "store_id": "7495609155379170274",
+                "store_name": "Dr Samhan",
+                "store_role": "AD_PROMOTION",
+                "store_status": "ACTIVE",
+                "targeting_region_codes": [
+                    "MY"
+                ],
+                "thumbnail_url": "https://p16-oec-sg.ibyteimg.com/tos-alisg-i-aphluv4xwc-sg/fd326cea29c442208f3f11651dc4f0b8~tplv-aphluv4xwc-origin-jpeg.jpeg?dr=15568&from=1345521523&idc=my2&ps=933b5bde&shcp=5166750d&shp=50330773&t=555f072d"
+            }
+        ]
+    }
+}

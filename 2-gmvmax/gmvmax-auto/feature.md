@@ -7,17 +7,38 @@
 
 - Shop / Metric / Date / Fetch Data: Total (LIVE + Product split in two tables), LIVE, Product, TTAM (manual spend only), ROAS (with SST+WHT actual), **Hourly** (per-campaign hour tables + trend graphs), Shop GMV (real shop orders now that the shop is authorized; compares against ads-attributed GMV with TRUE ROAS).
 - Each campaign row shows a green ON / grey OFF pill (from TikTok) plus delivery state: 🟢 Active when a live room is ongoing right now (checked automatically after Fetch, top spenders first) or TikTok reports Active; other flags show grey on rows that spent, ⛔ only when nothing spent — spend proves delivery. Account rows roll up the same way: ON if anything inside is ON, 🟢 Active if any room inside is ongoing now.
-- Sessions button sits on each LIVE campaign. Tap it and that campaign's rooms open **directly underneath it** (tap again to hide). Each room shows its spend/sales plus its current 🟢 ONGOING / ⚪ END pill — hover it for start time (MYT) + duration. Other campaigns stay untouched.
+- Sessions button sits on each LIVE campaign. Tap it and that campaign's rooms open **directly underneath it** (tap again to hide, one row per room with spend/sales summed across the days you picked, biggest sales first). Each room shows its live title (e.g. PROMO OCTOBER) plus its current 🟢 ONGOING / ⚪ END pill, with `started … MYT · duration` underneath. Rooms TikTok never titled just show `room {id}` — that's TikTok's data, not a bug. Other campaigns stay untouched.
 - Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then resync.
+- Budget `% used` (one-day view only) is color-coded: under 70% plain, 70–79% yellow, 80–89% red text, 90–100% white-on-red pill that gently pulses, over 100% a brighter bold red pill (spent more than the daily budget).
 - Numbers can move slightly during the day (TikTok settles sales figures over hours while spend stays fixed). If a number looks off versus an hour ago, press Fetch Data again — newest wins, nothing is lost.
 - Sign in with a Google account that the administrator has approved. Removing an account blocks its next dashboard-data request.
 - If you’re signed out, the main link opens Google sign-in first. Once signed in, it takes you to the dashboard; `/sign-in` is also available directly.
 
 ## Hourly watch (Metric = Hourly, shop 1)
 
-- Two trend lines (money spent vs money earned across today's hours) + bars for the newest hour, LIVE and Product separately.
-- Tables show each campaign's hour vs previous hour: absolute change + % change. % only appears when the previous hour is big enough (spend ≥ RM50 / sales ≥ RM200) — tiny hours show numbers only, so RM5→RM30 never screams "+500%".
+- Two trend charts (LIVE and Product): sales bars with spend dashed line + ROI line riding **in front** of the bars. Hover anywhere along the hours for a vertical rule + one tooltip with every number at that hour.
+- **Hour picker**: 24 chips for the day. Grey = future hour or no stored data (unclickable). Picking an hour re-points the top-12 bars and filters the campaign table to that hour vs the previous one. Default = newest hour.
+- **Hour scorecard**: each hour averaged across the days in your range (future hours excluded). Tags: DEAD (under 2 orders/day), GOLDEN (top-5 average sales), WATCH (cost per order over RM50 — here spend is real ad cost, so it means something). Needs 3+ days of saved data; with less, it tells you how many more days to save instead of guessing.
+- **Sync now** button: pulls today live from TikTok when the charts are empty (mornings, before the auto-save runs). Silent — no Telegram spam. Tables show each campaign's hour vs previous hour: absolute change + % change. % only appears when the previous hour is big enough (spend ≥ RM50 / sales ≥ RM200) — tiny hours show numbers only, so RM5→RM30 never screams "+500%".
 - Newest hour is tagged **partial** — TikTok is still counting it. Decide off older closed hours, never the live edge.
+- Hours save themselves every hour (GitHub auto-pinger, skips 2–6am). If today looks frozen, press Sync now.
+
+## Hourly shop (Metric = Hourly shop, shop 1)
+
+- Same look, real shop sales: your actual orders bucketed by order hour (cancelled/refunded excluded) as bars, plus your ad spend that hour as an optional dashed line (toggle on/off) and TRUE ROI line.
+- 24-hour table (future hours blank), All + hour chips to focus one hour (picked bar lights up), same DEAD/GOLDEN/WATCH scorecard across your range (needs 3+ saved days).
+- First view of a new range is empty — press **Refresh** once (pulls every day in the range, then redraws). The notice says tied (bucketed hours match the day total) or flags untied days.
+
+## Shop GMV over days (Metric = Shop GMV, multi-day range)
+
+- Daily Performance chart: bars + spend line + ROI line, with a **Shop truth | Ads attributed** toggle (real orders vs TikTok-attributed sales) and a day-by-day table. Single-day ranges still show the summary cards.
+- Reads saved daily rows (instant); **Refresh daily cache** re-pulls the range live when numbers look stale (max 31 days per press).
+
+## Creative analysis (Creative tab, shop 1)
+
+- No more Excel exports: per-video rows pulled straight from TikTok (PRODUCT campaigns) — title, account, status, cost, orders, sales, ROI, views and view-rate bars. Pick a campaign (himcoffee first), pick dates, **Sync from TikTok**, then read.
+- Four columns can't come from TikTok (posted time, creative source, second-level exploration verdicts) — those are recomputed or labelled, never faked.
+- **Manage** popup holds your TikTok accounts (grouped: Internal / Top Affiliate / Inactive), friendly campaign/product names, and SOP targets. Tables first, Edit only when you tap it; Save keeps everything.
 
 ## Telegram reports (group topic, every hour)
 

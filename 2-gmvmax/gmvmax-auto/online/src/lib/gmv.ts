@@ -493,27 +493,35 @@ export async function getCampaignSessions(
     liveStatus: null as string | null,
     liveLaunchedMyt: null as string | null,
     liveDuration: null as string | null,
+    liveTitle: null as string | null,
   }));
   try {
-    const sparams = new URLSearchParams({
+    const baseParams = {
       advertiser_id: shop.advertiserId,
       store_ids: JSON.stringify([shop.shopId]),
       gmv_max_promotion_type: "LIVE_GMV_MAX",
       dimensions: JSON.stringify(["room_id"]),
       filtering: JSON.stringify({ campaign_ids: [campaignId] }),
-      metrics: JSON.stringify(["live_status", "live_launched_time", "live_duration"]),
       start_date: endDate,
       end_date: endDate,
       page: "1",
       page_size: "100",
-    });
-    const sres = await fetch(
-      `${BASE_URL}/open_api/${API_VERSION}/gmv_max/report/get/?${sparams.toString()}`,
-      { headers: { "Access-Token": creds.access_token, "Content-Type": "application/json" } }
-    );
-    const sbody = await sres.json();
+    };
+    const fetchMeta = async (metrics: string[]) => {
+      const sparams = new URLSearchParams({ ...baseParams, metrics: JSON.stringify(metrics) });
+      const sres = await fetch(
+        `${BASE_URL}/open_api/${API_VERSION}/gmv_max/report/get/?${sparams.toString()}`,
+        { headers: { "Access-Token": creds.access_token, "Content-Type": "application/json" } }
+      );
+      return sres.json();
+    };
+    let sbody = await fetchMeta(["live_status", "live_launched_time", "live_duration", "live_name"]);
+    if (sbody.code !== 0) {
+      // live_name may not exist on this API version — retry without it.
+      sbody = await fetchMeta(["live_status", "live_launched_time", "live_duration"]);
+    }
     if (sbody.code === 0) {
-      const byRoom = new Map<string, { status: string; launched: string | null; duration: string | null }>();
+      const byRoom = new Map<string, { status: string; launched: string | null; duration: string | null; title: string | null }>();
       for (const item of sbody.data?.list ?? []) {
         const room = String(item.dimensions?.room_id ?? "");
         if (!room) continue;
@@ -521,6 +529,7 @@ export async function getCampaignSessions(
           status: String(item.metrics?.live_status ?? ""),
           launched: liveLaunchedMyt(item.metrics?.live_launched_time),
           duration: String(item.metrics?.live_duration ?? "") || null,
+          title: String(item.metrics?.live_name ?? "") || null,
         });
       }
       for (const s of sessions) {
@@ -529,15 +538,43 @@ export async function getCampaignSessions(
           s.liveStatus = meta.status || null;
           s.liveLaunchedMyt = meta.launched;
           s.liveDuration = meta.duration;
+          s.liveTitle = meta.title;
         }
       }
     }
   } catch {
     // Status enrichment is fail-open; spend rows still render.
   }
-  const totalCost = sessions.reduce((s: number, x: any) => s + x.cost, 0);
-  const totalGMV = sessions.reduce((s: number, x: any) => s + x.gmv, 0);
-  return { shopName: shop.name, campaignId, sessions, totalCost, totalGMV };
+  // Collapse room x day rows into one row per room (468 room-days -> rooms).
+  const grouped = new Map<string, any>();
+  for (const s of sessions) {
+    const key = s.roomId || "(none)";
+    const g = grouped.get(key);
+    if (!g) {
+      grouped.set(key, { ...s, days: 1, firstDay: s.day, lastDay: s.day });
+    } else {
+      g.cost += s.cost;
+      g.gmv += s.gmv;
+      g.orders += s.orders;
+      g.days += 1;
+      if (s.day && (!g.firstDay || s.day < g.firstDay)) g.firstDay = s.day;
+      if (s.day && (!g.lastDay || s.day > g.lastDay)) g.lastDay = s.day;
+      if (!g.liveStatus && s.liveStatus) {
+        g.liveStatus = s.liveStatus;
+        g.liveLaunchedMyt = s.liveLaunchedMyt;
+        g.liveDuration = s.liveDuration;
+        g.liveTitle = s.liveTitle;
+      }
+    }
+  }
+  const groupedSessions = [...grouped.values()].map((g: any) => ({
+    ...g,
+    roi: g.cost > 0 ? g.gmv / g.cost : 0,
+  }));
+  groupedSessions.sort((a: any, b: any) => b.gmv - a.gmv);
+  const totalCost = groupedSessions.reduce((s: number, x: any) => s + x.cost, 0);
+  const totalGMV = groupedSessions.reduce((s: number, x: any) => s + x.gmv, 0);
+  return { shopName: shop.name, campaignId, sessions: groupedSessions, totalCost, totalGMV };
 }
 
 // All GMV Max campaign IDs for an advertiser (both types) — exclusion set for TTAM.
