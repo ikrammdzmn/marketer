@@ -258,9 +258,20 @@ export async function syncHourly(shopNumber: string, date: string, opts?: { sile
     );
     const onDiffs = diffs.filter((d) => !offIds.has(d.campaignId));
     const offExcluded = diffs.length - onDiffs.length;
+    const fmtSynced = (() => {
+      if (!syncedAt) return "";
+      const d = syncedAt instanceof Date ? syncedAt : new Date(String(syncedAt));
+      if (Number.isNaN(d.getTime())) return String(syncedAt).slice(0, 16);
+      const p: Record<string, string> = {};
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit",
+        day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
+      }).formatToParts(d).forEach((x) => { p[x.type] = x.value; });
+      return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
+    })();
     syncedNote =
       `ON-only, excludes ${offExcluded} OFF` +
-      (syncedAt ? ` · status as of ${String(syncedAt).slice(0, 16).replace("T", " ")}` : "");
+      (syncedAt ? ` · status as of ${fmtSynced} MYT` : "");
     diffs.length = 0;
     diffs.push(...onDiffs);
     // Lazy budget fill (movers only, fail-open): campaign/get list carries
