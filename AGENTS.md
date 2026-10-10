@@ -14,7 +14,7 @@
 - `3-ttam/campaign-performance-analysis/` — Metric Scorer (11 TikTok OMTM verdicts + kill-list cut simulator; bands from JSON presets, metrics from JSON registry; static, :8123 only; spec `metric.md`, plan `metric-plan.md`).
 - `2-gmvmax/tiktok-calculator/` + `2-gmvmax/tiktok-live/` — moved Phase 1.
 - `2-gmvmax/` — shell + `README.md` pointer (`tiktok-shop-hourly` lives in `1-1-sales/`; high-risk trio joins in Phase 2).
-- `skills/tiktok/` — repo-local TikTok API skill (verified endpoint shapes, creative-level rules, metric tables, quirks). Load it before any TikTok API work.
+- `skills/tiktok-api/` — repo-local TikTok API skill (verified endpoint shapes, creative-level rules, metric tables, quirks). Load it before any TikTok API work.
 - `skills/tiktok-shop/` — repo-local Shop API skill (orders sync, token refresh, MYT bucketing, parity ref). Load before shop-side work.
 - `skills/vercel-deploy/` — deploy ritual + Hobby caps + CLI auth. Load before deploys.
 - `skills/neon-db/` — migration law + branches + write patterns. Load before SQL work.

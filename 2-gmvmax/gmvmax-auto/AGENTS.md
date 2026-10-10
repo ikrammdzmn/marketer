@@ -9,13 +9,13 @@
 
 ## Files
 - `masterplan.md` — locked decisions + phases. `plan.md` — P0 checklist (tick per change).
-- `DEV_NOTES.md` — session handoff (vibe + bugs + lessons, read first). `feature.md` — non-technical user guide.
+- `DEV_NOTES.md` — session handoff (vibe + bugs + lessons, read first). `feature.md` — non-technical user guide. `DATA_FLOW.md` — zero-to-result data-flow runbook for all 8 Metric options (source → transform → table → route → UI → verify).
 - `CHANGELOG.md` — folder releases. `APP_CHECKLIST.md` — Business API (PENDING approval 2026-09-19, `TIKTOK GMV MAX`) + Shop Custom app (created, MY) paperwork tracker.
 - `migrations/001_core.sql, 002_acct.sql, 003_gmv.sql` (FROZEN, have bugs — see 004) + `004_fix_schemas.sql` (applied dev+prod: schema-qualified tables, `win` not `window`) + `005_online.sql` (ads-token store, account cache, daily rollup) + `006_status.sql` (campaign `status` + `raw`, applied prod+dev 01 Oct) + `007_shop_tokens.sql` (shop token store, applied dev+prod 03 Oct) + `008_shop_token_columns.sql` (cipher/expiry cols) + `009_hourly.sql` (per-campaign hour_slot TEXT PK, rewrite-on-revise) + `010_campaign_budget.sql` (`budget` col, owner ran 04 Oct; list-sync carries nulls — lazy info-fill populates) + `011_campaign_delivery.sql` (`delivery` col, owner ran 04 Oct; `formatDelivery` maps `CAMPAIGN_STATUS_*` enums → labels) + `012_ttam_presets.sql` (new `ttam` schema + `ttam.presets`: label/metrics/bands/guardrails/notes/active; seed `ttam-manual-theory-v1` active; applied dev+prod 06 Oct). Never edit applied files; next migration = 014+.
 - `013_access_allowlist.sql` (Google app email allowlist in `core.access_allowlist`; owner ran dev+prod 07 Oct). Never edit applied files; next migration = 015+.
 - `014_shop_orders_daily.sql` (shop-truth cols on `gmv.daily_shop_metrics`; owner runs dev+prod; all writers tolerate pre-014 DBs with ads-only fallback). Never edit applied files; next migration = 016+.
 - `015_shop_hourly_orders.sql` (`gmv.shop_hourly_orders`: shop/date/hour PK + shop_gmv/orders, rewrite-on-revise; owner runs dev+prod). Never edit applied files; next migration = 016+.
-- API reference: `skills/tiktok/SKILL.md` (repo-local skill — verified TikTok shapes only; load before API work).
+- API reference: `skills/tiktok-api/SKILL.md` (repo-local skill — verified TikTok shapes only; load before API work).
 - `016_creative_catalog.sql` (`creative` schema: `accounts` allowlist + `catalog_campaigns`/`catalog_products` friendly names, seeded from the local tool's JSON; owner runs dev+prod). Never edit applied files; next migration = 017+.
 - `017_creative_targets.sql` (`creative.targets` single row: top_n/min_impr/max_cpm, seeded 20/null/null; owner runs dev+prod). Never edit applied files; next migration = 018+.
 - `018_creative_daily.sql` (`creative.daily_rows`: per-day per-creative PRODUCT rows incl. identity snapshot + all green metrics, rewrite-on-revise; owner runs dev+prod). Never edit applied files; next migration = 019+.

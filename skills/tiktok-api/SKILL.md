@@ -1,5 +1,5 @@
 ---
-name: tiktok
+name: tiktok-api
 description: Verified TikTok API shapes for this repo (GMV Max reports, creative grain, identity, quirks). Load before any TikTok API work. Only verified shapes live here — guesses stay in probes.
 ---
 
