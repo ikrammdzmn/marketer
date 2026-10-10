@@ -8,6 +8,12 @@ Rule: whoever ships a folder release adds one line here the same session.
 
 - `gmvmax-auto`: account budget = ON-only sum + `partial` label (`dpl_5rKQ`); Shop API authorized + exchanged (local probe code 0; 24–27 Sep shop 163,540/988 vs ads 169,805/1,012 = -3.7%, manual-gap recheck parked); admin one-tap shop-token refresh `/api/shop-token` with epoch-expiry fix (`marketer-2uf7h9ja4`, signed-out 401; owner button test next)
   -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto`: creative module Phase A (probes 1–6 green, `018`, scoped himcoffee sync, managers modal) + repo-local skills shelf (8)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto`: sessions live-title + per-room grouping + display cleanup (`dpl_8oW49tw1`/`dpl_7nhrxi91`, PROMO OCTOBER 14:00 MYT ties Ads Manager) + budget `% used` color tiers with 90%+ pulse (`dpl_AWLvFgew`) — deployed, uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto`: hourly date-fix + shop multi-day (`014`, toggle/chart/refresh) + hourly rebuild (picker, range scorecard, silent sync) + Hourly shop metric (`015`, spend toggle, parity picker/scorecard) + GitHub hourly pinger + shared chart treatment with `order` z-fix (bars behind, ROAS front) — commits `d247e65`…`583e1cf`, pushed; owner deploy + `015` prod + cache refreshes pending
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
 
 ## 07 Oct 2026
 
