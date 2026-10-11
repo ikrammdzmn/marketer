@@ -6,6 +6,30 @@ DO NOT DELETE THIS PART
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
 
+## 11 Oct 2026 - rename fallout + F4 fix + tg delete-before-send (morning MYT)
+
+- Owner restructured local files (`EMAIL/EMAIL_NOTIFY.gs`, `tg_bot/TG_NOTIFY.gs`)
+  and renamed the cloud files to match. Fallout, in order: stale triggers fired
+  `Script function not found: runCheck` (triggers outlived the rename), then
+  `tab not found: [Affiliate Collection ]` (sheet typo), then `F4 unreadable
+  (Range not found)` — root cause: `TAB` had lost its trailing space but `F4_A1`
+  still carried it, so the tab lookup passed while the quoted A1 read missed.
+- Fixes (local, owner pastes to the bound project): `readF4(sh)` reads
+  `sh.getRange('F4')`, `TAB` aligned to `'Affiliate Collection'` in both files,
+  header comments updated. Verified: `node --check` clean x3, ASCII 0/0.
+- Live: `testNotify` sends P6 R0 ADS0, F4 warning gone (ADS0 real — sheet F4=0,
+  `=COUNTIF(H$8:H$48,"PENDING ADS RUN")` finds none). `testTelegram` HTTP 200
+  `ok:true message_id 547`. Same-bot verdict given: webhook never blocks sends,
+  only empties `getUpdates`/`logThreadId`.
+- New: Telegram delete-before-send on scheduled runs via `LAST_MSG_ID`
+  (fail-open; tests non-destructive; silent runs keep the old digest). Old code
+  parked at `tg_bot/TG_NOTIFY(without delete).gs` per owner.
+- Vibe: brisk debug-by-log session, owner live-tests fast and pastes back exact
+  log lines — keep replies short, diagnose from their paste, verify locally.
+- OPEN: in-sheet F2/F3/F4 still fixed `H$8:H$48` (rot risk when markers move
+  past row 48); pending-scope 2nd email still parked; triggers need one clean
+  reinstall after the rename.
+
 ## 27 Sep 2026 - closeout (night MYT)
 
 - Tail after the v1 commit (`40e4f7a`): tg_bot v2 (sender, mention, test

@@ -1,9 +1,10 @@
 # tg_bot - Telegram sender for aff-notify (group + topic)
 
-Sends the same digest as `code.gs` to a Telegram group topic. `code.gs`
-is untouched - this file reuses its globals (`findScopeEnd`, `dayKeys`,
-`parseSheetDate`, `dateLabel`, `readF4`), so paste it into the SAME Apps
-Script project.
+Sends the same digest as `../EMAIL/EMAIL_NOTIFY.gs` to a Telegram group
+topic. `EMAIL_NOTIFY.gs` is untouched - this file reuses its globals
+(`findScopeEnd`, `dayKeys`, `parseSheetDate`, `dateLabel`, `readF4`), so
+paste it into the SAME Apps Script project. Live file is `TG_NOTIFY.gs`
+(`TG_NOTIFY(without delete).gs` is a storage-only backup, never paste it).
 
 ## Setup (once)
 
@@ -23,6 +24,9 @@ Script project.
 - Same scope + rules as email (marker-derived rows, RUNNING priority /
   reminder, F4 ads queue, blank N skipped, block 3 excluded).
 - Silent when empty (scheduled runs); tests always send.
+- Scheduled runs delete the previous digest first (`LAST_MSG_ID` Script
+  Property, fail-open) so the topic keeps one live message; `testTelegram`
+  never deletes and never overwrites `LAST_MSG_ID`.
 - Every sent message starts with a megaphone mention of `MY_USER_ID`, so the
   ping fires even on quiet phones.
 - Classic `sendMessage` + HTML tier: bold headers, emoji banners, tappable

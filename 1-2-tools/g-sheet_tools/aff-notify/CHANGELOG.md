@@ -1,5 +1,24 @@
 # CHANGELOG.md - aff-notify
 
+## 2026-10-11 - v4: rename + F4 hardening + Telegram delete-before-send
+- Local layout renamed: `EMAIL/EMAIL_NOTIFY.gs` (was `code.gs`),
+  `tg_bot/TG_NOTIFY.gs` (was `tg_bot/telegram.gs`). Both paste into the SAME
+  bound Apps Script project; old code kept at
+  `tg_bot/TG_NOTIFY(without delete).gs` (storage only, never paste).
+- F4 read hardened: `readF4(sh)` reads `sh.getRange('F4')` off the opened
+  sheet instead of the quoted `'Affiliate Collection '!F4` A1 string, so tab
+  renames can't silently zero the ADS queue count. `TAB` aligned to
+  `'Affiliate Collection'` (no trailing space) in both files.
+- Telegram delete-before-send: scheduled `runTelegram` deletes `LAST_MSG_ID`
+  (Script Properties, fail-open) before sending and stores the new
+  `message_id`; `testTelegram` never deletes nor overwrites it; silent runs
+  return before delete so the last digest stays up.
+- Live-verified: `testNotify` sends P6 R0 ADS0 (F4 `Range not found` warning
+  gone); `testTelegram` returns HTTP 200 `ok:true` with `message_id`.
+- Same-bot verdict: gmvmax-auto webhook does NOT block aff-notify sends
+  (`sendMessage` unaffected); it only makes `getUpdates`/`logThreadId`
+  come back empty while the webhook is set.
+
 ## 2026-09-27 - v3: two-bucket priority (email + Telegram)
 - Priority split into Due-today / Overdue-oldest-first buckets (shared
   `splitBuckets` helper); dates live in bucket headers, rows slimmed to

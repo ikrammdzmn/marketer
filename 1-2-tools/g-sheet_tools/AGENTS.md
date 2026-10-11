@@ -7,9 +7,10 @@ no npm, no build). Each tool gets its own subfolder with `plan.md` +
 ## Files
 
 - `aff-notify/` - 4x-daily email digest for the Affiliate Collection sheet
-  (`code.gs`: RUNNING due/overdue priority, tomorrow reminder, PENDING ADS
+  (`EMAIL/EMAIL_NOTIFY.gs`: RUNNING due/overdue priority, tomorrow reminder, PENDING ADS
   RUN queue action; HTML mail + plain-text fallback) + `tg_bot/` Telegram
-  sender (group topic, full/condensed styles). See its `plan.md`.
+  sender (`TG_NOTIFY.gs`: group topic, full/condensed styles,
+  delete-before-send via `LAST_MSG_ID`). See its `plan.md`.
 - `aff-notify/ROW-COL-HIGHLIGHT/` - crosshair highlight helpers for the same
   tab: bound `code.gs` (marker-derived scope 9..2nd `end`, scope-only paint;
   own `DEV_NOTES.md` + `CHANGELOG.md`) + `crosshair.user.js` v1.1
