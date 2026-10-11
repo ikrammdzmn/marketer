@@ -32,6 +32,28 @@ export async function POST(request: Request) {
     const body = await request.json();
     const camps = Array.isArray(body.campaigns) ? body.campaigns : [];
     const prods = Array.isArray(body.products) ? body.products : [];
+    // Same guard as creative-accounts: duplicate ids would violate the PK
+    // mid-save (after the DELETE) — reject up front naming the culprit.
+    {
+      const seen = new Set<string>();
+      for (const c of camps) {
+        const id = String(c?.campaign_id ?? "");
+        if (seen.has(id)) {
+          return NextResponse.json({ error: `duplicate campaign_id: ${id}` }, { status: 400 });
+        }
+        seen.add(id);
+      }
+    }
+    {
+      const seen = new Set<string>();
+      for (const p of prods) {
+        const id = String(p?.product_id ?? "");
+        if (seen.has(id)) {
+          return NextResponse.json({ error: `duplicate product_id: ${id}` }, { status: 400 });
+        }
+        seen.add(id);
+      }
+    }
     await query("BEGIN");
     try {
       await query("DELETE FROM creative.catalog_campaigns");

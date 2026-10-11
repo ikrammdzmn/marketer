@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import { toast } from "../toast";
 
 type AllowlistedEmail = {
   email: string;
@@ -45,10 +46,14 @@ export default function AccessPage() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Could not add email");
       setEmail("");
-      setMessage(`${body.email} can now sign in.`);
+      const okMsg = `${body.email} can now sign in.`;
+      setMessage(okMsg);
+      toast(okMsg);
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not add email");
+      const m = error instanceof Error ? error.message : "Could not add email";
+      setMessage(m);
+      toast(m, "err");
     } finally {
       setBusy(false);
     }
@@ -66,10 +71,14 @@ export default function AccessPage() {
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Could not remove email");
-      setMessage(`${target} was removed. Their next data request will be denied.`);
+      const okMsg = `${target} was removed. Their next data request will be denied.`;
+      setMessage(okMsg);
+      toast(okMsg);
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not remove email");
+      const m = error instanceof Error ? error.message : "Could not remove email";
+      setMessage(m);
+      toast(m, "err");
     } finally {
       setBusy(false);
     }

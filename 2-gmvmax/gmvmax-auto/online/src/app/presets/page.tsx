@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SCORE_NAMES, SCORE_EXPRESSIONS, EXPRESSION_KEYS } from "@/lib/ttam-scores";
+import { toast } from "../toast";
 
 const inputCls =
   "bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-zinc-100";
@@ -61,7 +62,9 @@ export default function PresetsPage() {
       });
       const body = await r.json();
       if (!r.ok) throw new Error(body.error ?? "preset action failed");
-      setMsg(`${action} ok: ${body.preset?.preset_key ?? ""}`);
+      const okMsg = `${action} ok: ${body.preset?.preset_key ?? ""}`;
+      setMsg(okMsg);
+      toast(okMsg);
       if (action === "activate" && presetKey) {
         const k = presetKey;
         setPresetsList((prev) => (prev ?? []).map((p: any) => ({ ...p, active: p.preset_key === k })));
@@ -72,7 +75,9 @@ export default function PresetsPage() {
       }
       await loadPresetList(action === "duplicate" ? body.preset?.preset_key : action === "delete" ? undefined : presetKey ?? undefined);
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "preset action failed");
+      const m = e instanceof Error ? e.message : "preset action failed";
+      setMsg(m);
+      toast(m, "err");
     } finally {
       setSaving(false);
     }

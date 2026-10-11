@@ -91,34 +91,44 @@ async function pullGrain(
 ): Promise<{ sums: Map<string, Record<string, number>>; full: boolean }> {
   const run = async (metrics: string[]) => {
     const sums = new Map<string, Record<string, number>>();
-    const params = new URLSearchParams({
-      advertiser_id: advertiserId,
-      report_type: "BASIC",
-      data_level: dataLevel,
-      dimensions: JSON.stringify(dims),
-      metrics: JSON.stringify(metrics),
-      start_date: startDate,
-      end_date: endDate,
-      page: "1",
-      page_size: "1000",
-    });
-    const res = await fetch(
-      `https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?${params.toString()}`,
-      { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
-    );
-    const body = await res.json();
-    if (body.code !== 0) throw new Error(`integrated/get code=${body.code}: ${body.message ?? ""}`);
-    for (const item of body.data?.list ?? []) {
-      const id = keep(item.dimensions ?? {});
-      if (!id) continue;
-      let row = sums.get(id);
-      if (!row) {
-        row = emptySums();
-        sums.set(id, row);
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const params = new URLSearchParams({
+        advertiser_id: advertiserId,
+        report_type: "BASIC",
+        data_level: dataLevel,
+        dimensions: JSON.stringify(dims),
+        metrics: JSON.stringify(metrics),
+        start_date: startDate,
+        end_date: endDate,
+        page: String(page),
+        page_size: "1000",
+      });
+      const res = await fetch(
+        `https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?${params.toString()}`,
+        { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
+      );
+      const body = await res.json();
+      if (body.code !== 0) throw new Error(`integrated/get code=${body.code}: ${body.message ?? ""}`);
+      for (const item of body.data?.list ?? []) {
+        const id = keep(item.dimensions ?? {});
+        if (!id) continue;
+        let row = sums.get(id);
+        if (!row) {
+          row = emptySums();
+          sums.set(id, row);
+        }
+        for (const m of metrics) {
+          const v = parseFloat(item.metrics?.[m] ?? 0);
+          if (Number.isFinite(v)) row[m] = (row[m] ?? 0) + v;
+        }
       }
-      for (const m of metrics) {
-        const v = parseFloat(item.metrics?.[m] ?? 0);
-        if (Number.isFinite(v)) row[m] = (row[m] ?? 0) + v;
+      const total = body.data?.page_info?.total_page ?? 1;
+      if (page >= total) hasMore = false;
+      else {
+        page++;
+        await sleep(300);
       }
     }
     return sums;
