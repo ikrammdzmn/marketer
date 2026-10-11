@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Agenda from "./agenda";
+import Affiliates from "./affiliates";
 
 // Index landing — intentionally empty for now. The boards live under
 // /gmv-max (tabs), /presets, /creative, /accounts, /catalog.
@@ -18,6 +19,9 @@ export default function DashboardIndex() {
       <p className="mt-2 text-sm text-zinc-400">Landing page — empty for now. Pick a board to open it.</p>
       <div className="mt-6">
         <Agenda />
+      </div>
+      <div className="mt-3">
+        <Affiliates />
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {cards.map((c) => (

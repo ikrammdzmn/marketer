@@ -13,6 +13,10 @@ const CAL_ID =
 const ICS_URL = `https://calendar.google.com/calendar/ical/${encodeURIComponent(CAL_ID)}/public/basic.ics`;
 const CACHE_MS = 15 * 60 * 1000;
 const WINDOW_MS = 7 * 86400000;
+// Look back so already-running multi-day spans (started before now, ending
+// inside the window) still show. Filtered to overlap below.
+const LOOKBACK_MS = 7 * 86400000;
+const MAX_EVENTS = 40;
 
 export interface CalEvent {
   id: string;
@@ -21,6 +25,16 @@ export interface CalEvent {
   end: string;
   allDay: boolean;
   link: string | null;
+  promo: boolean;
+}
+
+// #event tag (case-insensitive): marks sale/campaign periods. Stripped from
+// the display title; surfaced as promo for banner styling. Look-only: span
+// behavior is identical for tagged and untagged events.
+function splitPromo(raw: string): { title: string; promo: boolean } {
+  const promo = /#event\b/i.test(raw);
+  const title = raw.replace(/\s*#event\b\s*/gi, " ").replace(/\s+/g, " ").trim() || "(no title)";
+  return { title, promo };
 }
 
 function saKey(): { email: string; key: string } | null {
@@ -75,15 +89,28 @@ async function saAccess(force = false): Promise<string | null> {
   }
 }
 
+// Edge parser shared by the overlap filter. Date-only all-day edges are MYT
+// midnight; the all-day end is exclusive (Google date, not datetime).
+function edgeMs(s: string, allDay: boolean, isEnd: boolean): number {
+  if (allDay) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    if (m) return Date.UTC(+m[1], +m[2] - 1, +m[3]) - 8 * 3600 * 1000;
+  }
+  const t = Date.parse(s);
+  if (!Number.isNaN(t)) return t;
+  return isEnd ? Infinity : -Infinity;
+}
+
 async function viaApi(): Promise<CalEvent[] | null> {
   let token = await saAccess();
   if (!token) return null;
+  const now = Date.now();
   const params = new URLSearchParams({
-    timeMin: new Date().toISOString(),
-    timeMax: new Date(Date.now() + WINDOW_MS).toISOString(),
+    timeMin: new Date(now - LOOKBACK_MS).toISOString(),
+    timeMax: new Date(now + WINDOW_MS).toISOString(),
     singleEvents: "true",
     orderBy: "startTime",
-    maxResults: "40",
+    maxResults: "100",
   });
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CAL_ID)}/events?${params.toString()}`;
   let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -95,19 +122,27 @@ async function viaApi(): Promise<CalEvent[] | null> {
     if (!res.ok) { lastApiStatus = `HTTP ${res.status}`; return null; }
   }
   const body = await res.json();
-  return ((body.items ?? []) as any[])
+  const winEnd = now + WINDOW_MS;
+  const events = ((body.items ?? []) as any[])
     .filter((e) => e?.status !== "cancelled")
     .map((e) => {
       const allDay = !!e?.start?.date;
+      const { title, promo } = splitPromo(String(e?.summary ?? "(no title)"));
       return {
         id: String(e?.id ?? Math.random()),
-        title: String(e?.summary ?? "(no title)"),
+        title,
         start: String(e?.start?.dateTime ?? e?.start?.date ?? ""),
         end: String(e?.end?.dateTime ?? e?.end?.date ?? ""),
         allDay,
         link: typeof e?.htmlLink === "string" ? e.htmlLink : null,
+        promo,
       };
-    });
+    })
+    // Keep only events overlapping [now, winEnd]: catches spans that started
+    // before now (e.g. yesterday) and are still running. Drops already-ended.
+    .filter((e) => edgeMs(e.start, e.allDay, false) <= winEnd && edgeMs(e.end || e.start, e.allDay, true) >= now);
+  events.sort((a, b) => edgeMs(a.start, a.allDay, false) - edgeMs(b.start, b.allDay, false));
+  return events.slice(0, MAX_EVENTS);
 }
 
 let icsCache: { at: number; text: string } | null = null;
@@ -135,6 +170,7 @@ async function viaIcs(): Promise<CalEvent[] | null> {
       events.push({
         id: `${e.uid}@${occ.start}`,
         title: e.title,
+        promo: e.promo,
         start: new Date(occ.start).toISOString(),
         end: new Date(occ.end).toISOString(),
         allDay: e.allDay,
@@ -143,7 +179,7 @@ async function viaIcs(): Promise<CalEvent[] | null> {
     }
   }
   events.sort((a, b) => a.start.localeCompare(b.start));
-  return events.slice(0, 40);
+  return events.slice(0, MAX_EVENTS);
 }
 
 export async function getUpcomingEvents(): Promise<
@@ -229,7 +265,7 @@ function parseDates(val: string, isDate: boolean): number | null {
   return Date.UTC(y, mo, d, hh, mm, ss) - 8 * 3600 * 1000; // TZID wall time treated as MYT
 }
 
-interface Raw { uid: string; title: string; start: number; end: number; allDay: boolean; link: string | null; rrule: string | null }
+interface Raw { uid: string; title: string; promo: boolean; start: number; end: number; allDay: boolean; link: string | null; rrule: string | null }
 
 function prop(body: string, key: string): { params: string; val: string } | null {
   for (const line of body.split("\n")) {
@@ -265,9 +301,10 @@ function parseIcs(text: string): Raw[] {
     const status = prop(body, "STATUS");
     if (status && status.val.toUpperCase() === "CANCELLED") continue;
     const rr = prop(body, "RRULE");
+    const { title, promo } = splitPromo((sum?.val ?? "(no title)").replace(/\\(.)/g, "$1"));
     out.push({
       uid: uid?.val ?? `${start}-${sum?.val ?? ""}`,
-      title: (sum?.val ?? "(no title)").replace(/\\(.)/g, "$1"),
+      title, promo,
       start, end: end ?? start, allDay,
       link: url?.val ?? null,
       rrule: rr?.val ?? null,

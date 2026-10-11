@@ -2,6 +2,13 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 11 Oct 2026 — Upcoming multi-day + glance hierarchy + affiliates widget + #event tag (8 deploys through dpl_AcvBEj5syHQQ7PM8X2u1e2XtiRpN, all uncommitted)
+
+- Multi-day agenda: calendar query looks back 7d + overlap filter (running spans that started yesterday show; ended ones don't); agenda repeats spans per day (`Day 2/4 · continues`, timed `until HH:MM`, midnight-end stays 1 row). All-day exclusive-end normalized once server-side.
+- Glance hierarchy: Today hero (emerald wash + bar) > Tomorrow full > Later-this-week compact with inline dividers; Day pills in a fixed-width slot (titles align); `· ends` pill muted zinc (green = multi-day dot + Today only).
+- Affiliates card on index (under Upcoming): due-today/overdue hero + tomorrow + pending-ads-run queue, read live from the Affiliate Collection sheet via service-account (`AFFILIATE_SHEET_ID`, Sheets API, robot = Viewer); tab self-resolves on trimmed name; 15-min cache; hint panel when unconnected.
+- `#event` tag: case-insensitive marker in any calendar title (stripped on display) → amber dot + EVENT chip. Look-only: spans behave the same tagged or not.
+
 ## 11 Oct 2026 — dashboard redesign arc (sidebar shell + tabs + toasts + pages + calendar; committed 0beb51e + 61e397e, deployed dpl_GCwws828WtkGs1Vq1d9uMReVTBkc, 022/024 applied, webhook re-set + /start green)
 
 - TTAM creative 0-spend bug: `pullGrain()` (`ttam.ts`) fetched page 1 × 1000 only — ad-grain spend rows sat past page 1 while adgroup grain fit. Now loops `total_page` (300ms gaps, client-side ID filter kept per B37). Owner verify pending (G1 04–09 Oct creatives should carry spend).

@@ -5,7 +5,8 @@
 
 ## Online version (Vercel, `marketer-hw.vercel.app`, Google sign-in)
 
-- Shop / Metric / Date / Fetch Data: Total (LIVE + Product split in two tables), LIVE, Product, TTAM (manual spend only), ROAS (with SST+WHT actual), **Hourly** (per-campaign hour tables + trend graphs), Shop GMV (real shop orders now that the shop is authorized; compares against ads-attributed GMV with TRUE ROAS).
+- The left sidebar is the whole navigation: Dashboard (home), your shop, TikTok Ads views (Total, LIVE, Product, TTAM, ROAS, Hourly Ads), TikTok Shops views (Hourly Shop, Shop GMV), and a collapsible Settings at the bottom (Presets, Creative, Accounts, Catalog, Calendar, Access). Every tab is a shareable link — opening it loads that exact view, and the browser back button works between tabs. The sidebar folds to icons on desktop and becomes a slide-in menu on phones.
+- The Dashboard home page shows cards to every board plus your next 7 days from the shared Google Calendar (Upcoming agenda).
 - Each campaign row shows a green ON / grey OFF pill (from TikTok) plus delivery state: 🟢 Active when a live room is ongoing right now (checked automatically after Fetch, top spenders first) or TikTok reports Active; other flags show grey on rows that spent, ⛔ only when nothing spent — spend proves delivery. Account rows roll up the same way: ON if anything inside is ON, 🟢 Active if any room inside is ongoing now.
 - Sessions button sits on each LIVE campaign. Tap it and that campaign's rooms open **directly underneath it** (tap again to hide, one row per room with spend/sales summed across the days you picked, biggest sales first). Each room shows its live title (e.g. PROMO OCTOBER) plus its current 🟢 ONGOING / ⚪ END pill, with `started … MYT · duration` underneath. Rooms TikTok never titled just show `room {id}` — that's TikTok's data, not a bug. Other campaigns stay untouched.
 - Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then resync.
@@ -38,7 +39,14 @@
 
 - No more Excel exports: per-video rows pulled straight from TikTok (PRODUCT campaigns) — title, account, status, cost, orders, sales, ROI, views and view-rate bars. Pick a campaign (himcoffee first), pick dates, **Sync from TikTok**, then read.
 - Four columns can't come from TikTok (posted time, creative source, second-level exploration verdicts) — those are recomputed or labelled, never faked.
-- **Manage** popup holds your TikTok accounts (grouped: Internal / Top Affiliate / Inactive), friendly campaign/product names, and SOP targets. Tables first, Edit only when you tap it; Save keeps everything.
+- **Accounts page** holds your TikTok accounts (grouped: Internal / Top Affiliate / Inactive) with username, Account ID, Ads Identity ID and notes, plus SOP targets. Tables first, Edit only when you tap it; Save keeps everything. **Catalog page** holds friendly campaign/product names the same way.
+- Every save anywhere in the system pops a small confirmation (green = saved, red = what went wrong) — you never have to guess whether a press worked.
+
+## Calendar agenda (Dashboard home)
+
+- The home page shows your next 7 days from the team's shared Google Calendar (times in MYT, recurring events included). Multi-day events repeat on every day they touch (`Day 2/4`), so a sale never looks finished mid-way. **Today** is highlighted green, tomorrow full-size, later days compact. Write **`#event`** anywhere in a title (any capitals) to mark a sale — it shows with an amber marker and the tag hides itself.
+- **Affiliates card** (under Upcoming): same three watches as the 4x-daily sheet robot — videos to review now (today + overdue, oldest first), due tomorrow, and how many wait for ads run. `All clear` when nothing needs you. Reads your Affiliate Collection sheet live; needs the sheet shared with the robot email once.
+- **Calendar settings page**: hide events by keyword — one per line (`Daily To Do`, `#lowpriority`), matched inside titles regardless of capitals. Plus a health panel in plain words (key present, table ready, event count, last error) so an empty agenda tells you exactly which switch to flip.
 
 ## Telegram reports (group topic, every hour)
 

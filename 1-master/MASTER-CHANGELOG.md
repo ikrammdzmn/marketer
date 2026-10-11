@@ -4,6 +4,13 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 11 Oct 2026
+
+- `gmvmax-auto` Upcoming multi-day + glance hierarchy (Today hero > Tomorrow > Later dividers, aligned Day pills) + Affiliates digest card (sheet-backed buckets, self-healing tab) + `#event` calendar tag (amber highlight, look-only) — deployed through `dpl_AcvBEj5syHQQ7PM8X2u1e2XtiRpN`, all uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto` dashboard redesign arc: TTAM creative pagination fix + icon sidebar shell (top bar, collapsible Settings, mobile drawer, sticky rail) + URL tabs with auto-load + toasts on all saves + dupe-key guards + `/accounts` + `/catalog` + Ads Identity ID (`022`, owner-run pending) + shared-calendar agenda via service account + `/calendar-settings` (`024`, owner-run pending) — deployed through `dpl_73oDR1L7NPbx29q5sPw1X4BGtpn5`, all uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
 ## 10 Oct 2026
 
 - `gmvmax-auto` TTAM presets arc: 019 BASIC trial + activate-pill fix (`ab3f8da`, `dpl_HW1mtSDhZbJmRxYc7W5ifD42TS75`); score units + formula visibility (`e58882e`, `dpl_3FM4k4Hzbre6M8cS3Jv971v8X2Cb`); 020 OMTM-original + 021 OMTM-v3-RM trial migrations (node-verified, owner-run pending); proxy-gap measured (~14% hot, CES squares it); rule = online radar, TikTok trigger
