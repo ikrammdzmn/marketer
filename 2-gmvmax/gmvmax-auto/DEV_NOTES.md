@@ -1,12 +1,34 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 34 first (current facts), then Checkpoints 33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 35 first (current facts), then Checkpoints 34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 35 — 11 Oct 2026 (dashboard redesign arc: sidebar shell + tabs + toasts + pages + calendar; COMMITTED 0beb51e + 61e397e, deployed dpl_GCwws828WtkGs1Vq1d9uMReVTBkc, 022/024 applied, webhook re-set + /start green)
+
+**To next-you: get back in this headspace instantly.** Owner drove the whole day in short bursts, screenshots over words: creative-0-spend report → "tabs like HIM Tracking" → plain-words explanations (asked twice, no jargon) → edge-to-edge sidebar → auto-load → 15s-to-5s → per-tab URLs → hide unused shops → nav-in-sidebar → all-pages sidebar → top bar + collapsible icons → dupe-key crash + global toasts → accounts/catalog split + Ads Identity ID → twin-row edit bug → "check another bug" audit → sticky sidebar → dashboard-as-index → Settings collapse → shared-calendar embed → service-account robot (they pasted the key JSON with the private key blanked — confirm redacted-for-chat vs broken download) → 403 = disabled Calendar API → exclude keywords → calendar settings page → "anything left?" → wrap up. Sparring stayed ON (talked them out of backend shop deletion; into DB-first auto-load). Mood: pleased, brisk, precise all day.
+
+**What shipped (tsc 0 every step, deploys green, ALL UNCOMMITTED).**
+- TTAM creative fix (`ttam.ts`): `pullGrain` loops `total_page` now (was page-1-only truncation). Owner verify pending (G1 04–09 Oct should carry spend).
+- Shell (`Shell.tsx` NEW, `layout.tsx`, `logout-action.ts`): top bar (title/PROD/lag/email/sign-out) + icon sidebar + bottom-pinned collapsible Settings + mobile drawer + sticky independent scroll. Board at `/gmv-max`, empty index `/` (cards + agenda). Tabs are `?shop=&metric=` links with auto-load + back-button; cooldown 5s; menu trimmed to shop 1 (backend map kept).
+- Toasts (`toast.ts` bus + Shell host, 4s ok/err) on every save: creative/presets/access + budget/token/hourly/shop refreshes.
+- Dupe guards on accounts/catalog POSTs (400 names culprit, pre-DELETE); targets/presets already guarded.
+- `/accounts` + `/catalog` pages (Manage modal deleted from `/creative`); 022 identity column (API pre-022 tolerant); twin-row key bugs fixed (ref uids, stable catalog keys).
+- Calendar: service-account reader + iCal fallback (`lib/calendar.ts`, key in `GOOGLE_CALENDAR_SA_JSON`, calendar stays private); per-user OAuth attempt fully reverted, 023 skipped. `/calendar-settings` (excludes + health) + 024. Owner runs 022/024, enables Calendar API, keeps robot Viewer.
+
+**Bugs + lessons (don't repeat).**
+- B79 single-page report pulls truncate silently (spend exists, page 1 lacks it). Lesson: every report pull loops `total_page`, no exceptions.
+- B80 `let` counters in render reset every render (twin rows). Lesson: row identity lives in refs, never locals.
+- B81 index `key={i}` on editable rows (typed text jumps on delete). Lesson: stable keys wherever inputs exist.
+- B82 DELETE-then-INSERT savers + duplicate payload = wiped table + 500. Lesson: validate uniqueness BEFORE the DELETE and name the culprit.
+- B83 public iCal 404s on group calendars without full-public sharing (curl proved it). Lesson: verify feeds with curl before promising panels; service accounts dodge the class.
+- PS standbys: no unix pipes in shell tool; deploy from repo root; `Move-Item` needs the dest dir first; `git status` never stages g-sheet_tools churn (owner-side, leave alone).
+
+**Open.** 022/024 applied dev+prod 11 Oct; online/ committed `0beb51e`, migrations `61e397e`, pushed; deployed `dpl_GCwws828WtkGs1Vq1d9uMReVTBkc` (build lists /accounts /catalog /gmv-max /calendar-settings + /api/calendar-*) after a false alarm (prod showed old UI — pushes don't auto-deploy here, CLI ritual did it; also corrected self: signed-out /api/* 401s in middleware before routing, so 401 on a new route proves nothing). Owner re-set webhook, /start green. TTAM creative-spend eyeball + manual-gap recheck parked to next session. Ritual done, stop.
 
 ## Checkpoint 34 — 10 Oct 2026 (TTAM presets arc: BASIC + units + OMTM original/v3 + proxy-gap proof; 2 deploys, ritual pending)
 

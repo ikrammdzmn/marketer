@@ -2,6 +2,18 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 11 Oct 2026 — dashboard redesign arc (sidebar shell + tabs + toasts + pages + calendar; committed 0beb51e + 61e397e, deployed dpl_GCwws828WtkGs1Vq1d9uMReVTBkc, 022/024 applied, webhook re-set + /start green)
+
+- TTAM creative 0-spend bug: `pullGrain()` (`ttam.ts`) fetched page 1 × 1000 only — ad-grain spend rows sat past page 1 while adgroup grain fit. Now loops `total_page` (300ms gaps, client-side ID filter kept per B37). Owner verify pending (G1 04–09 Oct creatives should carry spend).
+- Sidebar shell (`Shell.tsx` NEW + `layout.tsx` rewrite + `logout-action.ts`): top bar (title + PROD + lag note + email/sign-out) + icon sidebar (Menu/Shop/TikTok Ads/TikTok Shops + bottom-pinned collapsible Settings) + collapse-to-icons (persisted) + mobile drawer + sticky rail with own scroll. No top nav. All pages share it.
+- Tabs replace dropdowns: `?shop=&metric=` links, auto-load on open/click/back-button, 5s Fetch cooldown (`Wait 5s`), in-flight guard. Other shops removed from menu (backend map kept; `?shop=2` falls back to 1).
+- Index `/` is an empty landing (cards + agenda); board moved to `/gmv-max` (old `/?shop=&metric=` bookmarks need the new prefix).
+- Toasts everywhere: `toast.ts` bus + Shell host (bottom-right, 4s, ok/err) wired to creative/presets/access saves + budget/token/hourly/shop refreshes.
+- Dupe-key fix: `creative-accounts` + `creative-catalog` POSTs reject duplicate names/ids with 400 naming the culprit before DELETE (was 500 `accounts_pkey` mid-save). Targets/presets already guarded.
+- `/accounts` + `/catalog` pages (moved out of the creative Manage modal, modal deleted); `022_creative_identity.sql` (NEW, owner runs dev+prod) adds `identity_id` with pre-022 API tolerance. React twin-row bugs fixed (persistent ref uids on accounts, stable keys on catalog).
+- Calendar agenda: shared public calendar via service-account API read (`lib/calendar.ts`, key in `GOOGLE_CALENDAR_SA_JSON`, calendar stays private) with public-iCal fallback; per-user OAuth attempt reverted (no consent screens, 023 skipped). `/calendar-settings` page (exclude keywords + health panel) + `024_calendar_settings.sql` (NEW, owner runs dev+prod). Deploys through `dpl_73oDR1L7NPbx29q5sPw1X4BGtpn5`; smoke `/` 307, data APIs 401, health 200 throughout.
+- Owner still to verify: TTAM creative spend (G1 04–09 Oct). All uncommitted.
+
 ## 10 Oct 2026 — TTAM presets arc (2 deploys; 020/021 owner-run pending)
 
 - 019 BASIC trial preset (IMP k1000/s5000 + CPM invert k30/s15, null-safe) + Activate instant-pill + no-store fix (`ab3f8da`, `dpl_HW1mtSDhZbJmRxYc7W5ifD42TS75`, smoke 307/401/200).
