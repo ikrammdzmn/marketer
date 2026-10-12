@@ -178,6 +178,15 @@ export default function Shell({
             <span className={labelCls}>{m.name}</span>
           </Link>
         ))}
+        <Link
+          href="/shop-live"
+          title="Shop Live"
+          onClick={() => setOpen(false)}
+          className={itemCls(pathname === "/shop-live")}
+        >
+          <I d={P.live} />
+          <span className={labelCls}>Shop Live</span>
+        </Link>
       </div>
       <div className="mt-auto pt-4">
         <button

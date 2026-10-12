@@ -1,12 +1,35 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 35 first (current facts), then Checkpoints 34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 37 first (current facts), then Checkpoints 36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 37 — 12 Oct 2026 (calendar z-fix + Shop Live module: dual-key auth, list/minute/core-stats probes, signer bug; ALL DEPLOYED, ALL UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner drove with screenshots and one-line verdicts all day: clipped calendar → "ok" → "too far from label" → mobile single-month question → "ok go" → range-count + Last-3-days ask → plan-mode detour (they put me in Plan twice, out twice) → LIVE-dashboard dream (Image 2) → metric wishlist → "login by account" → partner-doc hunt (they pasted MDs like a champ: minute, then list) → "new app?" → category screenshots → "full access?" → write-later → redirect-URL "this?" → "why localhost?" → "save auth code in system?" → multi-shop share question → "use this callback" → admin-only confusion (seller Google vs personal Gmail can't share a profile) → plan-A-local-script → service_id saga (key form 404s, numeric ID works — evidence beat my claim) → cipher fetch (I ran it, lengths-only) → 105005→app-On→env-missing→admin-only→draft→publish→probe-green → 28001006 (too-new room) → list-doc → MARKETING-green/AFFILIATE-28001022 → toolkit install detour (their idea, paid off via bundled OAS: 202309 room family found) → core-stats 36009004 (app_key) → 36009005 (user-type wall) → "wrap up". Sparring held where it mattered (talked them out of generic "full access" scopes, behavior-gating, third-app-before-checking-RoaS). Mood: long day, high trust, they execute portal steps fast when given exact clicks.
+
+**What shipped (py_compile + tsc 0 every step, prod deploys green, ALL UNCOMMITTED).**
+- Calendar (`DateRangePicker.tsx`, `gmv-max/page.tsx`): overlay `z-20`→`z-50` over Shell `z-30`; anchored popover under Range (button-rect + clamp, fixed-root to dodge the `z-10` header trap); mobile single-month (`right` hidden), wrapping preset chips; Last 3 days preset; footer live `from – to · N days` + hover preview.
+- Shop Live module (`/shop-live` + sidebar entry, `lib/shop-live.ts` + `shop-analytics-credentials.ts`, routes `probe/overview/sessions/core-stats`, `dpl_2cG3Abz` latest): dual-key model (analytics keys first, legacy fallback); server auth `start` (admin, signed-state cookie, 302) + `callback` (exchange, cipher via Authorization Shops, per-app upsert, HTML result); `shop_auth.py --app analytics|orders` + `SHOP_*_SERVICE_ID` override (numeric ID works, key 404s — B88); `025_shop_analytics_tokens.sql` (NEW, owner-run status: confirm dev+prod); local cipher fetch script (temp, deleted after).
+- Probes (all read-only): minute green (MARKETING, full coverage incl. tap~/derived CTOR/AOV/GMV-h); list green after doc-exact query set (B89) — MARKETING + AFFILIATE metadata; affiliate minute `28001022` denied by design; `202309/core-stats` answers `36009005 user-type` on seller tokens (creator door identified, grant pending).
+- Toolkit: `@tts-open-toolkit/cli` installed by owner + 7 cc skills; bundled OAS mined for the 202309 family (no code dependency, reference only).
+- Deploys this session (prod aliased each): picker z-fix → anchored+Last3 → shop-live new → auth routes → service_id → sessions picker → calendar-on-shoplive → list-path → enum → sign-params → signer-fix → core-stats → app_key-fix. Last: `dpl_2cG3Abz7riTJPy4expFMceaysfog`.
+
+**Bugs + lessons (sequence continues B86+).**
+- B86 picker under header: overlay `z-20` vs Shell `z-30`. Lesson: fixed overlays default above the tallest chrome (`z-50`); never nest absolute panels inside low-z sticky parents (stacking-context trap).
+- B87 `tiktok-shop` `parseQueryString` splits on EVERY `=` → base64 `page_token` (`..MQ==`) truncated in signature, full token sent → page-2+ always 106001. Lesson: single-page endpoints mask signer bugs; multi-page affiliate lists exposed it. Local `signShopUrl` splits first-`=` only (byte-identical otherwise). Same latent bug in `shop-orders.ts` — do not "fix" blind while its path works.
+- B88 `service_id` shape is per-app: MARKETER HW authorizes by numeric app ID, key form 404s. Lesson: evidence (working callback URL) beats doc-pattern claims; support both via `*_SERVICE_ID` override, default key.
+- B89 list signing = doc-exact query set only; `access_token`/`shop_id`/`version` travel outside signing — every extra in-query breaks it (all 4 variants died identically). Lesson: when N variants fail identically, stop varying and read the Query Header table.
+- B90 `core-stats` needs `app_key` in-query despite OAS silence (36009004 named it). Lesson: OAS omits signing params; error codes name the missing piece — read them literally.
+- Creator/MARKETING vs AFFILIATE walls are TikTok design (28001022/36009005), never code bugs. Lesson: probe MATRIX (affiliate × marketing × control) before building; Testing Tool payload diff (queries node) is the ground truth for param sets.
+
+**Open (owner vs next-build).**
+- Owner: confirm 025 dev+prod; retest core-stats pair post-app_key-fix (no reply yet); affiliate detail waits on creator-grant doc (alliance URL/exchange/response/scopes — owner couldn't find it, parked); AFFILIATE list retest post-signer-fix (probably green, unconfirmed); commit/push everything (explicitly never done unasked).
+- Next-build: creator table (026-style, open_id-keyed) + alliance callback + core-stats-under-creator IF grant doc lands; minute endpoint possibly unnecessary (list already returns tap/avg-watch/GMV-h exact); Shop GMV-style cache table for live minutes only after shape need proven; `/shop-live` KPI enrichment from list blocks.
 
 ## Checkpoint 36 — 11 Oct 2026 (Upcoming multi-day + glance hierarchy + affiliates widget + #event tag; 8 deploys, ALL UNCOMMITTED)
 

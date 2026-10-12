@@ -4,6 +4,10 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 12 Oct 2026
+
+- `gmvmax-auto` calendar fixes (z-50 overlay, anchored popover, mobile single-month, Last 3 days, live day-count) + Shop Live module (`/shop-live`: dual-key analytics app authorized, server auth start/callback, list/minute/core-stats probes; MARKETING green, AFFILIATE metadata-only by TikTok design, creator grant parked; `025` owner-run pending; signer page_token fix) — deployed through `dpl_2cG3Abz7riTJPy4expFMceaysfog`, all uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
 ## 11 Oct 2026
 
 - `gmvmax-auto` Upcoming multi-day + glance hierarchy (Today hero > Tomorrow > Later dividers, aligned Day pills) + Affiliates digest card (sheet-backed buckets, self-healing tab) + `#event` calendar tag (amber highlight, look-only) — deployed through `dpl_AcvBEj5syHQQ7PM8X2u1e2XtiRpN`, all uncommitted

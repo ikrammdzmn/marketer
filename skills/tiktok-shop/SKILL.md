@@ -24,6 +24,18 @@ absolute epoch** — normalize epoch-vs-duration in `shopTokenExpiryMs()`
 or auto-refresh never fires. Access life ~7 days. Shop GMV card shows
 `valid until` + Refresh button (admin only).
 
+## Second app (Analytics & Reporting, Oct 2026)
+
+Dual-key model: orders keep `SHOP_APP_KEY/SECRET` + `credentials.shop_tokens`
+(007/008); analytics uses `SHOP_ANALYTICS_APP_KEY/SECRET` +
+`credentials.shop_analytics_tokens` (025, writers tolerate pre-025).
+`service_id` shape is per-app: MARKETER HW authorizes by numeric app ID,
+key form 404s — support both via `SHOP_*_SERVICE_ID` override, default key.
+Cipher is shop-level (identical across apps for one shop); tokens differ.
+Server auth: `/api/shop-auth/start` (admin, signed-state cookie, 302) +
+`/callback` (exchange, cipher via Authorization Shops, per-app upsert).
+Local twin: `shop_auth.py --app orders|analytics` (no Google session needed).
+
 ## Orders sync (`orders/search`)
 
 Day-pull per date, bucket on MYT `create_time` (UTC+8). **Exclude

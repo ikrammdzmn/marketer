@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // Date-range popup ported from the creative-analysis v51 calendar pattern:
 // preset rail + two-month grid + two-click pick with hover preview.
@@ -41,6 +41,7 @@ function isoMonth(iso: string, delta = 0): string {
 const PRESETS = [
   { id: "today", label: "Today" },
   { id: "yesterday", label: "Yesterday" },
+  { id: "last3", label: "Last 3 days", days: 3 },
   { id: "last7", label: "Last 7 days", days: 7 },
   { id: "last14", label: "Last 14 days", days: 14 },
   { id: "last30", label: "Last 30 days", days: 30 },
@@ -50,11 +51,12 @@ const MAX_DAYS = 31;
 const MIN_MONTH = "2022-01";
 
 export default function DateRangePicker({
-  from, to, onApply, onClose,
+  from, to, onApply, onClose, pos,
 }: {
   from: string; to: string;
   onApply: (from: string, to: string) => void;
   onClose: () => void;
+  pos?: { top: number; left: number } | null;
 }) {
   const today = mytToday();
   const maxMonth = isoMonth(today);
@@ -69,6 +71,22 @@ export default function DateRangePicker({
   const right = isoMonth(left, 1);
   const canPrev = left > MIN_MONTH;
   const canNext = right < maxMonth;
+
+  // Esc closes. Panel stays fixed so page scroll doesn't detach it.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  // Desktop: pin under the Range button, clamped off the right edge.
+  // Mobile: full-width sheet (left/right 8px) so the single month fits.
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const panelStyle: React.CSSProperties = pos && !isMobile
+    ? { top: Math.min(pos.top, window.innerHeight - 420), left: Math.max(8, Math.min(pos.left, window.innerWidth - 700)) }
+    : pos && isMobile
+      ? { top: Math.min(pos.top, window.innerHeight - 420), left: 8, right: 8 }
+      : { top: 64, left: 8 };
 
   function applyPreset(id: string) {
     let f = today, t = today;
@@ -174,18 +192,33 @@ export default function DateRangePicker({
     );
   }
 
+  // Footer summary: current from–to + day count, or live anchor/hover preview.
+  const rangeSummary = (() => {
+    if (anchor && (!hov || hov === anchor)) return `${anchor} · pick end date…`;
+    if (anchor && hov) {
+      const lo = anchor < hov ? anchor : hov;
+      const hi = anchor < hov ? hov : anchor;
+      const n = isoDiff(lo, hi) + 1;
+      return `${lo} – ${hi} · ${Number.isFinite(n) ? n : "?"} day${n === 1 ? "" : "s"}`;
+    }
+    const n = isoDiff(from, to) + 1;
+    if (!from || !to || !Number.isFinite(n)) return "Click = one day · second click = range. Max 31 days.";
+    return `${from} – ${to} · ${n} day${n === 1 ? "" : "s"}`;
+  })();
+
   return (
-    <div className="fixed inset-0 z-20 flex items-start justify-center overflow-y-auto bg-black/60 p-4" onClick={onClose}>
-      <div className="rounded-xl border border-zinc-700 bg-zinc-900 p-3" onClick={(e) => e.stopPropagation()}>
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div style={panelStyle} className="fixed z-50 max-h-[85vh] w-[calc(100vw-1rem)] max-w-[340px] overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 p-3 shadow-xl md:w-auto md:max-w-none">
         <div className="flex flex-col gap-3 md:flex-row">
-          <div className="flex flex-row gap-1 md:flex-col">
+          <div className="flex flex-row flex-wrap gap-1 md:flex-col md:flex-nowrap">
             {PRESETS.map((p) => (
               <button key={p.id} onClick={() => applyPreset(p.id)}
                 className="rounded-lg px-2 py-1 text-left text-xs text-zinc-200 hover:bg-zinc-800">{p.label}</button>
             ))}
             <input type="month" min={MIN_MONTH} max={maxMonth} value={left}
               onChange={(e) => { if (e.target.value) setLeft(e.target.value > maxMonth ? maxMonth : e.target.value); }}
-              className="mt-1 rounded-lg border border-zinc-700 bg-zinc-900 px-1 py-1 text-xs" />
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-1 py-1 text-xs" />
           </div>
           <div>
             <div className="mb-1 flex items-center justify-center gap-2 text-sm">
@@ -197,15 +230,15 @@ export default function DateRangePicker({
             </div>
             <div className="flex flex-col gap-3 md:flex-row">
               {monthGrid(left)}
-              {monthGrid(right)}
+              <div className="hidden md:block">{monthGrid(right)}</div>
             </div>
           </div>
         </div>
         <div className="mt-2 flex items-center justify-between text-[11px] text-zinc-500">
-          <span>{msg ?? "Click = one day · second click = range. Max 31 days."}</span>
+          <span>{msg ?? rangeSummary}</span>
           <button onClick={onClose} className="rounded border border-zinc-700 px-2 py-0.5 hover:bg-zinc-800">Close</button>
         </div>
       </div>
-    </div>
+    </>
   );
 }

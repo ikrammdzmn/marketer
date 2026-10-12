@@ -35,6 +35,12 @@
 - Daily Performance chart: bars + spend line + ROI line, with a **Shop truth | Ads attributed** toggle (real orders vs TikTok-attributed sales) and a day-by-day table. Single-day ranges still show the summary cards.
 - Reads saved daily rows (instant); **Refresh daily cache** re-pulls the range live when numbers look stale (max 31 days per press).
 
+## Shop Live (sidebar → Shop Live, shop 1)
+
+- Pick a date range, press **Load rooms**, pick a room, then **Probe shape** (checks what TikTok returns) or **Fetch overview** (full numbers + hour table). Rooms come in two kinds: MARKETING rooms show full numbers; AFFILIATE rooms list fine but TikTok blocks their minute-by-minute detail (you'll get a clear note, not an error dump).
+- Summary cards: sales, SKU orders, views/impressions, click rates, order rates, average order value, sales per hour, peak viewers. Numbers lag about 2 days behind real life (watch the "Latest data" line) and sales include returns/refunds — that's TikTok's counting.
+- First-time setup is a one-tap **Authorize analytics app** button (administrator + seller login). Token details never show on screen.
+
 ## Creative analysis (Creative tab, shop 1)
 
 - No more Excel exports: per-video rows pulled straight from TikTok (PRODUCT campaigns) — title, account, status, cost, orders, sales, ROI, views and view-rate bars. Pick a campaign (himcoffee first), pick dates, **Sync from TikTok**, then read.
@@ -83,8 +89,10 @@
 - Status dropdown: All, ON (plus new unknowns), or OFF only. ON rows always float
   to the top; charts still rank by money.
 - The date boxes became one calendar button (`start – end 📅`): ready-made ranges
-  (Today, Yesterday, Last 7/14/30 days) or tap two days on the two-month calendar.
-  Max 31 days per fetch. Future days are greyed out.
+  (Today, Yesterday, Last 3/7/14/30 days) or tap two days on the two-month calendar.
+  Max 31 days per fetch. Future days are greyed out. The popup opens right under
+  the button, shows your picked dates plus day count at the bottom, and stays shut
+  with Esc/outside-click. On phones it shows one month with wrapping preset chips.
 - After every Fetch the button rests ~15 seconds (countdown shown) so TikTok never
   rate-limits us. A spinner shows while loading.
 - Top tabs: Dashboard and Presets; **Access** appears for the fixed administrator.

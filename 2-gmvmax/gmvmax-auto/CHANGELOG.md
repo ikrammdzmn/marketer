@@ -2,6 +2,11 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 12 Oct 2026 — calendar fixes + Shop Live module (all deployed prod, all uncommitted)
+
+- Calendar picker: overlay above Shell bar (z-50), anchored popover under Range, mobile single-month + wrapping chips, Last 3 days preset, footer `from – to · N days` live count. Same picker wired into `/shop-live` range.
+- Shop Live module NEW (`/shop-live`, sidebar entry, `lib/shop-live.ts`, `shop-analytics-credentials.ts`, routes `probe/overview/sessions/core-stats`, `025` owner-run pending): dual-key analytics app (MARKETER HW authorized, cipher captured), server auth `start/callback`, `shop_auth.py --app` slots + numeric `service_id`; list green (MARKETING + AFFILIATE metadata), minute green (MARKETING full coverage), affiliate-minute denied by TikTok design, `202309` room stats need creator tokens (grant doc parked). Signer bug fixed (base64 page_token truncation broke page 2+). Deploys through `dpl_2cG3Abz7riTJPy4expFMceaysfog`.
+
 ## 11 Oct 2026 — Upcoming multi-day + glance hierarchy + affiliates widget + #event tag (8 deploys through dpl_AcvBEj5syHQQ7PM8X2u1e2XtiRpN, all uncommitted)
 
 - Multi-day agenda: calendar query looks back 7d + overlap filter (running spans that started yesterday show; ended ones don't); agenda repeats spans per day (`Day 2/4 · continues`, timed `until HH:MM`, midnight-end stays 1 row). All-day exclusive-end normalized once server-side.

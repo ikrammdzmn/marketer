@@ -235,6 +235,8 @@ export default function Page() {
   const [verdictFilter, setVerdictFilter] = useState("ALL");
   const [ttamQuery, setTtamQuery] = useState("");
   const [calOpen, setCalOpen] = useState(false);
+  const [calPos, setCalPos] = useState<{ top: number; left: number } | null>(null);
+  const rangeBtnRef = useRef<HTMLButtonElement | null>(null);
   const [ttamPresets, setTtamPresets] = useState<any[]>([]);
   const [presetOverride, setPresetOverride] = useState<any>(null);
   const fetchingRef = useRef(false);
@@ -851,7 +853,13 @@ export default function Page() {
       <header className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur">
         <div className="flex flex-wrap items-end gap-3 px-4 py-3">
           <div className="text-xs text-zinc-400">Range<br />
-            <button onClick={() => setCalOpen((v) => !v)} className={`${inputCls}`}>{start} – {end} 📅</button>
+            <button ref={rangeBtnRef} onClick={() => {
+              if (!calOpen && rangeBtnRef.current) {
+                const r = rangeBtnRef.current.getBoundingClientRect();
+                setCalPos({ top: r.bottom + 8, left: r.left });
+              }
+              setCalOpen((v) => !v);
+            }} className={`${inputCls}`}>{start} – {end} 📅</button>
           </div>
           <label className="text-xs text-zinc-400">Status
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`${inputCls} ml-2`}>
@@ -871,7 +879,7 @@ export default function Page() {
 
       {calOpen && (
         <DateRangePicker
-          from={start} to={end}
+          from={start} to={end} pos={calPos}
           onApply={(f, t) => { setStart(f); setEnd(t); setCalOpen(false); }}
           onClose={() => setCalOpen(false)}
         />

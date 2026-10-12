@@ -105,3 +105,25 @@ Time-posted at creative grain.
 Rounds 1–6: `/api/creative-probe` + Creative tab pastebacks (Oct 2026).
 Sessions/live: Checkpoint 20 (DEV_NOTES). TTAM 27-metric map:
 `ttam-api-metrics-plan.md`. Session bugs B57–B69: gmvmax-auto `DEV_NOTES.md`.
+
+## 7. Shop LIVE analytics (Oct 2026, `/shop-live` module)
+
+- List: `GET /analytics/202609/shop_lives/performance`
+  (`start_date_ge/end_date_lt` YYYY-MM-DD, `account_type` ∈
+  `OFFICIAL_ACCOUNTS/MARKETING_ACCOUNTS/AFFILIATE_ACCOUNTS`,
+  `currency/page_size/page_token` optional). Signed set = doc Query Header
+  EXACTLY — `access_token`/`shop_id`/`version` travel outside signing;
+  any extra in-query breaks it (106001, all variants die identically).
+- Minute: `GET /analytics/202510/shop_lives/{live_id}/performance_per_minutes`
+  (app_key/shop_cipher/currency). MARKETING detail green; AFFILIATE minute
+  denied by design (28001022). Data lags ~2d (`latest_available_date`).
+- 202309 room family (`live_rooms/{id}/core_stats` + traffic/gmv/view/
+  product/portraits): needs `app_key` in-query despite OAS silence
+  (36009004), and CREATOR tokens — seller tokens die 36009005
+  (user-type wall). Creator grant (alliance) is the only door for
+  affiliate detail; `affiliate_creator/*` has no live endpoints.
+- Signer law: split query pairs on the FIRST `=` only — tiktok-shop
+  `parseQueryString` truncates base64 `page_token`s (`..MQ==`), so page-2+
+  always 106001 while single-page calls stay green (B87). Local
+  `signShopUrl` is byte-identical otherwise; same latent bug lives in
+  `shop-orders.ts` (untouched while green).

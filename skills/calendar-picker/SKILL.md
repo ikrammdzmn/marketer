@@ -39,6 +39,27 @@ Lineage: v51-port `DateRangePicker.tsx` (dashboard) + v52 single-click fix
    preset. 4. Dark-mode chip classes match host page. 5. Single-click
    clears pending range.
 
+## GMV Max online lessons (Oct 2026, verified)
+
+- Stacking: Shell bar is `z-30`, picker panel must be `z-50` with a
+  transparent `z-40` click-catcher. Never nest the panel `absolute`
+  inside a `z-10` page header — the parent stacking context pins it
+  behind the Shell bar. Keep it `fixed` at root, positioned from the
+  button `getBoundingClientRect()` + viewport clamp.
+- Anchored popover, not centered modal: pin under the Range button
+  (`top: rect.bottom+8, left: rect.left`), clamp off right/bottom
+  edges; Esc / outside-click closes; stays `fixed` so page scroll
+  doesn't detach it.
+- Mobile: single month only (`right` month wrapped `hidden md:block`),
+  preset rail becomes wrapping chips (`flex-wrap`), panel
+  `w-[calc(100vw-1rem)] max-w-[340px] max-h-[85vh] overflow-y-auto`;
+  on narrow screens force `left:8/right:8`.
+- Presets include Last 3 days between Yesterday and Last 7
+  (`applyPreset` handles all `days:N` entries generically).
+- Footer shows live selection: `from – to · N days` from props,
+  `anchor · pick end date…` after first click, `lo – hi · N days`
+  hover preview; max-cap warning overrides.
+
 ## Evidence index
 
 v51/v52 (dashboard), v51 shop rebuild + v52/v53/v54 (creative-analysis

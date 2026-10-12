@@ -1,18 +1,25 @@
 """Shop OAuth helper — stdlib only, 127.0.0.1 only.
 
 Seller-side flow (bypasses the Partner Testing-Tool path):
-  python gmvmax-auto/shop_auth.py
+  python gmvmax-auto/shop_auth.py [--app orders|analytics]
 1. Prints an authorize URL (contains App Key only - safe to open/share).
 2. Listens on 127.0.0.1:8082 /callback for the TikTok redirect.
 3. Exchanges the code LOCALLY via auth.tiktok-shops.com/api/v2/token/get
-   and saves TIKTOK_SHOP1_ACCESS_TOKEN/REFRESH_TOKEN/SHOP_CIPHER
-   (+ SHOP1_SHOP_ID) to .local_secrets.json. Secrets never print -
+   and saves tokens to .local_secrets.json. Secrets never print -
    key-names + lengths only.
+
+Slots (dual-key model): orders = Connectors app (SHOP_APP_KEY/SECRET →
+TIKTOK_SHOP1_*); analytics = Analytics & Reporting app
+(SHOP_ANALYTICS_APP_KEY/SECRET → TIKTOK_SHOP1_ANALYTICS_*). Use analytics
+in the seller-profile browser when Google-admin and seller sessions can't
+share one profile (server start flow needs the admin session; this script
+needs none).
 """
 
 import json
 import os
 import secrets
+import sys
 import urllib.parse
 import urllib.request
 
@@ -28,16 +35,41 @@ def load():
         return json.load(f)
 
 
+def slot_from_argv() -> str:
+    args = sys.argv[1:]
+    if "--app" in args:
+        i = args.index("--app")
+        if i + 1 < len(args) and args[i + 1] == "analytics":
+            return "analytics"
+    return "orders"
+
+
 def main():
+    slot = slot_from_argv()
+    if slot == "analytics":
+        key_name, secret_name, prefix = (
+            "SHOP_ANALYTICS_APP_KEY", "SHOP_ANALYTICS_APP_SECRET",
+            "TIKTOK_SHOP1_ANALYTICS_",
+        )
+        service_env = "SHOP_ANALYTICS_SERVICE_ID"
+    else:
+        key_name, secret_name, prefix = (
+            "SHOP_APP_KEY", "SHOP_APP_SECRET", "TIKTOK_SHOP1_",
+        )
+        service_env = "SHOP_SERVICE_ID"
     sec = load()
-    app_key = str(sec.get("SHOP_APP_KEY", ""))
-    app_secret = str(sec.get("SHOP_APP_SECRET", ""))
+    app_key = str(sec.get(key_name, ""))
+    app_secret = str(sec.get(secret_name, ""))
     if not app_key or not app_secret:
-        print("missing SHOP_APP_KEY/SECRET in .local_secrets.json")
+        print("missing %s/%s in .local_secrets.json" % (key_name, secret_name))
         return
+    # service_id override: some apps only authorize by numeric app ID
+    # (MARKETER HW: 7695364138655188743), not the alphanumeric App Key.
+    service_id = str(sec.get(service_env, "") or app_key)
+    print("slot: %s (%s, service_id len=%d)" % (slot, key_name, len(service_id)))
     state = secrets.token_urlsafe(16)
     url = (AUTH_PAGE + "?" + urllib.parse.urlencode(
-        {"service_id": app_key, "state": state}))
+        {"service_id": service_id, "state": state}))
     print("OPEN THIS URL IN YOUR BROWSER (log in as the MY seller):")
     print(url)
     print("listening on 127.0.0.1:8082/callback ... (Ctrl+C to stop)")
@@ -100,13 +132,13 @@ def main():
               % len(shops))
     if not cipher:
         cipher = str(data.get("cipher", "") or data.get("shop_cipher", ""))
-    sec["TIKTOK_SHOP1_ACCESS_TOKEN"] = token
+    sec[prefix + "ACCESS_TOKEN"] = token
     if refresh:
-        sec["TIKTOK_SHOP1_REFRESH_TOKEN"] = refresh
+        sec[prefix + "REFRESH_TOKEN"] = refresh
     if cipher:
-        sec["TIKTOK_SHOP1_SHOP_CIPHER"] = cipher
+        sec[prefix + "SHOP_CIPHER"] = cipher
     if shop_id:
-        sec["TIKTOK_SHOP1_SHOP_ID"] = shop_id
+        sec[prefix + "SHOP_ID"] = shop_id
     with open(SECRETS, "w", encoding="utf-8", newline="\n") as f:
         json.dump(sec, f, ensure_ascii=False, indent=2)
         f.write("\n")
