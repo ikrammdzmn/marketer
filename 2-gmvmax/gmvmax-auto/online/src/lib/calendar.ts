@@ -101,16 +101,15 @@ function edgeMs(s: string, allDay: boolean, isEnd: boolean): number {
   return isEnd ? Infinity : -Infinity;
 }
 
-async function viaApi(): Promise<CalEvent[] | null> {
+async function viaApiRange(fromMs: number, toMs: number, maxResults: number): Promise<CalEvent[] | null> {
   let token = await saAccess();
   if (!token) return null;
-  const now = Date.now();
   const params = new URLSearchParams({
-    timeMin: new Date(now - LOOKBACK_MS).toISOString(),
-    timeMax: new Date(now + WINDOW_MS).toISOString(),
+    timeMin: new Date(fromMs - LOOKBACK_MS).toISOString(),
+    timeMax: new Date(toMs).toISOString(),
     singleEvents: "true",
     orderBy: "startTime",
-    maxResults: "100",
+    maxResults: String(Math.max(1, Math.min(250, Math.floor(maxResults)))),
   });
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CAL_ID)}/events?${params.toString()}`;
   let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -122,7 +121,6 @@ async function viaApi(): Promise<CalEvent[] | null> {
     if (!res.ok) { lastApiStatus = `HTTP ${res.status}`; return null; }
   }
   const body = await res.json();
-  const winEnd = now + WINDOW_MS;
   const events = ((body.items ?? []) as any[])
     .filter((e) => e?.status !== "cancelled")
     .map((e) => {
@@ -138,16 +136,21 @@ async function viaApi(): Promise<CalEvent[] | null> {
         promo,
       };
     })
-    // Keep only events overlapping [now, winEnd]: catches spans that started
-    // before now (e.g. yesterday) and are still running. Drops already-ended.
-    .filter((e) => edgeMs(e.start, e.allDay, false) <= winEnd && edgeMs(e.end || e.start, e.allDay, true) >= now);
+    // Keep only events overlapping [fromMs, toMs]: catches spans that started
+    // before the window and are still running. Drops already-ended.
+    .filter((e) => edgeMs(e.start, e.allDay, false) <= toMs && edgeMs(e.end || e.start, e.allDay, true) >= fromMs);
   events.sort((a, b) => edgeMs(a.start, a.allDay, false) - edgeMs(b.start, b.allDay, false));
-  return events.slice(0, MAX_EVENTS);
+  return events.slice(0, maxResults);
+}
+
+async function viaApi(): Promise<CalEvent[] | null> {
+  const now = Date.now();
+  return viaApiRange(now, now + WINDOW_MS, MAX_EVENTS);
 }
 
 let icsCache: { at: number; text: string } | null = null;
 
-async function viaIcs(): Promise<CalEvent[] | null> {
+async function viaIcsRange(fromMs: number, toMs: number, maxResults: number): Promise<CalEvent[] | null> {
   let text: string | null = null;
   if (icsCache && Date.now() - icsCache.at < CACHE_MS) text = icsCache.text;
   else {
@@ -162,8 +165,8 @@ async function viaIcs(): Promise<CalEvent[] | null> {
       return null;
     }
   }
-  const from = Date.now();
-  const to = from + WINDOW_MS;
+  const from = fromMs;
+  const to = toMs;
   const events: CalEvent[] = [];
   for (const e of parseIcs(text)) {
     for (const occ of expand(e, from, to)) {
@@ -179,7 +182,12 @@ async function viaIcs(): Promise<CalEvent[] | null> {
     }
   }
   events.sort((a, b) => a.start.localeCompare(b.start));
-  return events.slice(0, MAX_EVENTS);
+  return events.slice(0, maxResults);
+}
+
+async function viaIcs(): Promise<CalEvent[] | null> {
+  const now = Date.now();
+  return viaIcsRange(now, now + WINDOW_MS, MAX_EVENTS);
 }
 
 export async function getUpcomingEvents(): Promise<
@@ -187,6 +195,26 @@ export async function getUpcomingEvents(): Promise<
 > {
   const api = await viaApi();
   const raw = api ?? await viaIcs();
+  if (raw) return { events: await applyHidden(raw) };
+  if (!saKey()) {
+    return { needsConnect: "Calendar not connected yet — add the service-account key in Vercel (GOOGLE_CALENDAR_SA_JSON) and share the calendar with its email as Viewer." };
+  }
+  const why = lastApiStatus ? ` (Google said ${lastApiStatus})` : "";
+  return { needsConnect: `Shared calendar unreadable${why} — check the robot email has Viewer access to it, and that Google Calendar API is enabled in the Cloud project.` };
+}
+
+// Wide-range read for the /calendar month view. Span is clamped to 100 days
+// to protect the Hobby 60s serverless cap and the Google page size.
+export async function getRangeEvents(fromMs: number, toMs: number): Promise<
+  { events: CalEvent[] } | { needsConnect: string }
+> {
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs <= fromMs) {
+    return { events: [] };
+  }
+  const span = Math.min(toMs - fromMs, 100 * 86400000);
+  const to = fromMs + span;
+  const api = await viaApiRange(fromMs, to, 250);
+  const raw = api ?? await viaIcsRange(fromMs, to, 250);
   if (raw) return { events: await applyHidden(raw) };
   if (!saKey()) {
     return { needsConnect: "Calendar not connected yet — add the service-account key in Vercel (GOOGLE_CALENDAR_SA_JSON) and share the calendar with its email as Viewer." };

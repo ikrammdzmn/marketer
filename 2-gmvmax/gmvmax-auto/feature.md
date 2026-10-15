@@ -5,14 +5,16 @@
 
 ## Online version (Vercel, `marketer-hw.vercel.app`, Google sign-in)
 
-- The left sidebar is the whole navigation: Dashboard (home), your shop, TikTok Ads views (Total, LIVE, Product, TTAM, ROAS, Hourly Ads), TikTok Shops views (Hourly Shop, Shop GMV), and a collapsible Settings at the bottom (Presets, Creative, Accounts, Catalog, Calendar, Access). Every tab is a shareable link — opening it loads that exact view, and the browser back button works between tabs. The sidebar folds to icons on desktop and becomes a slide-in menu on phones.
+- The left sidebar is the whole navigation: Dashboard (home), Calendar month view, your shop, TikTok Ads views (Total, LIVE, Product, TTAM, ROAS, Hourly Ads), TikTok Shops views (Hourly Shop, Shop GMV), and a collapsible Settings at the bottom (Presets, Creative, Accounts, Catalog, Calendar filters, Access). Your name and Sign out sit pinned at the very bottom of the sidebar. Every tab is a shareable link — opening it loads that exact view, and the browser back button works between tabs. The sidebar folds to icons on desktop and becomes a slide-in menu on phones.
 - The Dashboard home page shows cards to every board plus your next 7 days from the shared Google Calendar (Upcoming agenda).
+- The Total board opens a Performance Dashboard: Total GMV, Total Orders (with average order value), Total Ad Spend (with cost per order), and Blended ROI with Net underneath. Below, Channel Contribution splits LIVE Stream vs Product/Showcase — each with its GMV/orders/cost share and its own ROI, plus a split bar on top.
 - Each campaign row shows a green ON / grey OFF pill (from TikTok) plus delivery state: 🟢 Active when a live room is ongoing right now (checked automatically after Fetch, top spenders first) or TikTok reports Active; other flags show grey on rows that spent, ⛔ only when nothing spent — spend proves delivery. Account rows roll up the same way: ON if anything inside is ON, 🟢 Active if any room inside is ongoing now.
 - Sessions button sits on each LIVE campaign. Tap it and that campaign's rooms open **directly underneath it** (tap again to hide, one row per room with spend/sales summed across the days you picked, biggest sales first). Each room shows its live title (e.g. PROMO OCTOBER) plus its current 🟢 ONGOING / ⚪ END pill, with `started … MYT · duration` underneath. Rooms TikTok never titled just show `room {id}` — that's TikTok's data, not a bug. Other campaigns stay untouched.
-- Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then resync.
+- Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then press **Sync names** (next to Fetch Data) and Fetch again. The board reads saved names, so Fetch alone never shows a rename.
+- LIVE groups can switch between **Bracket** and **TT account** (toggle in the LIVE section header, remembered): TT account groups by the TikTok account actually behind the campaign (name + `@username`, bracket shown as hint). Names fill in the background in small batches — Fetch a few times until the notice clears. A few accounts TikTok never names (affiliate/unauthorized ones) stay under `[Bracket]` with a grey note — that's expected, not missing data.
 - Budget `% used` (one-day view only) is color-coded: under 70% plain, 70–79% yellow, 80–89% red text, 90–100% white-on-red pill that gently pulses, over 100% a brighter bold red pill (spent more than the daily budget).
 - Numbers can move slightly during the day (TikTok settles sales figures over hours while spend stays fixed). If a number looks off versus an hour ago, press Fetch Data again — newest wins, nothing is lost.
-- Sign in with a Google account that the administrator has approved. Removing an account blocks its next dashboard-data request.
+- Sign in with a Google account that the administrator has approved — you stay signed in for 30 days, even with the browser closed. The administrator can give you a display name on the **Access** page so the sidebar shows your name instead of your email. Removing an account blocks its next dashboard-data request.
 - If you’re signed out, the main link opens Google sign-in first. Once signed in, it takes you to the dashboard; `/sign-in` is also available directly.
 
 ## Hourly watch (Metric = Hourly, shop 1)
@@ -53,6 +55,7 @@
 - The home page shows your next 7 days from the team's shared Google Calendar (times in MYT, recurring events included). Multi-day events repeat on every day they touch (`Day 2/4`), so a sale never looks finished mid-way. **Today** is highlighted green, tomorrow full-size, later days compact. Write **`#event`** anywhere in a title (any capitals) to mark a sale — it shows with an amber marker and the tag hides itself.
 - **Affiliates card** (under Upcoming): same three watches as the 4x-daily sheet robot — videos to review now (today + overdue, oldest first), due tomorrow, and how many wait for ads run. `All clear` when nothing needs you. Reads your Affiliate Collection sheet live; needs the sheet shared with the robot email once.
 - **Calendar settings page**: hide events by keyword — one per line (`Daily To Do`, `#lowpriority`), matched inside titles regardless of capitals. Plus a health panel in plain words (key present, table ready, event count, last error) so an empty agenda tells you exactly which switch to flip.
+- **Calendar page** (sidebar → Calendar): this month big, last and next month smaller below. Today is green, tomorrow outlined. Hover (or tap on phones) any day for the full list with links that open the event. A Today/Tomorrow panel sits on top on phones and on the right on computers — long sales show `Day 8/10 · Ends in 2 days` so you know where a sale stands without reading the grid. The top bar also carries a small pill with today's count that opens this page.
 
 ## Telegram reports (group topic, every hour)
 
@@ -89,8 +92,8 @@
 - Status dropdown: All, ON (plus new unknowns), or OFF only. ON rows always float
   to the top; charts still rank by money.
 - The date boxes became one calendar button (`start – end 📅`): ready-made ranges
-  (Today, Yesterday, Last 3/7/14/30 days) or tap two days on the two-month calendar.
-  Max 31 days per fetch. Future days are greyed out. The popup opens right under
+  (Today, Yesterday, Last 3 days, This week, Last week, This month, Last month, Last 7/14/30 days) or tap two days on the two-month calendar.
+  Max 31 days per fetch. Future days are greyed out. Month/year jump is two dropdowns above the grids. The popup opens right under
   the button, shows your picked dates plus day count at the bottom, and stays shut
   with Esc/outside-click. On phones it shows one month with wrapping preset chips.
 - After every Fetch the button rests ~15 seconds (countdown shown) so TikTok never

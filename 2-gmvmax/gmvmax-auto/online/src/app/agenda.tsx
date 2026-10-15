@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Ev = {
@@ -192,7 +193,10 @@ export default function Agenda() {
   let lastLaterDay = 0;
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-      <div className="font-medium">Upcoming</div>
+      <div className="flex items-center justify-between">
+        <div className="font-medium">Upcoming</div>
+        <Link href="/calendar" className="text-xs text-zinc-400 hover:text-zinc-100">Calendar →</Link>
+      </div>
       {rows.length === 0 ? (
         <p className="mt-1 text-xs text-zinc-500">Nothing in the next 7 days.</p>
       ) : (

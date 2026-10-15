@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { getShopROAS } from "@/lib/gmv";
+import { getShopROAS, syncShopCampaigns } from "@/lib/gmv";
 import { refreshShopHourly } from "@/lib/hourly-shop";
 import { fetchShopDayOrders } from "@/lib/shop-orders";
 import { SHOPS } from "@/lib/shops";
@@ -119,6 +119,13 @@ export async function GET(request: Request) {
   const results: Record<string, unknown> = {};
   try {
     for (const s of shops) {
+      // Refresh campaign name/account cache first (fail-open): TikTok
+      // renames only land in gmv.gmv_campaigns via syncShopCampaigns.
+      try {
+        await syncShopCampaigns(s);
+      } catch (e) {
+        console.error("[nightly-sync] campaign names sync failed, metrics kept", e instanceof Error ? e.message : "failed");
+      }
       results[`shop_${s}_${date}`] = await syncOne(s, date);
       results[`hourly_shop_${s}_${date}`] = await syncShopHourly(s, date);
       await new Promise((r) => setTimeout(r, 500));

@@ -12,6 +12,7 @@ export async function GET(request: Request) {
   const promotionType = searchParams.get("promotion_type") ?? "LIVE_GMV_MAX";
   const startDate = searchParams.get("startDate") ?? "";
   const endDate = searchParams.get("endDate") ?? "";
+  const accountSource = searchParams.get("accountSource") === "api" ? "api" : "bracket";
   if (!PROMOTION_TYPES.includes(promotionType as PromotionType) || !startDate || !endDate) {
     return NextResponse.json(
       { error: "need promotion_type=LIVE_GMV_MAX|PRODUCT_GMV_MAX + startDate + endDate (YYYY-MM-DD)" },
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     );
   }
   try {
-    const result = await getShopReport(shopNumber, promotionType as PromotionType, startDate, endDate, true);
+    const result = await getShopReport(shopNumber, promotionType as PromotionType, startDate, endDate, true, accountSource);
     return NextResponse.json(result);
   } catch (e) {
     const message = e instanceof Error ? e.message : "report failed";

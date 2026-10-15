@@ -31,16 +31,20 @@ const P = {
   users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8",
   tag: "M20 12l-8 8-9-9V4h7zM7.5 7.5h.01",
   gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
+  gauge: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 12l4-4M12 12h.01",
 };
 
 const DASH_LINK = { href: "/", label: "Dashboard", icon: P.grid, match: "/" };
+const AI_LINK = { href: "/ai", label: "AI Analyst", icon: P.target, match: "/ai" };
+const CAL_LINK = { href: "/calendar", label: "Calendar", icon: P.cal, match: "/calendar" };
 
 const SETTINGS_LINKS = [
   { href: "/presets", label: "Presets", icon: P.sliders, match: "/presets" },
+  { href: "/ai/guardrail", label: "AI guardrails", icon: P.gauge, match: "/ai/guardrail" },
   { href: "/creative", label: "Creative", icon: P.film, match: "/creative" },
   { href: "/accounts", label: "Accounts", icon: P.users, match: "/accounts" },
   { href: "/catalog", label: "Catalog", icon: P.tag, match: "/catalog" },
-  { href: "/calendar-settings", label: "Calendar", icon: P.cal, match: "/calendar-settings" },
+  { href: "/calendar-settings", label: "Calendar filters", icon: P.sliders, match: "/calendar-settings" },
   { href: "/access", label: "Access", icon: P.key, match: "/access", admin: true },
 ];
 
@@ -62,12 +66,43 @@ const SHOP_METRIC_LINKS = [
 
 const VALID_METRICS = new Set([...ADS_LINKS, ...SHOP_METRIC_LINKS].map((m) => m.id));
 
+// Header today-pill: same MYT day edges as lib/calendar edgeMs, client-safe copy
+// (client code must not import lib/calendar — it pulls crypto/pg).
+type PillEv = { title: string; start: string; end: string; allDay: boolean };
+
+function pillEdge(s: string, allDay: boolean, isEnd: boolean): number {
+  if (allDay) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    if (m) return Date.UTC(+m[1], +m[2] - 1, +m[3]) - 8 * 3600 * 1000;
+  }
+  const t = Date.parse(s);
+  if (!Number.isNaN(t)) return t;
+  return isEnd ? Infinity : -Infinity;
+}
+
+function titlesToday(events: PillEv[]): string[] {
+  const now = Date.now();
+  const dayStart = Math.floor((now + 8 * 3600 * 1000) / 86400000) * 86400000 - 8 * 3600 * 1000;
+  const dayEnd = dayStart + 86400000;
+  const out: string[] = [];
+  for (const e of events) {
+    const s = pillEdge(e.start, e.allDay, false);
+    const rawEnd = pillEdge(e.end || e.start, e.allDay, true);
+    const end = rawEnd > s ? rawEnd : s + 1;
+    if (s < dayEnd && end > dayStart) out.push(e.title);
+    if (out.length >= 10) break;
+  }
+  return out;
+}
+
 export default function Shell({
   email,
+  displayName,
   isAdmin,
   children,
 }: {
   email: string | null;
+  displayName: string | null;
   isAdmin: boolean;
   children: React.ReactNode;
 }) {
@@ -79,6 +114,7 @@ export default function Shell({
     try { return localStorage.getItem("shell-settings-open") === "1"; } catch { return false; }
   });
   const [toasts, setToasts] = useState<{ id: number; message: string; kind: ToastKind }[]>([]);
+  const [todayTitles, setTodayTitles] = useState<string[] | null>(null);
 
   // Global save-toast host: any page dispatches window event "app-toast".
   useEffect(() => {
@@ -92,6 +128,23 @@ export default function Shell({
     window.addEventListener("app-toast", onToast);
     return () => window.removeEventListener("app-toast", onToast);
   }, []);
+
+  // Header today-pill: one quiet fetch, fail silent (pill just stays hidden).
+  useEffect(() => {
+    if (!email) return;
+    fetch("/api/calendar-events", { cache: "no-store" })
+      .then(async (r) => {
+        const body = await r.json();
+        if (!r.ok || !Array.isArray(body.events)) return;
+        setTodayTitles(titlesToday(body.events as PillEv[]));
+      })
+      .catch(() => {});
+  }, [email]);
+
+  // Bare login page: no sidebar, top bar, or menus for signed-out visitors.
+  if (pathname === "/sign-in") {
+    return <div className="min-h-screen bg-zinc-950 text-zinc-100">{children}</div>;
+  }
 
   const rawShop = sp.get("shop") ?? "1";
   const rawMetric = sp.get("metric") ?? "total";
@@ -129,6 +182,24 @@ export default function Shell({
         >
           <I d={DASH_LINK.icon} />
           <span className={labelCls}>{DASH_LINK.label}</span>
+        </Link>
+        <Link
+          href={AI_LINK.href}
+          title={AI_LINK.label}
+          onClick={() => setOpen(false)}
+          className={itemCls(pathname === AI_LINK.match)}
+        >
+          <I d={AI_LINK.icon} />
+          <span className={labelCls}>{AI_LINK.label}</span>
+        </Link>
+        <Link
+          href={CAL_LINK.href}
+          title={CAL_LINK.label}
+          onClick={() => setOpen(false)}
+          className={itemCls(pathname === CAL_LINK.match)}
+        >
+          <I d={CAL_LINK.icon} />
+          <span className={labelCls}>{CAL_LINK.label}</span>
         </Link>
       </div>
       <div className="mt-4">
@@ -212,6 +283,25 @@ export default function Shell({
           </Link>
         ))}
       </div>
+      <div className="mt-3 border-t border-zinc-800 pt-3">
+        {email ? (
+          <>
+            <div className={`truncate px-3 text-sm font-medium text-zinc-100 ${labelCls}`} title={email}>{displayName || email}</div>
+            {displayName && <div className={`mt-0.5 truncate px-3 text-xs text-zinc-500 ${labelCls}`} title={email}>{email}</div>}
+            <form action={logOut} className="mt-1" onSubmit={() => setOpen(false)}>
+              <button type="submit" title="Sign out" className={itemCls(false)}>
+                <span aria-hidden="true">↪</span>
+                <span className={labelCls}>Sign out</span>
+              </button>
+            </form>
+          </>
+        ) : (
+          <Link href="/sign-in" onClick={() => setOpen(false)} title="Sign in" className={itemCls(pathname === "/sign-in")}>
+            <span aria-hidden="true">↪</span>
+            <span className={labelCls}>Sign in</span>
+          </Link>
+        )}
+      </div>
     </>
   );
 
@@ -237,14 +327,22 @@ export default function Shell({
         </button>
         <h1 className="text-sm font-semibold">GMV Max Online</h1>
         <span className="rounded-full bg-emerald-900 px-2 py-0.5 text-xs text-emerald-200">PROD</span>
-        <span className="hidden text-xs text-zinc-400 md:inline">Neon prod · live TikTok API (lag 15m–2h)</span>
-        <span className="ml-auto text-xs text-zinc-400">{email || ""}</span>
-        {email ? (
-          <form action={logOut}>
-            <button className="rounded-lg px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800">Sign out</button>
-          </form>
-        ) : (
-          <Link href="/sign-in" className="rounded-lg px-3 py-1.5 text-sm hover:bg-zinc-800">Sign in</Link>
+        {todayTitles !== null && (
+          <Link
+            href="/calendar"
+            title={todayTitles.length > 0 ? todayTitles.join(" · ") : "Open calendar"}
+            className="ml-auto inline-flex max-w-56 items-center truncate rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 hover:border-zinc-600 md:max-w-md"
+          >
+            <span className="hidden truncate md:inline">
+              {todayTitles.length > 0
+                ? `· ${todayTitles.length} today: ${todayTitles.slice(0, 2).join(", ")}${todayTitles.length > 2 ? ` +${todayTitles.length - 2}` : ""}`
+                : "· nothing today"}
+            </span>
+            <span className="md:hidden">{todayTitles.length > 0 ? `[${todayTitles.length} today]` : "[none today]"}</span>
+          </Link>
+        )}
+        {!email && (
+          <Link href="/sign-in" className="ml-auto rounded-lg px-3 py-1.5 text-sm hover:bg-zinc-800">Sign in</Link>
         )}
       </header>
       <div className="flex min-h-0 flex-1">

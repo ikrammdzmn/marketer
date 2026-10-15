@@ -60,7 +60,7 @@ export async function fetchGmvMaxBudgetInfo(
   accessToken: string,
   advertiserId: string,
   campaignId: string
-): Promise<{ budget: number; budgetMode: string }> {
+): Promise<{ budget: number; budgetMode: string; identityId: string | null; identityBc: string | null }> {
   const params = new URLSearchParams({ advertiser_id: advertiserId, campaign_id: campaignId });
   const res = await fetch(
     `${BASE_URL}/open_api/${API_VERSION}/campaign/gmv_max/info/?${params.toString()}`,
@@ -72,11 +72,95 @@ export async function fetchGmvMaxBudgetInfo(
   }
   const budget = parseBudgetAmount(body.data?.budget ?? body.data?.daily_budget ?? body.data?.total_budget);
   if (budget === null) throw new Error("TikTok returned no positive budget value");
+  const rawIdent = body.data?.identity_list?.[0]?.identity_id;
+  const identityId = rawIdent !== null && rawIdent !== undefined && String(rawIdent) !== "" && String(rawIdent) !== "0"
+    ? String(rawIdent)
+    : null;
+  const rawBc = body.data?.identity_list?.[0]?.identity_authorized_bc_id ?? body.data?.store_authorized_bc_id;
+  const identityBc = rawBc !== null && rawBc !== undefined && String(rawBc) !== "" && String(rawBc) !== "0"
+    ? String(rawBc)
+    : null;
   return {
     budget,
     // GMV Max's info budget is the daily budget used by current pacing.
     budgetMode: String(body.data?.budget_mode ?? "BUDGET_MODE_DAY").toUpperCase(),
+    identityId,
+    identityBc,
   };
+}
+
+// TT-account identity map (LIVE): gmv_max/identity/get resolves
+// identity_id -> {display_name, user_name}. Verified Oct 2026
+// (fcba7163 -> Dr. Samhan / dr.samhan). Fail-open: null when the shop has
+// no storeBcId or TikTok errors. 15-min in-memory cache (serverless-safe).
+const identityCache = new Map<string, { at: number; map: Map<string, { display: string; user: string }> }>();
+export async function fetchGmvIdentityMap(
+  accessToken: string,
+  advertiserId: string,
+  storeId: string,
+  storeBcId: string
+): Promise<Map<string, { display: string; user: string }> | null> {
+  const key = `${advertiserId}:${storeId}:${storeBcId}`;
+  const hit = identityCache.get(key);
+  if (hit && Date.now() - hit.at < 15 * 60 * 1000) return hit.map;
+  try {
+    const params = new URLSearchParams({
+      advertiser_id: advertiserId,
+      store_id: storeId,
+      store_authorized_bc_id: storeBcId,
+      page: "1",
+      page_size: "100",
+    });
+    const res = await fetch(
+      `${BASE_URL}/open_api/${API_VERSION}/gmv_max/identity/get/?${params.toString()}`,
+      { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
+    );
+    const body = await res.json();
+    if (body.code !== 0) return null;
+    const list = body.data?.identity_list ?? body.data?.list ?? body.data?.identities ?? [];
+    if (!Array.isArray(list) || list.length === 0) return null;
+    const map = new Map<string, { display: string; user: string }>();
+    for (const it of list) {
+      const id = String(it.identity_id ?? it.id ?? "");
+      const display = String(it.display_name ?? "").trim();
+      if (!id || !display) continue;
+      map.set(id, { display, user: String(it.user_name ?? "").trim() });
+    }
+    if (map.size === 0) return null;
+    identityCache.set(key, { at: Date.now(), map });
+    return map;
+  } catch {
+    return null;
+  }
+}
+
+// Campaign -> TT identity via gmv_max/info (fail-open null). The info call is
+// the same one budgets use, so lazy fills resolve both from one response.
+// Returns the authorized BC too: affiliate identities live under other BCs,
+// resolved by fetching one identity map per BC (029).
+export async function fetchGmvCampaignIdentity(
+  accessToken: string,
+  advertiserId: string,
+  campaignId: string
+): Promise<{ id: string; bc: string | null } | null> {
+  try {
+    const params = new URLSearchParams({ advertiser_id: advertiserId, campaign_id: campaignId });
+    const res = await fetch(
+      `${BASE_URL}/open_api/${API_VERSION}/campaign/gmv_max/info/?${params.toString()}`,
+      { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
+    );
+    const body = await res.json();
+    if (body.code !== 0) return null;
+    const raw = body.data?.identity_list?.[0]?.identity_id;
+    if (raw === null || raw === undefined || String(raw) === "" || String(raw) === "0") return null;
+    const rawBc = body.data?.identity_list?.[0]?.identity_authorized_bc_id ?? body.data?.store_authorized_bc_id;
+    return {
+      id: String(raw),
+      bc: rawBc !== null && rawBc !== undefined && String(rawBc) !== "" && String(rawBc) !== "0" ? String(rawBc) : null,
+    };
+  } catch {
+    return null;
+  }
 }
 export interface CampaignInfo {
   id: string;
@@ -324,7 +408,8 @@ export async function getShopReport(
   promotionType: PromotionType,
   startDate: string,
   endDate: string,
-  includeBudgetInfo = false
+  includeBudgetInfo = false,
+  accountSource: "bracket" | "api" = "bracket"
 ) {
   const shop = SHOPS[shopNumber];
   if (!shop) throw new Error(`invalid shopNumber: ${shopNumber}`);
@@ -333,35 +418,65 @@ export async function getShopReport(
 
   // Campaign map from Neon (M3 sync), scoped to the requested type —
   // the report API can return mixed types, so filter by promotion_type here.
-  // Delivery column exists after 011 migration — tolerate pre-migration DBs.
+  // Delivery column exists after 011 migration, TT-account columns after 027 —
+  // tolerate pre-migration DBs with fallback selects.
   let cmap;
   try {
     cmap = await query(
-      `SELECT campaign_id, name, account, status, delivery, budget FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+      `SELECT campaign_id, name, account, status, delivery, budget, account_api, account_user, identity_id, identity_bc, enrich_tried_at, enrich_fail FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+      [shop.shopId, promotionType]
+    );
+  } catch {
+  try {
+    cmap = await query(
+      `SELECT campaign_id, name, account, status, delivery, budget, account_api, account_user, identity_id FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
       [shop.shopId, promotionType]
     );
   } catch {
     try {
       cmap = await query(
-        `SELECT campaign_id, name, account, status, budget FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+        `SELECT campaign_id, name, account, status, delivery, budget FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
         [shop.shopId, promotionType]
       );
     } catch {
-      cmap = await query(
-        `SELECT campaign_id, name, account, status FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
-        [shop.shopId, promotionType]
-      );
+      try {
+        cmap = await query(
+          `SELECT campaign_id, name, account, status, budget FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+          [shop.shopId, promotionType]
+        );
+      } catch {
+        cmap = await query(
+          `SELECT campaign_id, name, account, status FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2`,
+          [shop.shopId, promotionType]
+        );
+      }
     }
   }
+  }
+  const toMs = (v: unknown): number | null => {
+    if (v === null || v === undefined || v === "") return null;
+    const ms = new Date(String(v)).getTime();
+    return Number.isFinite(ms) ? ms : null;
+  };
   const info = new Map<string, {
     name: string; account: string; status: string | null; delivery: string | null;
     budget: number | null; budgetMode: string | null;
+    accountApi: string | null; accountUser: string | null; identityId: string | null; identityBc: string | null;
+    enrichTriedAt: number | null; enrichFail: string | null;
   }>();
   for (const r of cmap.rows) info.set(r.campaign_id, {
     name: r.name, account: r.account ?? "Other", status: r.status ?? null,
     delivery: r.delivery ?? null, budget: parseBudgetAmount(r.budget),
     budgetMode: r.budget === null || r.budget === undefined ? null : "BUDGET_MODE_DAY",
+    accountApi: typeof r.account_api === "string" && r.account_api.trim() ? r.account_api.trim() : null,
+    accountUser: typeof r.account_user === "string" && r.account_user.trim() ? r.account_user.trim() : null,
+    identityId: typeof r.identity_id === "string" && r.identity_id.trim() ? r.identity_id.trim() : null,
+    identityBc: typeof r.identity_bc === "string" && r.identity_bc.trim() ? r.identity_bc.trim() : null,
+    enrichTriedAt: toMs(r.enrich_tried_at),
+    enrichFail: typeof r.enrich_fail === "string" && r.enrich_fail ? r.enrich_fail : null,
   });
+  const groupOf = (m: { account: string; accountApi: string | null }) =>
+    accountSource === "api" && promotionType === "LIVE_GMV_MAX" && m.accountApi ? m.accountApi : m.account;
 
   const rows = await fetchGMVMaxReport(
     creds.access_token, shop.advertiserId, shop.shopId, promotionType, startDate, endDate
@@ -374,10 +489,11 @@ export async function getShopReport(
   const byCampaign = new Map<string, { cost: number; gmv: number; orders: number }>();
   for (const r of filtered) {
     totalCost += r.cost; totalGMV += r.gmv; totalOrders += r.orders;
-    const meta = info.get(r.campaignId) ?? { name: r.campaignId, account: "Other", status: null, delivery: null };
-    const a = byAccount.get(meta.account) ?? { cost: 0, gmv: 0, orders: 0, campaigns: 0 };
+    const meta = info.get(r.campaignId) ?? { name: r.campaignId, account: "Other", accountApi: null, status: null, delivery: null };
+    const key = groupOf(meta);
+    const a = byAccount.get(key) ?? { cost: 0, gmv: 0, orders: 0, campaigns: 0 };
     a.cost += r.cost; a.gmv += r.gmv; a.orders += r.orders; a.campaigns += 1;
-    byAccount.set(meta.account, a);
+    byAccount.set(key, a);
     const c = byCampaign.get(r.campaignId) ?? { cost: 0, gmv: 0, orders: 0 };
     c.cost += r.cost; c.gmv += r.gmv; c.orders += r.orders;
     byCampaign.set(r.campaignId, c);
@@ -386,31 +502,253 @@ export async function getShopReport(
   // GMV Max campaign/get has no budget for this account. Read the budget only
   // for ON campaigns present in this report, at most 15 per dashboard fetch;
   // successful values are cached so repeated fetches progressively fill rows.
+  // Same info call also resolves the TT identity (027): campaigns missing
+  // account_api share the lookup budget (one info call fills both).
+  // Backoff (028): campaigns that can never resolve (unlimited budgets with no
+  // value, identities outside the map) stamped tried_at+fail sort below fresh
+  // ones, so they retry weekly instead of hogging every Fetch's slots.
+  const ENRICH_BACKOFF_MS = 7 * 24 * 3600 * 1000;
+  const nowMs = Date.now();
+  const isFresh = (id: string): boolean => {
+    const t = info.get(id)?.enrichTriedAt ?? null;
+    return t === null || nowMs - t > ENRICH_BACKOFF_MS;
+  };
+  // Actionable missing (amber): excludes permanently bracket-side campaigns.
+  const missingAccountActionable = (id: string): boolean => {
+    const m = info.get(id);
+    return promotionType === "LIVE_GMV_MAX" && !!m && !m.accountApi && m.enrichFail !== "bracket_only";
+  };
+  const countBracketOnly = (): number => {
+    if (promotionType !== "LIVE_GMV_MAX") return 0;
+    let n = 0;
+    for (const id of byCampaign.keys()) {
+      const m = info.get(id);
+      if (m && !m.accountApi && m.enrichFail === "bracket_only") n++;
+    }
+    return n;
+  };
+  let accountFillRemaining = [...byCampaign.keys()].filter(missingAccountActionable).length;
+  let accountDeferredRemaining = [...byCampaign.keys()].filter((id) => missingAccountActionable(id) && !isFresh(id)).length;
+  let budgetDeferredRemaining = [...byCampaign.keys()].filter((id) => {
+    const m = info.get(id);
+    return !!m && m.status === "ON" && m.budget === null && !isFresh(id);
+  }).length;
+  // Tolerant enrichment write: full (028+029) -> 028-level -> 027-level ->
+  // budget-only. Pre-migration DBs fall down the chain; memory-only at worst.
+  // stampTried=false skips the backoff stamp (transient map failure: retry
+  // next Fetch instead of parking a week).
+  async function saveEnrichment(
+    campaignId: string,
+    patch: { budget: number | null; accountApi: string | null; accountUser: string | null; identityId: string | null; identityBc: string | null; fail: string | null },
+    stampTried = true
+  ): Promise<void> {
+    const triedNow = new Date(nowMs).toISOString();
+    if (stampTried) {
+      try {
+        await query(
+          `UPDATE gmv.gmv_campaigns SET budget = COALESCE($1, budget), account_api = COALESCE($2, account_api), account_user = COALESCE($3, account_user), identity_id = COALESCE($4, identity_id), identity_bc = COALESCE($5, identity_bc), enrich_tried_at = $6::timestamptz, enrich_fail = $7, updated_at = now() WHERE campaign_id = $8`,
+          [patch.budget, patch.accountApi, patch.accountUser, patch.identityId, patch.identityBc, triedNow, patch.fail, campaignId]
+        );
+        return;
+      } catch { /* fall through to narrower writes */ }
+    }
+    try {
+      await query(
+        `UPDATE gmv.gmv_campaigns SET budget = COALESCE($1, budget), account_api = COALESCE($2, account_api), account_user = COALESCE($3, account_user), identity_id = COALESCE($4, identity_id), identity_bc = COALESCE($5, identity_bc), updated_at = now() WHERE campaign_id = $6`,
+        [patch.budget, patch.accountApi, patch.accountUser, patch.identityId, patch.identityBc, campaignId]
+      );
+      return;
+    } catch { /* pre-029 DB */ }
+    try {
+      await query(
+        `UPDATE gmv.gmv_campaigns SET budget = COALESCE($1, budget), account_api = COALESCE($2, account_api), account_user = COALESCE($3, account_user), identity_id = COALESCE($4, identity_id), updated_at = now() WHERE campaign_id = $5`,
+        [patch.budget, patch.accountApi, patch.accountUser, patch.identityId, campaignId]
+      );
+      return;
+    } catch { /* pre-027 DB */ }
+    try {
+      await query(
+        `UPDATE gmv.gmv_campaigns SET budget = $1, updated_at = now() WHERE campaign_id = $2`,
+        [patch.budget, campaignId]
+      );
+    } catch { /* read-only enrichment never breaks the report */ }
+  }
+  // Regroup helper (api mode): move one campaign's spend to its TT-account group.
+  function regroupToApi(campaignId: string, metaAccount: string, display: string): void {
+    const c = byCampaign.get(campaignId);
+    if (!c || accountSource !== "api" || promotionType !== "LIVE_GMV_MAX") return;
+    const old = byAccount.get(metaAccount);
+    if (old) { old.cost -= c.cost; old.gmv -= c.gmv; old.orders -= c.orders; old.campaigns -= 1; }
+    const nu = byAccount.get(display) ?? { cost: 0, gmv: 0, orders: 0, campaigns: 0 };
+    nu.cost += c.cost; nu.gmv += c.gmv; nu.orders += c.orders; nu.campaigns += 1;
+    byAccount.set(display, nu);
+  }
   if (includeBudgetInfo) {
-    const needBudget = [...byCampaign.entries()]
+    const needInfo = [...byCampaign.entries()]
       .filter(([campaignId]) => {
         const meta = info.get(campaignId);
-        return meta?.status === "ON" && meta.budget === null;
+        if (!meta) return false;
+        const needBudget = meta.status === "ON" && meta.budget === null;
+        // Account fill only when resolvable: store BC known or this
+        // campaign's own BC already captured (029). Otherwise the slots
+        // would burn on shops that can never resolve.
+        // Permanently bracket-side campaigns never take a slot again.
+        const needAccount = promotionType === "LIVE_GMV_MAX" && !meta.accountApi
+          && (!!shop.storeBcId || !!meta.identityBc) && meta.enrichFail !== "bracket_only";
+        return needBudget || needAccount;
       })
-      .sort((a, b) => b[1].cost - a[1].cost)
+      .sort((a, b) =>
+        (isFresh(b[0]) ? 1 : 0) - (isFresh(a[0]) ? 1 : 0) || b[1].cost - a[1].cost
+      )
       .slice(0, MAX_ACTIVE_GMV_BUDGET_LOOKUPS);
-    for (let i = 0; i < needBudget.length; i++) {
-      const [campaignId] = needBudget[i];
+    let idMap: Map<string, { display: string; user: string }> | null = null;
+    const needMap = needInfo.some(([id]) => {
+      const m = info.get(id);
+      return m && !m.accountApi;
+    });
+    if (needMap && shop.storeBcId) {
+      idMap = await fetchGmvIdentityMap(creds.access_token, shop.advertiserId, shop.shopId, shop.storeBcId);
+    }
+    for (let i = 0; i < needInfo.length; i++) {
+      const [campaignId] = needInfo[i];
+      const meta = info.get(campaignId);
+      const wantBudget = !!meta && meta.status === "ON" && meta.budget === null;
+      const wantAccount = !!meta && promotionType === "LIVE_GMV_MAX" && !meta.accountApi
+        && (!!shop.storeBcId || !!meta.identityBc);
+      const fails: string[] = [];
+      let skipStamp = false;
       try {
         const fresh = await fetchGmvMaxBudgetInfo(creds.access_token, shop.advertiserId, campaignId);
-        const meta = info.get(campaignId);
         if (meta) {
-          meta.budget = fresh.budget;
-          meta.budgetMode = fresh.budgetMode;
+          if (wantBudget) {
+            meta.budget = fresh.budget;
+            meta.budgetMode = fresh.budgetMode;
+          }
+          if (!meta.identityId && fresh.identityId) meta.identityId = fresh.identityId;
+          if (!meta.identityBc && fresh.identityBc) meta.identityBc = fresh.identityBc;
+          if (wantAccount && fresh.identityId && idMap) {
+            const hit = idMap.get(fresh.identityId);
+            if (hit) {
+              meta.accountApi = hit.display;
+              meta.accountUser = hit.user || null;
+              meta.identityId = fresh.identityId;
+              regroupToApi(campaignId, meta.account, hit.display);
+            } else {
+              fails.push("identity_unmapped");
+            }
+          } else if (wantAccount && !fresh.identityId) {
+            fails.push("no_identity");
+          } else if (wantAccount && !idMap) {
+            // Transient map failure: retry next Fetch, don't park a week.
+            fails.push("map_unavailable");
+            skipStamp = true;
+          }
+          if (wantBudget && meta.budget === null) fails.push("no_budget");
         }
-        await query(
-          `UPDATE gmv.gmv_campaigns SET budget = $1, updated_at = now() WHERE campaign_id = $2`,
-          [fresh.budget, campaignId]
-        );
       } catch {
-        // Read-only budget enrichment is fail-open; report metrics still render.
+        // Read-only enrichment is fail-open; report metrics still render.
+        // Budget-throwing info calls (no budget value) may still carry an
+        // identity — resolve it with the cheaper identity-only call.
+        if (wantBudget) fails.push("no_budget");
+        if (meta && wantAccount) {
+          try {
+            const found = await fetchGmvCampaignIdentity(creds.access_token, shop.advertiserId, campaignId);
+            if (!idMap && shop.storeBcId) {
+              idMap = await fetchGmvIdentityMap(creds.access_token, shop.advertiserId, shop.shopId, shop.storeBcId);
+            }
+            if (!meta.identityId && found) meta.identityId = found.id;
+            if (!meta.identityBc && found?.bc) meta.identityBc = found.bc;
+            if (found && idMap) {
+              const hit = idMap.get(found.id);
+              if (hit) {
+                meta.accountApi = hit.display;
+                meta.accountUser = hit.user || null;
+                meta.identityId = found.id;
+                regroupToApi(campaignId, meta.account, hit.display);
+              } else {
+                fails.push("identity_unmapped");
+              }
+            } else if (found && !idMap) {
+              fails.push("map_unavailable");
+              skipStamp = true;
+            } else {
+              fails.push("no_identity");
+            }
+          } catch {
+            fails.push("info_error");
+          }
+        } else if (!wantAccount) {
+          fails.push("info_error");
+        }
       }
-      if (i + 1 < needBudget.length) await new Promise((r) => setTimeout(r, 350));
+      if (meta) {
+        const fail = fails.length > 0 ? [...new Set(fails)].join("+") : null;
+        if (!skipStamp) {
+          meta.enrichTriedAt = nowMs;
+          meta.enrichFail = fail;
+        } else if (fail === null) {
+          meta.enrichTriedAt = nowMs;
+          meta.enrichFail = null;
+        }
+        await saveEnrichment(campaignId, {
+          budget: meta.status === "ON" && meta.budget !== null ? meta.budget : null,
+          accountApi: meta.accountApi, accountUser: meta.accountUser,
+          identityId: meta.identityId, identityBc: meta.identityBc, fail,
+        }, !skipStamp || fail === null);
+      }
+      if (i + 1 < needInfo.length) await new Promise((r) => setTimeout(r, 350));
+    }
+    // Second phase (029): per-BC identity maps for campaigns whose identity
+    // lives under a different BC than the store map (affiliate tail).
+    // Bounded: only BCs with spend in this report, at most 4 maps/Fetch.
+    {
+      const bcGroups = new Map<string, string[]>();
+      for (const [id, m] of info) {
+        if (promotionType === "LIVE_GMV_MAX" && m && !m.accountApi && m.identityId && m.identityBc && m.enrichFail !== "bracket_only" && byCampaign.has(id)) {
+          const arr = bcGroups.get(m.identityBc) ?? [];
+          arr.push(id);
+          bcGroups.set(m.identityBc, arr);
+        }
+      }
+      let bcMaps = 0;
+      for (const [bc, ids] of bcGroups) {
+        if (bcMaps >= 4) break;
+        bcMaps++;
+        let map: Map<string, { display: string; user: string }> | null = null;
+        try {
+          map = await fetchGmvIdentityMap(creds.access_token, shop.advertiserId, shop.shopId, bc);
+        } catch { /* fail-open: these retry next Fetch */ }
+        await new Promise((r) => setTimeout(r, 350));
+        if (!map) continue;
+        for (const id of ids) {
+          const m = info.get(id);
+          if (!m || m.accountApi || !m.identityId) continue;
+          const hit = map.get(m.identityId);
+          if (!hit) continue;
+          m.accountApi = hit.display;
+          m.accountUser = hit.user || null;
+          m.enrichTriedAt = Date.now();
+          m.enrichFail = null;
+          regroupToApi(id, m.account, hit.display);
+          await saveEnrichment(id, {
+            budget: m.status === "ON" && m.budget !== null ? m.budget : null,
+            accountApi: m.accountApi, accountUser: m.accountUser,
+            identityId: m.identityId, identityBc: m.identityBc, fail: null,
+          });
+        }
+      }
+    }
+    accountFillRemaining = [...byCampaign.keys()].filter(missingAccountActionable).length;
+    accountDeferredRemaining = [...byCampaign.keys()].filter((id) => missingAccountActionable(id) && !isFresh(id)).length;
+    budgetDeferredRemaining = [...byCampaign.keys()].filter((id) => {
+      const m = info.get(id);
+      return !!m && m.status === "ON" && m.budget === null && !isFresh(id);
+    }).length;
+  }
+  // Drop emptied bracket groups after mid-response regroup (api mode only).
+  if (accountSource === "api" && promotionType === "LIVE_GMV_MAX") {
+    for (const [k, v] of byAccount) {
+      if (v.campaigns <= 0) byAccount.delete(k);
     }
   }
   const net = totalGMV * (1 - FEE_RATE);
@@ -418,9 +756,10 @@ export async function getShopReport(
     name, ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0,
   })).sort((a, b) => b.gmv - a.gmv);
   const campaigns = [...byCampaign.entries()].map(([campaignId, d]) => {
-    const meta = info.get(campaignId) ?? { name: campaignId, account: "Other", status: null, delivery: null, budget: null, budgetMode: null };
+    const meta = info.get(campaignId) ?? { name: campaignId, account: "Other", accountApi: null, accountUser: null, status: null, delivery: null, budget: null, budgetMode: null };
     return {
-      campaignId, campaignName: meta.name, accountName: meta.account,
+      campaignId, campaignName: meta.name, accountName: groupOf(meta),
+      accountBracket: meta.account, accountApi: meta.accountApi, accountUser: meta.accountUser,
       status: meta.status, delivery: meta.delivery,
       budget: meta.status === "ON" ? meta.budget : null,
       budgetMode: meta.budgetMode,
@@ -436,7 +775,8 @@ export async function getShopReport(
     net, net_roi: totalCost > 0 ? net / totalCost : 0,
     orderCount: totalOrders, campaignCount: filtered.length,
     currency: "MYR", dateRange: { start: startDate, end: endDate },
-    accounts, campaigns, budgetRefreshRemaining,
+    accounts, campaigns, budgetRefreshRemaining, budgetDeferredRemaining,
+    accountFillRemaining, accountDeferredRemaining, accountBracketOnly: countBracketOnly(), accountSource,
   };
 }
 

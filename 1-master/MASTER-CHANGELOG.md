@@ -4,6 +4,16 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 14–15 Oct 2026
+
+- `gmvmax-auto` LIVE rename fix (`Sync names` button + nightly name heal) + `Bracket | TT account` grouping toggle (TT names via identity map, lazy ≤15/Fetch; `027/028/029` owner-run) + enrich backoff with honest bracket-only tail — deployed through `dpl_6Dh5KyJnpVV8VAYdcwgvE5TKbF4k`, all uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+## 13 Oct 2026
+
+- `gmvmax-auto` Total Performance Dashboard mockup rebuild (title + shop pill, 4 KPI cards with AOV/CPO/Net ROI, channel contribution cards with per-channel ROI) + range-picker week/month presets with MYT week math + month/year selects replacing the dead native input (one shared file, both pages sync) — deployed through `dpl_449aUfUz`, all uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto` auth persistence (30d session + rolling refresh, bare login page) + display names (`026`, profile block in sidebar) + calendar month view (`/calendar`: header today-pill, hover/tap popups, Today/Tomorrow panel with span progress) — deployed through `dpl_58wPcDwa1`, all uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
 ## 12 Oct 2026
 
 - `gmvmax-auto` calendar fixes (z-50 overlay, anchored popover, mobile single-month, Last 3 days, live day-count) + Shop Live module (`/shop-live`: dual-key analytics app authorized, server auth start/callback, list/minute/core-stats probes; MARKETING green, AFFILIATE metadata-only by TikTok design, creator grant parked; `025` owner-run pending; signer page_token fix) — deployed through `dpl_2cG3Abz7riTJPy4expFMceaysfog`, all uncommitted

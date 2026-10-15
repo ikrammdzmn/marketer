@@ -56,6 +56,20 @@ Lineage: v51-port `DateRangePicker.tsx` (dashboard) + v52 single-click fix
   on narrow screens force `left:8/right:8`.
 - Presets include Last 3 days between Yesterday and Last 7
   (`applyPreset` handles all `days:N` entries generically).
+- One shared `DateRangePicker.tsx` serves every online page (gmv-max,
+  shop-live import it) — edit once, all pickers sync. Add per-page
+  props only if caps/rules ever diverge.
+- Week/month presets (Oct 2026): This week (Mon→today), Last week
+  (Mon→Sun), This month (1st→today), Last month (full month) sit
+  between Last 3 days and Last 7. Monday-first via a MYT-aware
+  weekday helper (UTC+8 math) — server-local `Date` math shifts week
+  edges on UTC clocks. All four fit the 31-day cap (last month max
+  31d); year boundaries fall out of `isoMonth`/`isoAdd` overflow.
+- Never use native `<input type="month">` for month-jump: its
+  dropdown is browser chrome, unthemeable, and silently dead on some
+  browsers/schemes. Use month-name + year `<select>`s on the same
+  `YYYY-MM` state, clamped to `[MIN_MONTH, maxMonth]`, out-of-range
+  months `disabled` per selected year.
 - Footer shows live selection: `from – to · N days` from props,
   `anchor · pick end date…` after first click, `lo – hi · N days`
   hover preview; max-cap warning overrides.

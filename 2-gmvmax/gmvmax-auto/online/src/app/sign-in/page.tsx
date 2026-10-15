@@ -8,6 +8,7 @@ function SignInForm() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const denied = searchParams.get("error") === "AccessDenied";
+  const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-md items-center px-4">
@@ -25,7 +26,7 @@ function SignInForm() {
           disabled={loading}
           onClick={async () => {
             setLoading(true);
-            await signIn("google", { redirectTo: "/" });
+            await signIn("google", { redirectTo: callbackUrl });
           }}
           className="mt-6 w-full rounded-lg bg-white px-4 py-3 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 disabled:opacity-60"
         >

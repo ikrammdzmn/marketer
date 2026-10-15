@@ -129,6 +129,206 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
   );
 }
 
+// Total view dashboard: 4 top KPI cards + Channel Contribution cards
+// (LIVE Stream vs Product / Showcase) matching the Performance Dashboard mockup.
+function TotalPerformanceDashboard({ data }: { data: any }) {
+  const gmv = Number(data.gmv ?? 0);
+  const cost = Number(data.cost ?? 0);
+  const orders = Number(data.orders ?? 0);
+  const roi = cost > 0 ? gmv / cost : 0;
+  const netRoi = Number(data.net_roi ?? (cost > 0 ? (gmv * 0.75) / cost : 0));
+  const aov = orders > 0 ? gmv / orders : 0;
+  const cpo = orders > 0 ? cost / orders : 0;
+
+  const live = data.live ?? {};
+  const prod = data.product ?? {};
+  const lGmv = Number(live.gmv ?? 0);
+  const pGmv = Number(prod.gmv ?? 0);
+  const lCost = Number(live.cost ?? 0);
+  const pCost = Number(prod.cost ?? 0);
+  const lOrders = Number(live.orderCount ?? 0);
+  const pOrders = Number(prod.orderCount ?? 0);
+
+  const lRoi = lCost > 0 ? lGmv / lCost : 0;
+  const pRoi = pCost > 0 ? pGmv / pCost : 0;
+
+  const lGmvPct = gmv > 0 ? (lGmv / gmv) * 100 : 0;
+  const pGmvPct = gmv > 0 ? (pGmv / gmv) * 100 : 0;
+  const lCostPct = cost > 0 ? (lCost / cost) * 100 : 0;
+  const pCostPct = cost > 0 ? (pCost / cost) * 100 : 0;
+  const lOrdPct = orders > 0 ? (lOrders / orders) * 100 : 0;
+  const pOrdPct = orders > 0 ? (pOrders / orders) * 100 : 0;
+
+  const cardBg = "rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-4 shadow-sm";
+
+  return (
+    <section className="mb-6 space-y-4">
+      {/* Title bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-semibold tracking-tight text-zinc-100">Performance Dashboard</h2>
+        {data.shopName && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-xs text-zinc-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            {data.shopName}
+          </span>
+        )}
+      </div>
+
+      {/* Top 4 KPI cards */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className={cardBg}>
+          <div className="text-xs text-zinc-400">Total GMV</div>
+          <div className="mt-1.5 text-xl font-bold tracking-tight text-white tabular-nums">MYR {fmt(gmv)}</div>
+          <div className="mt-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-950/70 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
+              <span className="h-1 w-1 rounded-full bg-emerald-400" />
+              100% Total
+            </span>
+          </div>
+        </div>
+
+        <div className={cardBg}>
+          <div className="text-xs text-zinc-400">Total Orders</div>
+          <div className="mt-1.5 text-xl font-bold tracking-tight text-white tabular-nums">{orders.toLocaleString("en-MY")}</div>
+          <div className="mt-2 text-xs text-zinc-400">
+            Avg. Order Value: <span className="font-medium text-zinc-200 tabular-nums">{orders > 0 ? `MYR ${fmt(aov)}` : "—"}</span>
+          </div>
+        </div>
+
+        <div className={cardBg}>
+          <div className="text-xs text-zinc-400">Total Ad Spend / Cost</div>
+          <div className="mt-1.5 text-xl font-bold tracking-tight text-white tabular-nums">MYR {fmt(cost)}</div>
+          <div className="mt-2 text-xs text-zinc-400">
+            Cost per Order: <span className="font-medium text-zinc-200 tabular-nums">{orders > 0 ? `MYR ${fmt(cpo)}` : "—"}</span>
+          </div>
+        </div>
+
+        <div className={cardBg}>
+          <div className="text-xs text-zinc-400">Blended ROI</div>
+          <div className="mt-1.5 text-xl font-bold tracking-tight text-emerald-400 tabular-nums">
+            {roi.toFixed(2)}x <span className="text-sm font-normal text-zinc-300">Gross</span>
+          </div>
+          <div className="mt-2 text-xs text-zinc-400">
+            Net ROI: <span className="font-medium text-zinc-200 tabular-nums">{netRoi.toFixed(2)}x</span> <span className="text-zinc-500">(after 25% fee)</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Channel Contribution & Performance section */}
+      <div className="space-y-3 pt-1">
+        <h3 className="text-sm font-semibold tracking-tight text-zinc-200">Channel Contribution & Performance</h3>
+
+        {/* Top split bar: emerald LIVE + cyan/sky Product */}
+        <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-zinc-800">
+          <div className="bg-emerald-400 transition-all" style={{ width: `${lGmvPct}%` }} title={`LIVE: ${lGmvPct.toFixed(1)}%`} />
+          <div className="bg-sky-400 transition-all" style={{ width: `${pGmvPct}%` }} title={`Product: ${pGmvPct.toFixed(1)}%`} />
+        </div>
+
+        {/* Two channel cards */}
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {/* LIVE STREAM CHANNEL */}
+          <div className={`${cardBg} flex flex-col justify-between`}>
+            <div>
+              <div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
+                <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-zinc-200">
+                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  LIVE STREAM CHANNEL
+                </div>
+                <span className="rounded-full bg-emerald-950/80 px-2 py-0.5 text-xs font-semibold text-emerald-400 tabular-nums">
+                  {lGmvPct.toFixed(1)}% GMV
+                </span>
+              </div>
+
+              <div className="mt-3.5 grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[11px] text-zinc-400">GMV Generated</div>
+                  <div className="mt-1 text-base font-bold text-white tabular-nums">MYR {fmt(lGmv)}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-zinc-400">Orders Generated</div>
+                  <div className="mt-1 text-base font-bold text-white tabular-nums">
+                    {lOrders.toLocaleString("en-MY")}{" "}
+                    <span className="text-xs font-normal text-zinc-400">({lOrdPct.toFixed(1)}%)</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-zinc-400">Ad Spend / Cost</div>
+                  <div className="mt-1 text-sm font-semibold text-white tabular-nums">
+                    MYR {fmt(lCost)}{" "}
+                    <span className="text-xs font-normal text-zinc-400">({lCostPct.toFixed(1)}%)</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-zinc-400">Channel Efficiency (ROI)</div>
+                  <div className="mt-1 text-sm font-semibold text-emerald-400 tabular-nums">
+                    {lCost > 0 ? `${lRoi.toFixed(2)}x` : "—"}{" "}
+                    <span className="text-xs font-normal text-zinc-300">Gross ROI</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-1">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+                <div className="h-full bg-emerald-400" style={{ width: `${lGmvPct}%` }} />
+              </div>
+            </div>
+          </div>
+
+          {/* PRODUCT / SHOWCASE */}
+          <div className={`${cardBg} flex flex-col justify-between`}>
+            <div>
+              <div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
+                <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-zinc-200">
+                  <span className="h-2 w-2 rounded-full bg-sky-400" />
+                  PRODUCT / SHOWCASE
+                </div>
+                <span className="rounded-full bg-sky-950/80 px-2 py-0.5 text-xs font-semibold text-sky-400 tabular-nums">
+                  {pGmvPct.toFixed(1)}% GMV
+                </span>
+              </div>
+
+              <div className="mt-3.5 grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[11px] text-zinc-400">GMV Generated</div>
+                  <div className="mt-1 text-base font-bold text-white tabular-nums">MYR {fmt(pGmv)}</div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-zinc-400">Orders Generated</div>
+                  <div className="mt-1 text-base font-bold text-white tabular-nums">
+                    {pOrders.toLocaleString("en-MY")}{" "}
+                    <span className="text-xs font-normal text-zinc-400">({pOrdPct.toFixed(1)}%)</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-zinc-400">Ad Spend / Cost</div>
+                  <div className="mt-1 text-sm font-semibold text-white tabular-nums">
+                    MYR {fmt(pCost)}{" "}
+                    <span className="text-xs font-normal text-zinc-400">({pCostPct.toFixed(1)}%)</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] text-zinc-400">Channel Efficiency (ROI)</div>
+                  <div className="mt-1 text-sm font-semibold text-emerald-400 tabular-nums">
+                    {pCost > 0 ? `${pRoi.toFixed(2)}x` : "—"}{" "}
+                    <span className="text-xs font-normal text-zinc-300">Gross ROI</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-1">
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+                <div className="h-full bg-sky-400" style={{ width: `${pGmvPct}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Spin({ className = "h-3 w-3" }: { className?: string }) {
   return (
     <span className={`inline-block animate-spin rounded-full border border-zinc-500 border-t-transparent align-middle ${className}`} />
@@ -213,6 +413,7 @@ export default function Page() {
   const [sessionsExpanded, setSessionsExpanded] = useState<Set<string>>(new Set());
   const [budgetRefreshing, setBudgetRefreshing] = useState<Set<string>>(new Set());
   const [budgetNotice, setBudgetNotice] = useState<string | null>(null);
+  const [namesSyncing, setNamesSyncing] = useState(false);
   const [shopToken, setShopToken] = useState<any>(null);
   const [shopTokenRefreshing, setShopTokenRefreshing] = useState(false);
   const [shopTokenNotice, setShopTokenNotice] = useState<string | null>(null);
@@ -239,8 +440,16 @@ export default function Page() {
   const rangeBtnRef = useRef<HTMLButtonElement | null>(null);
   const [ttamPresets, setTtamPresets] = useState<any[]>([]);
   const [presetOverride, setPresetOverride] = useState<any>(null);
+  // LIVE account grouping: bracket (campaign [Name]) vs TT account
+  // (identity display name via gmv_max/info + identity/get, 027).
+  const [liveAccountSource, setLiveAccountSource] = useState<"bracket" | "api">(() => {
+    try { return localStorage.getItem("gmv-live-account-source") === "api" ? "api" : "bracket"; }
+    catch { return "bracket"; }
+  });
   const fetchingRef = useRef(false);
   const autoRef = useRef(false);
+  const liveAccountSourceRef = useRef<"bracket" | "api">(liveAccountSource);
+  useEffect(() => { liveAccountSourceRef.current = liveAccountSource; }, [liveAccountSource]);
 
   async function pickPreset(key: string) {
     try {
@@ -453,8 +662,35 @@ export default function Page() {
     void loadSessions(campaignId);
   }
 
-  async function refreshGmvBudget(campaign: any, promotionType: string, shopNumber: string) {
-    const key = `${shopNumber}:${promotionType}:${campaign.campaignId}`;
+  // Campaign renames in TikTok ([Account] bracket / title) only land in
+  // gmv.gmv_campaigns via syncShopCampaigns — the board reads that cache.
+  // This refreshes names first, then re-fetches so new groups/rows show.
+  async function syncNamesAction() {
+    if (namesSyncing || loading) return;
+    setNamesSyncing(true);
+    setBudgetNotice(null);
+    try {
+      const r = await fetch("/api/campaigns/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shopNumber: shop }),
+      });
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error ?? "names sync failed");
+      const okMsg = `Names synced: ${body.synced ?? 0} campaigns. Re-fetching…`;
+      setBudgetNotice(okMsg);
+      toast(okMsg);
+      await fetchData();
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "names sync failed";
+      setBudgetNotice(m);
+      toast(m, "err");
+    } finally {
+      setNamesSyncing(false);
+    }
+  }
+
+  async function refreshGmvBudget(campaign: any, promotionType: string, shopNumber: string) {    const key = `${shopNumber}:${promotionType}:${campaign.campaignId}`;
     if (budgetRefreshing.has(key)) return;
     setBudgetRefreshing((current) => new Set(current).add(key));
     setBudgetNotice(null);
@@ -770,7 +1006,8 @@ export default function Page() {
       const types = metricId === "total" ? ["LIVE_GMV_MAX", "PRODUCT_GMV_MAX"] : [metricId];
       const parts = [];
       for (const t of types) {
-        const r = await fetch(`/api/gmv-max?${q}&promotion_type=${t}`);
+        const src = t === "LIVE_GMV_MAX" ? `&accountSource=${liveAccountSourceRef.current}` : "";
+        const r = await fetch(`/api/gmv-max?${q}&promotion_type=${t}${src}`);
         if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
         parts.push(await r.json());
       }
@@ -784,6 +1021,10 @@ export default function Page() {
         roi: cost > 0 ? gmv / cost : 0, net, net_roi: cost > 0 ? net / cost : 0,
         orders, currency: "MYR", oneDay: start === end,
         budgetRefreshRemaining: parts.reduce((s, p) => s + Number(p.budgetRefreshRemaining ?? 0), 0),
+        accountFillRemaining: parts.reduce((s, p) => s + Number(p.accountFillRemaining ?? 0), 0),
+        accountDeferredRemaining: parts.reduce((s, p) => s + Number(p.accountDeferredRemaining ?? 0), 0),
+        accountBracketOnly: parts.reduce((s, p) => s + Number(p.accountBracketOnly ?? 0), 0),
+        budgetDeferredRemaining: parts.reduce((s, p) => s + Number(p.budgetDeferredRemaining ?? 0), 0),
         sections: parts.map((p) => ({
           key: p.promotionType,
           title: p.promotionType === "LIVE_GMV_MAX" ? "LIVE GMV Max" : "Product GMV Max",
@@ -873,6 +1114,12 @@ export default function Page() {
             disabled={loading || cooldown > 0}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
           >{loading ? (<span className="inline-flex items-center gap-2"><Spin className="h-4 w-4 border-white/60 border-t-transparent" />Fetching…</span>) : cooldown > 0 ? `Wait ${cooldown}s` : "Fetch Data"}</button>
+          <button
+            onClick={() => void syncNamesAction()}
+            disabled={loading || namesSyncing}
+            title="Re-read campaign names from TikTok so renames show, then re-fetch"
+            className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+          >{namesSyncing ? "Syncing…" : "Sync names"}</button>
           {fetchedAt && <span className="text-xs text-zinc-500">Fetched: {fetchedAt}</span>}
         </div>
       </header>
@@ -891,29 +1138,62 @@ export default function Page() {
 
         {data && data.kind === "gmv" && (
           <>
-            <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Kpi label={metric === "total" ? "Total GMV Max" : "GMV"} value={`MYR ${fmt(data.gmv)}`} sub={data.shopName} />
-              <Kpi label="Total Cost" value={`MYR ${fmt(data.cost)}`} sub={`${data.orders} orders`} />
-              <Kpi label="ROI (gross)" value={`${data.roi.toFixed(2)}x`} sub={`Net ${(data.net_roi ?? 0).toFixed(2)}x (fee 25%)`} />
-              <Kpi
-                label="Split"
-                value={`L ${fmt(data.live?.gmv ?? 0)}`}
-                sub={`P ${fmt(data.product?.gmv ?? 0)}`}
-              />
-            </div>
-            {data.live && (
+            {metric === "total" ? (
+              <TotalPerformanceDashboard data={data} />
+            ) : (
+              <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Kpi label="GMV" value={`MYR ${fmt(data.gmv)}`} sub={data.shopName} />
+                <Kpi label="Total Cost" value={`MYR ${fmt(data.cost)}`} sub={`${data.orders} orders`} />
+                <Kpi label="ROI (gross)" value={`${data.roi.toFixed(2)}x`} sub={`Net ${(data.net_roi ?? 0).toFixed(2)}x (fee 25%)`} />
+                <Kpi
+                  label="Split"
+                  value={`L ${fmt(data.live?.gmv ?? 0)}`}
+                  sub={`P ${fmt(data.product?.gmv ?? 0)}`}
+                />
+              </div>
+            )}
+            {metric !== "total" && data.live && (
               <div className="mb-2 text-xs text-zinc-400">
                 LIVE — MYR {fmt(data.live.gmv)} / {fmt(data.live.cost)} · Product — MYR {fmt(data.product?.gmv ?? 0)} / {fmt(data.product?.cost ?? 0)}
               </div>
             )}
             <h3 className="mb-2 text-sm font-semibold text-zinc-200">Breakdown by Account (click a row to expand)</h3>
-            <p className="mb-2 text-[11px] text-zinc-500">Campaign budget shows the current daily amount for ON campaigns. Account budget is the sum of ON campaigns only (OFF ignored); marked partial when an ON budget is still unknown. % used is shown only for one selected day (ON day spend / ON budget sum; historical budget changes are not tracked). Uncached budget lookups fill in batches of 15 as you fetch again.</p>
+            <p className="mb-2 text-[11px] text-zinc-500">Campaign budget shows the current daily amount for ON campaigns. Account budget is the sum of ON campaigns only (OFF ignored); marked partial when an ON budget is still unknown. % used is shown only for one selected day (ON day spend / ON budget sum; historical budget changes are not tracked). Uncached budget lookups fill in batches of 15 as you fetch again. LIVE groups can switch between the <span className="text-zinc-300">[Bracket]</span> name and the TikTok account behind the campaign (fills in batches of 15 like budgets).</p>
             {Number(data.budgetRefreshRemaining ?? 0) > 0 && (
-              <p className="mb-2 text-[11px] text-amber-300">{data.budgetRefreshRemaining} active campaign budget(s) still need an API lookup. Fetch again to continue filling the cache.</p>
+              <p className="mb-2 text-[11px] text-amber-300">{data.budgetRefreshRemaining} active campaign budget(s) still need an API lookup. Fetch again to continue filling the cache.{Number(data.budgetDeferredRemaining ?? 0) > 0 && ` ${data.budgetDeferredRemaining} look unresolvable and retry weekly instead of every Fetch.`}</p>
+            )}
+            {Number(data.accountFillRemaining ?? 0) > 0 && (
+              <p className="mb-2 text-[11px] text-amber-300">{data.accountFillRemaining} LIVE campaign(s) still need a TikTok-account lookup. Fetch again to continue filling.{Number(data.accountDeferredRemaining ?? 0) > 0 && ` ${data.accountDeferredRemaining} look unresolvable (unauthorized/affiliate accounts) and retry weekly instead of every Fetch.`}</p>
+            )}
+            {Number(data.accountBracketOnly ?? 0) > 0 && (
+              <p className="mb-2 text-[11px] text-zinc-500">{data.accountBracketOnly} LIVE campaign(s) are bracket-only: TikTok exposes no API name for them, so they group by [Bracket].</p>
             )}
             {(data.sections ?? []).map((sec: any) => (
               <div key={sec.key} className="mb-4 overflow-hidden rounded-xl border border-zinc-800">
-                <div className="border-b border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-medium">{sec.title}</div>
+                <div className="flex flex-wrap items-center gap-2 border-b border-zinc-800 bg-zinc-900 px-3 py-2 text-sm font-medium">
+                  <span>{sec.title}</span>
+                  {sec.key === "LIVE_GMV_MAX" && (
+                    <span className="ml-auto inline-flex items-center gap-1 text-[11px] font-normal">
+                      <span className="text-zinc-500">Group by</span>
+                      {(["bracket", "api"] as const).map((src) => (
+                        <button
+                          key={src}
+                          onClick={() => {
+                            const next = src;
+                            setLiveAccountSource(next);
+                            try { localStorage.setItem("gmv-live-account-source", next); } catch { /* private mode */ }
+                            liveAccountSourceRef.current = next;
+                            toast(next === "api" ? "LIVE groups: TikTok account." : "LIVE groups: [Bracket].");
+                            void fetchData();
+                          }}
+                          disabled={loading}
+                          title={src === "api" ? "Group LIVE campaigns by the TikTok account behind them (identity display name)" : "Group LIVE campaigns by the [Bracket] in the campaign name"}
+                          className={`rounded-full px-2 py-0.5 ${liveAccountSource === src ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}
+                        >{src === "api" ? "TT account" : "Bracket"}</button>
+                      ))}
+                    </span>
+                  )}
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead><tr className="text-zinc-400"><th className={thCls}></th><th className={thCls}>Account</th><th className={`${thCls} text-right`}>Cost</th><th className={`${thCls} text-right`}>GMV</th><th className={`${thCls} text-right`}>Orders</th><th className={`${thCls} text-right`}>ROI</th><th className={`${thCls} text-right`}>Budget (MYR)</th><th className={`${thCls} text-right`} title="Shown only for a single-day selection; daily spend divided by current daily budget">% used</th></tr></thead>
@@ -951,6 +1231,15 @@ export default function Page() {
                             })} className="cursor-pointer border-t border-zinc-800 hover:bg-zinc-900">
                               <td className={tdCls}>{open ? "▾" : "▸"}</td>
                               <td className={tdCls}>{a.name}
+                                {sec.key === "LIVE_GMV_MAX" && liveAccountSource === "api" && (() => {
+                                  const users: string[] = (rows as any[]).map((c: any) => String(c.accountUser ?? "").trim());
+                                  const u: string | undefined = users.find((s: string) => !!s);
+                                  return u ? <span className="ml-1 text-[11px] text-zinc-500">@{u}</span> : null;
+                                })()}
+                                {sec.key === "LIVE_GMV_MAX" && liveAccountSource === "api" && (() => {
+                                  const b: string[] = [...new Set((rows as any[]).map((c: any) => String(c.accountBracket ?? "").trim()).filter(Boolean))].slice(0, 3);
+                                  return b.length > 0 ? <span title={`Bracket name(s): ${b.join(", ")}`} className="ml-1 text-[10px] text-zinc-600">[{b.length > 1 ? `${b[0]} +${b.length - 1}` : b[0]}]</span> : null;
+                                })()}
                                 {(() => {
                                   const hasON = rows.some((c: any) => c.status === "ON");
                                   const accountOngoing = rows.some((c: any) => campaignOngoing(c.campaignId));
@@ -979,6 +1268,9 @@ export default function Page() {
                               <tr className="border-t border-zinc-800 bg-zinc-900/60">
                                 <td className={tdCls}></td>
                                 <td className={`${tdCls} text-xs`}>{c.campaignName} <span className="text-zinc-500">({c.campaignId})</span>
+                                  {sec.key === "LIVE_GMV_MAX" && c.accountApi && (
+                                    <span className="ml-1 text-[10px] text-zinc-500" title={c.accountUser ? `@${c.accountUser} · bracket [${c.accountBracket ?? ""}]` : `bracket [${c.accountBracket ?? ""}]`}>· {c.accountApi}</span>
+                                  )}
                                   <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] ${c.status === "ON" ? "bg-emerald-900 text-emerald-200" : c.status === "OFF" ? "bg-zinc-700 text-zinc-200" : "bg-amber-900 text-amber-200"}`}>{c.status ?? "?"}</span>
                                   {campaignOngoing(c.campaignId) ? (
                                     <span title="a live room is ongoing now" className="ml-1 rounded-full bg-emerald-900 px-2 py-0.5 text-[10px] text-emerald-200">🟢 Active</span>

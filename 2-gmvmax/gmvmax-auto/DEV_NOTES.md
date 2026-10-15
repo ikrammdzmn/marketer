@@ -1,12 +1,79 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 37 first (current facts), then Checkpoints 36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 40 first (current facts), then Checkpoints 39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 40 — 14–15 Oct 2026 (LIVE rename fix + Bracket|TT-account toggle + enrich backoff; 6 deploys, ALL UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner opened with a plain complaint: a live account renamed in TikTok, board still shows old name. Diagnosed in one read (`getShopReport` reads Neon cache, only `syncShopCampaigns` writes it, nothing calls it on Fetch) → shipped `Sync names` POST + button + nightly heal → owner asked "are live campaigns using the bracket?" (yes, `parseCampaignName`) → "what if we add API-or-bracket option for LIVE?" → long probe arc across Plan/Build toggles (owner toggles plan mode constantly — roll with it, probe-first answers land best). Probed `tt_account_name` at 4 grains (campaign grains code-0 but value `"0"`), doc-exact 7-day retry (`named: 0` despite spend), `campaign/get` (9 keys, no account), `ad/get` (0 ads), `gmv_max/info` (JACKPOT: `identity_list` with real `identity_id` + `identity_authorized_bc_id`), then `gmv_max/identity/get` shape-hunted via error messages (`store_id required` → `store_authorized_bc_id required` → code 0, 27 names, `fcba7163 → Dr. Samhan @dr.samhan` has_want:true). Owner even tried Postman themselves (used the ROW_ auth code as Access-Token — ELI5'd hotel key-card vs booking slip, they laughed "you do yourself, haha" → probed server-side instead). Backlog drained 171 → 76 → the 76 parked honest: `identity_unmapped` under the store BC = affiliate/unauthorized tail no endpoint will name → `bracket_only` marker + grey note. Mood: brisk, evidence-driven, high trust; owner pastes JSON/probe output like a champ. Sparring held once (talked them out of per-BC over-engineering until the fail-mix proved it: 76×`identity_unmapped`).
+
+**What shipped (tsc 0 every step, deploys green, ALL UNCOMMITTED).**
+- Rename fix (`dpl` chain start): `POST /api/campaigns/sync` (allowlist+same-origin, `CRON_SECRET` GET kept) + `Sync names` button on `/gmv-max` (syncs then auto-fetches) + nightly-sync heals names fail-open. `/accounts` untouched per owner.
+- Toggle (`dpl_7RL5AcXKGMAeV2rG9okMzNoLK1cF`): `027` (`account_api/account_user/identity_id`, owner ran dev+prod) + `SHOPS[1].storeBcId` + `fetchGmvIdentityMap` (15-min cache) + lazy fill ≤15/Fetch sharing the budget info-call (one call fills both) + `?accountSource=api` grouping + LIVE `Bracket|TT account` header toggle (localStorage) + `@user`/bracket hints + per-row `· TT name`. PRODUCT always bracket.
+- Backoff (`dpl_DKAAybWw5jWLJTbw15k9fZ7rZaNq`): `028` (`enrich_tried_at/enrich_fail`, owner ran) + fresh-first sort + tolerant 3-level save chain + deferred counters in both amber lines + manual-refresh stamps. Fixed the 2-per-Fetch crawl (unresolvable top-spenders hogged slots forever).
+- Per-BC recovery (`dpl_DEUvSEQ45qa2FYTF5fwuE9T2Ckrs`): `029` (`identity_bc` + re-queue of 76, owner ran) + per-BC maps ≤4/Fetch + `needAccount` gating on resolvable + no-stamp on transient map failure. Result: 45 true tail identified.
+- Parking (`dpl_6Dh5KyJnpVV8VAYdcwgvE5TKbF4k`): `bracket_only` skip in fill+second-phase + `accountBracketOnly` counter + grey note. Amber now counts actionable only.
+- Probe route `/api/live-account-probe` (A–G sections) stays deployed — useful, harmless, read-only.
+
+**Bugs + lessons.**
+- B97 stale-cache-by-design: board reads Neon, nothing refreshes names on Fetch. Lesson: every cached label needs a visible refresh path + an automatic heal (button + nightly), or renames "don't show" forever.
+- B98 `code 0 ≠ usable`: `tt_account_name` answers OK with value `"0"` (doc :4531 permission wall). Lesson: always read sample VALUES, not just codes — the probe now returns `per_sample` for this reason.
+- B99 error messages name the missing param (`store_id required` → `store_authorized_bc_id required`). Lesson: when shape-hunting, follow the message verbatim one param at a time; each 40002 is progress.
+- B100 enrichment without backoff starves: unresolvable rows retry at top priority forever (2/Fetch drain). Lesson: every lazy-fill loop stamps attempts and sorts fresh-first from day one.
+- B101 ROW_ code ≠ Access-Token (owner Postman). Lesson: ELI5 with the hotel key-card analogy; then just do it server-side.
+- Identity map cache key must include the BC (`advertiser:store:bc`), not just store — per-BC maps would have collided.
+- `saveEnrichment` needs the full tolerant chain (029 → 028/027 → 027 → budget-only); each migration otherwise breaks older DBs instead of degrading.
+
+**Open.**
+- Owner: nothing pending — 027/028/029 applied (confirm dev+prod all three), Fetch until amber clears, eyeball TT-account groups vs brackets.
+- Next-build: `bracket_only` recheck button IF a grey count ever drops on its own (re-auth signal); TTAM creative-spend eyeball + manual-gap recheck still parked since Cp28-35; commit/push everything (never unasked — this arc: gmv.ts+shops.ts+3 routes+page + 027/028/029 + probe + AGENTS ledger).
+
+## Checkpoint 39 — 13 Oct 2026 (Total Performance Dashboard mockup + picker week/month presets + skill update; 3 deploys, ALL UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Continuation of Cp38 evening. Owner wanted orders + LIVE/Product fractions on total → shipped KPI+panel, "im not satisfied" + mockup screenshot → plan-mode (they keep toggling it) → "ok build it" → TotalPerformanceDashboard to mockup, deployed `dpl_4Fomso6i` → picker ask (This/Last week, This/Last month + dead month selector + "edit one, sync all?") → confirmed single shared file after grep, planned, "ok go, btw i roll back the edit the code for calendar page" → checked tree: `/calendar` intact (SidePanel/popups present), rollback was prod-side only; this deploy re-baselined prod → presets verified by node script (week edges, Feb 28d, Dec→Jan) → temp script deleted → "update the details in calendar picker skills" → SKILL.md + wrap up. Mood: owner judges by screenshot-match; "not satisfied" means show a mockup, don't iterate blind.
+
+**What shipped (tsc 0, deploys green, ALL UNCOMMITTED).**
+- Total dashboard (`gmv-max/page.tsx`, `dpl_4Fomso6i`): `TotalPerformanceDashboard` on `metric==="total"` only — title bar + shop pill, 4 KPI cards (Total GMV + 100% pill, Orders + AOV, Cost + CPO, Blended ROI green + Net sub), Channel Contribution section (full-width emerald/sky split bar + LIVE STREAM CHANNEL / PRODUCT SHOWCASE cards with GMV %, orders %, cost %, per-channel ROI, bottom bars). Replaced prior KPI+ShareRow panel same session. Single-metric views untouched.
+- Picker (`DateRangePicker.tsx`, `dpl_449aUfUz`): This/Last week (Mon-first, MYT-aware `mytWeekdayMon0`), This/Last month (all ≤31d cap); kept Last 3 days (Cp37 ask — do not remove); native `input[type=month]` replaced by month+year selects (native dropdown was dead chrome). Shared file → gmv-max + shop-live sync. Note: build log shows someone else's `/ai` routes landing in same deploys — not ours, don't touch.
+- Skill: `skills/calendar-picker/SKILL.md` gains week/month preset rules + native-month-input ban + one-shared-file note.
+
+**Bugs + lessons.**
+- B95 PowerShell eats `node -e` quotes (Expression expected). Lesson: temp `.js` file under approved Temp + `node file`, delete after.
+- B96 `tsc` workdir discipline (B94 repeat risk): no tsconfig below `online/` passes silent-green. Always `online/`.
+- Rollback check first: owner "rolled back" but tree was intact — `grep` for the feature before reacting; prod re-baselines on next deploy anyway.
+
+**Open.**
+- Owner: eyeball Total dashboard numbers vs tables (shares sum 100%, channel ROI sane); try all picker presets on both pages + month/year selects.
+- Next-build: prior parks unchanged. Commit/push everything (never unasked). `.env.example` + `ai/` changes in tree are another session's — leave alone.
+
+## Checkpoint 38 — 13 Oct 2026 (auth persistence + bare login + display names + header pill + /calendar month view + profile block; 10 deploys, ALL UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner opened with a complaint, not a screenshot: "why sign in every time I close the browser?" → diagnosed 8h maxAge vs 24h default updateAge in one read → "ok for 30d" → implemented + deployed → screenshot of signed-out page showing full sidebar ("show login only?") → plan-mode (they keep toggling it) → "ok" + new ask in same breath (display names on access page) → planned both, "ok go" → 026 written, owner ran it on prod, rename 500'd → couldn't see prod logs, so made audit best-effort + surfaced DB code, redeployed → "ok now it works" → "is the lag label needed?" (plan-mode, option 1: remove) → "go" → calendar pill + month-page plan → "what is 2 today: Sale X?" (it was my example text, clarified) → "ok go" → shipped → sidebar top-vs-bottom (plan, words only per ask: below) → "drop from header" → shipped → month-view refinements in short bursts (sidebar move, hover popups, small-grid popups, today/tomorrow highlights, right-side Today/Tomorrow panel with Day x/y + Ends-in) → "ok good, wrap up". Mood: fast loop, owner tests instantly and reports in one line; trust high. Sparring light today (talked them into truncate-in-cell + full-in-popup instead of full titles in cells).
+
+**What shipped (tsc 0 every step, 10 prod deploys, ALL UNCOMMITTED).**
+- Auth persistence (`auth.config.ts`, `dpl_B3CifSbq`): session 8h → 30d + `updateAge` 24h + `jwt.maxAge` 30d + persistent `sessionToken` cookie; sign-in respects `callbackUrl`.
+- Bare login (Shell `/sign-in` early return, `dpl_9cqJRgbe`): no sidebar/topbar signed-out. Same deploy: display names — `026_allowlist_display_name.sql` NEW (owner ran prod), `allowlist-store` tolerant helpers, access-list GET/POST (+PUT rename, bootstrap-admin upsert), access-manager name field + Rename, layout→Shell `displayName`, top bar name with email tooltip.
+- Rename 500 (`dpl_5hs6qasv`): audit INSERT sank PUT → best-effort + DB code in admin-only error. Lesson B92.
+- Label removal (`dpl_QvTB1enM`): "Neon prod · live TikTok API (lag 15m–2h)" span deleted; PROD pill stays the branch signal.
+- Calendar (`dpl_6rbCyfP56`): header today-pill (PC titles, mobile `[N today]`, links `/calendar`, fail-silent); `getRangeEvents` + `?from=&to=` (100d clamp); `/calendar` page (big month + prev/next dots, Monday-first, MYT edges, look-only); sidebar `Calendar` in Menu + `Calendar filters` rename; agenda `Calendar →` link.
+- Profile block (`dpl_D1ZBkdpx`): name/email + Sign out moved to sidebar bottom (icon-only collapsed); header name dropped, pill takes `ml-auto`.
+- Popups + highlights (`dpl_26JZXRwF`, `dpl_2PN5vtEf`, `dpl_7Mt2PZuwU`): hover/tap day popups (full titles, clickable, edge-flip, all 3 grids); today emerald + tomorrow zinc cells.
+- Side panel (`dpl_58wPcDwa1`, latest): Today/Tomorrow cards (mobile on top, desktop sticky right, grid untouched) with span progress `Day 8/10 · Ends in 2 days` / `Started today · Day 1/10` from full-span MYT day math.
+
+**Bugs + lessons (sequence continues B91+).**
+- B91 never-refreshing session: Auth.js default `updateAge` 24h > custom `maxAge` 8h → token dies on schedule, active use or not. Lesson: when touching session maxAge, always set updateAge well under it.
+- B92 audit in the critical path: PUT rename 500'd on the audit INSERT (prod `core.audit` mismatch), masking the real error. Lesson: audit writes are best-effort (try/catch, never gate the save); admin-only routes may echo the DB code.
+- B93 edit-tool appetite: route.ts kept a stale body after a partial-oldString edit; MonthGrid lost its signature line the same way. Lesson: re-read the edited region every time (rule 8 exists for this); tsc catches the breakage, eyes catch the cause.
+- B94 silent-green tsc: ran `tsc --noEmit` with workdir in `src/app/calendar/` (no tsconfig) → exit 0, checked nothing. Lesson: always run from `online/`.
+
+**Open (owner vs next-build).**
+- Owner: nothing pending — 026 applied prod, all features eyeball-verified by them. Commit/push everything (never done unasked — 12 files: 10 modified + 026 + `calendar/`).
+- Next-build: prior parks unchanged (creator-grant doc, manual-gap recheck, TTAM creative-spend eyeball, affiliate retest).
 
 ## Checkpoint 37 — 12 Oct 2026 (calendar z-fix + Shop Live module: dual-key auth, list/minute/core-stats probes, signer bug; ALL DEPLOYED, ALL UNCOMMITTED)
 

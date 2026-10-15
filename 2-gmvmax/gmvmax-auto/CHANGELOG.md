@@ -2,6 +2,24 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 14–15 Oct 2026 — LIVE rename fix + Bracket|TT-account toggle + enrich backoff (6 deploys through dpl_6Dh5KyJnpVV8VAYdcwgvE5TKbF4k, all uncommitted)
+
+- Rename fix: board account/campaign names come from the Neon cache which nothing refreshed on Fetch — new `Sync names` button (allowlisted `POST /api/campaigns/sync`, auto re-fetch) + nightly-sync name heal. Rename the `[Bracket]` in Ads Manager, Sync, Fetch — new group shows. `/accounts` untouched.
+- LIVE `Bracket | TT account` toggle (header of the LIVE section, remembered): groups by the TikTok account behind the campaign (identity display name + `@user`, bracket hint kept) instead of the `[Bracket]`. TT names fill lazily ≤15/Fetch like budgets (027 `account_api/account_user/identity_id`, owner ran dev+prod; PRODUCT stays bracket). Provenance: report `tt_account_name` returns `"0"` (permission wall), but `gmv_max/info.identity_list` + `gmv_max/identity/get` per-BC maps resolve real names (e.g. Dr. Samhan).
+- Enrich backoff (028 `enrich_tried_at/enrich_fail`, 029 `identity_bc`, owner ran both): unresolvable campaigns (unlimited budgets, affiliate/unauthorized identities) back off 7d instead of hogging every Fetch's 15 slots; per-BC maps (≤4/Fetch) recover the affiliate tail; the true tail (45) is marked `bracket_only` and shows a calm grey note instead of amber urgency. Manual budget refresh stamps attempts too.
+
+## 13 Oct 2026 (evening) — Total Performance Dashboard + picker week/month presets (3 deploys through dpl_449aUfUz, all uncommitted)
+
+- Total view (`metric=total`) rebuilt to mockup: `Performance Dashboard` title + shop pill, 4 KPI cards (Total GMV + 100% pill, Orders + AOV, Cost + CPO, Blended ROI + Net sub), Channel Contribution section (full-width split bar + LIVE STREAM CHANNEL / PRODUCT SHOWCASE cards with GMV/orders/cost % + per-channel ROI). Replaces the earlier KPI+panel iteration same day.
+- Range picker: This week / Last week (Monday-first, MYT) + This month / Last month presets (all within the 31-day cap); dead native month input replaced by month+year selects; one shared file so gmv-max + shop-live update together. Preset math node-verified (week edges, Feb, Dec→Jan).
+
+## 13 Oct 2026 — auth persistence + bare login + display names + calendar month view (10 deploys through dpl_58wPcDwa1, all uncommitted)
+
+- Google session 8h → 30d with daily rolling refresh + persistent cookie (the old 8h died on schedule because default `updateAge` 24h exceeded it); sign-in returns to the page you came from.
+- `/sign-in` renders the login card only (no sidebar/top bar); stale "Neon prod · live TikTok API" header label removed (`PROD` pill stays the branch signal).
+- Display names: `026_allowlist_display_name.sql` (owner ran prod) + name field on add + Rename per row in `/access`; sidebar-bottom profile block (name + email + Sign out, icon-only when collapsed) replaces the header name.
+- Header today-pill (PC titles, mobile `[N today]`, links to `/calendar`) + new `/calendar` month view: big month + prev/next grids, hover/tap popups with clickable full titles, today-emerald/tomorrow-zinc cells, Today/Tomorrow side panel (mobile on top, desktop sticky right) with span progress (`Day 8/10 · Ends in 2 days`); `?from=&to=` range API (100d clamp), agenda unchanged.
+
 ## 12 Oct 2026 — calendar fixes + Shop Live module (all deployed prod, all uncommitted)
 
 - Calendar picker: overlay above Shell bar (z-50), anchored popover under Range, mobile single-month + wrapping chips, Last 3 days preset, footer `from – to · N days` live count. Same picker wired into `/shop-live` range.

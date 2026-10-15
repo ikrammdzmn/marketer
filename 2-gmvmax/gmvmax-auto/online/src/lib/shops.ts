@@ -7,6 +7,10 @@ export interface ShopConfig {
   advertiserId: string;
   accessTokenEnv: string;
   hasGMVCampaigns: boolean;
+  // BC that authorizes this shop's store (for gmv_max/identity/get).
+  // Shop 1 verified Oct 2026 via campaign/gmv_max/info (store_authorized_bc_id).
+  // Shops without one skip the TT-account fill and stay bracket-grouped.
+  storeBcId?: string;
 }
 
 export const SHOPS: Record<string, ShopConfig> = {
@@ -17,6 +21,7 @@ export const SHOPS: Record<string, ShopConfig> = {
     advertiserId: "7505228077656621057",
     accessTokenEnv: "TIKTOK_ADS_ACCOUNT1_ACCESS_TOKEN",
     hasGMVCampaigns: true,
+    storeBcId: "7420347515893071888",
   },
   "2": {
     number: "2",

@@ -38,10 +38,25 @@ function isoMonth(iso: string, delta = 0): string {
   return `${d.getFullYear()}-${("0" + (d.getMonth() + 1)).slice(-2)}`;
 }
 
+// MYT weekday (Monday-first 0..6) for an ISO date. Server-local Date math
+// would shift week edges on UTC clocks, so anchor on UTC+8 explicitly.
+function mytWeekdayMon0(iso: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+  if (!m) return NaN;
+  const dow = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]) + 8 * 3600 * 1000).getUTCDay();
+  return (dow + 6) % 7;
+}
+
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
 const PRESETS = [
   { id: "today", label: "Today" },
   { id: "yesterday", label: "Yesterday" },
   { id: "last3", label: "Last 3 days", days: 3 },
+  { id: "thisWeek", label: "This week" },
+  { id: "lastWeek", label: "Last week" },
+  { id: "thisMonth", label: "This month" },
+  { id: "lastMonth", label: "Last month" },
   { id: "last7", label: "Last 7 days", days: 7 },
   { id: "last14", label: "Last 14 days", days: 14 },
   { id: "last30", label: "Last 30 days", days: 30 },
@@ -95,6 +110,24 @@ export default function DateRangePicker({
     if (id === "yesterday") {
       f = isoAdd(today, -1);
       t = f;
+    } else if (id === "thisWeek") {
+      const wd = mytWeekdayMon0(today);
+      f = Number.isFinite(wd) ? isoAdd(today, -wd) : today;
+      t = today;
+    } else if (id === "lastWeek") {
+      const wd = mytWeekdayMon0(today);
+      if (Number.isFinite(wd)) {
+        f = isoAdd(today, -wd - 7);
+        t = isoAdd(today, -wd - 1);
+      }
+    } else if (id === "thisMonth") {
+      f = today.slice(0, 8) + "01";
+      t = today;
+    } else if (id === "lastMonth") {
+      const prev = isoMonth(today, -1);
+      f = `${prev}-01`;
+      const firstThis = `${today.slice(0, 8)}01`;
+      t = isoAdd(firstThis, -1);
     } else if (p.days) {
       f = isoAdd(today, -(p.days - 1));
       t = today;
@@ -216,9 +249,34 @@ export default function DateRangePicker({
               <button key={p.id} onClick={() => applyPreset(p.id)}
                 className="rounded-lg px-2 py-1 text-left text-xs text-zinc-200 hover:bg-zinc-800">{p.label}</button>
             ))}
-            <input type="month" min={MIN_MONTH} max={maxMonth} value={left}
-              onChange={(e) => { if (e.target.value) setLeft(e.target.value > maxMonth ? maxMonth : e.target.value); }}
-              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-1 py-1 text-xs" />
+            {(() => {
+              const ly = +left.slice(0, 4), lm = +left.slice(5, 7);
+              const minY = +MIN_MONTH.slice(0, 4), minM = +MIN_MONTH.slice(5, 7);
+              const maxY = +maxMonth.slice(0, 4), maxM = +maxMonth.slice(5, 7);
+              const years: number[] = [];
+              for (let yy = minY; yy <= maxY; yy++) years.push(yy);
+              const pick = (yy: number, mm: number) => {
+                const ym = `${yy}-${("0" + mm).slice(-2)}`;
+                setLeft(ym < MIN_MONTH ? MIN_MONTH : ym > maxMonth ? maxMonth : ym);
+              };
+              const selCls = "rounded-lg border border-zinc-700 bg-zinc-900 px-1 py-1 text-xs text-zinc-200";
+              return (
+                <div className="mt-1 flex gap-1">
+                  <label className="sr-only" htmlFor="calpick-month">Month</label>
+                  <select id="calpick-month" value={lm} onChange={(e) => pick(ly, +e.target.value)} className={`${selCls} min-w-0 flex-1`}>
+                    {MONTH_NAMES.map((name, i) => {
+                      const mm = i + 1;
+                      const dis = (ly === minY && mm < minM) || (ly === maxY && mm > maxM);
+                      return <option key={mm} value={mm} disabled={dis}>{name.slice(0, 3)}</option>;
+                    })}
+                  </select>
+                  <label className="sr-only" htmlFor="calpick-year">Year</label>
+                  <select id="calpick-year" value={ly} onChange={(e) => pick(+e.target.value, lm)} className={selCls}>
+                    {years.map((yy) => <option key={yy} value={yy}>{yy}</option>)}
+                  </select>
+                </div>
+              );
+            })()}
           </div>
           <div>
             <div className="mb-1 flex items-center justify-center gap-2 text-sm">
