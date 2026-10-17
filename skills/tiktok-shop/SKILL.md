@@ -59,6 +59,17 @@ sales = double-claim overlap).
 gap parked: owner rechecks export method/status filter (Checkpoint 28).
 Never compare across pull times (intraday restatement).
 
+## Shop performance analytics (verified Oct 2026, `/api/shop-analytics-probe`)
+
+- `GET /analytics/202509/shop/performance` (granularity ALL/1D): traffic =
+  `avg_page_views/avg_visitors/avg_conversation_rate` only; sales = GMV/
+  orders/`avg_customers_count`. No 90-day-inactive split, no assisted fields.
+- `GET /analytics/202605/shop_products/performance`: funnel `add_cart_count/
+  rate`, `click_order_rate`, `ctr` + `unique_*` + channel splits
+  (seller_live/video/product_card, affiliate_*, shop_tab). Same gaps: no
+  90d-split, no `assisted_*` (28-day shown-ad = ad attribution, not seller API).
+- Needs `TikTok Shop Analytics` scope (dual-key analytics app, 025).
+
 ## Evidence index
 
 Checkpoints 28/29 (auth+refresh), 30 (014/015/pinger), creative Phase A.

@@ -4,6 +4,20 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 17 Oct 2026
+
+- TTAM metrics workbook (`TTAM METRICS` sheet): `All Metrics` tab (143 native deduped + categorized + kill/scale/watch verdicts, 11 custom OMTM with plain-English) + `Guardrails` tab (ROI>=7/CPA<=21.18) + `READ ME` tab (CPL formula + quartile calibration slots TBD) + new repo skill `skills/ttam-metrics/`
+- `gmvmax-auto` TTAM probe Groups 1–4 (`?group=` split under 60s cap: G4 `onsite_*` full_set OK resolves Shop funnel rates) + sfv switched to true focused-6s `engaged_view` + 62-key metric registry + Shop Analytics probe (no 90d/assisted on either API) — deployed `dpl_xGAVhvgcpWnuxAyoT4raHLUBfyUN`, all uncommitted; Tampermonkey `1-2-tools/TTAM Analytic/` masterplan + sample-13 parked
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+## 15 Oct 2026
+
+- `gmvmax-auto` Shop Cost module (`/shop-cost`: spend share LIVE/Product/TTAM for 1 day or ≤31d range, hero Total + ranked stat grid, stacked-% trend, daily table, per-stream campaign share with Hide-0-spend) — deployed through `dpl_GmgtRs3JLqtLhpruxQAPS9faYvRT`
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto` AI Analyst WoW upgrade (week-over-week totals + top-10 campaigns with deltas/worst/fallers, TTAM flags + verdicts, EN/MS toggle with 4-section template) — deployed `dpl_Cpvdv4mZcG93SxrCWSL4KjBw8NQN` + follow-ups `dpl_53VYyvgkawF5KTfaKHhTsMiiX5d7` (numbers-first) + `dpl_D9wZJdhLWUR6hDErygMGJSnKCBqB` (closed-days WoW); plain-words first-use rule PENDING (tsc blocked by other session file)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto` AI Analyst module (`/ai` + `/api/ai` GET/POST + `/ai/guardrail` Settings page: module ticks, text-only Gemini insight + follow-up chat, live TTAM campaign scores, per-user localStorage guardrails, dep-free markdown renderer) — deployed through `dpl_EE1T4xgX5J62iZV15gwzVB7NVM7U`, all uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
 ## 14–15 Oct 2026
 
 - `gmvmax-auto` LIVE rename fix (`Sync names` button + nightly name heal) + `Bracket | TT account` grouping toggle (TT names via identity map, lazy ≤15/Fetch; `027/028/029` owner-run) + enrich backoff with honest bracket-only tail — deployed through `dpl_6Dh5KyJnpVV8VAYdcwgvE5TKbF4k`, all uncommitted

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "../toast";
 import { loadGuardrails, type AiGuardrails } from "./guard";
+import { Md } from "./md";
 
 // /ai — text-only AI analyst. Tick boxes choose which cached modules feed
 // the prompt (GMV incl. creative rows, TTAM preset, Shop incl. affiliates).
@@ -30,6 +31,14 @@ export default function AiPage() {
     return ["gmv", "ttam", "shop"];
   });
   const [days, setDays] = useState(7);
+  const [lang, setLang] = useState<"en" | "ms">(() => {
+    try {
+      const q = new URLSearchParams(window.location.search).get("lang");
+      if (q === "ms" || q === "en") return q;
+      if (localStorage.getItem("ai-lang") === "ms") return "ms";
+    } catch { /* defaults */ }
+    return "en";
+  });
   const [guard, setGuard] = useState<AiGuardrails>(() => loadGuardrails());
   const [markdown, setMarkdown] = useState("");
   const [meta, setMeta] = useState("");
@@ -41,11 +50,13 @@ export default function AiPage() {
   useEffect(() => {
     try {
       localStorage.setItem("ai-modules", JSON.stringify(mods));
+      localStorage.setItem("ai-lang", lang);
       const url = new URL(window.location.href);
       url.searchParams.set("m", mods.join(","));
+      url.searchParams.set("lang", lang);
       window.history.replaceState(null, "", url.toString());
     } catch { /* private mode */ }
-  }, [mods]);
+  }, [mods, lang]);
 
   // Pick up guardrail edits made on /ai/guardrail (full page loads remount).
   useEffect(() => {
@@ -64,11 +75,11 @@ export default function AiPage() {
     setMeta("");
     setTurns([]);
     try {
-      const r = await fetch(`/api/ai?modules=${encodeURIComponent(mods.join(","))}&days=${days}&${guardQs}`, { cache: "no-store" });
+      const r = await fetch(`/api/ai?modules=${encodeURIComponent(mods.join(","))}&days=${days}&lang=${lang}&${guardQs}`, { cache: "no-store" });
       const body = await r.json();
       if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
       setMarkdown(String(body.markdown ?? ""));
-      setMeta(`${body.model ?? ""} · ${body.modules?.join("+") ?? ""} · ${body.days ?? days}d · ROI≥${guard.minNetRoi} CPA≤${guard.maxCpa} fee ${guard.feeRate} · ${body.cached ? "cached" : "fresh"} · ${String(body.at ?? "").slice(0, 16).replace("T", " ")}`);
+      setMeta(`${body.model ?? ""} · ${body.modules?.join("+") ?? ""} · ${body.days ?? days}d · ${lang.toUpperCase()} · ROI≥${guard.minNetRoi} CPA≤${guard.maxCpa} fee ${guard.feeRate} · ${body.cached ? "cached" : "fresh"} · ${String(body.at ?? "").slice(0, 16).replace("T", " ")}`);
       toast(body.cached ? "Loaded from 15m cache." : "Fresh insight ready.");
     } catch (e) {
       const m = e instanceof Error ? e.message : "ai failed";
@@ -95,6 +106,7 @@ export default function AiPage() {
           history: next.slice(-6),
           modules: mods,
           days,
+          lang,
           guardrails: guard,
         }),
       });
@@ -115,7 +127,7 @@ export default function AiPage() {
       <div className="border-b border-zinc-800 px-4 py-3">
         <h2 className="text-sm font-semibold">AI Analyst (text-only)</h2>
         <p className="text-xs text-zinc-500">
-          Reads Neon cache only — no TikTok pulls, no budget changes. Tick modules to include, then Analyze.
+          Reads Neon cache + compares vs previous period — no TikTok budget changes. Tick modules to include, then Analyze.
           Guardrails ROI≥{guard.minNetRoi} CPA≤{guard.maxCpa} fee {guard.feeRate} ·{" "}
           <Link href="/ai/guardrail" className="underline hover:text-zinc-300">edit guardrails</Link>.
         </p>
@@ -135,6 +147,14 @@ export default function AiPage() {
               <option value={14}>14 days</option>
             </select>
           </label>
+          <div className="ml-1 flex overflow-hidden rounded-lg border border-zinc-700 text-sm" title="Answer language">
+            {(["en", "ms"] as const).map((l) => (
+              <button key={l} onClick={() => setLang(l)}
+                className={`px-3 py-1.5 ${lang === l ? "bg-emerald-700 text-white" : "text-zinc-300 hover:bg-zinc-800"}`}>
+                {l === "en" ? "EN" : "MS"}
+              </button>
+            ))}
+          </div>
           <button onClick={run} disabled={loading}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50">
             {loading ? "Analyzing…" : "Analyze"}
@@ -144,7 +164,9 @@ export default function AiPage() {
       <div className="px-4 pb-16 pt-4">
         {meta && <p className="mb-2 text-[11px] text-zinc-500">{meta}</p>}
         {markdown ? (
-          <div className={`${cardCls} whitespace-pre-wrap text-sm leading-relaxed text-zinc-100`}>{markdown}</div>
+          <div className={`${cardCls}`}>
+            <Md text={markdown} />
+          </div>
         ) : (
           <div className={`${cardCls} text-sm text-zinc-500`}>
             {loading ? "Asking Gemini…" : "No insight yet — tick modules and press Analyze."}
@@ -156,12 +178,12 @@ export default function AiPage() {
             <div className="flex flex-col gap-2">
               {turns.map((t, i) => (
                 <div key={i}
-                  className={`whitespace-pre-wrap rounded-xl border p-3 text-sm leading-relaxed ${
+                  className={`rounded-xl border p-3 ${
                     t.role === "user"
-                      ? "ml-8 border-zinc-700 bg-zinc-900 text-zinc-100"
-                      : "mr-8 border-emerald-900 bg-emerald-950/40 text-zinc-100"
+                      ? "ml-8 border-zinc-700 bg-zinc-900 text-sm text-zinc-100"
+                      : "mr-8 border-emerald-900 bg-emerald-950/40"
                   }`}>
-                  {t.text}
+                  {t.role === "user" ? <span className="text-sm">{t.text}</span> : <Md text={t.text} />}
                 </div>
               ))}
             </div>

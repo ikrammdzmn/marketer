@@ -1710,44 +1710,91 @@ export default function Page() {
         {data && data.kind === "shop-gmv" && (
           <>
           <div className={`${cardCls} text-sm`}>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="text-zinc-400">Shop Name</div><div>{data.shopName}</div>
-              {!data.configured ? (
-                <>
-                  <div className="text-zinc-400">Not configured</div><div className="text-xs">{data.hint}</div>
-                  <div className="text-zinc-400">Locked ref 24–27 Sep (manual)</div><div className="text-xs">Shop MYR 143,941.26 / 1,016 orders vs ads 169,805.12 (−15.2%); TRUE ROAS 3.26x / 2.81x</div>
-                </>
-              ) : (
-                <>
-                  <div className="text-zinc-400">Shop-order GMV ({data.shopOrderCount})</div><div className="tabular-nums">MYR {fmt(data.shopOrderGMV)}</div>
-                  <div className="text-zinc-400">Ads-attributed GMV ({data.adsOrderCount})</div><div className="tabular-nums">MYR {fmt(data.adsGMV)}</div>
-                  <div className="text-zinc-400">Delta vs ads</div><div>{(data.deltaVsAds * 100).toFixed(1)}%</div>
-                  <div className="text-zinc-400">Total Ads Spend</div><div className="tabular-nums">MYR {fmt(data.totalAdsSpend)}</div>
-                  <div className="text-zinc-400">TRUE ROAS</div><div>{data.trueRoas.toFixed(2)}x</div>
-                  <div className="text-zinc-400">TRUE ACTUAL</div><div>{data.trueActualRoas.toFixed(2)}x</div>
-                  <div className="text-zinc-400">Ads ROAS (ref)</div><div>{data.adsRoas.toFixed(2)}x / {data.adsActualRoas.toFixed(2)}x</div>
-                  {shopToken?.isAdmin && (
-                    <>
-                      <div className="text-zinc-400">Shop token</div>
-                      <div className="text-xs">
-                        {shopToken.accessExpiresAt
-                          ? `valid until ${String(shopToken.accessExpiresAt).slice(0, 10)}`
-                          : shopToken.hasRow === false
-                            ? "env fallback (not yet in Neon)"
-                            : "expiry unknown"}
-                        <button
-                          type="button"
-                          disabled={shopTokenRefreshing}
-                          onClick={refreshShopTokenAction}
-                          className="ml-2 rounded border border-zinc-700 px-1.5 py-0.5 text-[11px] text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
-                        >{shopTokenRefreshing ? "Refreshing…" : "Refresh shop token"}</button>
-                        {shopTokenNotice && <div className="mt-1 text-zinc-400">{shopTokenNotice}</div>}
-                      </div>
-                    </>
-                  )}
-                </>
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-xs text-zinc-300">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                {data.shopName}
+              </span>
+              {data.configured && data.dateRange && (
+                <span className="text-xs text-zinc-500">{data.dateRange.start} – {data.dateRange.end}</span>
               )}
             </div>
+            {!data.configured ? (
+              <div className="grid grid-cols-2 gap-2">
+                <div className="text-zinc-400">Not configured</div><div className="text-xs">{data.hint}</div>
+                <div className="text-zinc-400">Locked ref 24–27 Sep (manual)</div><div className="text-xs">Shop MYR 143,941.26 / 1,016 orders vs ads 169,805.12 (−15.2%); real return 3.26x / 2.81x after tax</div>
+              </div>
+            ) : (
+              <>
+                {/* 1 — hero: the real-money answer */}
+                <div className="text-xs text-zinc-400">Shop got</div>
+                <div className="mt-0.5 text-2xl font-bold tracking-tight text-white tabular-nums">MYR {fmt(data.shopOrderGMV)}</div>
+                <div className="mt-0.5 text-xs text-zinc-400">
+                  {data.shopOrderCount} paid orders · spent MYR {fmt(data.totalAdsSpend)} on ads
+                </div>
+                {/* 2 — shop truth vs ads claim */}
+                {(() => {
+                  const shop = Number(data.shopOrderGMV ?? 0);
+                  const ads = Number(data.adsGMV ?? 0);
+                  const max = Math.max(shop, ads, 1);
+                  const pct = (Number(data.deltaVsAds ?? 0) * 100);
+                  const adsHigher = pct < 0;
+                  return (
+                    <div className="mt-4 space-y-2">
+                      <div>
+                        <div className="flex items-baseline justify-between gap-2 text-xs">
+                          <span className="text-zinc-300">Shop got <span className="text-zinc-500">({data.shopOrderCount} orders)</span></span>
+                          <span className="tabular-nums text-zinc-100">MYR {fmt(shop)}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                          <div className="h-full rounded-full bg-emerald-400" style={{ width: `${(shop / max) * 100}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-baseline justify-between gap-2 text-xs">
+                          <span className="text-zinc-500">Ads claims <span>({data.adsOrderCount} orders)</span></span>
+                          <span className="tabular-nums text-zinc-400">MYR {fmt(ads)}</span>
+                        </div>
+                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                          <div className="h-full rounded-full bg-zinc-500" style={{ width: `${(ads / max) * 100}%` }} />
+                        </div>
+                      </div>
+                      <p className="text-xs text-zinc-400">
+                        {adsHigher
+                          ? `Ads claims ${Math.abs(pct).toFixed(1)}% more than the shop actually got — ${(Number(data.adsOrderCount ?? 0) - Number(data.shopOrderCount ?? 0))} extra orders it counts.`
+                          : `Shop got ${Math.abs(pct).toFixed(1)}% more than ads attributes.`}
+                      </p>
+                    </div>
+                  );
+                })()}
+                {/* 3 — real return */}
+                <div className="mt-4 border-t border-zinc-800 pt-3">
+                  <div className="text-xs text-zinc-400">Real return</div>
+                  <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                    <span title="Was TRUE ROAS = shop GMV / ad spend" className="text-xl font-bold tracking-tight text-white tabular-nums">{Number(data.trueRoas ?? 0).toFixed(2)}x</span>
+                    <span title="Was TRUE ACTUAL = shop GMV / spend incl. SST+WHT" className="text-xs text-zinc-400">{Number(data.trueActualRoas ?? 0).toFixed(2)}x after SST+WHT</span>
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-500">Every MYR 1 of ad spend brought back MYR {Number(data.trueRoas ?? 0).toFixed(2)} of real shop sales ({Number(data.trueActualRoas ?? 0).toFixed(2)}x after tax).</p>
+                  <p className="mt-1 text-[11px] text-zinc-600">Ads dashboard would claim {Number(data.adsRoas ?? 0).toFixed(2)}x / {Number(data.adsActualRoas ?? 0).toFixed(2)}x — reference only, don&apos;t decide off it.</p>
+                </div>
+                {shopToken?.isAdmin && (
+                  <div className="mt-3 border-t border-zinc-800 pt-2 text-xs text-zinc-500">
+                    Shop token: {shopToken.accessExpiresAt
+                      ? `valid until ${String(shopToken.accessExpiresAt).slice(0, 10)}`
+                      : shopToken.hasRow === false
+                        ? "env fallback (not yet in Neon)"
+                        : "expiry unknown"}
+                    <button
+                      type="button"
+                      disabled={shopTokenRefreshing}
+                      onClick={refreshShopTokenAction}
+                      className="ml-2 rounded border border-zinc-700 px-1.5 py-0.5 text-[11px] text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                    >{shopTokenRefreshing ? "Refreshing…" : "Refresh shop token"}</button>
+                    {shopTokenNotice && <div className="mt-1 text-zinc-400">{shopTokenNotice}</div>}
+                  </div>
+                )}
+              </>
+            )}
           </div>
           {data.configured && (data.dateRange?.start !== data.dateRange?.end || (data.daily ?? []).length > 0) && (
             <div className={`${cardCls} mt-3`}>

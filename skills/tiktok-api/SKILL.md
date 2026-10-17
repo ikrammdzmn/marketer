@@ -58,6 +58,16 @@ shares/conversion_rate/video_views_p25/p50/p75/p100`.
 RED at ad grain: `orders/gross_revenue/roi/cost_per_order`,
 `onsite_shopping/total_onsite_shopping_value/cost_per_onsite_shopping/
 onsite_shopping_roas` (doc-grounded names, probe says no).
+Hook truth: `engaged_view` = true 6s focused views (verified 16 Oct 2026 at
+CAMPAIGN/ADGROUP/AD — sfv since 17 Oct, replaces `video_watched_6s` proxy).
+Shop funnel true names (G4 full_set OK all grains 16 Oct 2026):
+`onsite_total_product_details_page_view`,
+`onsite_cost_per_product_details_page_view`,
+`onsite_product_details_page_view_rate`,
+`onsite_total_add_to_cart`, `onsite_cost_per_add_to_cart`,
+`onsite_add_to_cart_rate` (+ value variants). No BASIC key (40002 all grains):
+all `assisted_*`, `engaged_view_rate`, `skips/video_skips/ad_skips`,
+guessed `product_page_view_rate/add_to_cart_rate/new_shop_visitors*`.
 
 ## 3. Identity (`ad/get` + URL tail)
 

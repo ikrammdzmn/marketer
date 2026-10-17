@@ -1,0 +1,23 @@
+{
+  "_meta": {
+    "version": "v1-sample-13",
+    "date": "2026-10-17",
+    "source": "2-gmvmax/gmvmax-auto/ttam-metric-registry.md + ttam-verified-metrics.md G1/base",
+    "note": "Watch is implicit (not KILL and not SCALE). Costs invert (high=KILL). Fill nulls with owner thresholds before highlight means anything."
+  },
+  "metrics": [
+    { "display": "Spend", "api_key": "spend", "unit": "RM", "direction": "neutral", "kill": null, "scale": null },
+    { "display": "Impressions", "api_key": "impressions", "unit": "count", "direction": "high-good", "kill": 1000, "scale": 5000, "seed": "ttam-basic-v1" },
+    { "display": "Reach", "api_key": "reach", "unit": "count", "direction": "high-good", "kill": null, "scale": null },
+    { "display": "6-second focused views", "api_key": "engaged_view", "unit": "count", "direction": "high-good", "kill": null, "scale": null, "note": "true sfv (G1 OK 16 Oct)" },
+    { "display": "6-second video views", "api_key": "video_watched_6s", "unit": "count", "direction": "high-good", "kill": null, "scale": null, "note": "plain 6s fallback only" },
+    { "display": "Paid profile visits", "api_key": "profile_visits", "unit": "count", "direction": "high-good", "kill": null, "scale": null },
+    { "display": "Paid likes", "api_key": "likes", "unit": "count", "direction": "high-good", "kill": null, "scale": null },
+    { "display": "Paid shares", "api_key": "shares", "unit": "count", "direction": "high-good", "kill": null, "scale": null },
+    { "display": "Paid comments", "api_key": "comments", "unit": "count", "direction": "high-good", "kill": null, "scale": null },
+    { "display": "Paid follows", "api_key": "follows", "unit": "count", "direction": "high-good", "kill": null, "scale": null },
+    { "display": "Average play time per video view", "api_key": "average_video_play", "unit": "s", "direction": "high-good", "kill": null, "scale": null },
+    { "display": "LIVE views", "api_key": "live_views", "unit": "count", "direction": "high-good", "kill": null, "scale": null },
+    { "display": "10-second LIVE views", "api_key": "live_effective_views", "unit": "count", "direction": "high-good", "kill": null, "scale": null, "note": "PRESUMED mapping, verify vs xlsx" }
+  ]
+}

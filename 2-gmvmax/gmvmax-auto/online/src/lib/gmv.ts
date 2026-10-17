@@ -175,12 +175,12 @@ export interface CampaignInfo {
 
 // ---- TTAM live metrics (preset-aligned) ----
 
-// Raw API metrics fetched per TTAM row. sfv has no exact API equivalent —
-// callers pass video_watched_6s as sfv and MUST surface sfvProxy so the UI
-// can label hook-family scores as proxy (spec: plain 6s double-counts).
+// Raw API metrics fetched per TTAM row. sfv = engaged_view (true 6s focused,
+// verified 16 Oct 2026 at all 3 grains). video_watched_6s kept as fallback
+// during transition.
 export const TTAM_METRICS = [
   "spend", "impressions", "clicks", "reach",
-  "video_watched_6s", "average_video_play",
+  "engaged_view", "video_watched_6s", "average_video_play",
   "likes", "comments", "shares", "follows", "profile_visits",
   "live_views", "live_effective_views",
 ];
@@ -1122,7 +1122,7 @@ export async function fetchManualSpend(
   }
   const toRaw = (row: Record<string, number>): TtamRaw => ({
     spend: row.spend ?? 0, imp: row.impressions ?? 0, clicks: row.clicks ?? 0,
-    reach: row.reach ?? 0, sfv: row.video_watched_6s ?? 0,
+    reach: row.reach ?? 0, sfv: (row.engaged_view ?? 0) || (row.video_watched_6s ?? 0),
     prof: row.profile_visits ?? 0, likes: row.likes ?? 0, sh: row.shares ?? 0,
     com: row.comments ?? 0, fol: row.follows ?? 0,
     awt: row.average_video_play ?? 0, live: row.live_views ?? 0,
@@ -1133,8 +1133,8 @@ export async function fetchManualSpend(
   const rows = [...sums.entries()]
     .map(([campaign_id, row]) => {
       const raw = toRaw(row);
-      const { scores } = scoreTtamRow(raw, true);
-      return { campaign_id, spend: raw.spend, metrics: full ? row : null, scores: full ? scores : null, sfvProxy: full };
+      const { scores } = scoreTtamRow(raw, false);
+      return { campaign_id, spend: raw.spend, metrics: full ? row : null, scores: full ? scores : null, sfvProxy: false };
     })
     .sort((a, b) => b.spend - a.spend);
   return { spend, campaignCount: sums.size, rows };

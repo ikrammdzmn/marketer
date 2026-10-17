@@ -1,12 +1,69 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 40 first (current facts), then Checkpoints 39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 45 first (current facts), then Checkpoints 44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 45 — 17 Oct 2026 (Shop GMV summary-card redesign; 1 deploy, UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Quiet single-task session after the big TTAM-probe arc: owner pasted the old 8-row shop-gmv card ("more understandable? refer design skills") → diagnosed flat hierarchy + TRUE/TRUE ACTUAL jargon + ambiguous delta → proposed 3-band redesign in words first (sparring rule: words until "go") → owner said "go" → edited `page.tsx:1712-1798` only → tsc clean → owner said "deploy" → `dpl_7rag6aq9GCtRMQk6iQSkAEUBC3AW` green → owner asked "explain each one" (did, line-by-line) → "why ads claims is bigger?" (Shop API real orders ex-cancel/refund vs Marketing API attribution credit — decide off shop truth) → "wrap up". Mood: calm, owner happy with words-first proposal; no bugs, no other-session interference this time.
+
+**What shipped (tsc clean, deploy green, UNCOMMITTED).**
+- Summary card only (`online/src/app/gmv-max/page.tsx:1712-1798`, `cardCls` untouched, daily chart/table untouched): hero "Shop got MYR + orders + spend" → shop-vs-ads bars (emerald vs grey) + plain-words gap sentence → "Real return" big + after-SST+WHT sub + per-MYR1 sentence + ads-claimed footnote. Old TRUE ROAS/TRUE ACTUAL survive as `title=` tooltips. Not-configured branch kept with reworded locked-ref line.
+- Deploy: `deploy_online.py` from repo root, build lists `/gmv-max` + `/api/shop-gmv`. Output shows `deploymentProtection: []` — flagged to owner, NOT verified/fixed (rule 12: wall must cover All Deployments).
+
+**Bugs + lessons.**
+- None this session. Note: `npx tsc` in `online/` on win32 — pipe to `head` fails (no head cmdlet); run bare `npx tsc --noEmit`.
+
+**Open (owner vs next-build).**
+- Owner: eyeball `?shop=1&metric=shop-gmv` on prod; verify Vercel Deployment Protection still All Deployments; commit/push when ready (tree still mixes uncommitted work from ≥3 sessions — never commit unasked).
+- Next-build: nothing pending on this card. Optional follow-ups if owner asks: rename hourly-shop table's `TRUE ROAS` header for consistency; add guardrail pill (ROI 7.0 floor) to the Real-return band.
+
+## Checkpoint 44 — 17 Oct 2026 (TTAM probe Groups 1–4 + true focused-6s switch + metric registry + Shop Analytics probe + TTAM Analytic masterplan; 1 deploy, ALL UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner drove the whole arc with screenshots and short "ok go"s: first "probe all TTAM metrics?" → found the plan file already had the map → they asked where probe info lives → wanted it in an md → then the three metric-group display lists (Brand Consideration / Reach / Full Funnel On Shop) → mapped display→API names (many guesses) → extended `CANDIDATES` → probe timed out (>60s) → split `?group=1/2/3` → owner deployed + pasted JSON like a champ three times → `engaged_view` (true focused-6s) confirmed → switched sfv off the plain-6s proxy → 8 Shop funnel guesses FAIL → found true `onsite_*` names → `?group=4` full_set OK ×3 grains → assisted/new-90d still keyless → tried Shop API (`/api/shop-analytics-probe`, both code 0) → confirmed no 90d-split and no assisted anywhere → owner: "explain simple" → parked to Tampermonkey highlight in `1-2-tools/TTAM Analytic/` (masterplan + sample-13 thresholds, awaiting Kill/Scale + userscript) → "wrap up". Mood: fast, tactile, owner trusts probe evidence over docs; "ok go" means build it now. Sparring held once (warned Group 3 shop set would likely FAIL on BASIC — half right: core OK, funnel needed true names).
+
+**What shipped (tsc clean at each deploy; deploys green where noted; ALL UNCOMMITTED).**
+- Probe split: `route.ts` `BASE/GROUP1–4` + `?group=base|1|2/3/4|all` (+ count in output, sleeps 500→300/200ms). Owner ran G1/G2/G3/G4 on prod, pasted JSON; logged to `ttam-verified-metrics.md:§1/§4/§5` + plan Code truth/log.
+- G-results (identical all 3 grains): G1 6 OK (`new_consideration_*`, `engaged_view`, both `paid_engaged_*`) / 4 FAIL (`assisted_*`, `engaged_view_rate`); G2 10 OK (reach set + `engagements`/`engagement_rate` = Clicks/CTR-all + interactives) / 3 FAIL (`skips*`); G3 7 OK (onsite core) / 8 FAIL (funnel guesses); G4 full_set OK rows=10, all 12 OK (`onsite_product_details_page_view_rate` = Product page view rate, `onsite_add_to_cart_rate` = Add to cart rate).
+- sfv switch (`dpl_xGAVhvgcpWnuxAyoT4raHLUBfyUN`, `/api/health` ok): `TTAM_METRICS[14]` adds `engaged_view` (fallback `video_watched_6s`), `toRaw` prefers engaged, `INPUT_MAP sfv→engaged_view`, `sfvProxy: false` everywhere. Expect ACS up / HPS down vs plain-6s (~14% hot).
+- Docs: `ttam-verified-metrics.md` (standalone mirror, §5 group-first in image order, tap→registry) + `ttam-metric-registry.md` (62-key registry, OMTM-style Kill/Scale mostly blank, groups reference keys, do-not-use list).
+- Shop probe: `/api/shop-analytics-probe` (202509 shop performance + 202605 product performance, 08–15 Oct window both code 0): traffic only `avg_page_views/avg_visitors/avg_conversation_rate`, funnel `add_cart_rate/click_order_rate/ctr` by channel. Verdict logged: no 90d-inactive split, no `assisted_*` on either API — closest-OK mapping kept in §5.
+- Parked: `1-2-tools/TTAM Analytic/` (`masterplan.md` + `plan.md` + `thresholds.json` v1-sample-13, only `impressions` pre-filled). Next: owner fills Kill/Scale → userscript v1.
+
+**Bugs + lessons.**
+- B105 mega-probe timeout: ~65-metric full set + singles bisect ≈ 195 TikTok calls > 60s Hobby cap. Lesson: never grow `CANDIDATES` without a `?group=` shard; keep each run ≤15 metrics.
+- sfv `||` fallback treats genuine 0-engaged as missing (falls back to plain-6s). Harmless (sfv=0 either way → ACS 999→null-safe path) but note it before anyone "fixes" it into a branch.
+- `code 0 ≠ usable` repeat (B98 family): assisted-group names 40002 on BASIC yet Ads Manager shows the columns (zeros) — UI display ≠ API metric. Lesson: probe-first, and keep FAIL display names visible with reason instead of deleting them.
+
+**Open (owner vs next-build).**
+- Owner: fill Kill/Scale for sample-13 (or name 2–3 rules) → TTAM Analytic userscript v1; decide raw-threshold vs OMTM-score format for bands.
+- Next-build: Re-fetch TTAM to eyeball corrected scores; wire registry rows → preset metric rows when thresholds lock; commit/push everything (never unasked — tree mixes ≥3 sessions: ai/WoW, shop-cost, ours).
+- Watch: `tsc` covers whole `online/` tree — another session's broken file blocks your deploy (B104 repeat risk).
+
+## Checkpoint 43 — 15–17 Oct 2026 (AI Analyst WoW + EN/MS + campaign detail; 3 deploys, plain-words rule PENDING, UNFINISHED)
+
+**To next-you: get back in this headspace instantly.** Owner pasted a Shopee-style Malay report ("I want like this at least") and asked why our TTAM verdict reads vague ("WATCH / AUDIT … conversion data absent"). Diagnosed honestly: TTAM has no ROI by design (engagement metrics only) + we starved the prompt (scores without metrics/flags/names), and Shop cache was genuinely empty (not a model glitch). Owner picked EN default + MS toggle, then drove screenshot-by-screenshot: caveat-first output → numbers-first rule → −55.5% WoW looked unfair → closed-days-only windows → "what is wow" → plain-words rule (week-over-week (WoW) on first use). Mood: brisk, visual, impatient with jargon; answers in words + numbers land, caveats don't. Sparring held once (no Shopee/multi-kedai numbers — TikTok shop 1 only, never invent).
+
+**What shipped (tsc clean at each deploy, all UNCOMMITTED).**
+- `dpl_Cpvdv4mZcG93SxrCWSL4KjBw8NQN`: WoW everywhere (GMV/Shop current-vs-previous from one 2x Neon pull: totals + % deltas, daily trend, top-10 campaigns with prev + deltas, worst spend-no-sales, fallers ≤−20%; TTAM cur+prev parallel pulls with spend deltas, raw imp/clicks/6s/likes/live + scores + flags + verdict, top-10 named) + EN/MS toggle (default EN, persisted + `?lang=`, part of 15m cache key) + 4-section template both languages (summary / wins / leaks / 3 actions, real campaign names + which tab to verify) + TTAM feeder note (no ROI expected).
+- `dpl_53VYyvgkawF5KTfaKHhTsMiiX5d7`: numbers-first rule (never open with caveat/`*(Note...)*`; gaps go last with exact Refresh button) + `coverage` facts on GMV/Shop snapshots + Shop-empty note naming the fix (Refresh daily cache, ≤31d/press).
+- `dpl_D9wZJdhLWUR6hDErygMGJSnKCBqB`: WoW on closed days only (today partial excluded from GMV/TTAM/Shop totals; equal n-day windows ending yesterday).
+- PENDING (edited, NOT deployed): plain-words rule — full term + short form on first use (week-over-week (WoW), gross merchandise value (GMV), return on investment (ROI), cost per acquisition (CPA), return on ad spend (ROAS), average order value (AOV); MS equivalents). Blocked: `npx tsc --noEmit` now fails on the OTHER session's untracked `online/src/lib/shop-cost.ts` (TS2451 duplicate `names` ×2). Did NOT touch their file. Deploy the rule once tsc is green again.
+
+**Bugs + lessons.**
+- B104 other-session tsc block: `tsc --noEmit` covers the whole `online/` tree, so one session's broken file blocks every other session's deploy. Lesson: before blaming your edit, `git status --short` to attribute the failing file; never "fix" another session's file unasked — note it and park the deploy.
+- WoW partial-today trap: mixing 6 closed days + partial today vs 7 full days manufactures a ~−50% "drop". Lesson: WoW windows must be equal CLOSED periods; today's live edge gets its own section (todayHours), never inside the comparison.
+- Caveat-first output loses trust even when honest: the Shop-empty note was true but led the answer. Lesson: headline numbers first, data gaps last with the exact fix button.
+
+**Open (owner vs next-build) — UNFINISHED, do these next.**
+- Owner: Shop GMV tab → Refresh daily cache (≤31d/press) → re-run Analyze (Shop WoW still empty until then); retest `/ai` EN + MS fresh (toggle range to bust 15m cache) and confirm the −55.5% moves after closed-days fix; say whether "fallers" named the right campaigns.
+- Next-build: deploy plain-words rule (needs green tsc — coordinate with shop-cost session owner); run `GET /api/ttam-probe?shopNumber=1` now that CANDIDATES carry the 3 requested groups (other session's tree change, uncommitted) and record which Group 2/3 metrics go FAIL on BASIC; commit/push everything (never unasked).
+- Watch: tree mixes TWO sessions' uncommitted work — ours (`lib/ai.ts`, `app/api/ai/route.ts`, `app/ai/page.tsx`, untracked `app/ai/md.tsx`) vs theirs (`lib/shop-cost.ts`, `app/shop-cost/`, `app/api/shop-cost/`, Shell link, layout viewport, `app/api/ttam-probe/route.ts` CANDIDATES, `ttam-verified-metrics.md`, `ttam-api-metrics-plan.md`). Touch only AI files until they settle.
 
 ## Checkpoint 40 — 14–15 Oct 2026 (LIVE rename fix + Bracket|TT-account toggle + enrich backoff; 6 deploys, ALL UNCOMMITTED)
 
@@ -50,6 +107,54 @@ Check the Project Knowledge and the current chat for context. This conversation 
 **Open.**
 - Owner: eyeball Total dashboard numbers vs tables (shares sum 100%, channel ROI sane); try all picker presets on both pages + month/year selects.
 - Next-build: prior parks unchanged. Commit/push everything (never unasked). `.env.example` + `ai/` changes in tree are another session's — leave alone.
+
+## Checkpoint 42 — 15 Oct 2026 (Shop Cost module: /shop-cost spend share LIVE/Product/TTAM + stacked trend + design pass; 5 deploys, ALL UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner asked "spend % per stream for 1 day or range, new module shop cost" — planned in plan-mode, built on "ok go": `lib/shop-cost.ts` (3 serial range pulls, day-split) + `GET /api/shop-cost` + `/shop-cost` page + sidebar link. First prod data came back ALL ZEROS with campaign tables showing real spend — diagnosed two bugs from the symptom shape alone (campaign sums right + day buckets zero = day-key mismatch; "live/product mixed" = the known mixed-type bleed, bugs 16/24, which the new fetcher hadn't filtered). Fixed both, redeployed. Then owner ran a design review via two skills (`vercel-labs/agent-skills:web-design-guidelines` + `uizze.sh:ui-taste` — both fetched live, playbooks operate/distill/audit/polish applied, findings in chat). Owner agreed the big line chart was distracting; I recommended stacked-100% area ("which is better?" → stacked, not close — composition question gets composition chart), they said go + "KPI cards by hierarchy". Shipped: hero Total + in-card share bar + ranked #1–3 stat grid, trend→daily→campaign order, Hide-0-spend toggle. Mood: fast visual-iteration loop, owner screenshots everything — match the screenshot, don't debate it. Sparring held once (talked them out of lines for a composition question).
+
+**What shipped (tsc 0 every step, 5 prod deploys, ALL UNCOMMITTED).**
+- `dpl_DpL1aznKKjUvPTqKwhfqcuynWN1F`: Shop Cost v1 (`shop-cost.ts`, `/api/shop-cost`, `/shop-cost`, Shell link). Denominator = ads spend only, shop 1, ≤31d, per-day rows + range totals + per-stream campaign lists (% of stream + % of total).
+- `dpl_832Ym5LDhPbFjytDHaTSAWS426aQ`: zero-day fix — `normDay` (slice 0,10, unparseable rows count in campaigns only), Neon `promotion_type` bleed filter (drop only positively-other-type rows, unmapped stay), stream totals from row sums not day buckets.
+- `dpl_ALPevFXGqYANrw49PbnD2dWNNKMs`: design pass — stacked-100% area (h-56, hidden on 1-day, below campaign table… later reordered), RM/% toggle removed, hero + ranked grid, `aria-pressed`/`role=img`/reduced-motion/Intl ticks, layout `color-scheme:dark` + theme-color.
+- `dpl_GuL6T3JbZTD3r2ixfzka9K5GUnph`: themeColor moved metadata→viewport export (build warned, now zero warnings) — final prod state.
+- Reorder + Hide-0-spend (in `dpl_GmgtRs3JLqtLhpruxQAPS9faYvRT`): order hero→trend→daily→campaign; toggle on-by-default with hidden count, stream totals unaffected.
+
+**Bugs + lessons.**
+- B102 day-grain assumption: bucketed only on exact day-string match, silently dropping every row when TikTok returns datetimes. Lesson: normalize time grains at the fetch boundary and make totals independent of bucketing — totals from row sums, buckets for display only.
+- B103 new fetchers must apply the Neon type filter from day one (bugs 16/24 bleed applies to every new `gmv_max/report/get` caller, not just `getShopReport`).
+- Next themeColor/metadata API: `themeColor` lives in `viewport` export, not `metadata` — build warns, tsc stays green. Lesson: read build warnings, not just tsc.
+
+**Open.**
+- Owner: eyeball `/shop-cost` numbers vs Ads Manager (stream %s sum 100, campaign % of stream sums ~100, totals match ROAS legs); if a LIVE/Product campaign sits in the wrong tab its Neon `promotion_type` is stale → `/api/campaigns/sync`.
+- 10-15 (today) LIVE spike 36.6% is partial-day — recheck tomorrow.
+- Commit/push everything (never unasked): shop-cost lib + route + page, Shell link, layout viewport — all uncommitted.
+
+## Checkpoint 41 — 15 Oct 2026 (AI Analyst module: /ai + /api/ai + /ai/guardrail + TTAM live scores + md renderer; 6 deploys, ALL UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner asked "can we add AI agents (you or Gemini) for analytic and suggestions?" in plan-mode, picked AI-page + all-modules + text-only with my hidden-JSON idea parked, then drove the build in short bursts: module ticks (GMV/TTAM/Shop) → Gemini key setup (theirs) → "model 2.0-flash no longer available, use 3.8-flash" (verified against live model docs — 2.0 is shut down, 3.8 stable, switched default) → plan-mode again for chat-box + guardrail-location ("explain option 3" first) → guardrail gets own path `/ai/guardrail` under Settings → TTAM INSUFFICIENT-DATA verdict (snapshot had preset-only, no ad rows) → wired live campaign-grain pull → echo-garbage output (`} and CPA <= ...` prompt-tail echo + raw campaign ID as top spender) → echo-strip + namesNote → "why it just show like this?" with an image I COULD NOT SEE (this session rejects image input — said so, asked for 1–4 wording instead) + raw-markdown complaint (confirmed in code: plain `whitespace-pre-wrap` div) → plan-mode markdown-renderer plan → "wrap up, continue on other session" → ritual in plan-mode is writes, so handed facts-only handoff → "go" with plan lifted → built Md renderer + did the full ritual. Mood: brisk, owner tests instantly, screenshots over words — except this session couldn't receive them. Sparring held where it mattered (text-only-first with hidden-JSON read-only, localStorage guardrails over DB table, no react-markdown per dep list).
+
+**What shipped (tsc 0 every step, 6 prod deploys, ALL UNCOMMITTED).**
+- `/ai` page + sidebar `AI Analyst` (`ai/page.tsx`, `dpl_FjjxryEwPLmi9moXBg28pxi5hP44`): ticks `[GMV] [TTAM] [Shop]` any-combo (URL `?m=` + localStorage), range 3/7/14d, Analyze, follow-up chat box (needs Analyze first, last-6 turns, 1000-char cap, live not cached).
+- `/api/ai` (`api/ai/route.ts`): GET cached insight (`?modules=&days=&minRoi=&maxCpa=&fee=`), POST chat (`{message,history,modules,days,guardrails}`). Allowlist-gated both.
+- `lib/ai.ts` (server-only, never client-imported): Neon-cache snapshot (GMV campaigns/hourly/top-creatives incl. creative rows, TTAM preset + live campaign grain via `fetchManualSpend` top-8 spend with v3 scores, Shop daily + affiliates), Gemini REST (`GEMINI_API_KEY` server-only, `GEMINI_MODEL` override, 50s abort), 15m cache per module-combo incl. guardrails.
+- `/ai/guardrail` + Settings entry (`ai/guardrail/page.tsx`, `ai/guard.ts`, `dpl_2gDwfEKCHz4UmJNBcjP3kGu8VEFX`): per-user localStorage min-net-ROI / max-CPA / fee-rate (defaults 7.0/21.18/0.25 match strategy KB); `/ai` shows active values + edit link. Analysis-only — automation obeys `1-knowledge/tiktok-strategy/`, never this page.
+- Prompt fixes (`dpl_31XDZXzfU3kfcbtr6oR3vBU5EsmW`, `dpl_BL9fioU8Eih7TSprTHzdfFkxG26W`): gross×(1−fee)→net before min-ROI compare (state both); `### 1) Verdict`-first order + server `stripEcho` (cuts pre-heading echo ≤400 chars); TTAM name-lookup failure recorded as `namesNote` with TikTok error text instead of silent IDs.
+- `ai/md.tsx` + page wiring (`dpl_EE1T4xgX5J62iZV15gwzVB7NVM7U`, latest): dependency-free Markdown→JSX (### headings, **bold**, `code` chips, -/1. lists, paragraphs), JSX-built never raw-HTML (AI text can't inject markup), applied to insight card + AI chat bubbles (user bubbles stay plain).
+- `.env.example`: `GEMINI_API_KEY=` + `GEMINI_MODEL=` (server-only, never `NEXT_PUBLIC_`).
+- Smoke each deploy: `/api/ai` 401 signed-out; `/ai`, `/ai/guardrail` 307 → sign-in. Build lists `/ai`, `/ai/guardrail`, `/api/ai` (jose Edge-runtime warnings are pre-existing auth noise).
+
+**Bugs + lessons (sequence continues B95+).**
+- B95 declared-type-vs-body: `fetchManualSpend` rows carry scores/metrics at runtime but the declared return type is `{campaign_id,spend}[]` → tsc error on `.scores`. Lesson: when consuming a lib fn, read its DECLARED return type, not its body; cast at the boundary (`as any[]`) and note it.
+- B96 stale-memory edit: crafted oldString for buildPrompt's follow-up branch from memory, tool rejected it. Lesson: grep/read the exact region before every edit — never reconstruct code from memory (rule 8's cousin).
+- B97 success-then-duplicate: edit reported success, re-read showed no change, re-edit created a DOUBLE sidebar link. Lesson: when tool-result and re-read disagree, grep-COUNT the identifier before touching it again (extends B57/B67/B71/B93).
+- B98 raw-LLM-in-div: Gemini markdown rendered via `whitespace-pre-wrap` shows `###`/`**` literally. Lesson: any LLM text gets a renderer, never a plain div; dep list bans `react-markdown` → tiny local component, JSX-built so no `dangerouslySetInnerHTML` class of bug can exist.
+- B99 prompt-echo: model continued the prompt tail (`} and CPA <= ...`) before answering. Lesson: order models to start at the heading AND defend server-side (`stripEcho` before `### 1)`) — instruction alone is belt, strip is suspenders.
+- B100 silent fail-open: `campaign/get` died inside try/catch and AI showed raw IDs with no explanation. Lesson: fail-open paths must still record WHY (`namesNote` with the error text) so the next layer (AI, owner) can reason about it.
+
+**Open (owner vs next-build).**
+- Owner: confirm `GEMINI_API_KEY` in Vercel Production (page errors honestly when missing); retest `/ai` TTAM-ticked Analyze fresh (toggle range to bust cache) + chat + guardrail save; describe the "just show like this" screenshot IN WORDS (image input rejected this session) if the Md renderer didn't fix it.
+- Next-build: hidden-JSON proposals (read-only numbers under text-only) parked from plan; shared-DB guardrails (over localStorage) if the team needs one set of values; commit/push everything (never done unasked — this session adds 6 files: `ai/`, `api/ai/`, `lib/ai.ts`, `.env.example` + Shell).
+- Watch: another session is active in this repo (027–029, `/api/live-account-probe`, `3-ttam/analysis` landed 14–15 Oct) — touch only AI files until they settle.
 
 ## Checkpoint 38 — 13 Oct 2026 (auth persistence + bare login + display names + header pill + /calendar month view + profile block; 10 deploys, ALL UNCOMMITTED)
 

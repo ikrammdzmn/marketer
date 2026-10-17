@@ -184,3 +184,24 @@ preset — dashboard + verdicts follow it with no refetch.
 | awt | average_video_play | OK | OK | OK |
 | live | live_views | OK | OK | OK |
 | live10 | live_effective_views (PRESUMED — verify vs xlsx 10s column) | OK | OK | OK |
+
+### Code truth (do not hand-edit — copy from source)
+- Probe groups (`online/src/app/api/ttam-probe/route.ts:12-51` `BASE/GROUP1/2/3/4`, `?group=base|1|2|3|4|all`):
+  base[27]: `spend, cpc, cpm, impressions, clicks, ctr, reach, frequency, conversion, cost_per_conversion, conversion_rate, result, cost_per_result, result_rate, video_play_actions, video_watched_2s, video_watched_6s, average_video_play, likes, comments, shares, follows, profile_visits, live_views, live_product_clicks, live_effective_views, live_unique_views`
+  group1[10]: `new_consideration_size, cost_per_consideration, new_consideration_rate, assisted_new_customer, assisted_new_customer_rate, cost_per_assisted_new_customer, engaged_view, engaged_view_rate, paid_engaged_view, paid_engagement_engaged_view`
+  group2[13]: `cost_per_1000_reached, video_views_p25/p50/p75/p100, average_video_play_per_user, engagements, engagement_rate, interactive_add_on_*, skips, video_skips, ad_skips`
+  group3[15]: `onsite_shopping, total_onsite_shopping_value, cost_per_onsite_shopping, onsite_shopping_roas, onsite_shopping_rate, value_per_onsite_shopping, onsite_initiate_checkout_count, product_page_view_rate, add_to_cart_rate, new_shop_visitors, assisted_new_shop_visitors, assisted_cost_per_product_page_view, assisted_purchases, assisted_gross_revenue, assisted_roas`
+  group4[12]: `onsite_total_product_details_page_view, onsite_cost_per_product_details_page_view, onsite_product_details_page_view_rate, onsite_value_per_product_details_page_view, onsite_total_product_details_page_view_value, onsite_total_add_to_cart, onsite_cost_per_add_to_cart, onsite_add_to_cart_rate, onsite_value_per_add_to_cart, onsite_total_add_to_cart_value, onsite_on_web_detail, total_onsite_on_web_detail_value`
+- Live pull (`online/src/lib/gmv.ts:181-186` `TTAM_METRICS[13]`):
+  `spend, impressions, clicks, reach, video_watched_6s, average_video_play, likes, comments, shares, follows, profile_visits, live_views, live_effective_views`
+- Evaluator inputs (`online/src/lib/ttam-scores.ts:85-90`): `spend→spend, imp→impressions, clicks→clicks, reach→reach, sfv→video_watched_6s, prof→profile_visits, likes/sh/com/fol→likes/shares/comments/follows, awt→average_video_play, live→live_views, live10→live_effective_views`
+
+### Probe log (append per run — result is ephemeral JSON, this table is the record)
+| date (MYT) | grain results | notes |
+|---|---|---|
+| 06 Oct 2026 | CAMPAIGN/ADGROUP/AD all 25 OK; re-probe `live_effective_views` / `live_unique_views` OK | LQS wired to `live_effective_views` as PRESUMED proxy |
+| 16 Oct 2026 (`group=1`) | OK: `new_consideration_size, cost_per_consideration, new_consideration_rate, engaged_view, paid_engaged_view, paid_engagement_engaged_view`; FAIL: `assisted_new_customer*, engaged_view_rate` (identical all grains) | Standalone mirror: `ttam-verified-metrics.md:§5` |
+| 16 Oct 2026 (`group=2`) | OK: `cost_per_1000_reached, video_views_p25/p50/p75/p100, average_video_play_per_user, engagements, engagement_rate, interactive_add_on_*`; FAIL: `skips, video_skips, ad_skips` | Ad-skips has no BASIC metric under these names |
+| 16 Oct 2026 (`group=3`) | OK: 7 onsite core (`onsite_shopping, total_onsite_shopping_value, cost_per_onsite_shopping, onsite_shopping_roas, onsite_shopping_rate, value_per_onsite_shopping, onsite_initiate_checkout_count`); FAIL: 8 funnel/assisted guesses | True `onsite_*` names covered by group=4 |
+| 16 Oct 2026 (`group=4`) | CAMPAIGN/ADGROUP/AD: `full_set OK`, rows 10, all 12 OK | Product page view rate = `onsite_product_details_page_view_rate`; Add to cart rate = `onsite_add_to_cart_rate`; mirror `ttam-verified-metrics.md:§5` |
+| _next_ | _paste `/api/ttam-probe?shopNumber=1&group=N` output summary here_ | _`full_set OK/FAIL + per-metric FAIL codes`_ |

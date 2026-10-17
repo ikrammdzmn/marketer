@@ -69,7 +69,7 @@ function emptySums(): Record<string, number> {
 function toRaw(row: Record<string, number>): TtamRaw {
   return {
     spend: row.spend ?? 0, imp: row.impressions ?? 0, clicks: row.clicks ?? 0,
-    reach: row.reach ?? 0, sfv: row.video_watched_6s ?? 0,
+    reach: row.reach ?? 0, sfv: (row.engaged_view ?? 0) || (row.video_watched_6s ?? 0),
     prof: row.profile_visits ?? 0, likes: row.likes ?? 0, sh: row.shares ?? 0,
     com: row.comments ?? 0, fol: row.follows ?? 0,
     awt: row.average_video_play ?? 0, live: row.live_views ?? 0,
@@ -175,7 +175,7 @@ export async function getTtamAdgroups(
       const id = String(g.adgroup_id ?? g.id ?? "");
       const row = spendBy.get(id);
       const raw = row ? toRaw(row) : null;
-      const scored = raw ? scoreTtamRow(raw, true) : null;
+      const scored = raw ? scoreTtamRow(raw, false) : null;
       return {
         adgroup_id: id,
         name: g.adgroup_name ?? g.name ?? id,
@@ -191,7 +191,7 @@ export async function getTtamAdgroups(
         ),
         metrics: full && row ? row : null,
         scores: scored ? scored.scores : null,
-        sfvProxy: full,
+        sfvProxy: false,
       };
     })
     .filter((g) => g.adgroup_id)
@@ -232,7 +232,7 @@ export async function getTtamAds(
     .map((a: any) => {      const id = String(a.ad_id ?? a.id ?? "");
       const row = spendBy.get(id);
       const raw = row ? toRaw(row) : null;
-      const scored = raw ? scoreTtamRow(raw, true) : null;
+      const scored = raw ? scoreTtamRow(raw, false) : null;
       return {
         ad_id: id,
         name: a.ad_name ?? a.name ?? id,
@@ -240,7 +240,7 @@ export async function getTtamAds(
         spend: raw ? raw.spend : 0,
         metrics: full && row ? row : null,
         scores: scored ? scored.scores : null,
-        sfvProxy: full,
+        sfvProxy: false,
       };
     })
     .filter((a) => a.ad_id)

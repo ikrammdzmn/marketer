@@ -84,7 +84,7 @@ export function bandsFromPreset(preset: any): Record<string, { k: number; s: num
 // Scorer input name → raw API metric key (row.metrics).
 const INPUT_MAP: Record<string, string> = {
   spend: "spend", imp: "impressions", clicks: "clicks", reach: "reach",
-  sfv: "video_watched_6s", prof: "profile_visits",
+  sfv: "engaged_view", prof: "profile_visits",
   likes: "likes", sh: "shares", com: "comments", fol: "follows",
   awt: "average_video_play", live: "live_views", live10: "live_effective_views",
 };

@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireAllowlistedUser } from "@/lib/authz";
-import { chatAi, getAiInsight, parseModules, sanitizeGuardrails } from "@/lib/ai";
+import { chatAi, getAiInsight, parseLang, parseModules, sanitizeGuardrails } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
-// /api/ai — text-only Gemini insight. Allowlisted users only.
+// /ai — text-only Gemini insight. Allowlisted users only.
 // Server key GEMINI_API_KEY never leaves the server.
-// GET ?modules=&days=&minRoi=&maxCpa=&fee= — cached single-shot analysis.
-// POST {message, history, modules, days, guardrails} — follow-up chat, live.
+// GET ?modules=&days=&minRoi=&maxCpa=&fee=&lang= — cached single-shot analysis.
+// POST {message, history, modules, days, guardrails, lang} — follow-up chat, live.
 function guardrailsFrom(input: {
   minRoi?: any; maxCpa?: any; fee?: any;
   guardrails?: { minNetRoi?: any; maxCpa?: any; feeRate?: any };
@@ -31,12 +31,14 @@ export async function GET(req: Request) {
     maxCpa: url.searchParams.get("maxCpa"),
     fee: url.searchParams.get("fee"),
   });
+  const lang = parseLang(url.searchParams.get("lang"));
   try {
-    const out = await getAiInsight(modules, days, g);
+    const out = await getAiInsight(modules, days, g, lang);
     return NextResponse.json({
       markdown: out.markdown,
       modules: out.modules,
       days: out.days,
+      lang,
       model: out.model,
       cached: (out as { cached?: boolean }).cached ?? false,
       at: new Date(out.at).toISOString(),
@@ -64,8 +66,9 @@ export async function POST(req: Request) {
   const days = Math.min(Math.max(Number(body?.days) || 7, 1), 14);
   const g = guardrailsFrom({ guardrails: body?.guardrails ?? {} });
   const history = Array.isArray(body?.history) ? body.history : [];
+  const lang = parseLang(body?.lang);
   try {
-    const out = await chatAi(modules, days, g, history, message);
+    const out = await chatAi(modules, days, g, history, message, lang);
     return NextResponse.json({
       markdown: out.markdown,
       model: out.model,

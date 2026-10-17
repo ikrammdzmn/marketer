@@ -2,6 +2,37 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 17 Oct 2026 — Shop GMV summary card redesign (1 deploy `dpl_7rag6aq9GCtRMQk6iQSkAEUBC3AW`, uncommitted)
+
+- `?shop=1&metric=shop-gmv` summary card: hero "Shop got" + shop-vs-ads bars with plain-words gap sentence + "Real return" (before/after-tax) with ads-claimed demoted to footnote; old TRUE/TRUE ACTUAL kept as hover tooltips only. tsc clean, build green, deploy output shows `deploymentProtection: []` — owner to verify Vercel wall still covers All Deployments.
+
+## 17 Oct 2026 — TTAM probe Groups 1–4 + true focused-6s + metric registry + Shop Analytics probe (1 deploy `dpl_xGAVhvgcpWnuxAyoT4raHLUBfyUN`, all uncommitted)
+
+- `/api/ttam-probe?group=1/2/3/4` (BASE/GROUP split, ≤15 keys/run under 60s cap): G1 6 OK/4 FAIL, G2 10 OK/3 FAIL, G3 7 OK/8 FAIL, G4 full_set OK all 12 `onsite_*` (Product page view rate + Add to cart rate resolved); logged to `ttam-verified-metrics.md` (§5 group-first) + plan.
+- sfv = `engaged_view` (verified all grains): `TTAM_METRICS[14]`, `INPUT_MAP`, `sfvProxy: false` (ACS up / HPS down expected vs plain-6s proxy).
+- `ttam-metric-registry.md` (62-key OMTM-style registry, Kill/Scale mostly TODO) + `/api/shop-analytics-probe` (202509 + 202605 both code 0: no 90d-split, no assisted anywhere — closest-OK mapping kept).
+- Parked: `1-2-tools/TTAM Analytic/` masterplan + sample-13 thresholds (awaiting owner Kill/Scale → userscript v1).
+
+## 15 Oct 2026 — Shop Cost module (`/shop-cost` + `/api/shop-cost`; 5 deploys through dpl_GmgtRs3JLqtLhpruxQAPS9faYvRT, all uncommitted)
+
+- Spend share per stream (LIVE / Product / TTAM), shop 1, 1–31d, ads spend only: hero Total + in-card 100% bar + ranked #1–3 stat grid, stacked-% trend (multi-day only), daily table, per-stream campaign share (% of stream + % of total, Hide-0-spend on by default).
+- Fixes: day-grain normalize (B102), Neon promotion_type bleed filter (B103), totals from row sums; design pass (reduced-motion, aria labels, dark color-scheme + theme-color via viewport export).
+
+## 15 Oct 2026 — AI Analyst WoW + EN/MS + campaign detail (`/ai` + `/api/ai`; deploy dpl_Cpvdv4mZcG93SxrCWSL4KjBw8NQN)
+
+- Week-over-week everywhere: GMV/Shop split current vs previous equal-length period from one 2x Neon pull (totals + % deltas, daily trend, top-10 campaigns with prev + deltas, worst spend-no-sales, fallers ≤−20%); TTAM cur+prev parallel pulls (spend deltas, raw imp/clicks/6s/likes/live + scores + KILL/WATCH/SCALE flags + verdict, top-10 named).
+- EN/MS toggle (default EN, persisted + `?lang=`, part of 15m cache key); both languages use the same 4-section template (summary / wins / leaks / 3 actions) naming real campaigns + which tab to verify; TTAM prompted as feeder traffic (no ROI expected); stripEcho window widened to 600 chars.
+- Smoke: `/ai` 307 → sign-in, `/api/ai` 401 signed-out; build lists `/ai`, `/ai/guardrail`, `/api/ai`.
+- Follow-up `dpl_53VYyvgkawF5KTfaKHhTsMiiX5d7`: numbers-first rule (never open with a caveat/`*(Note...)*`, gaps go last with the exact Refresh button) + `coverage` facts on GMV/Shop snapshots + Shop-empty note naming the fix.
+- Follow-up `dpl_D9wZJdhLWUR6hDErygMGJSnKCBqB`: WoW on closed days only (today partial excluded from GMV/TTAM/Shop totals; equal n-day windows ending yesterday).
+- PENDING (17 Oct, uncommitted, undeployed): plain-words rule — full term + short form on first use in both languages (e.g. week-over-week (WoW)); blocked by other session's `shop-cost.ts` tsc errors, deploy once green.
+
+## 15 Oct 2026 — AI Analyst module (`/ai` + `/api/ai` + `/ai/guardrail`; 6 deploys through dpl_EE1T4xgX5J62iZV15gwzVB7NVM7U, all uncommitted)
+
+- Text-only AI analyst: sidebar `AI Analyst` page with tick boxes (GMV incl. creative rows / TTAM / Shop incl. affiliates, any combo, URL + localStorage), range 3/7/14d, Analyze + follow-up chat box (last-6 turns, live). Server route GET (15m cache) + POST chat, allowlist-gated; `GEMINI_API_KEY`/`GEMINI_MODEL` server-only env (default `gemini-3.8-flash` — 2.0-flash is shut down).
+- Snapshot: Neon cache for GMV/Shop + live TTAM campaign grain (`fetchManualSpend` top-8 spend with v3 scores, closed data ending yesterday, fail-open with named `namesNote`); prompt forces gross×(1−fee)→net before min-ROI compare + `### 1) Verdict`-first order with server echo-strip.
+- `/ai/guardrail` (Settings entry): per-user localStorage min-net-ROI / max-CPA / fee-rate (defaults 7.0/21.18/0.25, analysis-only — automation obeys the strategy knowledge base). Dependency-free Markdown→JSX renderer (`ai/md.tsx`, JSX-built, no raw HTML) for insight + AI chat bubbles.
+
 ## 14–15 Oct 2026 — LIVE rename fix + Bracket|TT-account toggle + enrich backoff (6 deploys through dpl_6Dh5KyJnpVV8VAYdcwgvE5TKbF4k, all uncommitted)
 
 - Rename fix: board account/campaign names come from the Neon cache which nothing refreshed on Fetch — new `Sync names` button (allowlisted `POST /api/campaigns/sync`, auto re-fetch) + nightly-sync name heal. Rename the `[Bracket]` in Ads Manager, Sync, Fetch — new group shows. `/accounts` untouched.

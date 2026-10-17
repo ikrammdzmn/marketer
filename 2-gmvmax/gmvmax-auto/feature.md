@@ -5,7 +5,7 @@
 
 ## Online version (Vercel, `marketer-hw.vercel.app`, Google sign-in)
 
-- The left sidebar is the whole navigation: Dashboard (home), Calendar month view, your shop, TikTok Ads views (Total, LIVE, Product, TTAM, ROAS, Hourly Ads), TikTok Shops views (Hourly Shop, Shop GMV), and a collapsible Settings at the bottom (Presets, Creative, Accounts, Catalog, Calendar filters, Access). Your name and Sign out sit pinned at the very bottom of the sidebar. Every tab is a shareable link — opening it loads that exact view, and the browser back button works between tabs. The sidebar folds to icons on desktop and becomes a slide-in menu on phones.
+- The left sidebar is the whole navigation: Dashboard (home), AI Analyst, Calendar month view, your shop, TikTok Ads views (Total, LIVE, Product, TTAM, ROAS, Hourly Ads), TikTok Shops views (Hourly Shop, Shop GMV), Shop Live and Shop Cost pages, and a collapsible Settings at the bottom (Presets, AI guardrails, Creative, Accounts, Catalog, Calendar filters, Access). Your name and Sign out sit pinned at the very bottom of the sidebar. Every tab is a shareable link — opening it loads that exact view, and the browser back button works between tabs. The sidebar folds to icons on desktop and becomes a slide-in menu on phones.
 - The Dashboard home page shows cards to every board plus your next 7 days from the shared Google Calendar (Upcoming agenda).
 - The Total board opens a Performance Dashboard: Total GMV, Total Orders (with average order value), Total Ad Spend (with cost per order), and Blended ROI with Net underneath. Below, Channel Contribution splits LIVE Stream vs Product/Showcase — each with its GMV/orders/cost share and its own ROI, plus a split bar on top.
 - Each campaign row shows a green ON / grey OFF pill (from TikTok) plus delivery state: 🟢 Active when a live room is ongoing right now (checked automatically after Fetch, top spenders first) or TikTok reports Active; other flags show grey on rows that spent, ⛔ only when nothing spent — spend proves delivery. Account rows roll up the same way: ON if anything inside is ON, 🟢 Active if any room inside is ongoing now.
@@ -42,6 +42,12 @@
 - Pick a date range, press **Load rooms**, pick a room, then **Probe shape** (checks what TikTok returns) or **Fetch overview** (full numbers + hour table). Rooms come in two kinds: MARKETING rooms show full numbers; AFFILIATE rooms list fine but TikTok blocks their minute-by-minute detail (you'll get a clear note, not an error dump).
 - Summary cards: sales, SKU orders, views/impressions, click rates, order rates, average order value, sales per hour, peak viewers. Numbers lag about 2 days behind real life (watch the "Latest data" line) and sales include returns/refunds — that's TikTok's counting.
 - First-time setup is a one-tap **Authorize analytics app** button (administrator + seller login). Token details never show on screen.
+
+## AI Analyst (sidebar → AI Analyst, shop 1)
+
+- Tick which areas the AI may look at — GMV (campaigns + hours + top videos), TTAM (preset + live campaign scores), Shop (shop-truth days + affiliate counts) — pick any combo, pick 3/7/14 days, pick EN/MS, press **Analyze**. You get a short written report in 4 parts: performance summary (this week vs last week with % changes), key wins (best campaigns by name), critical leaks (falling or wasteful campaigns by name), and 3 immediate actions (each naming the campaign + which tab to check). Terms are spelled out on first use (e.g. week-over-week (WoW)). TTAM takes ~10 seconds (it reads TikTok live); repeats come from a 15-minute memory. Weeks compare closed days only — today's partial numbers never skew the comparison.
+- A text box under the answer takes follow-up questions about the same numbers ("why is campaign X critical?"). It cannot change budgets or anything else — words only, always.
+- **AI guardrails** (Settings → AI guardrails, yours only, saved in this browser): minimum net ROI, maximum CPA in RM, and the fee rate the AI uses to turn gross figures into net. Defaults match the house rules (7.0 / 21.18 / 25%). These steer the AI's words only — the automatic rules follow the strategy playbook, never this page.
 
 ## Creative analysis (Creative tab, shop 1)
 
@@ -117,8 +123,9 @@
 - Verdicts: green SCALE (spend more), yellow WATCH, red KILL (with the reason if
   you hover), blue LEARNING (too new/small to judge — needs RM30 spend and
   1,000 impressions first). Ranges under 3 days show grades but no verdicts.
-- Grades with `~` use best-guess inputs (plain 6-second views stand in for
-  6-second focused views). EDS and ERRI are exact TikTok numbers.
+- Grades no longer carry `~` — hook scores use true 6-second focused views
+  (`engaged_view`, verified 16 Oct). EDS, ERRI and LQS inputs are exact TikTok
+  numbers (LQS still presumed: effective views stand in for 10-second views).
 - Score switches hide grades you don't care about (hidden grades also leave the
   verdict). Verdict dropdown + search box filter the tree.
 - Units: ERRI, HPS, EDS, HRQ show as % (e.g. 12.50%); ACS shows as RM
@@ -136,8 +143,7 @@
   no re-fetch needed. The `/presets` tab edits bands, minimums, and notes, and
   exports a file the scorer tool can read.
 - How to decide: online is the radar (hourly watch, alerts, history), TikTok is
-  the trigger (true focused-6s numbers). Online KILL means kill (its ~14% hot
-  proxy bias works against KILL); online SCALE gets confirmed in TikTok first.
+  the trigger (confirms SCALE before budget moves). Online KILL means kill.
 
 ## How to use it
 1. Start the dashboard: `python gmvmax-auto/dashboard/dashboard.py`, open
@@ -164,3 +170,9 @@ from Ads Manager or the bulk export.)
 - **P1:** computer drafts suggestions but only logs them + sends you a Telegram message.
 - **P2:** small changes happen automatically, big ones wait for your Approve / Edit / Reject.
 - Monthly spend cap + night quiet-hours handling + email backup alerts.
+
+## Shop Cost (sidebar → Shop Cost, shop 1)
+- Answers "where does my ad money go": Total ads spend on top with a share bar, then your three streams ranked #1–#3 by spend (LIVE GMV Max, Product GMV Max, TTAM) each with its RM and % of total.
+- Below: a trend showing how the mix moves day by day (one-day ranges skip it — nothing to trend), then the exact daily table, then Campaign share: pick a stream tab to see every campaign's spend with % of its stream and % of everything.
+- Campaigns that spent nothing are hidden by default; the **Hide 0-spend** button shows the count and reveals them on tap.
+- Newest day is still counting (partial) — today's slice will move until tomorrow.

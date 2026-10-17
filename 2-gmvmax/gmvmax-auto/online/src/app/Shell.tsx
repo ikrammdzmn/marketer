@@ -64,6 +64,8 @@ const SHOP_METRIC_LINKS = [
   { id: "shop-gmv", name: "Shop GMV", icon: P.bag },
 ];
 
+const SHOP_COST_LINK = { href: "/shop-cost", label: "Shop Cost", icon: P.coins, match: "/shop-cost" };
+
 const VALID_METRICS = new Set([...ADS_LINKS, ...SHOP_METRIC_LINKS].map((m) => m.id));
 
 // Header today-pill: same MYT day edges as lib/calendar edgeMs, client-safe copy
@@ -257,6 +259,15 @@ export default function Shell({
         >
           <I d={P.live} />
           <span className={labelCls}>Shop Live</span>
+        </Link>
+        <Link
+          href={SHOP_COST_LINK.href}
+          title={SHOP_COST_LINK.label}
+          onClick={() => setOpen(false)}
+          className={itemCls(pathname === SHOP_COST_LINK.match)}
+        >
+          <I d={SHOP_COST_LINK.icon} />
+          <span className={labelCls}>{SHOP_COST_LINK.label}</span>
         </Link>
       </div>
       <div className="mt-auto pt-4">

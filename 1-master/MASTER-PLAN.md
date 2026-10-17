@@ -54,6 +54,10 @@ load buttons). Pure HTML/CSS/vanilla JS, no build (`app.js?v=54`). Authoritative
 
 ## 2. Current status (2026-09-20, midday)
 
+- 15 Oct: `gmvmax-auto` AI Analyst module (`/ai`: GMV/TTAM/Shop ticks + follow-up chat, text-only Gemini insight; `/ai/guardrail` per-user guardrails; live TTAM campaign-grain scores; dep-free markdown renderer). See `2-gmvmax/gmvmax-auto/DEV_NOTES.md` Checkpoint 41.
+- 15–17 Oct: `gmvmax-auto` AI Analyst WoW upgrade (equal closed-day windows, EN/MS toggle, top-10 campaigns with deltas/worst/fallers, TTAM flags + verdicts, numbers-first; plain-words rule PENDING — tsc blocked by other session's `shop-cost.ts`). See `2-gmvmax/gmvmax-auto/DEV_NOTES.md` Checkpoint 43.
+- 17 Oct: `gmvmax-auto` TTAM metric groups probed (Groups 1–4, `?group=` split; true `onsite_*` Shop funnel names green) + sfv → true focused-6s `engaged_view` (deployed `dpl_xGAVhvgcpWnuxAyoT4raHLUBfyUN`) + `ttam-metric-registry.md` (62 keys, raw Kill/Scale TODO) + Shop Analytics probe (no 90d/assisted anywhere) + `1-2-tools/TTAM Analytic/` masterplan + sample-13 parked (needs owner Kill/Scale → userscript). See `2-gmvmax/gmvmax-auto/DEV_NOTES.md` Checkpoint 44.
+
 - 12 Oct: `gmvmax-auto` Shop Live module (`/shop-live`: MARKETING rooms green incl. full minute KPIs, AFFILIATE metadata-only by TikTok design, creator-grant doc parked; `025` owner-run pending; all deployed, all uncommitted). See `2-gmvmax/gmvmax-auto/DEV_NOTES.md` Checkpoint 37.
 
 - 07 Oct security: Standard Protection had left Production public; owner switched Vercel Authentication to All Deployments. Google OAuth app gate is now deployed as a separate layer; page redirect + signed-out API checks pass. Vercel protection state remains owner-controlled; finish admin/allowed/denied/removal auth tests. See `2-gmvmax/gmvmax-auto/DEV_NOTES.md` Checkpoints 13–15.
