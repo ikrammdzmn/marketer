@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getShopROAS } from "@/lib/gmv";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 // GET /api/roas?shopNumber=1&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 // Access is checked against the live Google email allowlist.
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

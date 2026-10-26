@@ -39,7 +39,7 @@ Lineage: v51-port `DateRangePicker.tsx` (dashboard) + v52 single-click fix
    preset. 4. Dark-mode chip classes match host page. 5. Single-click
    clears pending range.
 
-## GMV Max online lessons (Oct 2026, verified)
+## Marketer HW lessons (Oct 2026, verified)
 
 - Stacking: Shell bar is `z-30`, picker panel must be `z-50` with a
   transparent `z-40` click-catcher. Never nest the panel `absolute`

@@ -4,7 +4,7 @@
 > here; the plan-dir copy is the handoff snapshot.
 
 ## Goal
-TTAM campaign / adgroup / ad levels in GMV Max Online fetch the metrics that
+TTAM campaign / adgroup / ad levels in Marketer HW fetch the metrics that
 the Metric Scorer presets define, so the dashboard shows the same numbers as
 `3-ttam/campaign-performance-analysis` without xlsx uploads.
 
@@ -119,7 +119,7 @@ preset — dashboard + verdicts follow it with no refetch.
   A. Dashboard reads the preset JSON (default from `presets/index.json`
      manifest) at runtime/build — new metrics flow in if their inputs are
      API-covered, else flagged uncovered.
-  B. Integrate the metric manager UI into GMV Max Online (bigger).
+  B. Integrate the metric manager UI into Marketer HW (bigger).
 - Default: A. Decide before step 4.
 
 ## Steps

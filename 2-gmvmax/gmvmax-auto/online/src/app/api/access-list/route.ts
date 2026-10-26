@@ -3,8 +3,10 @@ import { query } from "@/lib/db";
 import {
   getDisplayNameMap,
   isBootstrapAdmin,
+  MODULES,
   normalizeDisplayName,
   normalizeEmail,
+  normalizeModules,
   validEmail,
 } from "@/lib/allowlist-store";
 import { requireAllowlistAdmin } from "@/lib/authz";
@@ -16,13 +18,25 @@ export async function GET() {
   if (!access.ok) return access.response;
 
   try {
-    const result = await query(
-      `SELECT email, created_by, created_at
-       FROM core.access_allowlist ORDER BY email`
-    );
-    const emails = result.rows
+    let rows: any[];
+    try {
+      const result = await query(
+        `SELECT email, created_by, created_at, modules
+         FROM core.access_allowlist ORDER BY email`
+      );
+      rows = result.rows;
+    } catch (error) {
+      // Pre-031 database: fall back to no modules column (all = full access).
+      if (!(error instanceof Error && "code" in error && (error as { code?: string }).code === "42703")) throw error;
+      const result = await query(
+        `SELECT email, created_by, created_at
+         FROM core.access_allowlist ORDER BY email`
+      );
+      rows = result.rows.map((r: any) => ({ ...r, modules: "all" }));
+    }
+    const emails = rows
       .filter((row) => row.email !== access.email)
-      .map((row) => ({ ...row, isBootstrapAdmin: false }));
+      .map((row) => ({ ...row, modules: normalizeModules(row.modules), isBootstrapAdmin: false }));
     const names = await getDisplayNameMap();
     for (const entry of emails) {
       entry.display_name = names[entry.email] ?? null;
@@ -32,9 +46,10 @@ export async function GET() {
       created_by: "Environment setting",
       created_at: null,
       display_name: names[access.email] ?? null,
+      modules: ["all"],
       isBootstrapAdmin: true,
     });
-    return NextResponse.json({ emails });
+    return NextResponse.json({ emails, modules: MODULES });
   } catch (error) {
     console.error("[access-list:get]", error instanceof Error ? error.message : "failed");
     return NextResponse.json({ error: "could not load access list" }, { status: 500 });
@@ -45,7 +60,7 @@ export async function POST(request: Request) {
   const access = await requireAllowlistAdmin();
   if (!access.ok) return access.response;
 
-  let body: { email?: unknown; display_name?: unknown };
+  let body: { email?: unknown; display_name?: unknown; modules?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -59,27 +74,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "the bootstrap admin is already included" }, { status: 409 });
   }
   const displayName = normalizeDisplayName(body.display_name);
+  // modules: undefined = full access ('all'); array or comma string = scoped.
+  let modules = "all";
+  if (body.modules !== undefined) {
+    const raw = Array.isArray(body.modules) ? body.modules.join(",") : String(body.modules);
+    const parsed = normalizeModules(raw);
+    if (parsed.length === 0) {
+      return NextResponse.json({ error: `unknown module (valid: all, ${(MODULES as readonly string[]).join(", ")})` }, { status: 400 });
+    }
+    modules = parsed.includes("all") ? "all" : parsed.join(",");
+  }
 
   try {
     try {
       const result = await query(
         `WITH added AS (
-           INSERT INTO core.access_allowlist (email, created_by, display_name)
-           VALUES ($1, $2, $3)
+           INSERT INTO core.access_allowlist (email, created_by, display_name, modules)
+           VALUES ($1, $2, $3, $4)
            ON CONFLICT (email) DO NOTHING
            RETURNING email
          )
          INSERT INTO core.audit (actor, action, detail)
-         SELECT $2, 'access_allowlist.add', jsonb_build_object('email', email)
+         SELECT $2, 'access_allowlist.add', jsonb_build_object('email', email, 'modules', $4)
          FROM added
          RETURNING detail`,
-        [email, access.email, displayName]
+        [email, access.email, displayName, modules]
       );
       if (result.rowCount !== 1) {
         return NextResponse.json({ error: "that email is already allowed" }, { status: 409 });
       }
     } catch (error) {
-      // Pre-026 database without the display_name column: retry without it.
+      // Pre-031 (or pre-026) database without the new columns: retry bare.
       if (!(error instanceof Error && "code" in error && (error as { code?: string }).code === "42703")) {
         throw error;
       }
@@ -99,7 +124,7 @@ export async function POST(request: Request) {
       if (result.rowCount !== 1) {
         return NextResponse.json({ error: "that email is already allowed" }, { status: 409 });
       }
-      return NextResponse.json({ ok: true, email, ...(displayName !== null ? { needsMigration026: true } : {}) }, { status: 201 });
+      return NextResponse.json({ ok: true, email, needsMigration031: true }, { status: 201 });
     }
     return NextResponse.json({ ok: true, email }, { status: 201 });
   } catch (error) {
@@ -112,7 +137,7 @@ export async function PUT(request: Request) {
   const access = await requireAllowlistAdmin();
   if (!access.ok) return access.response;
 
-  let body: { email?: unknown; display_name?: unknown };
+  let body: { email?: unknown; display_name?: unknown; modules?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -123,10 +148,28 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "enter a valid email address" }, { status: 400 });
   }
   const displayName = normalizeDisplayName(body.display_name);
+  // modules: undefined = leave unchanged; otherwise array/comma string/'all'.
+  let modules: string | null = null;
+  if (body.modules !== undefined) {
+    const raw = Array.isArray(body.modules) ? body.modules.join(",") : String(body.modules);
+    const parsed = normalizeModules(raw);
+    if (parsed.length === 0) {
+      return NextResponse.json({ error: `unknown module (valid: all, ${(MODULES as readonly string[]).join(", ")})` }, { status: 400 });
+    }
+    modules = parsed.includes("all") ? "all" : parsed.join(",");
+  }
 
   try {
+    // Capture the old scope first so scope changes get their own audit entry.
+    let oldModules: string | null = null;
+    try {
+      const prev = await query(`SELECT modules FROM core.access_allowlist WHERE email = $1`, [email]);
+      if (prev.rowCount === 1) oldModules = String(prev.rows[0]?.modules ?? "all");
+    } catch {
+      // Pre-031 database: no modules column to compare.
+    }
     if (isBootstrapAdmin(email)) {
-      // The bootstrap admin has no allowlist row; keep the name on one without changing access.
+      // The bootstrap admin is always full access; keep the name only.
       await query(
         `INSERT INTO core.access_allowlist (email, created_by, display_name)
          VALUES ($1, $2, $3)
@@ -135,8 +178,10 @@ export async function PUT(request: Request) {
       );
     } else {
       const result = await query(
-        `UPDATE core.access_allowlist SET display_name = $2 WHERE email = $1`,
-        [email, displayName]
+        modules === null
+          ? `UPDATE core.access_allowlist SET display_name = $2 WHERE email = $1`
+          : `UPDATE core.access_allowlist SET display_name = $2, modules = $3 WHERE email = $1`,
+        modules === null ? [email, displayName] : [email, displayName, modules]
       );
       if (result.rowCount !== 1) {
         return NextResponse.json({ error: "email is not on the allowlist" }, { status: 404 });
@@ -151,11 +196,24 @@ export async function PUT(request: Request) {
     } catch {
       // Audit logging must never sink the rename itself.
     }
-    return NextResponse.json({ ok: true, email, display_name: displayName });
+    // Scope changes get a distinct entry (old → new) so privilege grants
+    // are distinguishable from display-name renames.
+    if (modules !== null && !isBootstrapAdmin(email) && oldModules !== null && normalizeModules(oldModules).join(",") !== normalizeModules(modules).join(",")) {
+      try {
+        await query(
+          `INSERT INTO core.audit (actor, action, detail)
+           VALUES ($1, 'access_allowlist.scope', jsonb_build_object('email', $2, 'old', $3, 'new', $4))`,
+          [access.email, email, oldModules, modules]
+        );
+      } catch {
+        // Audit logging must never sink the scope save itself.
+      }
+    }
+    return NextResponse.json({ ok: true, email, display_name: displayName, ...(modules !== null ? { modules: normalizeModules(modules) } : {}) });
   } catch (error) {
     if (error instanceof Error && "code" in error && (error as { code?: string }).code === "42703") {
       return NextResponse.json(
-        { error: "run migration 026_allowlist_display_name.sql on this database first" },
+        { error: "run migration 031_access_modules.sql on this database first" },
         { status: 409 }
       );
     }

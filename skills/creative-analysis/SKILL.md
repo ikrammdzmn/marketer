@@ -8,6 +8,9 @@ description: Rules of the local creative-analysis tool + online creative module.
 Local tool: `2-gmvmax/tiktok-creative-analysis/` — static HTML/vanilla JS,
 no npm/build. `server.py` binds `127.0.0.1` only. Online module: `/creative`
 tab (probe, rows sync, Manage popup). `app.js?v=N` bump per change.
+`pull_creative.py` mirrors Neon `creative.accounts`/`creative.targets` into
+`data/` (prod default, `--dry-run`; needs `psycopg` + Neon URL; not carried:
+`identity_id`).
 
 ## Data rules (do not re-derive)
 

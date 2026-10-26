@@ -16,6 +16,12 @@
       "environment": {
         "GOOGLE_SERVICE_ACCOUNT_FILE": "{env:GOOGLE_SHEETS_CRED}"
       }
+    },
+    "servers": {
+      "tiktok-business": {
+        "type": "remote",
+        "url": "https://business-api.tiktok.com/open_mcp/tt-ads-mcp-layer"
+      }
     }
   }
 }

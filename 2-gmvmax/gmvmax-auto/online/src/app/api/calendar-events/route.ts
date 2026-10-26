@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRangeEvents, getUpcomingEvents } from "@/lib/calendar";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // Optional ?from=&to= ISO range (max 100d) for the /calendar month view.
 // {events:[...]} or {needsConnect} or {error}.
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("calendar");
   if (!access.ok) return access.response;
   try {
     const url = new URL(request.url);

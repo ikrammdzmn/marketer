@@ -53,8 +53,10 @@
 
 - No more Excel exports: per-video rows pulled straight from TikTok (PRODUCT campaigns) — title, account, status, cost, orders, sales, ROI, views and view-rate bars. Pick a campaign (himcoffee first), pick dates, **Sync from TikTok**, then read.
 - Four columns can't come from TikTok (posted time, creative source, second-level exploration verdicts) — those are recomputed or labelled, never faked.
-- **Accounts page** holds your TikTok accounts (grouped: Internal / Top Affiliate / Inactive) with username, Account ID, Ads Identity ID and notes, plus SOP targets. Tables first, Edit only when you tap it; Save keeps everything. **Catalog page** holds friendly campaign/product names the same way.
+- **Kill list** sits under the rows: every video summed across your dates with a KILL (red) / WATCH (amber) / SCALE (green) verdict, the hero's share of spend, and wasted-spend total. Tick boxes (or **Select KILL**) then **Copy draft** to get the post IDs for removal in Ads Manager — the system only drafts, it never deletes by itself. A status filter (All / DELIVERING / LEARNING / …) with counts drives both tables, `#` numbers every row, and CSV exports exactly what you see.
+- **Accounts page** holds your TikTok accounts (grouped: Internal / Top Affiliate / Inactive) with username, Account ID, Ads Identity ID and notes, plus SOP targets. Tables first, Edit only when you tap it; Save keeps everything. Each Live-ticked row also has a **Live note** dropdown (Internal Acc / External Acc / AI / Relive — or type your own, it becomes a choice next time). **Live board** (preview on top of Accounts, full page under Settings → Live board) groups live accounts into those four columns plus Other when someone types a new value. **Catalog page** holds friendly campaign/product names the same way.
 - Every save anywhere in the system pops a small confirmation (green = saved, red = what went wrong) — you never have to guess whether a press worked.
+- Data freshness: the boards now read the saved database first (instant), with a **Data Freshness & Sync** card showing when each part last updated — **Fetch Data** re-pulls live TikTok whenever you want ground truth. Newest hour is always marked partial (TikTok revises intraday).
 
 ## Calendar agenda (Dashboard home)
 
@@ -62,6 +64,7 @@
 - **Affiliates card** (under Upcoming): same three watches as the 4x-daily sheet robot — videos to review now (today + overdue, oldest first), due tomorrow, and how many wait for ads run. `All clear` when nothing needs you. Reads your Affiliate Collection sheet live; needs the sheet shared with the robot email once.
 - **Calendar settings page**: hide events by keyword — one per line (`Daily To Do`, `#lowpriority`), matched inside titles regardless of capitals. Plus a health panel in plain words (key present, table ready, event count, last error) so an empty agenda tells you exactly which switch to flip.
 - **Calendar page** (sidebar → Calendar): this month big, last and next month smaller below. Today is green, tomorrow outlined. Hover (or tap on phones) any day for the full list with links that open the event. A Today/Tomorrow panel sits on top on phones and on the right on computers — long sales show `Day 8/10 · Ends in 2 days` so you know where a sale stands without reading the grid. The top bar also carries a small pill with today's count that opens this page.
+- **Task notes** (bottom of the Calendar page, shared with the agent): dated reminders with TTAM / GMV / General kinds — add, edit, tick done, or delete; notes you add show `by owner`, notes the agent adds show `by agent`. Notes also appear in the Today/Tomorrow panel on their day (done ones struck through) and as dots on the month grid (sky = TTAM). Used for review dates like kill/scale calls.
 
 ## Telegram reports (group topic, every hour)
 
@@ -105,7 +108,7 @@
 - After every Fetch the button rests ~15 seconds (countdown shown) so TikTok never
   rate-limits us. A spinner shows while loading.
 - Top tabs: Dashboard and Presets; **Access** appears for the fixed administrator.
-- Google access is limited to individual email addresses, not everyone at a company domain. The fixed administrator opens **Access** in the top bar to add or remove emails. The administrator address is set privately in Vercel and cannot be removed from that page.
+- Google access is limited to individual email addresses, not everyone at a company domain. The fixed administrator opens **Access** in the top bar to add or remove emails, and to set each person's **scope**: full access, or only chosen modules (for example accounts-only, so someone sees just Accounts + Live board and nothing else). Without a granted module a page redirects home and its data stays denied. The administrator address is set privately in Vercel and cannot be removed from that page.
 - Campaign tables include a **Budget** column for GMV Max and TTAM. **% used** appears only for a one-day range, based on that day’s spend and the current daily budget. Lifetime, unlimited, and mixed TTAM budgets show no percentage; old-day percentages may differ if the budget has since changed. GMV Max budget details fill in for ON campaigns in small batches; if some show `—`, Fetch again to continue. Account totals sum ON campaigns only (OFF ignored) and say partial when an ON budget is still unknown.
 - Each ON GMV Max campaign has a **Refresh budget** button. Use it after changing the budget in TikTok to fetch the latest amount immediately. It only reads from TikTok; it never changes the budget.
 - The Shop GMV card shows the shop token expiry for the administrator, with a Refresh shop token button (one tap; first use also stores the token in Neon). The token lasts about a week, so refresh it when the date nears.

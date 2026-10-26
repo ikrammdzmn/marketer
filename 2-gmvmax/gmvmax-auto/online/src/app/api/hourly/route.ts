@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { getHourlyScorecard, getHourlyView } from "@/lib/hourly";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 // GET /api/hourly?shopNumber=1&date=YYYY-MM-DD[&startDate=&endDate=]
 // Single-day rows/slots for `date` (defaults to endDate, then today) plus a
 // scorecard aggregated across the selected range (defaults to `date` alone).
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getHourlyShopView } from "@/lib/hourly-shop";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 // GET /api/hourly-shop?shopNumber=1&date=YYYY-MM-DD — cached shop GMV by hour
 // + ads spend by hour (TRUE ROAS recomputed). Refresh via POST /refresh.
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

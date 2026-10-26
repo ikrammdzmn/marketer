@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getShopROAS } from "@/lib/gmv";
 import { fetchShopDayOrders } from "@/lib/shop-orders";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +25,7 @@ function datesBetween(a: string, b: string): string[] {
 // Same heavy per-day loop as nightly-sync, capped at 31 days; fail-open per
 // day (a failed day keeps its old cache row and is reported, not thrown).
 export async function POST(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max", "shop-cost");
   if (!access.ok) return access.response;
   const body = await request.json().catch(() => ({}));
   const shopNumber = String(body.shopNumber ?? "1");

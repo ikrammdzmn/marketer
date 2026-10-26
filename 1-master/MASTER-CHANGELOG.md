@@ -4,6 +4,18 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 26 Oct 2026
+
+- `gmvmax-auto` rename to Marketer HW (header, tab title, sign-in, AI intro, indexes — zero leftovers)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto` DB-first hourly + freshness panel + task notes + creative kill-list (all deployed, owner-verified): cron→Neon backbone (032/033, type-split sync, silent cron + failure alerts), cached LIVE/PRODUCT views, calendar task notes (owner + agent channel), per-post kill-list with verdicts/CSV/exclusion drafts, creative sync >60s-hang fix
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+## 20 Oct 2026
+
+- `gmvmax-auto` Accounts live-notes (`030` + Live-gated column with preset dropdown + customs) + live board (preview on `/accounts` + `/accounts/live` subpage, fixed 4 + Other) + module permissions (`031` scopes with deny-by-default `requireModule` gates, Access scope editor, nav/home/page gating, scope-change audit) — tsc clean, uncommitted, undeployed; `031` owner-run on prod
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `tiktok-creative-analysis` Preview column controls (Show all / Post ID only / Hide all + per-column ticks + Copy Post IDs, v55) + `pull_creative.py` (Neon → `data/` mirror, dry-run green vs prod: 26 vs 22) + new repo skill `skills/chart-legend-gating/` — local-only, uncommitted
+  -> `2-gmvmax/tiktok-creative-analysis/CHANGELOG.md`
 ## 17 Oct 2026
 
 - TTAM metrics workbook (`TTAM METRICS` sheet): `All Metrics` tab (143 native deduped + categorized + kill/scale/watch verdicts, 11 custom OMTM with plain-English) + `Guardrails` tab (ROI>=7/CPA<=21.18) + `READ ME` tab (CPL formula + quartile calibration slots TBD) + new repo skill `skills/ttam-metrics/`

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdsCredentials } from "@/lib/ads-credentials";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 import { SHOPS } from "@/lib/shops";
 
 export const dynamic = "force-dynamic";
@@ -405,7 +405,7 @@ async function round2Probe(accessToken: string, advertiserId: string, date: stri
 }
 
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("creative");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

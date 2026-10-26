@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "../toast";
+import { ModuleRedirect } from "../module-gate";
 import Chart from "chart.js/auto";
 import DateRangePicker from "../DateRangePicker";
 import { flagsForRow, verdictOf, SCORE_NAMES, SCORE_FORMATS, formatScore, bandsFromPreset, applyCustomScores } from "@/lib/ttam-scores";
@@ -432,6 +433,68 @@ export default function Page() {
   const [ttamAdLoading, setTtamAdLoading] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [cooldown, setCooldown] = useState(0);
+  // Freshness panel (Stage 3): DB-first stamps from /api/sync-status.
+  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [syncStatusAt, setSyncStatusAt] = useState<string | null>(null);
+  const [syncRefreshing, setSyncRefreshing] = useState<string | null>(null);
+
+  function agoStr(iso: string | null): string {
+    if (!iso) return "never synced";
+    const ms = Date.now() - new Date(iso).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return "just now";
+    const m = Math.floor(ms / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.floor(h / 24)}d ago`;
+  }
+
+  function klStr(iso: string | null): string {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleString("en-GB", {
+        timeZone: "Asia/Kuala_Lumpur", day: "2-digit", month: "short",
+        hour: "2-digit", minute: "2-digit", hour12: false,
+      });
+    } catch { return iso; }
+  }
+
+  async function loadSyncStatus(shopNo: string) {
+    try {
+      const r = await fetch(`/api/sync-status?shopNumber=${shopNo}`);
+      if (!r.ok) return;
+      setSyncStatus(await r.json());
+      setSyncStatusAt(new Date().toISOString());
+    } catch {
+      // panel stays on last stamps; freshness degrades visibly via agoStr
+    }
+  }
+
+  async function refreshTypeAction(kind: "live" | "product" | "ttam") {
+    if (syncRefreshing) return;
+    setSyncRefreshing(kind);
+    try {
+      const url = kind === "ttam" ? "/api/ttam/sync" : "/api/hourly/sync";
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(kind === "ttam"
+          ? { shopNumber: shop, date: end }
+          : { shopNumber: shop, date: end, type: kind }),
+      });
+      const b = await r.json();
+      if (!r.ok) throw new Error(b.error ?? "sync failed");
+      const stored = b.synced?.stored ?? b.stored ?? 0;
+      const slot = b.synced?.slot ?? b.synced?.date ?? "";
+      toast(`${kind} synced${slot ? ` (${slot})` : ""}: ${stored} rows.`);
+      await loadSyncStatus(shop);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "sync failed", "err");
+    } finally {
+      setSyncRefreshing(null);
+    }
+  }
   const [visibleScores, setVisibleScores] = useState<Set<string>>(() => new Set(SCORE_COLS as unknown as string[]));
   const [verdictFilter, setVerdictFilter] = useState("ALL");
   const [ttamQuery, setTtamQuery] = useState("");
@@ -930,7 +993,9 @@ export default function Page() {
     }
   }
 
-  async function fetchData(nextShop?: string, nextMetric?: string) {
+  // live=false (auto-load, tab switches): LIVE/PRODUCT single views read the
+  // hourly cache. live=true (Fetch Data button): live TikTok pull as before.
+  async function fetchData(nextShop?: string, nextMetric?: string, live = false) {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     const shopNo = nextShop ?? shop;
@@ -1007,7 +1072,10 @@ export default function Page() {
       const parts = [];
       for (const t of types) {
         const src = t === "LIVE_GMV_MAX" ? `&accountSource=${liveAccountSourceRef.current}` : "";
-        const r = await fetch(`/api/gmv-max?${q}&promotion_type=${t}${src}`);
+        const url = (!live && metricId !== "total")
+          ? `/api/hourly-report?${q}&promotion_type=${t}${src}`
+          : `/api/gmv-max?${q}&promotion_type=${t}${src}`;
+        const r = await fetch(url);
         if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
         parts.push(await r.json());
       }
@@ -1034,6 +1102,11 @@ export default function Page() {
         live: parts.find((p) => p.promotionType === "LIVE_GMV_MAX"),
         product: parts.find((p) => p.promotionType === "PRODUCT_GMV_MAX"),
       });
+      if (parts.some((p) => p.cached)) {
+        const empty = parts.every((p) => (p.campaigns ?? []).length === 0);
+        if (empty) setBudgetNotice("Cached view: no hourly rows for this range yet — run the backfill or press Fetch Data for a live pull.");
+        else if (parts.some((p) => p.partial)) setBudgetNotice("Cached view: newest hour is partial (TikTok revises intraday). Fetch Data re-pulls live.");
+      }
       // Auto-check live rooms for ON LIVE campaigns (cap 5, silent fail-open)
       // so campaign/account pills can reflect 🟢 Active without extra clicks.
       // Prioritize ON + spending campaigns by spend desc so top-spend rows
@@ -1067,6 +1140,14 @@ export default function Page() {
     }
   }
 
+  // Freshness panel: load on shop change + re-check every 60s.
+  useEffect(() => {
+    void loadSyncStatus(shop);
+    const id = setInterval(() => { void loadSyncStatus(shop); }, 60000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop]);
+
   // Tabs live in the shared sidebar as links (?shop=&metric=).
   // This effect loads on open and follows tab clicks + back button.
   useEffect(() => {
@@ -1091,6 +1172,7 @@ export default function Page() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <ModuleRedirect module="gmv-max" />
       <header className="sticky top-0 z-10 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur">
         <div className="flex flex-wrap items-end gap-3 px-4 py-3">
           <div className="text-xs text-zinc-400">Range<br />
@@ -1110,7 +1192,7 @@ export default function Page() {
             </select>
           </label>
           <button
-            onClick={() => void fetchData()}
+            onClick={() => void fetchData(shop, metric, true)}
             disabled={loading || cooldown > 0}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50"
           >{loading ? (<span className="inline-flex items-center gap-2"><Spin className="h-4 w-4 border-white/60 border-t-transparent" />Fetching…</span>) : cooldown > 0 ? `Wait ${cooldown}s` : "Fetch Data"}</button>
@@ -1133,6 +1215,42 @@ export default function Page() {
       )}
 
       <div className="px-4 pb-16 pt-4">
+        <div className="mb-3 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">Data Freshness &amp; Sync</span>
+            <span className="text-[11px] text-zinc-500">DB-first · auto re-checks every 60s{syncStatusAt ? ` · checked ${agoStr(syncStatusAt)}` : ""}</span>
+            <button
+              onClick={() => void loadSyncStatus(shop)}
+              className="ml-auto rounded-lg border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800"
+            >Refresh stamps</button>
+          </div>
+          <div className="mt-2 grid gap-2 md:grid-cols-2">
+            {(["live", "product", "ttam", "daily"] as const).map((k) => {
+              const row = syncStatus?.[k] as { pulled?: string | null; slot?: string | null } | null | undefined;
+              const label = k === "live" ? "1. LIVE GMV Max (hourly)" : k === "product" ? "2. PRODUCT GMV Max (hourly)" : k === "ttam" ? "3. TTAM campaigns (hourly)" : "4. Daily rollup (nightly)";
+              const canRefresh = k !== "daily";
+              return (
+                <div key={k} className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 text-xs">
+                  <span className={`inline-block h-2 w-2 rounded-full ${row?.pulled ? "bg-emerald-400" : "bg-zinc-600"}`} />
+                  <span className="font-medium">{label}</span>
+                  <span className="text-zinc-400">{agoStr(row?.pulled ?? null)}</span>
+                  <span className="text-zinc-500" title={row?.pulled ? klStr(row.pulled) + " KL" : ""}>
+                    {row?.pulled ? klStr(row.pulled) + " KL" : "—"}
+                    {row?.slot ? ` · ${row.slot}` : ""}
+                  </span>
+                  {canRefresh && (
+                    <button
+                      onClick={() => void refreshTypeAction(k as "live" | "product" | "ttam")}
+                      disabled={syncRefreshing !== null}
+                      className="ml-auto rounded-lg border border-zinc-700 px-2 py-0.5 text-[11px] text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
+                    >{syncRefreshing === k ? "Syncing…" : "Refetch"}</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-1.5 text-[11px] text-zinc-500">Timezone: GMT+8 (KL){syncStatus?.campaigns?.pulled ? ` · campaign names synced ${agoStr(syncStatus.campaigns.pulled)}` : ""}</div>
+        </div>
         {error && <p className="mb-3 rounded-lg border border-red-900 bg-red-950 px-3 py-2 text-sm text-red-200">Error: {error}</p>}
         {budgetNotice && <p role="status" className="mb-3 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300">{budgetNotice}</p>}
 

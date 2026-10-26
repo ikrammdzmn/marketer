@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/creative-targets — SOP targets {topN, minImpr, maxCpm} (null = auto).
 export async function GET() {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("accounts");
   if (!access.ok) return access.response;
   try {
     const r = await query("SELECT top_n, min_impr, max_cpm FROM creative.targets WHERE id = 1");
@@ -21,7 +21,7 @@ export async function GET() {
 
 // POST /api/creative-targets {topN, minImpr, maxCpm} — same browser write key as presets.
 export async function POST(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("accounts");
   if (!access.ok) return access.response;
   const want = (process.env.PRESET_WRITE_KEY ?? "").trim();
   if (!want || request.headers.get("authorization") !== `Bearer ${want}`) {

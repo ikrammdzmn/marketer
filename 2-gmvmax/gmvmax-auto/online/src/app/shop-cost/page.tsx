@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Chart from "chart.js/auto";
 import DateRangePicker from "../DateRangePicker";
 import { toast } from "../toast";
+import { ModuleRedirect } from "../module-gate";
 
 // /shop-cost — spend share per stream (LIVE / Product / TTAM), ads spend only.
 // Server: src/lib/shop-cost.ts via GET /api/shop-cost (shop 1, ≤31d).
@@ -152,6 +153,7 @@ export default function ShopCostPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <ModuleRedirect module="shop-cost" />
       <div className="border-b border-zinc-800 px-4 py-3">
         <h2 className="text-sm font-semibold">Shop Cost — spend share</h2>
         <p className="text-xs text-zinc-500">

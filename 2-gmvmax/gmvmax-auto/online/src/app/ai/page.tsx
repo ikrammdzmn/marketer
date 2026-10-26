@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { toast } from "../toast";
+import { ModuleRedirect } from "../module-gate";
 import { loadGuardrails, type AiGuardrails } from "./guard";
 import { Md } from "./md";
 
@@ -124,6 +125,7 @@ export default function AiPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <ModuleRedirect module="ai" />
       <div className="border-b border-zinc-800 px-4 py-3">
         <h2 className="text-sm font-semibold">AI Analyst (text-only)</h2>
         <p className="text-xs text-zinc-500">

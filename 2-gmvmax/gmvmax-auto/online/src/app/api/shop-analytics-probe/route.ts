@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createHmac } from "crypto";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 import {
   getAnalyticsAppKeys,
   getShopAnalyticsCredentials,
@@ -75,7 +75,7 @@ function myt(offsetDays: number): string {
 // Probe-first: shop-level performance (traffic/visitors) + product funnel
 // (page-view/add-to-cart). Read-only, no DB writes. Lags ~2d.
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("shop-live");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

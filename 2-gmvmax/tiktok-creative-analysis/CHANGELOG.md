@@ -4,6 +4,15 @@ Newest first, in plain words. `plan.md` is the live checklist; this file is the
 release record. The `app.js?v=N` tag is a cache-buster counter (it keeps rising:
 v15, v16, …) — the headings below are releases in the order they shipped.
 
+## v55 — 20 Oct 2026 — Preview column controls + bulk-copy Post IDs
+
+**Preview** (same filtered set as Export) gains column controls in its toolbar:
+**Show all** restores all 18 columns, **Post ID only** keeps just the Post ID
+column, **Hide all** hides everything, and the **Columns…** dropdown ticks
+individual columns on/off. **Copy Post IDs** copies every Post ID in the preview
+(one per line, blanks skipped) with a copied-count note and a select-manually
+fallback. Resize, click-to-expand, wrap-all, and dark mode are unchanged.
+
 ## v54 — 29 Sep 2026 — Loading spinner + locked load buttons
 
 While files load, the status line shows a spinning ring with live progress

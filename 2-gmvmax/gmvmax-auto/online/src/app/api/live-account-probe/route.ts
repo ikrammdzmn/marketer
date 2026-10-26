@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdsCredentials } from "@/lib/ads-credentials";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 import { query } from "@/lib/db";
 import { SHOPS } from "@/lib/shops";
 
@@ -55,7 +55,7 @@ async function reportTry(
 }
 
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

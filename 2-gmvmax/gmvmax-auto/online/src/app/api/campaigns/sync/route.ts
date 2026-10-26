@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { syncShopCampaigns } from "@/lib/gmv";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 const cleanEnv = (v: string | undefined) =>
   (v ?? "").trim().replace(/^["']|["']$/g, "");
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 // so without this Fetch keeps showing the old group/row labels.
 // Allowlisted session auth + same-origin (same pattern as /api/gmv-max/budget).
 export async function POST(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max");
   if (!access.ok) return access.response;
 
   const origin = request.headers.get("origin");

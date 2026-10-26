@@ -138,6 +138,35 @@ and paste server-window logs when something looks off (that's how the
 with the verdict + what to click; announce `app.js?v=N` every build; never
 commit/push unasked.
 
+## Current mood — 20 Oct 2026 (v55 Preview columns + pull_creative + chart-legend skill, this session)
+
+Feasibility-first loop held all session. "Hide all columns or leave Post ID
+only" → specced presets + per-column ticks + Copy Post IDs → "yes + hide all
++ bulk copy" → built v55 (`buildPreviewHtml` only, `data-col` tags, inline
+`setCol/setAll/copyIds`, `?v=55`). "Are there skills for graph?" → searched
+skills.sh (graph = GraphQL/motion noise; chart + data-visualization = real
+hits, anthropics/AntV verified picks) → user pivoted to "investigate status-by-day"
+(explained pipeline, no code) → "what skills can be extracted" → proposed 5,
+they picked the gating name, asked "why name" (defended), "ok add it" → new
+`skills/chart-legend-gating/`. "Can we apply it to each chart?" → surveyed all
+5 Chart.js instances, said no (only secDay has fixed taxonomy + cards; trend =
+dynamic top-10, rev/solo = single dataset, shop = 2-metric) → offered tooltip
+consolidation instead → explained → "nvm". "How is the account list updated?"
+(explained 3 paths, no code) → online-sync question → mapped Neon
+(`creative.accounts` + `016`, extra `identity_id` from 022, snake_case) vs
+local JSON (camelCase) → online Download JSON already carries camelCase
+aliases = drop-in replace today → "ok build b" → `pull_creative.py` (Neon →
+data/, reuses server.py validate/write_json, `--dry-run`) → user: "why not in
+tiktok-creative-analysis?" (answered: stdlib-only law) → "GO" → moved it,
+installed psycopg into BOTH pythons (bin + C:\Python314 — editor Pylance
+resolves the latter; that screenshot squiggle was lint-only, runtime was
+green), live dry-run vs prod found real drift (26 vs 22: 9 added/5 removed/3
+changed — some look like renames, e.g. `mrjalanking7` → `MrJalanKing 🇲🇾`,
+which also exposed a cp1252 print crash → `stdout.reconfigure(utf-8)` fix).
+Sync cue: tree mixes checkpoint-46 session work (access modules, migrations
+030/031) — docs-only ritual, never commit unasked; real pull left for owner
+after rename review.
+
 ## ⏰ NEXT SESSION — remind the user
 
 1. **Hard refresh for v54** (Ctrl+Shift+R) — `app.js?v=54` current (shop trend

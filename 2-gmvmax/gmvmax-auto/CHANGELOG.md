@@ -2,6 +2,27 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 26 Oct 2026 — rename GMV Max Online → Marketer HW (deployed, zero leftovers repo-wide)
+
+## 26 Oct 2026 — DB-first hourly + freshness panel + task notes + creative kill-list (deployed, owner-verified live)
+
+- Cron → Neon backbone: `032` (hourly PK +promotion_type) + `033` (`ttam_hourly_campaign` day grain) applied DEV+PROD; `?type=live|product` split + `ttam-sync` + `sync-status` cron endpoints; `silent:true` cron (Telegram failure-only via `cron-alert.ts`); cron-job.org 3 jobs green (product hourly :05, live :00/:15/:30/:45, TTAM :10) + nightly guard-heal.
+- Freshness panel on `/gmv-max`: per-type last-sync + latest slot, KL label, 60s auto-refresh, per-type Refetch (signed-in POST).
+- DB-backed LIVE/PRODUCT views (`hourly-report.ts` + `/api/hourly-report`, same shape + cached/partial flags); Fetch Data stays live re-pull; `total` still live.
+- Task notes (`034` `gmv.task_notes` + GET/POST/PATCH/DELETE `/api/task-notes` + `/calendar` section/panel dots/grid dots + `task-note.py` agent write path); L6 day-7 review seeded 29 Oct.
+- Creative kill-list on `/creative` (+ exclusion drafts with copy-IDs, status filter with counts, # rank, CSV of filtered view); fixed `syncCreativeDay` (>60s hang: dateless grain pulled 30k lifetime rows + sequential upserts → day grain + paged + batched).
+- Ops notes: prod 500 was old 3-col ON CONFLICT vs new 4-col PK; TTAM 500 was `j*19` stride bug (fixed to `j*cols.length`); write MCP tools gated per-advertiser till Dec (L5 paused manually in Ads Manager, verified DISABLED).
+
+## 20 Oct 2026 — Accounts live-notes + live board + module permissions (tsc clean, UNDEPLOYED; 031 owner-run on prod)
+
+- `030`: `creative.accounts.live_note` (free text) + Accounts table column (Live-gated, hidden-but-preserved, presets datalist Internal/External/AI/Relive + typed customs, CSV/JSON included) + wider inputs/page (`max-w-[1600px]`, title tooltips, focus-expand IDs).
+- Live board: pure `accounts/liveBoard.ts` grouping (fixed 4 + Other) + preview on `/accounts` + full `/accounts/live` subpage (counts, Revised-date footer) + sidebar entry; no migration/API change.
+- Module permissions (deny-by-default): `031` (`core.access_allowlist.modules`, `all` = full) + `requireModule(...anyOf)` on ~40 gates incl. shared reads (presets GET, shop-gmv) + `/api/whoami` + `module-gate.tsx` (Shell/home/page gating) + Access manager scope editor + `access_allowlist.scope` audit entries.
+
+## 20 Oct 2026 — `pull_creative.py`: Neon → local creative-analysis mirror (local-only, no deploy)
+
+- One-way pull of `creative.accounts` + `creative.targets` (prod default, `--db dev` override, `--dry-run` diff) into the tool's `data/accounts.json` + `targets.json`. Lives in `2-gmvmax/tiktok-creative-analysis/` (moved from `gmvmax-auto` — the tool is stdlib-only, so secrets resolve from env / `../gmvmax-auto/.local_secrets.json` / local `.local_secrets.json`). Read-only on the DB; writes reuse `server.py`'s own `validate`/`validate_targets`/`write_json` (timestamped backups, LF, ≤10 kept). `identity_id` not carried (local tool has no such field). Needs a postgres driver (`pip install psycopg[binary]`). Live dry-run: prod 26 vs local 22 (9 added / 5 removed / 3 changed, targets identical).
+
 ## 17 Oct 2026 — Shop GMV summary card redesign (1 deploy `dpl_7rag6aq9GCtRMQk6iQSkAEUBC3AW`, uncommitted)
 
 - `?shop=1&metric=shop-gmv` summary card: hero "Shop got" + shop-vs-ads bars with plain-words gap sentence + "Real return" (before/after-tax) with ads-claimed demoted to footnote; old TRUE/TRUE ACTUAL kept as hover tooltips only. tsc clean, build green, deploy output shows `deploymentProtection: []` — owner to verify Vercel wall still covers All Deployments.

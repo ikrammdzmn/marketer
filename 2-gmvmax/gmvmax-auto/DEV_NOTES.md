@@ -1,12 +1,75 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 45 first (current facts), then Checkpoints 44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 48 first (current facts), then Checkpoints 47/46/45/44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 48 — 26 Oct 2026 (TikTok MCP + DB-first hourly + task notes + kill-list; all deployed, owner-verified live)
+
+**To next-you: get back in this headspace instantly.** Marathon owner-driven day, terse loop throughout ("ok", "go", "ok done", screenshots, "park here. wrap up"). Owner tests on prod fast and reports precisely (pastes PowerShell errors + cron-job.org screenshots verbatim). "ok" without detail means build the proposal as specced. No deploys blocked on CLI auth (deploy_online.py worked repeatedly; exit-code-1 wrapper noise is cosmetic — JSON says READY). Sparring stayed ON but owner mostly wanted speed over debate; push back only where money is at stake (L5/L6 pause call, MAIN 1 hero). Tree mixes this session only — but commit unasked NEVER (owner commits).
+
+**What shipped (all tsc-clean, deployed prod, owner-verified).**
+- TikTok for Business MCP `tiktok-business` project-local + progressive (opencode.json); 5 advertisers green; memory in `tiktok-mcp/` (AGENTS + DEV_NOTES). Write tools IN_ROLL_OUT per-advertiser till Dec — MCP is READ-ONLY for GMV MAX VOL2. L5 paused manually in Ads Manager, verified DISABLED via API.
+- Cron→Neon backbone: 032 (hourly PK +promotion_type) + 033 (ttam_hourly_campaign day grain) + 034 (task_notes); type-split hourly-sync, ttam-sync + sync-status cron routes, cron-alert.ts failure-only Telegram (silent:true cron); cron-job.org 3 jobs green; nightly guard-heal stays.
+- Freshness panel (/gmv-max) + DB-backed LIVE/PRODUCT views (hourly-report.ts, same shape + cached/partial; Fetch = live re-pull; total still live).
+- Task notes (/calendar section + Today/Tomorrow groups + grid dots + edit/delete/refresh-propagation fix); task-note.py agent write path; L6 day-7 seeded 29 Oct (id 1).
+- Creative kill-list (/creative: aggregation + KILL/WATCH/SCALE + CSV + exclusion-draft copy + status filter + # rank); fixed syncCreativeDay >60s hang (dateless grain = 30k lifetime rows mislabeled + sequential upserts → day grain + paged + batched). Oct 9–10 cache rows were lifetime snapshots — re-sync fixed.
+- Analysis delivered in chat (not stored): 19–26 Oct ROI 10.68 gross / 7.97 net; MAIN 1 hero post 21%-spend@3.65 + tail waste; VINCA/Kombo + weak HIMCoffee = kill; L6 beats L5; 24 Oct spend spike 3–4x (unexplained, owner eyes on).
+
+**Bugs + lessons.**
+- B110 032-on-PROD 500: new 4-col PK vs old 3-col ON CONFLICT — every schema-widening migration must grep all ON CONFLICT targets the same session. Fixed + deployed same day.
+- B111 ttam stride: `o = j * (cols.length + 1)` desyncs every row after first — batch builders: stride MUST equal column count; mirror hourly.ts `j * 7` shape. Owner's Telegram failure alert caught it (system works).
+- B112 creative dateless grain: dimensions without stat_time_* make TikTok ignore start/end_date silently returning lifetime data — ALWAYS include a time dim when dates matter; symptom = suspiciously round/huge row counts.
+- B113 panel stale: add-form reloaded only its own list — any dual-source view needs an onChanged refresh prop; check both readers after every writer change.
+- B114 PowerShell quoting: multi-line python -c with quotes breaks in PS 5.1 — temp .py file in opencode temp dir instead (deleted after).
+- Lesson: owner pastes secrets-adjacent values into chat selections (CRON_SECRET fragment appeared in a system reminder) — never repeat values back; lengths-only always.
+- Lesson: `total` metric view still live-pulls (by design, Stage 6 scope) — next session will ask about it; answer: DB total needs manual-spend + shop-truth merge (ttam cache + daily_shop_metrics), doable, not started.
+
+**Open (owner vs next-build).**
+- Owner: 29 Oct L6 day-7 review (task note seeded); eyes on 24-Oct-spike cause; apply exclusion drafts in Ads Manager by hand.
+- Next-build: DB-backed `total` view; exclusion auto-apply (needs explicit owner go + guardrail sign-off, post-Dec gate); creative auto-sync cron (currently manual Sync button); feature.md user-guide pass for panel/notes/kill-list (deferred this wrap-up — folder CHANGELOG + plan carry the record).
+
+## Checkpoint 47 — 20 Oct 2026 (creative-analysis v55 + pull_creative move + chart-legend skill; local-only, UNCOMMITTED)
+
+**To next-you.** Parallel-session day: Cp46's access/live-board work is theirs — mine was all creative-analysis side. Terse feasibility→"go" loop, plus two plan-mode interludes (owner flips modes cleanly). No deploys (nothing deployable: static tool + local script + skill).
+
+**What shipped (all local, uncommitted, nothing pushed).**
+- Preview column controls v55 (`tiktok-creative-analysis/app.js:buildPreviewHtml` only + `?v=55`): Show all / Post ID only / Hide all + `Columns…` tick list + Copy Post IDs (newline-joined, copied-count note). `CHANGELOG` v55 + `feature.md` + `plan.md` ticked; smoke 200s on fresh port 8131.
+- `pull_creative.py` now in `tiktok-creative-analysis/` (moved from here — tool is stdlib-only so secrets resolve outward, not inward). Live `--dry-run` vs prod green: 26 vs 22 (9+/5−/3~, targets same). Real pull NOT run — owner reviews renames first (`mrjalanking7`→`MrJalanKing 🇲🇾`?). Changed-only stamp kept from Neon; backups automatic.
+- New repo skill `skills/chart-legend-gating/` (legend-gated lines + card sync, from secDay v44/v48). Declined blanket rollout: surveyed all 5 Chart.js instances, only secDay fits (trend = dynamic top-10, rev/solo single-dataset, shop 2-metric). Tooltip-helper consolidation proposed + explained, parked on "nvm".
+
+**Bugs + lessons.**
+- B108 cp1252 print crash: prod names carry `🇲🇾`; Windows console `print` died mid-dry-run. Fix: `sys.stdout.reconfigure(encoding="utf-8")` at top. Lesson: every local script that prints DB content needs this on win32 — add to the reuse checklist.
+- B109 two-python trap: `bin/python.exe` (has psycopg) vs `C:\Python314\python.exe` (editor/PATH default, didn't). Pylance "cannot find psycopg" was lint-only — runtime was green. Lesson: when the owner screenshots an import squiggle, check `where.exe python` first; installed driver into both. Lesson: verify which interpreter the IDE resolves before touching code.
+
+**Open (owner vs next-build).**
+- Owner: review dry-run diff (possible renames shift exact-name matching) → run real pull → `python server.py` smoke → commit/push when ready (tree mixes Cp46 + ≥1 other session — never unasked).
+- Next-build: tooltip `vsPrev` suffix helper if owner revives it; audit-log readback UI stays optional (Cp46).
+
+## Checkpoint 46 — 20 Oct 2026 (Accounts live-notes + live board + module permissions; tsc clean, UNDEPLOYED, 031 owner-run on prod)
+
+**To next-you: get back in this headspace instantly.** Owner drove the whole arc in short bursts with screenshots: "add live notes column (available if live is true)" → specced in Plan mode (new 030 TEXT col, hidden-but-preserved when unticked, free length, in CSV/JSON) → "ok go" → built → "expand the space, too tight" → widened w-28→w-64 + page max-w-6xl→1600px → "display when editing also more wide, use the side empty space?" → widened all text inputs (name/user/id/identity/note) + title tooltips + focus-expand on the two ID columns → "for live if true i want dropdown (Internal/External/AI/Relive) + add another value" → datalist presets + localStorage customs, no migration → "dashboard to show general info like this [4-col screenshot]" → fixed-4 + Other board, preview section on /accounts + full /accounts/live subpage → "are there options to allow a user access to accounts editing only?" → full 10-module permission system (031 + requireModule + Access UI + Shell/home/page gates) → owner ran 031, "it works" → "explain 3" (audit scope entries + shared-read rule) → built audit entries → "wrap up". Mood: brisk, visual, owner tests on prod fast; "ok" without detail means build the proposal as specced. No deploys this session — owner deploys; tree mixes other sessions' creative-analysis xlsx + chart-legend skill work, never commit unasked.
+
+**What shipped (tsc clean at every step, ALL UNCOMMITTED + UNDEPLOYED).**
+- `030_creative_live_note.sql` (new): `creative.accounts.live_note TEXT DEFAULT ''`; fail-open `hasLiveNoteCol()` in `api/creative-accounts` (GET/POST carry + changed-only stamp). Owner runs dev+prod.
+- `/accounts` table: `live_note` col after Live (view `—` when unticked, edit disabled, value preserved); wider inputs (name w-56, user w-44, acct w-48 focus:w-64, identity w-72 focus:w-96, note w-48, live-note w-64) + `title=` hover on all; page `max-w-[1600px]`; CSV/JSON include `live_note` (+ `liveNote` alias).
+- Live-note presets: `<input list="live-note-presets">` datalist (Internal Acc / External Acc / AI / Relive + row values + `localStorage:creative-live-note-customs` ≤50, stashed on save).
+- Live board: pure `accounts/liveBoard.ts` (`groupLiveAccounts`, fixed 4 + `Other`, name-sorted, `revisedAt`); compact preview on `/accounts` (6/col + more-links) + full `/accounts/live` subpage (counts + `Revised <date en-GB>` footer) + Settings sidebar `Live board` entry.
+- Module permissions (deny-by-default): `031_access_modules.sql` (owner ran prod 20 Oct — confirm dev too); `allowlist-store` MODULES(10) + `normalizeModules` (unknown→deny) + `getUserModules` (fail-open pre-031); `authz.requireModule(...anyOf)`; 40 gates swapped across all data routes (shared reads: ttam-presets GET gmv-max/presets + POST presets-only; shop-gmv gmv-max/shop-cost; shop-token GET 3-shop-mods, POST stays admin); `/api/whoami`; `module-gate.tsx` (useWhoami/canSee/ModuleGate/ModuleRedirect); Shell filters every nav section; home page server-filters cards + Agenda/Affiliates; all 12 module pages redirect to `/` when ungranted; `/access` manager Full-checkbox + per-row Scope editor; PUT audit `access_allowlist.scope` {email,old,new} + POST detail carries modules.
+- Proof: `npx tsc --noEmit` green after each arc; `grep requireAllowlistedUser api/` = zero hits; owner confirmed scoped accounts-only access works on prod ("it works").
+
+**Bugs + lessons.**
+- B106 access-list POST over-delete: hand-transcribed oldString (409→400 slip) matched a block boundary and the edit ate the whole POST body; caught on re-read, repaired from fresh read. Lesson: never transcribe oldStrings from memory — copy from the immediately-preceding read output; after EVERY structural edit re-read the region before continuing (rule 14 exists for exactly this).
+- B107 auth import depth: `online/auth.ts` sits at online/, so `@/lib`-style `../auth` from `src/app/page.tsx` 404s in tsc — count `../` from the file's own dir (`../../auth`), same for `api/whoami` (`../../../../auth`). Lesson: new route files must resolve the auth import against the tree, not copy the depth from a different folder.
+- Windows note (repeat of Cp45): no `head` cmdlet — bare `npx tsc --noEmit`.
+
+**Open (owner vs next-build).**
+- Owner: deploy `deploy_online.py` from repo root (build must list `/accounts/live` + `/api/whoami`); re-verify scoped accounts-only user post-deploy (nav/home/gates + 403s) + signed-out/removed paths; commit/push when ready (never unasked — tree mixes ≥2 other sessions).
+- Next-build: nothing pending. Optional: audit-log readback UI on /access; per-module write-key split was declined (public keys add no security — session+module is the boundary, documented in plan).
 
 ## Checkpoint 45 — 17 Oct 2026 (Shop GMV summary-card redesign; 1 deploy, UNCOMMITTED)
 

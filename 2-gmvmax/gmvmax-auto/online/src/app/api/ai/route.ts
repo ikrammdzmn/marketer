@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 import { chatAi, getAiInsight, parseLang, parseModules, sanitizeGuardrails } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ function guardrailsFrom(input: {
 }
 
 export async function GET(req: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("ai");
   if (!access.ok) return access.response;
   const url = new URL(req.url);
   const modules = parseModules(url.searchParams.get("modules"));
@@ -51,7 +51,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("ai");
   if (!access.ok) return access.response;
   let body: any;
   try {

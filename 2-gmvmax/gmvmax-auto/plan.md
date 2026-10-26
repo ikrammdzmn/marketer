@@ -141,3 +141,18 @@ Local rules (stdlib, `127.0.0.1`, `.local_secrets.json`, `cache/`) do NOT transf
 - [x] Account budget = sum of ON campaigns only (ignore OFF), partial label when an ON budget is unknown; `% used` = ON spend ÷ ON budget, one-day only (owner-approved + deployed 08 Oct `dpl_5rKQahzdGM1KbsfvrfN6xva1J832`).
 - [x] Shop token live 08 Oct: Custom app authorized (Active/Unlimited/MY) → exchanged via `token/get`, cipher from `/authorization/202309/shops`; tokens in Vercel env; admin one-tap refresh `/api/shop-token` (seeds Neon row on first use, epoch-expiry fix in `shopTokenExpiryMs()`); deployed `marketer-2uf7h9ja4`. Open: owner signed-in button test; manual-gap recheck (shop API 163,540/988 vs manual 143,941/1,016 for 24–27 Sep) next session.
 - [ ] Owner compare actual values vs Ads Manager: one ON GMV Max daily campaign, one TTAM campaign with campaign-level budget, and one with ad-group budgets. Re-fetch GMV if budget-cache warning says active lookups remain. Historical one-day % uses current budget, not past budget history; unavailable API fields display `—`.
+
+## 13. Stages — DB-first hourly + freshness panel (shop 1 only, parked per milestone)
+
+- [x] Stage 0 lock: shop 1 only; product hourly / live 15min / TTAM campaign hourly; silent cron + failure-only Telegram; adgroup/ad on-demand live.
+- [x] Stage 1 DB: `032_hourly_pk_type.sql` + `033_ttam_hourly.sql` applied DEV+PROD (033 `full`->`full_metrics` reserved-word fix).
+- [x] Stage 2 endpoints: hourly-sync split by `?type=live|product|all`, new `ttam-sync` + `sync-status` cron endpoints; `fetchManualSpend` rows type widened; `tsc` clean.
+- [x] Stage 3 panel: DB-first freshness card on `/gmv-max` (live/product/TTAM/daily stamps + KL label + 60s auto-refresh + per-type Refetch via signed-in POST); `hourly/sync` accepts `type`, new `ttam/sync` POST; `tsc` clean.
+- [x] Stage 4 scheduler: 3 cron-job.org jobs live and green (product hourly, live 15min, TTAM hourly); failure-only Telegram alert proven (caught the $19 stride bug).
+- [x] Stage 5 cutover (eyes-on today): deploys out incl. ON CONFLICT fix, stride fix, silent cron. Owner watches panel stamps + Telegram quiet.
+- [x] Stage 5 cutover (eyes-on): prod 500 root-caused (032 4-col PK vs old 3-col ON CONFLICT) + fixed + prev-slot type-keyed; `dpl_94w3rQXZKPUGDuR5DpFaR1ydMGAf` live (Stages 2–4), then cron silenced (`silent:true`) + redeployed. Owner eyes-on: cron-job.org 3 jobs live, Telegram quiet except failures, panel stamps ticking.
+- [x] Stage 7 task notes: done + verified (panel groups, grid dots, instant refresh, edit + delete). Shared owner+agent channel live.
+- [x] Stage 8 kill-list view + sync fix: day-grain pull (was lifetime library mislabeled as daily + sequential upserts → >60s hang); paginated + batched; `tsc` clean, deployed. Owner: re-sync Oct 9–10 (fixes the mislabeled rows) + fresh ≤7d range, then Fetch rows.
+- [x] Stage 9 exclusion drafts: per-row checkboxes + Select-KILL (excludes Unattributed) + copy-IDs-to-clipboard for manual apply in Ads Manager; read-only by design (write tools gated till Dec); `tsc` clean, deployed. Owner: tick rows (or Select KILL) → Copy draft → remove in Ads Manager.
+- [x] Stage 10 table filters: shared status dropdown (dynamic, with counts) drives raw rows + kill list; `#` rank column on both; CSV exports the filtered view; `tsc` clean, deployed.
+- [x] Stage 6 DB-backed views (park here): `lib/hourly-report.ts` + `GET /api/hourly-report` (same shape as live, plus cached/partial/pulledAt); LIVE/PRODUCT single views paint from cache by default, Fetch Data button = live re-pull; `total` stays live for now; `tsc` clean, deployed. Owner: backfill past 30d once (loop below), then verify LIVE view paints instantly.

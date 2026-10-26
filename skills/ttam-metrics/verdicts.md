@@ -1,4 +1,4 @@
-# Verdicts — numbers behind All Metrics cols E/F/G (Kill/Scale/Watch)
+# Verdicts — numbers behind All TTAM Metrics cols F/G/H (Kill/Scale/Watch)
 
 Source of truth for numbers: `Guardrails` tab + Metric Scorer preset
 `3-ttam/campaign-performance-analysis/presets/vol2-focused-v3.json`.
@@ -42,8 +42,30 @@ Sheet cells hold rule text; this file holds the constants.
 ERRI k0.003/s0.015(%) | HPS k20/s35(%) | ACS k0.025/s0.008(RM, inv) |
 CES k15/s60 | EDS k5/s20(%) | VVES k100/s400 | RVS k500/s1500 |
 HRQ k25/s40(%) | RES k400/s1200 | LQS k1/s3 | BCE k20/s60.
-Inputs: spend/imp/reach/sfv(6s focused paid views)/awt/prof/likes/
-sh+com+fol/live/live10. K = Kill side, S = Scale side.
+Inputs: spend/imp/reach/sfv(6s focused views — TTAM picker has no paid-views
+token, so build with plain "6-second focused views"; CES/EDS then double-count
+interactions slightly — watch for hot readings)/awt(per video view)/
+prof/likes/sh+com+fol/live/live10. K = Kill side, S = Scale side.
+TTAM builder limits (Oct 2026 probes): no token/length cap found, but total
+tree size is capped — ori CES (8 leaves, 2 divisions, zero +-groups, single top-level
+division) validates while V3 CES (11 leaves, 4-5 divisions, one +-group) never does, even
+wrapped. +-groups look disproportionately expensive: the wrapped L3 numerator
+passes alone, +2 legs kills it. Rule: nest, don't flatten; keep one top-level
+division; avoid +-groups in big trees. SHIPPED SPLIT: V3 CES rides as two buildable
+legs — CES-BASE (V3) (everything minus depth, bands <15/>60) + EDS-LEG (V3)
+(depth alone, bands <5%/>20%). Joint rule: both scale = SCALE; depth kills =
+body problem; base kills = dead regardless. Volume/depth-merged variants
+retired (muddy signals, own bands never calibrated).
+
+## OMTM ori bands (theory-v2, in `Metric Group - TTAM` tab)
+
+ERRI k0.003/s0.015(%) | HPS k25/s45(%) | ACS k0.05/s0.01(RM, inv) |
+CES k5/s30 | EDS k5/s20(%) | VVES k100/s400 | RVS k500/s1500 |
+HRQ k2/s12(%) | RES k100/s600 | LQS k1/s3 | BCE k0.5/s2.
+Same inputs as v3 (only bands + resX/bcX scalers differ).
+Sheet groups: `Metric Group - OMTM ori` + `Metric Group - OMTM V3`
+tag the 11 record-metrics in All TTAM Metrics (10s LIVE views lives
+only in GMV MAX Metrics — LQS input dangles cross-tab).
 
 ## Quartile calibration (open until export arrives)
 

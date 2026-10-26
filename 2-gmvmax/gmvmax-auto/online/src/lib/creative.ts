@@ -73,49 +73,74 @@ export async function syncCreativeDay(
     if (g) groups.push(g);
   }
   if (groups.length === 0) return { rows: 0, skipped: "no item groups" };
-  const creative = await gmvGet(accessToken, {
-    ...base,
-    dimensions: JSON.stringify(["item_id"]),
-    filtering: JSON.stringify({ campaign_ids: [campaignId], item_group_ids: groups.slice(0, 20) }),
-    metrics: JSON.stringify(CREATIVE_METRICS),
-    page_size: "1000",
-  });
-  if (creative.code !== 0) return { rows: 0, skipped: `creative grain code=${creative.code}` };
-  let n = 0;
+  // Day grain (item_id x stat_time_day): per-day rows only — the dateless
+  // grain returned the 30k lifetime library and mislabeled it as one day.
+  // Paginated (cap 10 pages/call, rewrite-on-revise resumes cleanly) and
+  // batched upserts (500/chunk) for the 60s Hobby cap.
   const groupTag = groups.length === 1 ? groups[0] : "";
-  for (const row of creative.data?.list ?? []) {
-    const d = row.dimensions ?? {};
-    const m = row.metrics ?? {};
-    const itemId = String(d.item_id ?? "");
-    if (!itemId) continue;
-    await query(
-      `INSERT INTO creative.daily_rows
-        (date, campaign_id, item_group_id, item_id, title, tt_account, content_type, status,
-         cost, orders, gmv, roi, cpo, impressions, clicks, click_rate, conv_rate,
-         v2s, v6s, vp25, vp50, vp75, vp100, synced_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,NOW())
-       ON CONFLICT (date, campaign_id, item_id) DO UPDATE SET
-        item_group_id=EXCLUDED.item_group_id, title=EXCLUDED.title, tt_account=EXCLUDED.tt_account,
-        content_type=EXCLUDED.content_type, status=EXCLUDED.status, cost=EXCLUDED.cost,
-        orders=EXCLUDED.orders, gmv=EXCLUDED.gmv, roi=EXCLUDED.roi, cpo=EXCLUDED.cpo,
-        impressions=EXCLUDED.impressions, clicks=EXCLUDED.clicks, click_rate=EXCLUDED.click_rate,
-        conv_rate=EXCLUDED.conv_rate, v2s=EXCLUDED.v2s, v6s=EXCLUDED.v6s, vp25=EXCLUDED.vp25,
-        vp50=EXCLUDED.vp50, vp75=EXCLUDED.vp75, vp100=EXCLUDED.vp100, synced_at=NOW()`,
-      [
-        date, campaignId, groupTag, itemId,
-        String(m.title ?? ""), String(m.tt_account_name ?? ""), String(m.shop_content_type ?? ""),
-        String(m.creative_delivery_status ?? ""),
-        num(m.cost), Math.round(num(m.orders)), num(m.gross_revenue), num(m.roi), num(m.cost_per_order),
-        Math.round(num(m.product_impressions)), Math.round(num(m.product_clicks)),
-        num(m.product_click_rate), num(m.ad_conversion_rate),
-        num(m.ad_video_view_rate_2s), num(m.ad_video_view_rate_6s),
-        num(m.ad_video_view_rate_p25), num(m.ad_video_view_rate_p50),
-        num(m.ad_video_view_rate_p75), num(m.ad_video_view_rate_p100),
-      ]
-    );
-    n++;
+  const cols = ["date", "campaign_id", "item_group_id", "item_id", "title", "tt_account",
+    "content_type", "status", "cost", "orders", "gmv", "roi", "cpo", "impressions",
+    "clicks", "click_rate", "conv_rate", "v2s", "v6s", "vp25", "vp50", "vp75", "vp100"];
+  let n = 0;
+  let page = 1;
+  let totalPages = 1;
+  const MAX_PAGES = 10;
+  while (page <= totalPages && page <= MAX_PAGES) {
+    const creative = await gmvGet(accessToken, {
+      ...base,
+      dimensions: JSON.stringify(["item_id", "stat_time_day"]),
+      filtering: JSON.stringify({ campaign_ids: [campaignId], item_group_ids: groups.slice(0, 20) }),
+      metrics: JSON.stringify(CREATIVE_METRICS),
+      page: String(page),
+      page_size: "1000",
+    });
+    if (creative.code !== 0) {
+      return { rows: n, skipped: n > 0 ? `page ${page} code=${creative.code} (partial kept)` : `creative grain code=${creative.code}` };
+    }
+    totalPages = creative.data?.page_info?.total_page ?? 1;
+    const list = creative.data?.list ?? [];
+    for (let i = 0; i < list.length; i += 500) {
+      const chunk = list.slice(i, i + 500);
+      const vals: string[] = [];
+      const params: unknown[] = [];
+      chunk.forEach((row: any, j: number) => {
+        const o = j * cols.length;
+        const ph: string[] = [];
+        for (let k = 0; k < cols.length; k++) ph.push(`$${o + k + 1}`);
+        ph[0] += "::date";
+        vals.push(`(${ph.join(",")})`);
+        const d = row.dimensions ?? {};
+        const m = row.metrics ?? {};
+        params.push(
+          String(d.stat_time_day ?? date).slice(0, 10), campaignId, groupTag, String(d.item_id ?? ""),
+          String(m.title ?? ""), String(m.tt_account_name ?? ""), String(m.shop_content_type ?? ""),
+          String(m.creative_delivery_status ?? ""),
+          num(m.cost), Math.round(num(m.orders)), num(m.gross_revenue), num(m.roi), num(m.cost_per_order),
+          Math.round(num(m.product_impressions)), Math.round(num(m.product_clicks)),
+          num(m.product_click_rate), num(m.ad_conversion_rate),
+          num(m.ad_video_view_rate_2s), num(m.ad_video_view_rate_6s),
+          num(m.ad_video_view_rate_p25), num(m.ad_video_view_rate_p50),
+          num(m.ad_video_view_rate_p75), num(m.ad_video_view_rate_p100)
+        );
+      });
+      await query(
+        `INSERT INTO creative.daily_rows (${cols.join(", ")})
+         VALUES ${vals.join(",")}
+         ON CONFLICT (date, campaign_id, item_id) DO UPDATE SET
+          item_group_id=EXCLUDED.item_group_id, title=EXCLUDED.title, tt_account=EXCLUDED.tt_account,
+          content_type=EXCLUDED.content_type, status=EXCLUDED.status, cost=EXCLUDED.cost,
+          orders=EXCLUDED.orders, gmv=EXCLUDED.gmv, roi=EXCLUDED.roi, cpo=EXCLUDED.cpo,
+          impressions=EXCLUDED.impressions, clicks=EXCLUDED.clicks, click_rate=EXCLUDED.click_rate,
+          conv_rate=EXCLUDED.conv_rate, v2s=EXCLUDED.v2s, v6s=EXCLUDED.v6s, vp25=EXCLUDED.vp25,
+          vp50=EXCLUDED.vp50, vp75=EXCLUDED.vp75, vp100=EXCLUDED.vp100, synced_at=NOW()`,
+        params
+      );
+      n += chunk.length;
+    }
+    page++;
   }
-  return { rows: n, skipped: null };
+  const skipped = totalPages > MAX_PAGES ? `truncated ${MAX_PAGES}/${totalPages} pages — re-run to continue` : null;
+  return { rows: n, skipped };
 }
 
 export function eachDay(startDate: string, endDate: string): string[] {

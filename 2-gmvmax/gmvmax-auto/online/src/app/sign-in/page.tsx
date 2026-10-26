@@ -13,7 +13,7 @@ function SignInForm() {
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-md items-center px-4">
       <section className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">GMV Max Online</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">Marketer HW</p>
         <h1 className="mt-3 text-2xl font-semibold">Sign in</h1>
         <p className="mt-2 text-sm text-zinc-400">Use a Google account approved for this dashboard.</p>
         {denied && (

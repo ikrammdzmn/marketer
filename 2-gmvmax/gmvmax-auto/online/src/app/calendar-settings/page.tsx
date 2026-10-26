@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "../toast";
+import { ModuleRedirect } from "../module-gate";
 
 const CAL_ID =
   "0fd3eb32b1d6271eded66bcec40d4e60bc632a8df7356abfb0c9e5ec0b393e28@group.calendar.google.com";
@@ -55,6 +56,7 @@ export default function CalendarSettingsPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-4 text-sm">
+      <ModuleRedirect module="calendar" />
       <h2 className="mb-1 text-lg font-semibold">Calendar settings</h2>
       <p className="mb-3 text-[12px] text-zinc-400">
         One keyword per line. Any event whose title contains it (case-insensitive) is hidden from the agenda — e.g. <span className="text-zinc-200">Daily To Do</span> or <span className="text-zinc-200">#lowpriority</span>.

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 import { fetchShopLivePerformance } from "@/lib/shop-live";
 
 // GET /api/shop-live/probe?shopNumber=1&liveId=...&currency=LOCAL
@@ -7,7 +7,7 @@ import { fetchShopLivePerformance } from "@/lib/shop-live";
 // one raw interval, and the coverage map for the requested metric list.
 // Read-only, no DB writes.
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("shop-live");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

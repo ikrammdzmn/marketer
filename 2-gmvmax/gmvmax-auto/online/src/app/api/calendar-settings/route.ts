@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { calendarHealth, loadHidden, saveHidden } from "@/lib/calendar";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/calendar-settings — exclude list + connection health.
 export async function GET() {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("calendar");
   if (!access.ok) return access.response;
   try {
     return NextResponse.json({ hidden: await loadHidden(), health: await calendarHealth() });
@@ -17,7 +17,7 @@ export async function GET() {
 
 // POST /api/calendar-settings {hidden:[...]} — same browser write key as presets.
 export async function POST(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("calendar");
   if (!access.ok) return access.response;
   const want = (process.env.PRESET_WRITE_KEY ?? "").trim();
   if (!want || request.headers.get("authorization") !== `Bearer ${want}`) {

@@ -16,7 +16,8 @@ Status: DONE (accounts.json + visualiser built, HTTP smoke test passed)
   - [x] Top creatives table (sortable) + per-account summary
   - [x] Export filtered → CSV / JSON (with column picker)
   - [x] Preview button: same filtered set as Export, opened as a sheet-like table in a
-    new tab (local-only, nothing uploaded) — resizable columns, click-to-expand cells, wrap-all toggle
+    new tab (local-only, nothing uploaded) — resizable columns, click-to-expand cells, wrap-all toggle,
+    Show all / Post ID only / Hide all presets + per-column Columns… tick list + Copy Post IDs (one per line)
   - [x] Derived CPM (Cost ÷ Impr × 1000): KPI card, both tables, CSV export, sort
   - [x] Derived AOV (Revenue ÷ Orders): KPI card, both tables, account modal, CSV + JSON export
   - [x] Allowlist usernames + notes: dropdown/suggestions/account table/modal/coverage show `Name (@username)` plus `— no orders yet` where set (matching stays exact on name)

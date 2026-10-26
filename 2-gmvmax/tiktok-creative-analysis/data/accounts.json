@@ -7,7 +7,7 @@
     "active": true,
     "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:46:19"
+    "updatedAt": "2026-10-20T12:34:38"
   },
   {
     "name": "Dr Samhan",
@@ -17,7 +17,7 @@
     "active": true,
     "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:45:52"
+    "updatedAt": "2026-10-20T12:39:04"
   },
   {
     "name": "HIMCoffee",
@@ -27,47 +27,47 @@
     "active": true,
     "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T15:54:53"
+    "updatedAt": "2026-10-20T12:34:38"
   },
   {
-    "name": "DrSamhanWellness",
-    "username": "drsamhanwellness",
+    "name": "HIMCoffee by Dr Samhan",
+    "username": "himcoffeebydrsamhan",
     "accountId": "7345686756198514690",
     "note": "own: Zammy",
     "active": true,
-    "live": false,
+    "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:45:52"
+    "updatedAt": "2026-10-20T12:34:38"
   },
   {
-    "name": "Affiliate Dr Samhan3",
-    "username": "affiliatedrsamhan3",
+    "name": "HIMCoffee by Dr Samhan1",
+    "username": "himcoffeebydrsamhan1",
     "accountId": "7406737648896835585",
-    "note": "no orders yet",
+    "note": "own: Izzat",
     "active": true,
-    "live": false,
+    "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T15:54:53"
+    "updatedAt": "2026-10-20T12:34:38"
   },
   {
-    "name": "Affiliate Dr Samhan4",
-    "username": "affiliatedrsamhan4",
+    "name": "HIMCoffee by Dr Samhan 2",
+    "username": "himcoffeebydrsamhan2",
     "accountId": "7457838393997656080",
     "note": "own: Qibah",
     "active": true,
     "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:45:52"
+    "updatedAt": "2026-10-20T12:34:38"
   },
   {
-    "name": "Affiliate Dr Samhan6",
-    "username": "affiliatedrsamhan6",
+    "name": "HIMCoffee By Dr Samhan 3",
+    "username": "himcoffeebydrsamhan3",
     "accountId": "7614768306609471489",
-    "note": "no orders yet / own: Qibah",
+    "note": "own: Qibah",
     "active": true,
-    "live": false,
+    "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:45:52"
+    "updatedAt": "2026-10-20T12:34:38"
   },
   {
     "name": "Dr Samhan Official",
@@ -75,9 +75,9 @@
     "accountId": "7634070793240133639",
     "note": "own: Qibah",
     "active": true,
-    "live": false,
+    "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:45:52"
+    "updatedAt": "2026-10-20T12:34:38"
   },
   {
     "name": "Dr Samhan Official3",
@@ -85,9 +85,9 @@
     "accountId": "7638889204189265941",
     "note": "own: Qibah",
     "active": true,
-    "live": true,
+    "live": false,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:45:52"
+    "updatedAt": "2026-10-20T12:39:04"
   },
   {
     "name": "Dr Samhan Official4",
@@ -97,7 +97,7 @@
     "active": true,
     "live": false,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:45:52"
+    "updatedAt": "2026-10-11T12:47:28"
   },
   {
     "name": "DrSamhanOfficial5",
@@ -107,7 +107,17 @@
     "active": true,
     "live": true,
     "topAffiliate": false,
-    "updatedAt": "2026-10-04T16:58:39"
+    "updatedAt": "2026-10-20T12:35:56"
+  },
+  {
+    "name": "Dr Samhan Official 8",
+    "username": "drsamhanofficial8",
+    "accountId": "7695258760574582792",
+    "note": "",
+    "active": true,
+    "live": true,
+    "topAffiliate": false,
+    "updatedAt": "2026-10-20T12:35:56"
   },
   {
     "name": "Dr Samhan Sembang Sihat",
@@ -117,7 +127,27 @@
     "active": true,
     "live": false,
     "topAffiliate": false,
-    "updatedAt": "2026-10-08T16:04:15"
+    "updatedAt": "2026-10-20T12:39:04"
+  },
+  {
+    "name": "Dr Samhan Info Sihat",
+    "username": "drsamhaninfosihat",
+    "accountId": "7695675140289527815",
+    "note": "run tarik follower",
+    "active": true,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-10-12T15:14:12"
+  },
+  {
+    "name": "Dr Samhan Official Store",
+    "username": "drsamhanofficialstore",
+    "accountId": "7698566435723477010",
+    "note": "",
+    "active": true,
+    "live": true,
+    "topAffiliate": false,
+    "updatedAt": "2026-10-20T12:35:56"
   },
   {
     "name": "mallegacy00",
@@ -125,9 +155,9 @@
     "accountId": "",
     "note": "",
     "active": true,
-    "live": false,
+    "live": true,
     "topAffiliate": true,
-    "updatedAt": "2026-09-17T15:53:53"
+    "updatedAt": "2026-10-20T14:44:21"
   },
   {
     "name": "vinca.lover",
@@ -137,17 +167,7 @@
     "active": true,
     "live": false,
     "topAffiliate": true,
-    "updatedAt": "2026-09-17T15:54:08"
-  },
-  {
-    "name": "mrjalanking7",
-    "username": "mrjalanking7",
-    "accountId": "",
-    "note": "",
-    "active": true,
-    "live": false,
-    "topAffiliate": true,
-    "updatedAt": "2026-09-17T15:54:08"
+    "updatedAt": "2026-10-11T12:47:28"
   },
   {
     "name": "Abang Hakim",
@@ -157,7 +177,7 @@
     "active": true,
     "live": false,
     "topAffiliate": true,
-    "updatedAt": "2026-09-17T15:54:08"
+    "updatedAt": "2026-09-17T23:54:08"
   },
   {
     "name": "Suhana",
@@ -167,7 +187,17 @@
     "active": true,
     "live": false,
     "topAffiliate": true,
-    "updatedAt": "2026-09-17T15:54:08"
+    "updatedAt": "2026-09-17T23:54:08"
+  },
+  {
+    "name": "MrJalanKing 🇲🇾",
+    "username": "mrjalanking7",
+    "accountId": "7641882736801660935",
+    "note": "",
+    "active": true,
+    "live": true,
+    "topAffiliate": true,
+    "updatedAt": "2026-10-20T14:44:21"
   },
   {
     "name": "Affiliate Dr Samhan",
@@ -177,7 +207,7 @@
     "active": false,
     "live": false,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T15:55:13"
+    "updatedAt": "2026-09-17T23:55:13"
   },
   {
     "name": "anotheraffiliate1",
@@ -187,7 +217,7 @@
     "active": false,
     "live": false,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T15:55:13"
+    "updatedAt": "2026-09-17T23:55:13"
   },
   {
     "name": "affiliatedrsamhan2",
@@ -197,7 +227,7 @@
     "active": false,
     "live": false,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T15:55:13"
+    "updatedAt": "2026-09-17T23:55:13"
   },
   {
     "name": "Sir Ching",
@@ -207,7 +237,7 @@
     "active": false,
     "live": false,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T15:55:13"
+    "updatedAt": "2026-09-17T23:55:13"
   },
   {
     "name": "dr_samhan.himwellness",
@@ -217,6 +247,16 @@
     "active": false,
     "live": false,
     "topAffiliate": false,
-    "updatedAt": "2026-09-17T16:45:52"
+    "updatedAt": "2026-09-18T00:45:52"
+  },
+  {
+    "name": "Dr Samhan Official 7",
+    "username": "drsamhanofficial7",
+    "accountId": "7638476794433306631",
+    "note": "",
+    "active": false,
+    "live": false,
+    "topAffiliate": false,
+    "updatedAt": "2026-10-15T15:41:42"
   }
 ]

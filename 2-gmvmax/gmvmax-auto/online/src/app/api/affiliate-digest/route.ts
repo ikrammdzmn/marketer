@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAffiliateDigest } from "@/lib/affiliates";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/affiliate-digest — Affiliate Collection buckets (due today,
 // overdue, due tomorrow, pending queue) or {needsConnect}.
 export async function GET() {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("dashboard");
   if (!access.ok) return access.response;
   try {
     return NextResponse.json(await getAffiliateDigest());

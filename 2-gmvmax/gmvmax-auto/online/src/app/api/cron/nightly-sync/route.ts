@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getShopROAS, syncShopCampaigns } from "@/lib/gmv";
+import { alertCronFailure } from "@/lib/cron-alert";
 import { refreshShopHourly } from "@/lib/hourly-shop";
 import { fetchShopDayOrders } from "@/lib/shop-orders";
 import { SHOPS } from "@/lib/shops";
@@ -149,6 +150,7 @@ export async function GET(request: Request) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "sync failed";
     console.error("[nightly-sync]", message);
+    await alertCronFailure("nightly-sync", message);
     return NextResponse.json({ ok: false, error: message, results }, { status: 500 });
   }
 }

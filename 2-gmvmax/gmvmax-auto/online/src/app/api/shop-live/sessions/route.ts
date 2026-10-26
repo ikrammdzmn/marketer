@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 import { fetchShopLiveSessions } from "@/lib/shop-live";
 
 // GET /api/shop-live/sessions?shopNumber=1&startDateGe=YYYY-MM-DD&endDateLt=YYYY-MM-DD&accountType=MARKETING
@@ -8,7 +8,7 @@ import { fetchShopLiveSessions } from "@/lib/shop-live";
 // readable) and AFFILIATE_ACCOUNTS (metadata only — minute detail answers
 // 28001022 for those rooms by TikTok design).
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("shop-live");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { toast } from "../toast";
+import { ModuleRedirect } from "../module-gate";
 
 // /catalog — friendly campaign/product names. Split out of the /creative
 // Manage modal so the team edits here directly.
@@ -69,6 +70,7 @@ export default function CatalogPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-4 text-sm">
+      <ModuleRedirect module="catalog" />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold">Catalog</h2>
         <span className="flex-1" />

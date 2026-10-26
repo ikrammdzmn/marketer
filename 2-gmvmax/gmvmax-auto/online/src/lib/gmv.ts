@@ -847,38 +847,55 @@ export async function getCampaignSessions(
       page: "1",
       page_size: "100",
     };
-    const fetchMeta = async (metrics: string[]) => {
-      const sparams = new URLSearchParams({ ...baseParams, metrics: JSON.stringify(metrics) });
-      const sres = await fetch(
-        `${BASE_URL}/open_api/${API_VERSION}/gmv_max/report/get/?${sparams.toString()}`,
-        { headers: { "Access-Token": creds.access_token, "Content-Type": "application/json" } }
-      );
-      return sres.json();
-    };
-    let sbody = await fetchMeta(["live_status", "live_launched_time", "live_duration", "live_name"]);
-    if (sbody.code !== 0) {
-      // live_name may not exist on this API version — retry without it.
-      sbody = await fetchMeta(["live_status", "live_launched_time", "live_duration"]);
-    }
-    if (sbody.code === 0) {
+    const fetchMetaPaged = async (metrics: string[]) => {
+      // Page through all rooms (was page 1 / 100 only — campaigns with
+      // 500+ rooms left most rooms without meta). 1000/page, cap 5 pages
+      // per campaign to stay inside the Hobby 60s budget.
       const byRoom = new Map<string, { status: string; launched: string | null; duration: string | null; title: string | null }>();
-      for (const item of sbody.data?.list ?? []) {
-        const room = String(item.dimensions?.room_id ?? "");
-        if (!room) continue;
-        byRoom.set(room, {
-          status: String(item.metrics?.live_status ?? ""),
-          launched: liveLaunchedMyt(item.metrics?.live_launched_time),
-          duration: String(item.metrics?.live_duration ?? "") || null,
-          title: String(item.metrics?.live_name ?? "") || null,
+      let code = -1;
+      for (let page = 1; page <= 5; page++) {
+        const sparams = new URLSearchParams({
+          ...baseParams,
+          metrics: JSON.stringify(metrics),
+          page: String(page),
+          page_size: "1000",
         });
+        const sres = await fetch(
+          `${BASE_URL}/open_api/${API_VERSION}/gmv_max/report/get/?${sparams.toString()}`,
+          { headers: { "Access-Token": creds.access_token, "Content-Type": "application/json" } }
+        );
+        const sbody = await sres.json();
+        code = sbody.code ?? -1;
+        if (code !== 0) return { code, byRoom };
+        for (const item of sbody.data?.list ?? []) {
+          const room = String(item.dimensions?.room_id ?? "");
+          if (!room || byRoom.has(room)) continue;
+          byRoom.set(room, {
+            status: String(item.metrics?.live_status ?? ""),
+            launched: liveLaunchedMyt(item.metrics?.live_launched_time),
+            duration: String(item.metrics?.live_duration ?? "") || null,
+            title: String(item.metrics?.live_name ?? "") || null,
+          });
+        }
+        const total = Number(sbody.data?.page_info?.total_page ?? 1);
+        if (page >= total) break;
+        await new Promise((r) => setTimeout(r, 300));
       }
+      return { code, byRoom };
+    };
+    let meta = await fetchMetaPaged(["live_status", "live_launched_time", "live_duration", "live_name"]);
+    if (meta.code !== 0) {
+      // live_name may not exist on this API version — retry without it.
+      meta = await fetchMetaPaged(["live_status", "live_launched_time", "live_duration"]);
+    }
+    if (meta.code === 0) {
       for (const s of sessions) {
-        const meta = byRoom.get(s.roomId);
-        if (meta) {
-          s.liveStatus = meta.status || null;
-          s.liveLaunchedMyt = meta.launched;
-          s.liveDuration = meta.duration;
-          s.liveTitle = meta.title;
+        const m = meta.byRoom.get(s.roomId);
+        if (m) {
+          s.liveStatus = m.status || null;
+          s.liveLaunchedMyt = m.launched;
+          s.liveDuration = m.duration;
+          s.liveTitle = m.title;
         }
       }
     }
@@ -1056,7 +1073,12 @@ export async function fetchManualSpend(
   advertiserId: string,
   startDate: string,
   endDate: string
-): Promise<{ spend: number; campaignCount: number; rows: { campaign_id: string; spend: number }[] }> {
+): Promise<{ spend: number; campaignCount: number; rows: {
+  campaign_id: string; spend: number;
+  metrics: Record<string, number> | null;
+  scores: Record<string, number | null> | null;
+  sfvProxy: boolean;
+}[] }> {
   const gmvIds = await getGMVMaxIds(accessToken, advertiserId);
   // Per-campaign raw sums. Extended metric set first, spend-only fallback.
   const sums = new Map<string, Record<string, number>>();

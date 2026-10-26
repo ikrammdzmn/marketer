@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 import { listProductCampaigns, syncCreativeDay, eachDay } from "@/lib/creative";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // GET /api/creative-sync?shopNumber=1&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 // Reads cached creative.daily_rows (instant).
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("creative");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   if (searchParams.get("list") === "campaigns") {
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
 
 // POST /api/creative-sync {shopNumber, startDate, endDate} (<=7d, per-day fail-open)
 export async function POST(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("creative");
   if (!access.ok) return access.response;
   const want = (process.env.PRESET_WRITE_KEY ?? "").trim();
   if (!want || request.headers.get("authorization") !== `Bearer ${want}`) {

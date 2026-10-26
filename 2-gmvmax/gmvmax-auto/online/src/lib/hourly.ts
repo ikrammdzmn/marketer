@@ -94,19 +94,29 @@ export interface HourDiff {
   delivery: string | null;
 }
 
-// Hourly POC (shop 1 only): pull today's hour slots for both types, drop the
-// newest 2 slots (closed-window lag edge), upsert the rest (rewrite-on-revise),
-// diff the latest closed slot vs the previous stored slot, push Telegram.
+export type HourlyPromoType = "LIVE_GMV_MAX" | "PRODUCT_GMV_MAX";
+
+// Hourly POC (shop 1 only): pull today's hour slots for the requested types,
+// drop the newest 2 slots (closed-window lag edge), upsert the rest
+// (rewrite-on-revise), diff the latest closed slot vs the previous stored
+// slot, push Telegram.
 // opts.silent skips the Telegram triple-send (dashboard Sync now button).
-export async function syncHourly(shopNumber: string, date: string, opts?: { silent?: boolean }) {
+export async function syncHourly(shopNumber: string, date: string, opts?: { silent?: boolean; types?: HourlyPromoType[] }) {
   const shop = SHOPS[shopNumber];
   if (!shop) throw new Error(`invalid shopNumber: ${shopNumber}`);
   if (shopNumber !== "1") throw new Error("hourly POC is shop-1-only");
   const creds = await getAdsCredentials(shop.advertiserId);
   if (!creds) throw new Error(`no access token for advertiser ${shop.advertiserId}`);
 
-  const live = await fetchHourlyRows(creds.access_token, shop, "LIVE_GMV_MAX", date);
-  const product = await fetchHourlyRows(creds.access_token, shop, "PRODUCT_GMV_MAX", date);
+  const types: HourlyPromoType[] = opts?.types?.length
+    ? opts.types
+    : ["LIVE_GMV_MAX", "PRODUCT_GMV_MAX"];
+  const live = types.includes("LIVE_GMV_MAX")
+    ? await fetchHourlyRows(creds.access_token, shop, "LIVE_GMV_MAX", date)
+    : [];
+  const product = types.includes("PRODUCT_GMV_MAX")
+    ? await fetchHourlyRows(creds.access_token, shop, "PRODUCT_GMV_MAX", date)
+    : [];
 
   // The report API returns mixed types: filter each pull by the Neon
   // campaign map (unmapped campaigns keep the requested label). Without
@@ -156,8 +166,8 @@ export async function syncHourly(shopNumber: string, date: string, opts?: { sile
       `INSERT INTO gmv.hourly_campaign_metrics
          (shop_id, campaign_id, hour_slot, promotion_type, cost, gmv, orders)
        VALUES ${vals.join(",")}
-       ON CONFLICT (shop_id, campaign_id, hour_slot) DO UPDATE SET
-         promotion_type = EXCLUDED.promotion_type, cost = EXCLUDED.cost,
+       ON CONFLICT (shop_id, campaign_id, hour_slot, promotion_type) DO UPDATE SET
+         cost = EXCLUDED.cost,
          gmv = EXCLUDED.gmv, orders = EXCLUDED.orders, pulled_at = now()`,
       params
     );
@@ -221,16 +231,16 @@ export async function syncHourly(shopNumber: string, date: string, opts?: { sile
     const prevCum = new Map<string, { cost: number; gmv: number; orders: number }>();
     if (prevSlot) {
       const pr = await query(
-        `SELECT campaign_id, SUM(cost)::float AS cost, SUM(gmv)::float AS gmv, SUM(orders)::float AS orders
+        `SELECT campaign_id, promotion_type, SUM(cost)::float AS cost, SUM(gmv)::float AS gmv, SUM(orders)::float AS orders
          FROM gmv.hourly_campaign_metrics
          WHERE shop_id = $1 AND hour_slot LIKE $2 AND hour_slot <= $3
-         GROUP BY 1`,
+         GROUP BY 1, 2`,
         [shop.shopId, `${date}%`, prevSlot]
       );
-      for (const r of pr.rows) prevCum.set(r.campaign_id, r);
+      for (const r of pr.rows) prevCum.set(`${r.campaign_id}|${r.promotion_type}`, r);
     }
     for (const r of curCum.rows) {
-      const p = prevCum.get(r.campaign_id);
+      const p = prevCum.get(`${r.campaign_id}|${r.promotion_type}`);
       const meta = info.get(r.campaign_id);
       const cost = Number(r.cost), gmv = Number(r.gmv), orders = Number(r.orders);
       const pc = p ? Number(p.cost) : 0;

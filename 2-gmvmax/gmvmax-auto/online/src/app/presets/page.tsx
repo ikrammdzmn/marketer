@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { SCORE_NAMES, SCORE_EXPRESSIONS, EXPRESSION_KEYS } from "@/lib/ttam-scores";
 import { toast } from "../toast";
+import { ModuleRedirect } from "../module-gate";
 
 const inputCls =
   "bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-zinc-100";
@@ -154,6 +155,7 @@ export default function PresetsPage() {
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
+      <ModuleRedirect module="presets" />
       <div className="mx-auto max-w-6xl px-4 pb-16 pt-4">
         <h2 className="mb-3 text-lg font-semibold">TTAM Presets</h2>
         {loading ? (

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
-// 022 adds creative.accounts.identity_id — tolerate pre-022 DBs until the
-// owner runs it (same fail-open pattern as the gmv budget/delivery columns).
+// 022 adds creative.accounts.identity_id, 030 adds live_note — tolerate
+// pre-migration DBs until the owner runs them (same fail-open pattern as
+// the gmv budget/delivery columns).
 async function hasIdentityCol(): Promise<boolean> {
   try {
     await query("SELECT creative.accounts.identity_id FROM creative.accounts LIMIT 0");
@@ -15,25 +16,39 @@ async function hasIdentityCol(): Promise<boolean> {
   }
 }
 
+async function hasLiveNoteCol(): Promise<boolean> {
+  try {
+    await query("SELECT creative.accounts.live_note FROM creative.accounts LIMIT 0");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // GET /api/creative-accounts — allowlisted TikTok account allowlist (from Neon).
 export async function GET() {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("accounts");
   if (!access.ok) return access.response;
   try {
     const withId = await hasIdentityCol();
+    const withLiveNote = await hasLiveNoteCol();
+    const cols = ["name", "username", "account_id"];
+    if (withId) cols.push("identity_id");
+    cols.push("note", "active", "live");
+    if (withLiveNote) cols.push("live_note");
+    cols.push("top_affiliate", "position", "updated_at");
     const r = await query(
-      withId
-        ? "SELECT name, username, account_id, identity_id, note, active, live, top_affiliate, position, updated_at FROM creative.accounts ORDER BY position, name"
-        : "SELECT name, username, account_id, note, active, live, top_affiliate, position, updated_at FROM creative.accounts ORDER BY position, name"
+      `SELECT ${cols.map((c) => `creative.accounts.${c}`).join(", ")} FROM creative.accounts ORDER BY position, name`
     );
     if (!withId) for (const row of r.rows) row.identity_id = "";
+    if (!withLiveNote) for (const row of r.rows) row.live_note = "";
     return NextResponse.json({ accounts: r.rows });
   } catch (e) {
     return NextResponse.json({ error: "016_creative_catalog.sql not run yet" }, { status: 503 });
   }
 }
 
-// POST /api/creative-accounts {accounts:[{name, username, account_id, note, active, live, top_affiliate}]}
+// POST /api/creative-accounts {accounts:[{name, username, account_id, note, active, live, live_note, top_affiliate}]}
 function writeGuard(request: Request): boolean {
   const want = (process.env.PRESET_WRITE_KEY ?? "").trim();
   if (!want) return false;
@@ -41,7 +56,7 @@ function writeGuard(request: Request): boolean {
 }
 
 export async function POST(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("accounts");
   if (!access.ok) return access.response;
   if (!writeGuard(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   try {
@@ -71,10 +86,14 @@ export async function POST(request: Request) {
     await query("BEGIN");
     try {
       const withId = await hasIdentityCol();
+      const withLiveNote = await hasLiveNoteCol();
+      const prevCols = ["name", "username", "account_id"];
+      if (withId) prevCols.push("identity_id");
+      prevCols.push("note", "active", "live");
+      if (withLiveNote) prevCols.push("live_note");
+      prevCols.push("top_affiliate", "updated_at");
       const prev = await query(
-        withId
-          ? "SELECT name, username, account_id, identity_id, note, active, live, top_affiliate, updated_at FROM creative.accounts"
-          : "SELECT name, username, account_id, note, active, live, top_affiliate, updated_at FROM creative.accounts"
+        `SELECT ${prevCols.map((c) => `creative.accounts.${c}`).join(", ")} FROM creative.accounts`
       );
       const prevByName = new Map<string, any>(prev.rows.map((r: any) => [r.name, r]));
       await query("DELETE FROM creative.accounts");
@@ -85,7 +104,8 @@ export async function POST(request: Request) {
           username: String(a.username ?? ""), account_id: String(a.account_id ?? ""),
           identity_id: String(a.identity_id ?? "").trim(),
           note: String(a.note ?? ""), active: a.active !== false,
-          live: a.live === true, top_affiliate: a.top_affiliate === true,
+          live: a.live === true, live_note: String(a.live_note ?? ""),
+          top_affiliate: a.top_affiliate === true,
         };
         // Changed-only stamping (mirrors the local saver): keep the old stamp
         // when nothing changed, otherwise stamp now.
@@ -94,20 +114,24 @@ export async function POST(request: Request) {
           (old.username ?? "") === row.username && (old.account_id ?? "") === row.account_id &&
           (withId ? (old.identity_id ?? "") === row.identity_id : true) &&
           (old.note ?? "") === row.note && old.active === row.active &&
-          old.live === row.live && old.top_affiliate === row.top_affiliate;
-        if (withId) {
-          await query(
-            "INSERT INTO creative.accounts (name, username, account_id, identity_id, note, active, live, top_affiliate, position, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,NOW()))",
-            [name, row.username, row.account_id, row.identity_id, row.note, row.active, row.live, row.top_affiliate, pos++,
-              same && old.updated_at ? old.updated_at : null]
-          );
-        } else {
-          await query(
-            "INSERT INTO creative.accounts (name, username, account_id, note, active, live, top_affiliate, position, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,NOW()))",
-            [name, row.username, row.account_id, row.note, row.active, row.live, row.top_affiliate, pos++,
-              same && old.updated_at ? old.updated_at : null]
-          );
-        }
+          old.live === row.live &&
+          (withLiveNote ? (old.live_note ?? "") === row.live_note : true) &&
+          old.top_affiliate === row.top_affiliate;
+        const insCols = ["name", "username", "account_id"];
+        if (withId) insCols.push("identity_id");
+        insCols.push("note", "active", "live");
+        if (withLiveNote) insCols.push("live_note");
+        insCols.push("top_affiliate", "position", "updated_at");
+        const vals: any[] = [name, row.username, row.account_id];
+        if (withId) vals.push(row.identity_id);
+        vals.push(row.note, row.active, row.live);
+        if (withLiveNote) vals.push(row.live_note);
+        vals.push(row.top_affiliate, pos++, same && old.updated_at ? old.updated_at : null);
+        const placeholders = vals.map((_, i) => (i === vals.length - 1 ? "COALESCE($" + (i + 1) + ",NOW())" : "$" + (i + 1))).join(",");
+        await query(
+          `INSERT INTO creative.accounts (${insCols.join(", ")}) VALUES (${placeholders})`,
+          vals
+        );
       }
       await query("COMMIT");
     } catch (e) {

@@ -32,6 +32,9 @@ no framework**. Keep it that way.
   bundled picker) + GET /api/version fingerprint. Never expose.
 - `start-server.bat` — double-click launcher (python check, opens browser, runs
   server.py). No IDE / Live Server needed.
+- `pull_creative.py` — one-way Neon → `data/` mirror (prod default, `--dry-run`);
+  reuses server.py gates; needs `psycopg` (both pythons) + Neon URL; `identity_id`
+  not carried (no such local field).
 - `.gitignore` — keeps saver backups (`data/accounts.backup-*.json`) and
   `__pycache__/` out of git.
 - `.gitattributes` — enforces LF text + `*.xlsx` binary (Windows `core.autocrlf`

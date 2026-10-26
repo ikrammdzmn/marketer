@@ -258,7 +258,9 @@ the page reloads straight away. Names must match the Excel file exactly, or that
 **Export CSV** opens in Excel. **Export JSON** is for technical use. Both contain
 exactly what your filters show, including AOV. **Preview** opens the same list as a
 table in a new browser tab — drag a column edge to widen it, click any cell to read
-its full text, or tick **Wrap all cells**. Nothing is uploaded, it never leaves
+its full text, or tick **Wrap all cells**. Use **Show all** / **Post ID only** /
+**Hide all** or the **Columns…** tick list to show only the columns you want, and
+**Copy Post IDs** to copy every Post ID in the list (one per line). Nothing is uploaded, it never leaves
 your computer.
 
 ## Everyday workflows

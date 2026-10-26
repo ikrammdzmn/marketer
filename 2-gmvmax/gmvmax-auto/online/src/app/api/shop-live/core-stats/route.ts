@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 import { fetchLiveCoreStats } from "@/lib/shop-live";
 
 // GET /api/shop-live/core-stats?shopNumber=1&liveRoomId=...
@@ -8,7 +8,7 @@ import { fetchLiveCoreStats } from "@/lib/shop-live";
 // Decides whether affiliate rooms are readable here after the 202609
 // minute endpoint denied them (28001022). Read-only, no DB writes.
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("shop-live");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

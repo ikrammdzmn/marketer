@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { requireAllowlistedUser, requireShopTokenAccess } from "@/lib/authz";
+import { requireModule, requireShopTokenAccess } from "@/lib/authz";
 import { SHOPS } from "@/lib/shops";
 import { refreshShopToken, shopTokenExpiryMs } from "@/lib/shop-credentials";
 
@@ -13,7 +13,7 @@ const cleanEnv = (v: string | undefined) =>
 // Allowlisted users see expiry info (lengths only, never token values);
 // isAdmin tells the UI whether to render the admin-only Refresh button.
 export async function GET() {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max", "shop-cost", "shop-live");
   if (!access.ok) return access.response;
   try {
     const r = await query(

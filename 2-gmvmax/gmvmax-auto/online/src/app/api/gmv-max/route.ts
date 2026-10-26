@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getShopReport, PROMOTION_TYPES, type PromotionType } from "@/lib/gmv";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 // Access is checked against the live Google email allowlist. Vercel protection
 // remains an additional deployment-level gate until OAuth regression tests pass.
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

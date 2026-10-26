@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { toast } from "../toast";
 import DateRangePicker from "../DateRangePicker";
+import { ModuleRedirect } from "../module-gate";
 
 // /shop-live — Shop LIVE minute performance module (Partner API 202510).
 // Server lib: src/lib/shop-live.ts. Read-only (no DB writes yet).
@@ -137,6 +138,7 @@ export default function ShopLivePage() {
   const s = data?.summary;
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <ModuleRedirect module="shop-live" />
       <div className="border-b border-zinc-800 px-4 py-3">
         <h2 className="text-sm font-semibold">Shop Live Performance</h2>
         <p className="text-xs text-zinc-500">

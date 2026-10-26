@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 import {
   bucketShopLiveHours,
   fetchShopLivePerformance,
@@ -11,7 +11,7 @@ import {
 // overall + derived summary + MYT-hour buckets. Read-only, no DB writes
 // (cache migration follows once the probe confirms the shape).
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("shop-live");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

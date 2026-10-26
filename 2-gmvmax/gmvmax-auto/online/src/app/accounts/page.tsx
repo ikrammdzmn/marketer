@@ -1,10 +1,20 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { toast } from "../toast";
+import { ModuleRedirect } from "../module-gate";
+import { groupLiveAccounts } from "./liveBoard";
 
 // /accounts — TikTok account allowlist + SOP targets. Split out of the
 // /creative Manage modal so the team edits here directly.
+const LIVE_NOTE_PRESETS = ["Internal Acc", "External Acc", "AI", "Relive"];
+function getStoredLiveNotes(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem("creative-live-note-customs") ?? "[]");
+    return Array.isArray(raw) ? raw.map((s) => String(s)).filter(Boolean) : [];
+  } catch { return []; }
+}
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [acctsMsg, setAcctsMsg] = useState("");
@@ -13,8 +23,8 @@ export default function AccountsPage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [acctCols, setAcctCols] = useState<Record<string, boolean>>(() => {
-    try { return { name: true, username: true, account_id: true, identity_id: true, note: true, active: true, live: true, top_affiliate: true, updated_at: true, row_num: true, ...JSON.parse(localStorage.getItem("creative-acct-cols") ?? "{}") }; }
-    catch { return { name: true, username: true, account_id: true, identity_id: true, note: true, active: true, live: true, top_affiliate: true, updated_at: true, row_num: true }; }
+    try { return { name: true, username: true, account_id: true, identity_id: true, note: true, active: true, live: true, live_note: true, top_affiliate: true, updated_at: true, row_num: true, ...JSON.parse(localStorage.getItem("creative-acct-cols") ?? "{}") }; }
+    catch { return { name: true, username: true, account_id: true, identity_id: true, note: true, active: true, live: true, live_note: true, top_affiliate: true, updated_at: true, row_num: true }; }
   });
 
   const authHeader = { "Authorization": `Bearer ${process.env.NEXT_PUBLIC_PRESET_WRITE_KEY ?? ""}` };
@@ -58,6 +68,18 @@ export default function AccountsPage() {
       { key: "inactive", title: "Inactive", rows: g.inactive },
     ];
   }
+  // Dropdown suggestions for Live note: 4 presets + values already used in
+  // other rows + customs stashed in localStorage on previous saves. Typing a
+  // brand-new value and saving promotes it to a suggestion next load.
+  function liveNoteOptions(): string[] {
+    const seen = new Set<string>(LIVE_NOTE_PRESETS);
+    for (const a of accounts) {
+      const v = String(a.live_note ?? "").trim();
+      if (v) seen.add(v);
+    }
+    for (const v of getStoredLiveNotes()) seen.add(v.trim());
+    return [...seen].filter(Boolean);
+  }
   function moveRow(srcUid: number, dstUid: number, after: boolean) {
     if (srcUid === dstUid) return;
     const flat: any[] = [];
@@ -93,9 +115,10 @@ export default function AccountsPage() {
       const account_id = String(a.account_id ?? "").trim();
       const identity_id = String(a.identity_id ?? "").trim();
       const note = String(a.note ?? "").trim();
-      if (!name && !username && !account_id && !identity_id && !note) return; // skip blank rows
+      const live_note = String(a.live_note ?? "");
+      if (!name && !username && !account_id && !identity_id && !note && !live_note.trim()) return; // skip blank rows
       if (!name) { bad = i + 1; return; }
-      rows.push({ name, username, account_id, identity_id, note, active: a.active !== false, live: a.live === true, top_affiliate: a.top_affiliate === true });
+      rows.push({ name, username, account_id, identity_id, note, active: a.active !== false, live: a.live === true, live_note, top_affiliate: a.top_affiliate === true });
     });
     return { rows, bad };
   }
@@ -146,6 +169,14 @@ export default function AccountsPage() {
       const okMsg = `Saved ${body.count} accounts + targets.`;
       setAcctsMsg(okMsg);
       toast(okMsg);
+      try {
+        const customs = new Set<string>(getStoredLiveNotes());
+        for (const r of rows) {
+          const v = String(r.live_note ?? "").trim();
+          if (v && !LIVE_NOTE_PRESETS.includes(v)) customs.add(v);
+        }
+        localStorage.setItem("creative-live-note-customs", JSON.stringify([...customs].slice(0, 50)));
+      } catch { /* private mode */ }
       loadAll();
     } finally {
       setSaving(false);
@@ -154,7 +185,7 @@ export default function AccountsPage() {
 
   function downloadJSON() {
     const { rows } = collectRows();
-    const blob = new Blob([JSON.stringify(rows.map((a) => ({ ...a, accountId: a.account_id, identityId: a.identity_id, topAffiliate: a.top_affiliate })), null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(rows.map((a) => ({ ...a, accountId: a.account_id, identityId: a.identity_id, liveNote: a.live_note, topAffiliate: a.top_affiliate })), null, 2)], { type: "application/json" });
     const u = URL.createObjectURL(blob);
     const el = document.createElement("a");
     el.href = u; el.download = "accounts.json"; el.click();
@@ -165,10 +196,11 @@ export default function AccountsPage() {
     const { rows } = collectRows();
     const byName = new Map(accounts.map((a: any) => [String(a.name ?? "").trim(), a.updated_at ?? ""]));
     const q = (s: any) => `"${String(s ?? "").replace(/"/g, '""')}"`;
-    const lines = ["Account name,Username,Account ID,Ads Identity ID,Note,Active,Live,Top affiliate,Last updated"];
+    const lines = ["Account name,Username,Account ID,Ads Identity ID,Note,Active,Live,Live note,Top affiliate,Last updated"];
     rows.forEach((a) => {
       lines.push([q(a.name), q(a.username), q(a.account_id), q(a.identity_id), q(a.note),
-        a.active ? "TRUE" : "FALSE", a.live ? "TRUE" : "FALSE", a.top_affiliate ? "TRUE" : "FALSE",
+        a.active ? "TRUE" : "FALSE", a.live ? "TRUE" : "FALSE", q(a.live_note ?? ""),
+        a.top_affiliate ? "TRUE" : "FALSE",
         q(byName.get(a.name) ?? "")].join(","));
     });
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
@@ -179,14 +211,52 @@ export default function AccountsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-4 text-sm">
+    <main className="mx-auto max-w-[1600px] px-4 py-4 text-sm">
+      <ModuleRedirect module="accounts" />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold">Accounts</h2>
         <span className="flex-1" />
         <button onClick={() => setEditing(!editing)} className={`rounded-lg px-3 py-1.5 text-[13px] ${editing ? "bg-amber-800 hover:bg-amber-700" : "border border-zinc-700 hover:bg-zinc-800"}`}>{editing ? "Done editing" : "Edit"}</button>
       </div>
       <p className="mb-2 text-[12px] text-zinc-400">Names must match the Excel file exactly (username, account ID, identity ID and notes are display-only). Ticking Top/Active moves rows between groups live; drag ⠿ to reorder — Save keeps the shown order.</p>
+      <datalist id="live-note-presets">
+        {liveNoteOptions().map((v) => <option key={v} value={v} />)}
+      </datalist>
       {acctsMsg && <p className="mb-1 text-[12px] text-zinc-400">{acctsMsg}</p>}
+      {(() => {
+        const board = groupLiveAccounts(accounts);
+        const preview = 6;
+        return (
+          <div className="mb-3 rounded-lg border border-zinc-800 px-3 py-2">
+            <div className="mb-2 flex flex-wrap items-baseline gap-2">
+              <span className="text-[13px] font-semibold">Live board ({board.total})</span>
+              <span className="flex-1" />
+              <Link href="/accounts/live" className="text-[12px] text-emerald-300 hover:underline">View full board →</Link>
+            </div>
+            <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+              {board.cols.map((c) => (
+                <div key={c.key} className="overflow-hidden rounded-lg border border-zinc-800">
+                  <div className="border-b border-zinc-800 bg-zinc-900/60 px-2 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-zinc-200">{c.title} ({c.rows.length})</div>
+                  <ul className="divide-y divide-zinc-800/60">
+                    {c.rows.length === 0 && <li className="px-2 py-1.5 text-[12px] text-zinc-600">—</li>}
+                    {c.rows.slice(0, preview).map((a: any) => (
+                      <li key={String(a.name)} title={a.username ? `${a.name} (@${a.username})` : String(a.name)} className="px-2 py-1.5">
+                        <div className="truncate text-[12px] font-medium text-zinc-100">{a.name}</div>
+                        {a.username && <div className="truncate text-[11px] text-zinc-500">@{a.username}</div>}
+                      </li>
+                    ))}
+                    {c.rows.length > preview && (
+                      <li className="px-2 py-1.5 text-[11px] text-zinc-500">
+                        <Link href="/accounts/live" className="hover:underline">+{c.rows.length - preview} more →</Link>
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       <div className="mb-2 rounded-lg border border-zinc-800 px-3 py-2 text-[12px]">
         <div className="mb-1 text-zinc-400">SOP targets (blank = auto from the loaded file)</div>
         {editing ? (
@@ -206,7 +276,7 @@ export default function AccountsPage() {
         )}
       </div>
       <div className="mb-2 flex flex-wrap gap-1 text-[11px]">
-        {[["row_num", "No."], ["name", "Name"], ["username", "@username"], ["account_id", "ID"], ["identity_id", "Ads Identity ID"], ["note", "Note"], ["active", "Active"], ["live", "Live"], ["top_affiliate", "Top"], ["updated_at", "Updated"]].map(([k, label]) => (
+        {[["row_num", "No."], ["name", "Name"], ["username", "@username"], ["account_id", "ID"], ["identity_id", "Ads Identity ID"], ["note", "Note"], ["active", "Active"], ["live", "Live"], ["live_note", "Live note"], ["top_affiliate", "Top"], ["updated_at", "Updated"]].map(([k, label]) => (
           <button key={k} onClick={() => toggleAcctCol(k)} className={`rounded-full border px-2 py-0.5 ${acctCols[k] ? "border-zinc-600 text-zinc-200" : "border-zinc-800 text-zinc-600 line-through"}`}>{label}</button>
         ))}
       </div>
@@ -227,6 +297,7 @@ export default function AccountsPage() {
                   {acctCols.note && <th className="px-1 py-1" title="Display-only">Note</th>}
                   {acctCols.active && <th className="px-2 py-1" title="Unticked rows group under Inactive">Active</th>}
                   {acctCols.live && <th className="px-2 py-1" title="Shows 🔴 LIVE marker">Live</th>}
+                  {acctCols.live_note && <th className="px-1 py-1" title="Only for Live accounts — hidden but preserved when Live is unticked">Live note</th>}
                   {acctCols.top_affiliate && <th className="px-2 py-1" title="Ticked rows group under Top Affiliate">Top</th>}
                   {acctCols.updated_at && <th className="px-2 py-1" title="Last save that changed this row">Updated</th>}
                   {editing && <th className="px-1 py-1" />}
@@ -240,13 +311,14 @@ export default function AccountsPage() {
                         onDrop={editing ? (e) => { e.preventDefault(); if (dragUid !== null) moveRow(dragUid, a._uid, true); setDragUid(null); } : undefined}>
                         {acctCols.row_num && <td className="w-8 px-1 py-1 text-right text-zinc-500">{n}.</td>}
                         {editing && <td className="w-8 px-1 py-1"><span draggable title="Drag to reorder" onDragStart={() => setDragUid(a._uid)} onDragEnd={() => setDragUid(null)} className="cursor-move text-zinc-500">⠿</span></td>}
-                        {acctCols.name && <td className="px-1 py-1">{editing ? <input value={a.name ?? ""} onChange={(e) => patch(a._uid, { name: e.target.value })} placeholder="Exact account name" className="w-36 rounded bg-zinc-900 px-1 py-0.5" /> : <span className="font-medium">{a.name}</span>}</td>}
-                        {acctCols.username && <td className="px-1 py-1">{editing ? <input value={a.username ?? ""} onChange={(e) => patch(a._uid, { username: e.target.value })} placeholder="username (no @)" className="w-28 rounded bg-zinc-900 px-1 py-0.5" /> : <span className="text-zinc-400">{a.username || "—"}</span>}</td>}
-                        {acctCols.account_id && <td className="px-1 py-1">{editing ? <input value={a.account_id ?? ""} onChange={(e) => patch(a._uid, { account_id: e.target.value })} placeholder="ID (optional)" className="w-32 rounded bg-zinc-900 px-1 py-0.5" /> : <span className="text-zinc-500">{a.account_id || "—"}</span>}</td>}
-                        {acctCols.identity_id && <td className="px-1 py-1">{editing ? <input value={a.identity_id ?? ""} onChange={(e) => patch(a._uid, { identity_id: e.target.value })} placeholder="Identity ID (optional)" className="w-32 rounded bg-zinc-900 px-1 py-0.5" /> : <span className="text-zinc-500">{a.identity_id || "—"}</span>}</td>}
-                        {acctCols.note && <td className="px-1 py-1">{editing ? <input value={a.note ?? ""} onChange={(e) => patch(a._uid, { note: e.target.value })} placeholder="note (optional)" className="w-28 rounded bg-zinc-900 px-1 py-0.5" /> : <span className="text-zinc-400">{a.note || "—"}</span>}</td>}
+                        {acctCols.name && <td className="px-1 py-1">{editing ? <input value={a.name ?? ""} title={a.name ?? ""} onChange={(e) => patch(a._uid, { name: e.target.value })} placeholder="Exact account name" className="w-56 rounded bg-zinc-900 px-1 py-0.5" /> : <span title={a.name ?? ""} className="font-medium">{a.name}</span>}</td>}
+                        {acctCols.username && <td className="px-1 py-1">{editing ? <input value={a.username ?? ""} title={a.username ?? ""} onChange={(e) => patch(a._uid, { username: e.target.value })} placeholder="username (no @)" className="w-44 rounded bg-zinc-900 px-1 py-0.5" /> : <span title={a.username ?? ""} className="text-zinc-400">{a.username || "—"}</span>}</td>}
+                        {acctCols.account_id && <td className="px-1 py-1">{editing ? <input value={a.account_id ?? ""} title={a.account_id ?? ""} onChange={(e) => patch(a._uid, { account_id: e.target.value })} placeholder="ID (optional)" className="w-48 rounded bg-zinc-900 px-1 py-0.5 focus:w-64" /> : <span title={a.account_id ?? ""} className="break-all text-zinc-500">{a.account_id || "—"}</span>}</td>}
+                        {acctCols.identity_id && <td className="px-1 py-1">{editing ? <input value={a.identity_id ?? ""} title={a.identity_id ?? ""} onChange={(e) => patch(a._uid, { identity_id: e.target.value })} placeholder="Identity ID (optional)" className="w-72 rounded bg-zinc-900 px-1 py-0.5 focus:w-96" /> : <span title={a.identity_id ?? ""} className="break-all text-zinc-500">{a.identity_id || "—"}</span>}</td>}
+                        {acctCols.note && <td className="px-1 py-1">{editing ? <input value={a.note ?? ""} title={a.note ?? ""} onChange={(e) => patch(a._uid, { note: e.target.value })} placeholder="note (optional)" className="w-48 rounded bg-zinc-900 px-1 py-0.5" /> : <span title={a.note ?? ""} className="text-zinc-400">{a.note || "—"}</span>}</td>}
                         {acctCols.active && <td className="px-2 py-1 text-center">{editing ? <input type="checkbox" checked={a.active !== false} onChange={(e) => patch(a._uid, { active: e.target.checked })} /> : (a.active !== false ? <span className="text-emerald-400">✓</span> : <span className="text-zinc-600">—</span>)}</td>}
                         {acctCols.live && <td className="px-2 py-1 text-center">{editing ? <input type="checkbox" checked={a.live === true} onChange={(e) => patch(a._uid, { live: e.target.checked })} /> : (a.live === true ? <span>🔴</span> : <span className="text-zinc-600">—</span>)}</td>}
+                        {acctCols.live_note && <td className="min-w-64 px-1 py-1">{editing ? <input value={a.live_note ?? ""} list="live-note-presets" disabled={a.live !== true} onChange={(e) => patch(a._uid, { live_note: e.target.value })} placeholder={a.live === true ? "pick or type live type" : "tick Live first"} title={a.live === true ? (a.live_note || "Pick Internal / External / AI / Relive, or type a new value") : "Tick Live to edit"} className="w-64 rounded bg-zinc-900 px-1 py-0.5 disabled:opacity-40" /> : (a.live === true ? <span title={a.live_note ?? ""} className="block max-w-64 break-words text-zinc-400">{a.live_note || "—"}</span> : <span className="text-zinc-600">—</span>)}</td>}
                         {acctCols.top_affiliate && <td className="px-2 py-1 text-center">{editing ? <input type="checkbox" checked={a.top_affiliate === true} onChange={(e) => patch(a._uid, { top_affiliate: e.target.checked })} /> : (a.top_affiliate === true ? <span className="text-amber-300">★</span> : <span className="text-zinc-600">—</span>)}</td>}
                         {acctCols.updated_at && <td className="whitespace-nowrap px-2 py-1 text-zinc-500">{fmtStamp(a.updated_at)}</td>}
                         {editing && <td className="px-1 py-1"><button onClick={() => setAccounts(accounts.filter((x) => x._uid !== a._uid))} title="Remove" className="text-red-400 hover:text-red-300">✕</button></td>}
@@ -260,7 +332,7 @@ export default function AccountsPage() {
         ));
       })()}
       <div className="flex flex-wrap items-center gap-2 text-[12px]">
-        {editing && <button onClick={() => { uidRef.current += 1; setAccounts([...accounts, { _uid: uidRef.current, name: "", username: "", account_id: "", identity_id: "", note: "", active: true, live: false, top_affiliate: false }]); }} className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-800">＋ Add account</button>}
+        {editing && <button onClick={() => { uidRef.current += 1; setAccounts([...accounts, { _uid: uidRef.current, name: "", username: "", account_id: "", identity_id: "", note: "", active: true, live: false, live_note: "", top_affiliate: false }]); }} className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-800">＋ Add account</button>}
         <button onClick={saveAll} disabled={saving} className="rounded bg-emerald-700 px-3 py-1.5 hover:bg-emerald-600 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
         <button onClick={downloadJSON} className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-800">Download JSON</button>
         <button onClick={downloadCSV} className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-800">Download CSV</button>

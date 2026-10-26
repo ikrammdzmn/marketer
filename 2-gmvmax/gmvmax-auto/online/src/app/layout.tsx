@@ -4,7 +4,7 @@ import Shell from "./Shell";
 import { auth } from "../../auth";
 import { getDisplayName, isBootstrapAdmin, normalizeEmail } from "@/lib/allowlist-store";
 
-export const metadata = { title: "GMV Max Online" };
+export const metadata = { title: "Marketer HW" };
 export const viewport = { themeColor: "#09090b" };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

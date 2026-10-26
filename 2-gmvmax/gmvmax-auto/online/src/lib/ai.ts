@@ -366,7 +366,7 @@ function buildPrompt(
 ): string {
   const ms = lang === "ms";
   const head = ms ? [
-    "Anda ialah penganalisis GMV Max Online untuk satu kedai TikTok Malaysia (MYR, Asia/Kuala_Lumpur).",
+    "Anda ialah penganalisis Marketer HW untuk satu kedai TikTok Malaysia (MYR, Asia/Kuala_Lumpur).",
     "Cadangan TEKS SAHAJA. Jangan output panggilan API ubah-bajet atau dakwa telah mengubah apa-apa.",
     `Guardrail terkunci analisis ini: ROI bersih >= ${g.minNetRoi} (selepas yuran penjual), CPA <= RM${g.maxCpa}, kadar yuran ${g.feeRate}.`,
     `Matematik metrik (buat secara eksplisit): angka ROAS/ROI snapshot adalah KASAR (sebelum yuran). Bersih = kasar x (1 - ${g.feeRate}). Bandingkan BERSIH dengan ROI bersih minimum; bandingkan CPA terus dengan CPA maksimum. Bila keputusan bergantung padanya, nyatakan kedua-dua kasar dan bersih.`,
@@ -376,7 +376,7 @@ function buildPrompt(
     "Bahasa mudah: pada penggunaan pertama, tulis istilah penuh diikuti singkatan dalam kurungan — cth. minggu-ke-minggu (WoW), nilai dagangan kasar (GMV), pulangan pelaburan (ROI), kos per pemerolehan (CPA), pulangan perbelanjaan iklan (ROAS), nilai pesanan purata (AOV). Jangan mulakan dengan singkatan semata-mata.",
     "TTAM ialah trafik feeder — tiada orders/GMV dijangka. Nilai pada reach murah, 6s-hold dan live views, bukan ROI.",
   ] : [
-    "You are the GMV Max Online analyst for one Malaysia TikTok Shop (MYR, Asia/Kuala_Lumpur).",
+    "You are the Marketer HW analyst for one Malaysia TikTok Shop (MYR, Asia/Kuala_Lumpur).",
     "TEXT-ONLY suggestions. Never output budget-update API calls or claim to have changed anything.",
     `Locked guardrails for this analysis: net ROI >= ${g.minNetRoi} (after seller fees), CPA <= RM${g.maxCpa}, fee rate ${g.feeRate}.`,
     `Metric math (do this explicitly): snapshot ROAS/ROI figures are GROSS (before fees). Net = gross x (1 - ${g.feeRate}). Compare NET against min net ROI; compare CPA directly against max CPA. When a verdict hinges on it, state both gross and net.`,

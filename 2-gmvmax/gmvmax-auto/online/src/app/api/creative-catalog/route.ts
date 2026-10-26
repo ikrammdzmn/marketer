@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 // GET /api/creative-catalog — friendly campaign/product names (from Neon).
 export async function GET() {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("catalog");
   if (!access.ok) return access.response;
   try {
     const c = await query("SELECT campaign_id, label, note, archived FROM creative.catalog_campaigns ORDER BY campaign_id");
@@ -25,7 +25,7 @@ function writeGuard(request: Request): boolean {
 }
 
 export async function POST(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("catalog");
   if (!access.ok) return access.response;
   if (!writeGuard(request)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   try {

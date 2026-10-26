@@ -61,3 +61,46 @@ export async function isAllowlistedEmail(email: string): Promise<boolean> {
   );
   return result.rowCount === 1;
 }
+
+/** Module registry for permission control (031). 'all' = full access. */
+export const MODULES = [
+  "dashboard",
+  "gmv-max",
+  "ai",
+  "calendar",
+  "creative",
+  "accounts",
+  "catalog",
+  "presets",
+  "shop-live",
+  "shop-cost",
+  "live-roi",
+] as const;
+export type ModuleId = (typeof MODULES)[number];
+
+/** Parse a stored modules string. Unknown/empty values deny (never widen). */
+export function normalizeModules(value: unknown): string[] {
+  if (typeof value !== "string") return ["all"];
+  const parts = value.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+  if (parts.length === 0 || parts.includes("all")) return ["all"];
+  const valid = parts.filter((p) => (MODULES as readonly string[]).includes(p));
+  return [...new Set(valid)];
+}
+
+/**
+ * Tolerates pre-031 databases (missing modules column) by granting full
+ * access — fail-open until the owner runs the migration, so deploys made
+ * before the migration don't lock everyone out.
+ */
+export async function getUserModules(email: string): Promise<string[]> {
+  try {
+    const result = await query(
+      `SELECT modules FROM core.access_allowlist WHERE email = $1 LIMIT 1`,
+      [normalizeEmail(email)]
+    );
+    if (result.rowCount !== 1) return [];
+    return normalizeModules(result.rows[0]?.modules);
+  } catch {
+    return ["all"];
+  }
+}

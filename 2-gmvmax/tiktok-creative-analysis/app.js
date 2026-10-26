@@ -3165,7 +3165,16 @@
       '@media (prefers-color-scheme:dark){body{background:#111827;color:#e5e7eb}}' +
       'header{position:sticky;top:0;z-index:5;background:inherit;padding:12px 16px;border-bottom:1px solid #d1d5db}' +
       'h1{font-size:16px;margin:0 0 4px}p.meta{font-size:12px;color:#6b7280;margin:0 0 8px}' +
-      '.toolbar{display:flex;gap:16px;align-items:center;font-size:13px}.tip{color:#6b7280}' +
+      '.toolbar{display:flex;gap:8px;align-items:center;font-size:13px;flex-wrap:wrap}.tip{color:#6b7280}' +
+      '.toolbar button{padding:4px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;font-size:12px}' +
+      '@media (prefers-color-scheme:dark){.toolbar button{background:#374151;border-color:#4b5563;color:#e5e7eb}}' +
+      '.toolbar button:hover{background:#e5e7eb}' +
+      '@media (prefers-color-scheme:dark){.toolbar button:hover{background:#4b5563}}' +
+      '.colpick{position:relative}.colpick summary{cursor:pointer;padding:4px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;font-size:12px;list-style:none}' +
+      '@media (prefers-color-scheme:dark){.colpick summary{background:#374151;border-color:#4b5563}}' +
+      '.colpick .colist{position:absolute;top:110%;left:0;z-index:10;background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;max-height:300px;overflow:auto;min-width:220px;font-size:12px}' +
+      '@media (prefers-color-scheme:dark){.colpick .colist{background:#1f2937;border-color:#4b5563}}' +
+      '#copyStatus{font-size:12px;color:#059669}' +
       '.wrap-scroll{overflow:auto;max-height:calc(100vh - 140px)}' +
       'table{border-collapse:collapse;table-layout:fixed;width:max-content;min-width:100%;font-size:12px;background:#fff}' +
       '@media (prefers-color-scheme:dark){table{background:#1f2937}}' +
@@ -3185,18 +3194,40 @@
       '.sec-outstanding{background:rgba(146,64,14,.5);color:#fcd34d}.sec-underperforming,.sec-flat{background:#374151;color:#d1d5db}' +
       '.sec-exploring{background:rgba(30,64,175,.5);color:#93c5fd}.sec-calculating{background:rgba(154,52,18,.5);color:#fdba74}' +
       '.sec-rejected{background:rgba(153,27,27,.5);color:#fca5a5}}';
-    var js = 'document.querySelector("tbody").addEventListener("click",function(e){' +
+    var js = 'function setCol(i,show){var s="[data-col=\\""+i+"\\"]";' +
+      'document.querySelectorAll("th"+s+",td"+s+",col"+s).forEach(function(el){el.style.display=show?"":"none";});' +
+      'var cb=document.querySelector("#colList input[data-col=\\""+i+"\\"]");if(cb)cb.checked=!!show;}' +
+      'function setAll(show){for(var i=0;i<' + PREVIEW_COLS.length + ';i++)setCol(i,show);}' +
+      'document.querySelector("tbody").addEventListener("click",function(e){' +
       'var td=e.target.closest?e.target.closest("td"):null;if(td)td.classList.toggle("open");});' +
       'document.getElementById("wrapAll").addEventListener("change",function(e){' +
-      'document.querySelector("table").classList.toggle("wrap-all",e.target.checked);});';
-    var head = '<tr>' + PREVIEW_COLS.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr>';
-    var cols = PREVIEW_WIDTHS.map(function (w) { return '<col style="width:' + w + 'px">'; }).join('');
+      'document.querySelector("table").classList.toggle("wrap-all",e.target.checked);});' +
+      'document.getElementById("btnShowAll").addEventListener("click",function(){setAll(true);});' +
+      'document.getElementById("btnPostId").addEventListener("click",function(){for(var i=0;i<' + PREVIEW_COLS.length + ';i++)setCol(i,i===0);});' +
+      'document.getElementById("btnHideAll").addEventListener("click",function(){setAll(false);});' +
+      'document.getElementById("colList").addEventListener("change",function(e){' +
+      'var cb=e.target.closest?e.target.closest("input[data-col]"):null;if(!cb)return;' +
+      'setCol(parseInt(cb.getAttribute("data-col"),10),cb.checked);});' +
+      'document.getElementById("btnCopyIds").addEventListener("click",function(){' +
+      'var ids=Array.prototype.map.call(document.querySelectorAll(\'tbody tr td[data-col="0"]\'),' +
+      'function(td){return (td.textContent||"").trim();}).filter(function(x){return x;});' +
+      'var msg=document.getElementById("copyStatus");' +
+      'function done(ok,n){msg.textContent=ok?("Copied "+n+" Post ID"+(n===1?"":"s")):"Copy failed — select the Post ID column and press Ctrl+C";}' +
+      'if(!ids.length){msg.textContent="No Post IDs to copy";return;}' +
+      'var txt=ids.join("\\n");' +
+      'if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){done(true,ids.length);},function(){fallback();});}' +
+      'else fallback();' +
+      'function fallback(){var ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);' +
+      'ta.select();try{done(document.execCommand("copy"),ids.length);}catch(err){done(false,0);}document.body.removeChild(ta);}});';
+    var head = '<tr>' + PREVIEW_COLS.map(function (c, i) { return '<th data-col="' + i + '">' + c + '</th>'; }).join('') + '</tr>';
+    var cols = PREVIEW_WIDTHS.map(function (w, i) { return '<col data-col="' + i + '" style="width:' + w + 'px">'; }).join('');
     var body = rows.map(function (r) {
-      return '<tr><td class="mono">' + esc(r.postId) + '</td><td>' + esc(r.creative) + '</td><td>' + esc(r.account) +
-        '</td><td>' + esc(campLabel(r)) + '</td><td>' + esc(prodName(r)) + '</td><td>' + esc(r.type) + '</td><td>' + esc(r.status) + '</td><td>' + secBadge(r.sec) + '</td><td>' + esc(insightText(r)) + '</td><td>' + fmtPosted(r.timePosted) + '</td><td class="num">' + fmt(r.cost, 2) + '</td><td class="num">' + fmt(r.orders) +
-        '</td><td class="num">' + fmt(r.revenue, 2) + '</td><td class="num">' + r.roi.toFixed(2) + '</td><td class="num">' + r.aov.toFixed(2) + '</td><td class="num">' + fmt(r.impr) +
-        '</td><td class="num">' + fmt(r.clicks) + '</td><td class="num">' + r.cpm.toFixed(2) + '</td></tr>';
+      return '<tr><td class="mono" data-col="0">' + esc(r.postId) + '</td><td data-col="1">' + esc(r.creative) + '</td><td data-col="2">' + esc(r.account) +
+        '</td><td data-col="3">' + esc(campLabel(r)) + '</td><td data-col="4">' + esc(prodName(r)) + '</td><td data-col="5">' + esc(r.type) + '</td><td data-col="6">' + esc(r.status) + '</td><td data-col="7">' + secBadge(r.sec) + '</td><td data-col="8">' + esc(insightText(r)) + '</td><td data-col="9">' + fmtPosted(r.timePosted) + '</td><td class="num" data-col="10">' + fmt(r.cost, 2) + '</td><td class="num" data-col="11">' + fmt(r.orders) +
+        '</td><td class="num" data-col="12">' + fmt(r.revenue, 2) + '</td><td class="num" data-col="13">' + r.roi.toFixed(2) + '</td><td class="num" data-col="14">' + r.aov.toFixed(2) + '</td><td class="num" data-col="15">' + fmt(r.impr) +
+        '</td><td class="num" data-col="16">' + fmt(r.clicks) + '</td><td class="num" data-col="17">' + r.cpm.toFixed(2) + '</td></tr>';
     }).join('');
+    var colChecks = PREVIEW_COLS.map(function (c, i) { return '<label><input type="checkbox" data-col="' + i + '" checked> ' + c + '</label>'; }).join('');
     return '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<title>Preview (' + fmt(rows.length) + ' rows) — TikTok Creative Analysis</title>' +
@@ -3204,6 +3235,11 @@
       '<header><h1>Preview — ' + fmt(rows.length) + ' rows</h1>' +
       '<p class="meta">' + esc(filterContext()) + ' · generated ' + esc(new Date().toLocaleString('en-GB')) + '</p>' +
       '<div class="toolbar"><label><input type="checkbox" id="wrapAll"> Wrap all cells</label>' +
+      '<button type="button" id="btnShowAll">Show all</button>' +
+      '<button type="button" id="btnPostId">Post ID only</button>' +
+      '<button type="button" id="btnHideAll">Hide all</button>' +
+      '<button type="button" id="btnCopyIds">Copy Post IDs</button><span id="copyStatus"></span>' +
+      '<details class="colpick"><summary>Columns…</summary><div class="colist" id="colList">' + colChecks + '</div></details>' +
       '<span class="tip">Tip: drag a column edge to resize, click any cell to expand it, Ctrl+F to find.</span></div></header>' +
       '<div class="wrap-scroll"><table><colgroup>' + cols + '</colgroup><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>' +
       '<script>' + js + '</scr' + 'ipt></body></html>';

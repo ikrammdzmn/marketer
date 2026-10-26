@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getHourlyShopView, refreshShopHourly } from "@/lib/hourly-shop";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ function datesBetween(a: string, b: string): string[] {
 // bucket by MYT hour into the 015 cache. Returns the end-date view +
 // range scorecard + per-day results.
 export async function POST(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max");
   if (!access.ok) return access.response;
   const body = await request.json().catch(() => ({}));
   const shopNumber = String(body.shopNumber ?? "1");

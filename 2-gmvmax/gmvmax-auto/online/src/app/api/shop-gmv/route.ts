@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getShopGMV } from "@/lib/shop-orders";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 // GET /api/shop-gmv?shopNumber=1&startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
 // Shop 1 only. Graceful when shop token / app keys are missing.
 export async function GET(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max", "shop-cost");
   if (!access.ok) return access.response;
   const { searchParams } = new URL(request.url);
   const shopNumber = searchParams.get("shopNumber") ?? "1";

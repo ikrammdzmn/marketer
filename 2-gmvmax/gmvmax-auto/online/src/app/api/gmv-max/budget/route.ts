@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 import { getAdsCredentials } from "@/lib/ads-credentials";
 import { query } from "@/lib/db";
 import { fetchGmvMaxBudgetInfo, fetchGmvIdentityMap, PROMOTION_TYPES, type PromotionType } from "@/lib/gmv";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 import { SHOPS } from "@/lib/shops";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max");
   if (!access.ok) return access.response;
 
   const origin = request.headers.get("origin");

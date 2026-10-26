@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logOut } from "./logout-action";
 import type { ToastKind } from "./toast";
+import { canSee, useWhoami } from "./module-gate";
 
 function I({ d }: { d: string }) {
   return (
@@ -39,12 +40,13 @@ const AI_LINK = { href: "/ai", label: "AI Analyst", icon: P.target, match: "/ai"
 const CAL_LINK = { href: "/calendar", label: "Calendar", icon: P.cal, match: "/calendar" };
 
 const SETTINGS_LINKS = [
-  { href: "/presets", label: "Presets", icon: P.sliders, match: "/presets" },
-  { href: "/ai/guardrail", label: "AI guardrails", icon: P.gauge, match: "/ai/guardrail" },
-  { href: "/creative", label: "Creative", icon: P.film, match: "/creative" },
-  { href: "/accounts", label: "Accounts", icon: P.users, match: "/accounts" },
-  { href: "/catalog", label: "Catalog", icon: P.tag, match: "/catalog" },
-  { href: "/calendar-settings", label: "Calendar filters", icon: P.sliders, match: "/calendar-settings" },
+  { href: "/presets", label: "Presets", icon: P.sliders, match: "/presets", mod: "presets" },
+  { href: "/ai/guardrail", label: "AI guardrails", icon: P.gauge, match: "/ai/guardrail", mod: "ai" },
+  { href: "/creative", label: "Creative", icon: P.film, match: "/creative", mod: "creative" },
+  { href: "/accounts", label: "Accounts", icon: P.users, match: "/accounts", mod: "accounts" },
+  { href: "/accounts/live", label: "Live board", icon: P.live, match: "/accounts/live", mod: "accounts" },
+  { href: "/catalog", label: "Catalog", icon: P.tag, match: "/catalog", mod: "catalog" },
+  { href: "/calendar-settings", label: "Calendar filters", icon: P.sliders, match: "/calendar-settings", mod: "calendar" },
   { href: "/access", label: "Access", icon: P.key, match: "/access", admin: true },
 ];
 
@@ -60,11 +62,12 @@ const ADS_LINKS = [
 ];
 
 const SHOP_METRIC_LINKS = [
-  { id: "hourly-shop", name: "Hourly Shop", icon: P.clock },
-  { id: "shop-gmv", name: "Shop GMV", icon: P.bag },
+  { id: "hourly-shop", name: "Hourly Shop", icon: P.clock, mod: "gmv-max" },
+  { id: "shop-gmv", name: "Shop GMV", icon: P.bag, mod: ["gmv-max", "shop-cost"] },
 ];
 
 const SHOP_COST_LINK = { href: "/shop-cost", label: "Shop Cost", icon: P.coins, match: "/shop-cost" };
+const LIVE_ROI_LINK = { href: "/live-roi", label: "Live ROI", icon: P.gauge, match: "/live-roi" };
 
 const VALID_METRICS = new Set([...ADS_LINKS, ...SHOP_METRIC_LINKS].map((m) => m.id));
 
@@ -163,7 +166,9 @@ export default function Shell({
   const headCls = `px-2 text-[11px] uppercase tracking-wide text-zinc-500 ${collapsed ? "lg:hidden" : ""}`;
 
   const settingsLinks = SETTINGS_LINKS.filter((m) => !m.admin || isAdmin);
-  const settingsActive = settingsLinks.some((m) => pathname === m.match);
+  const { modules: scope } = useWhoami();
+  const visibleSettings = settingsLinks.filter((m) => !("mod" in m) || canSee(scope, (m as { mod: string }).mod));
+  const settingsActive = visibleSettings.some((m) => pathname === m.match || pathname.startsWith(m.match + "/"));
   const showSettings = settingsOpen || settingsActive;
   const toggleSettings = () => {
     setSettingsOpen((v) => {
@@ -176,6 +181,7 @@ export default function Shell({
     <>
       <div>
         <div className={headCls}>Menu</div>
+        {canSee(scope, "dashboard") && (
         <Link
           href={DASH_LINK.href}
           title={DASH_LINK.label}
@@ -185,6 +191,8 @@ export default function Shell({
           <I d={DASH_LINK.icon} />
           <span className={labelCls}>{DASH_LINK.label}</span>
         </Link>
+        )}
+        {canSee(scope, "ai") && (
         <Link
           href={AI_LINK.href}
           title={AI_LINK.label}
@@ -194,6 +202,8 @@ export default function Shell({
           <I d={AI_LINK.icon} />
           <span className={labelCls}>{AI_LINK.label}</span>
         </Link>
+        )}
+        {canSee(scope, "calendar") && (
         <Link
           href={CAL_LINK.href}
           title={CAL_LINK.label}
@@ -203,7 +213,9 @@ export default function Shell({
           <I d={CAL_LINK.icon} />
           <span className={labelCls}>{CAL_LINK.label}</span>
         </Link>
+        )}
       </div>
+      {canSee(scope, "gmv-max") && (
       <div className="mt-4">
         <div className={headCls}>Shop</div>
         {SHOP_LINKS.map((s) => (
@@ -220,6 +232,8 @@ export default function Shell({
           </Link>
         ))}
       </div>
+      )}
+      {canSee(scope, "gmv-max") && (
       <div className="mt-4">
         <div className={headCls}>TikTok Ads</div>
         {ADS_LINKS.map((m) => (
@@ -236,9 +250,11 @@ export default function Shell({
           </Link>
         ))}
       </div>
+      )}
+      {canSee(scope, "gmv-max") && (
       <div className="mt-4">
         <div className={headCls}>TikTok Shops</div>
-        {SHOP_METRIC_LINKS.map((m) => (
+        {SHOP_METRIC_LINKS.filter((m) => canSee(scope, (m as { mod: string | string[] }).mod)).map((m) => (
           <Link
             key={m.id}
             href={`/gmv-max?shop=${shop}&metric=${m.id}`}
@@ -251,6 +267,7 @@ export default function Shell({
             <span className={labelCls}>{m.name}</span>
           </Link>
         ))}
+        {canSee(scope, "shop-live") && (
         <Link
           href="/shop-live"
           title="Shop Live"
@@ -260,6 +277,8 @@ export default function Shell({
           <I d={P.live} />
           <span className={labelCls}>Shop Live</span>
         </Link>
+        )}
+        {canSee(scope, "shop-cost") && (
         <Link
           href={SHOP_COST_LINK.href}
           title={SHOP_COST_LINK.label}
@@ -269,7 +288,20 @@ export default function Shell({
           <I d={SHOP_COST_LINK.icon} />
           <span className={labelCls}>{SHOP_COST_LINK.label}</span>
         </Link>
+        )}
+        {canSee(scope, "live-roi") && (
+        <Link
+          href={LIVE_ROI_LINK.href}
+          title={LIVE_ROI_LINK.label}
+          onClick={() => setOpen(false)}
+          className={itemCls(pathname === LIVE_ROI_LINK.match)}
+        >
+          <I d={LIVE_ROI_LINK.icon} />
+          <span className={labelCls}>{LIVE_ROI_LINK.label}</span>
+        </Link>
+        )}
       </div>
+      )}
       <div className="mt-auto pt-4">
         <button
           type="button"
@@ -281,7 +313,7 @@ export default function Shell({
           <span className={labelCls}>Settings</span>
           <span className={`ml-auto text-xs text-zinc-500 ${labelCls}`}>{showSettings ? "▾" : "▸"}</span>
         </button>
-        {showSettings && settingsLinks.map((m) => (
+        {showSettings && visibleSettings.map((m) => (
           <Link
             key={m.href}
             href={m.href}
@@ -336,7 +368,7 @@ export default function Shell({
         >
           {collapsed ? "»" : "«"}
         </button>
-        <h1 className="text-sm font-semibold">GMV Max Online</h1>
+        <h1 className="text-sm font-semibold">Marketer HW</h1>
         <span className="rounded-full bg-emerald-900 px-2 py-0.5 text-xs text-emerald-200">PROD</span>
         {todayTitles !== null && (
           <Link

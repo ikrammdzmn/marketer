@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { toast } from "../toast";
+import { ModuleRedirect } from "../module-gate";
 
 // /creative — Creative analysis module (tab 3). Capability probe + cached
 // PRODUCT rows. Account/catalog editing moved to /accounts + /catalog.
@@ -18,6 +19,18 @@ export default function CreativePage() {
   const [crBusy, setCrBusy] = useState(false);
   const [crCamps, setCrCamps] = useState<any[]>([]);
   const [crCamp, setCrCamp] = useState("1858977225474178");
+  const [crStatus, setCrStatus] = useState("ALL");
+
+  // Status filter options derived from loaded rows (counts included).
+  const crStatusCounts = (() => {
+    const m = new Map<string, number>();
+    for (const r of crRows) {
+      const s = String(r.status || "—");
+      m.set(s, (m.get(s) ?? 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  })();
+  const crShown = crStatus === "ALL" ? crRows : crRows.filter((r) => String(r.status || "—") === crStatus);
 
   const loadedRef = useRef(false);
   useEffect(() => {
@@ -45,6 +58,84 @@ export default function CreativePage() {
       const r = await fetch("/api/creative-sync?list=campaigns").then((x) => x.json());
       if (r.campaigns) setCrCamps(r.campaigns);
     } catch { /* picker stays manual */ }
+  }
+
+  // Kill-list (Stage 7.1): aggregate cached day-rows by post over the range.
+  function killList() {
+    const byPost = new Map<string, { cost: number; gmv: number; orders: number; imp: number; days: Set<string>; title: string; account: string; status: string }>();
+    for (const r of crRows) {
+      const id = String(r.item_id ?? "?");
+      let e = byPost.get(id);
+      if (!e) {
+        e = { cost: 0, gmv: 0, orders: 0, imp: 0, days: new Set(), title: String(r.title ?? ""), account: String(r.tt_account ?? ""), status: String(r.status ?? "") };
+        byPost.set(id, e);
+      }
+      e.cost += Number(r.cost ?? 0);
+      e.gmv += Number(r.gmv ?? 0);
+      e.orders += Number(r.orders ?? 0);
+      e.imp += Number(r.impressions ?? 0);
+      e.days.add(String(r.date ?? "").slice(0, 10));
+      if (String(r.status ?? "") === "DELIVERING") e.status = "DELIVERING";
+      if (!e.title && r.title) e.title = String(r.title);
+    }
+    const rows = [...byPost.entries()].map(([id, e]) => ({
+      id, ...e, days: e.days.size,
+      roi: e.cost > 0 ? e.gmv / e.cost : 0,
+      verdict: e.cost >= 50 && (e.cost === 0 || e.gmv / e.cost < 2) ? "KILL"
+        : e.cost >= 20 && e.gmv === 0 ? "KILL"
+        : e.cost > 0 && e.gmv / e.cost >= 10 ? "SCALE"
+        : e.cost > 0 ? "WATCH" : "—",
+    })).sort((a, b) => b.cost - a.cost);
+    const tc = rows.reduce((s, r) => s + r.cost, 0);
+    const tg = rows.reduce((s, r) => s + r.gmv, 0);
+    const hero = rows[0];
+    const tailWaste = rows.filter((r) => r.roi < 2).reduce((s, r) => s + r.cost, 0);
+    return { rows, totalCost: tc, totalGmv: tg, roi: tc > 0 ? tg / tc : 0, hero, tailWaste };
+  }
+
+  function killCsv(rows: { id: string; title: string; account: string; status: string; days: number; cost: number; gmv: number; roi: number; orders: number; imp: number; verdict: string }[]) {
+    const head = "post_id,title,account,status,days,spend,gmv,roi,orders,impressions,verdict";
+    const q = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = rows.map((r) => [r.id, q(r.title), q(r.account), r.status, r.days, r.cost.toFixed(2), r.gmv.toFixed(2), r.roi.toFixed(2), r.orders, r.imp, r.verdict].join(","));
+    const blob = new Blob([[head, ...lines].join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `kill-list-${crStart}_${crEnd}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // Exclusion draft (Stage 9): checkbox selection, KILL preselected.
+  // Read-only — owner applies the IDs in Ads Manager by hand (write tools
+  // gated till Dec). Draft copies as plain post IDs, one per line.
+  const [exSel, setExSel] = useState<Set<string>>(new Set());
+  const [exCopied, setExCopied] = useState(false);
+
+  function toggleEx(id: string) {
+    setExSel((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setExCopied(false);
+  }
+
+  function selectKills() {
+    const k = killList();
+    setExSel(new Set(k.rows.filter((r) => r.verdict === "KILL" && r.id !== "-1").map((r) => r.id)));
+    setExCopied(false);
+  }
+
+  async function copyDraft() {
+    const ids = [...exSel];
+    if (ids.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(ids.join("\n"));
+      setExCopied(true);
+    } catch {
+      setExCopied(false);
+    }
   }
 
   async function syncRows() {
@@ -98,6 +189,7 @@ export default function CreativePage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-4 text-sm">
+      <ModuleRedirect module="creative" />
       <h2 className="mb-1 text-lg font-semibold">Creative analysis</h2>
       <p className="mb-3 text-[12px] text-zinc-400">
         Goal: replace the xlsx export with direct TikTok pulls (shop 1). First step is the
@@ -137,20 +229,27 @@ export default function CreativePage() {
         <input type="date" value={crEnd} onChange={(e) => setCrEnd(e.target.value)} className="rounded bg-zinc-900 px-2 py-1" />
         <button onClick={loadRows} className="rounded border border-zinc-700 px-3 py-1 hover:bg-zinc-800">Fetch rows</button>
         <button onClick={syncRows} disabled={crBusy} className="rounded bg-emerald-700 px-3 py-1 hover:bg-emerald-600 disabled:opacity-50">{crBusy ? "Syncing…" : "Sync from TikTok (≤7d)"}</button>
+        <select value={crStatus} onChange={(e) => setCrStatus(e.target.value)} title="Filter both tables by delivery status" className="max-w-48 rounded bg-zinc-900 px-2 py-1">
+          <option value="ALL">Status: All ({crRows.length})</option>
+          {crStatusCounts.map(([s, n]) => (
+            <option key={s} value={s}>{s} ({n})</option>
+          ))}
+        </select>
         <span className="text-zinc-500">{crMsg}</span>
       </div>
-      {crRows.length > 0 && (
+      {crShown.length > 0 && (
         <div className="mb-2 overflow-x-auto rounded-lg border border-zinc-800">
           <table className="w-full text-[12px]">
             <thead><tr className="text-left text-zinc-400">
-              <th className="px-2 py-1">Date</th><th className="px-2 py-1">Creative</th>
+              <th className="px-2 py-1">#</th><th className="px-2 py-1">Date</th><th className="px-2 py-1">Creative</th>
               <th className="px-2 py-1">Account</th><th className="px-2 py-1">Status</th>
               <th className="px-2 py-1 text-right">Cost</th><th className="px-2 py-1 text-right">Orders</th>
               <th className="px-2 py-1 text-right">GMV</th><th className="px-2 py-1 text-right">ROI</th>
             </tr></thead>
             <tbody>
-              {crRows.map((r: any, i: number) => (
+              {crShown.map((r: any, i: number) => (
                 <tr key={i} className="border-t border-zinc-800">
+                  <td className="px-2 py-1 text-zinc-500">{i + 1}</td>
                   <td className="whitespace-nowrap px-2 py-1 text-zinc-500">{String(r.date).slice(0, 10)}</td>
                   <td className="max-w-64 truncate px-2 py-1" title={`${r.title ?? ""} · ${r.item_id ?? ""}`}>{r.title || (r.item_id === "-1" ? "Unattributed" : `post ${r.item_id}`)}</td>
                   <td className="whitespace-nowrap px-2 py-1">{r.tt_account || "—"}</td>
@@ -165,6 +264,64 @@ export default function CreativePage() {
           </table>
         </div>
       )}
+
+      {(() => {
+        if (crRows.length === 0) return null;
+        const k = killList();
+        const shown = crStatus === "ALL" ? k.rows : k.rows.filter((r) => (r.status || "—") === crStatus);
+        const sCost = shown.reduce((s, r) => s + r.cost, 0);
+        const sGmv = shown.reduce((s, r) => s + r.gmv, 0);
+        const sRoi = sCost > 0 ? sGmv / sCost : 0;
+        const sHero = shown[0];
+        const sTail = shown.filter((r) => r.roi < 2).reduce((s, r) => s + r.cost, 0);
+        return (
+          <div className="mb-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-medium">Kill list{crStatus !== "ALL" ? ` · ${crStatus}` : ""}</span>
+              <span className="text-[11px] text-zinc-500">
+                {shown.length} posts · spend MYR {sCost.toFixed(0)} · GMV {sGmv.toFixed(0)} · ROI {sRoi.toFixed(2)}
+                {sHero && sCost > 0 ? ` · hero ${(100 * sHero.cost / sCost).toFixed(0)}% (${sHero.title.slice(0, 28) || sHero.id})` : ""}
+                {sTail > 0 ? ` · tail waste MYR ${sTail.toFixed(0)}` : ""}
+              </span>
+              <button onClick={() => killCsv(shown)} className="ml-auto rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800">CSV</button>
+              <button onClick={selectKills} className="rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800" title="Select all KILL rows (excludes Unattributed)">Select KILL</button>
+              <button onClick={() => void copyDraft()} disabled={exSel.size === 0} className="rounded-lg border border-red-900 px-2 py-1 text-xs text-red-200 hover:bg-red-950 disabled:opacity-50" title="Copy selected post IDs — remove them in Ads Manager by hand">
+                {exCopied ? `Copied ${exSel.size}!` : `Copy draft (${exSel.size})`}
+              </button>
+            </div>
+            {exSel.size > 0 && (
+              <p className="mt-1 text-[11px] text-amber-200/80">Draft: remove these {exSel.size} post(s) in Ads Manager → campaign → creatives. Read-only draft — nothing is applied from here.</p>
+            )}
+            <div className="mt-2 max-h-96 overflow-auto rounded-lg border border-zinc-800">
+              <table className="w-full text-[12px]">
+                <thead className="sticky top-0 bg-zinc-900"><tr className="text-left text-zinc-400">
+                  <th className="px-2 py-1">#</th><th className="px-2 py-1">Ex</th><th className="px-2 py-1">Post</th><th className="px-2 py-1">Account</th>
+                  <th className="px-2 py-1">Status</th><th className="px-2 py-1 text-right">Days</th>
+                  <th className="px-2 py-1 text-right">Spend</th><th className="px-2 py-1 text-right">GMV</th>
+                  <th className="px-2 py-1 text-right">ROI</th><th className="px-2 py-1">Verdict</th>
+                </tr></thead>
+                <tbody>
+                  {shown.slice(0, 300).map((r, i) => (
+                    <tr key={r.id} className="border-t border-zinc-800">
+                      <td className="px-2 py-1 text-zinc-500">{i + 1}</td>
+                      <td className="px-2 py-1"><input type="checkbox" checked={exSel.has(r.id)} onChange={() => toggleEx(r.id)} aria-label={`exclude ${r.id}`} /></td>
+                      <td className="max-w-64 truncate px-2 py-1" title={`${r.title} · ${r.id}`}>{r.title || (r.id === "-1" ? "Unattributed" : `post ${r.id.slice(0, 8)}…`)}</td>
+                      <td className="whitespace-nowrap px-2 py-1">{r.account || "—"}</td>
+                      <td className="whitespace-nowrap px-2 py-1"><span className={`rounded-full px-2 py-0.5 text-[10px] ${r.status === "DELIVERING" ? "bg-emerald-900 text-emerald-200" : "bg-zinc-700 text-zinc-300"}`}>{r.status || "—"}</span></td>
+                      <td className="px-2 py-1 text-right text-zinc-400">{r.days}</td>
+                      <td className="px-2 py-1 text-right">{r.cost.toFixed(2)}</td>
+                      <td className="px-2 py-1 text-right">{r.gmv.toFixed(2)}</td>
+                      <td className={`px-2 py-1 text-right font-medium ${r.roi >= 10 ? "text-emerald-300" : r.roi < 2 && r.cost >= 20 ? "text-red-300" : ""}`}>{r.roi.toFixed(2)}</td>
+                      <td className="px-2 py-1"><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${r.verdict === "KILL" ? "bg-red-950 text-red-200" : r.verdict === "SCALE" ? "bg-emerald-900 text-emerald-200" : r.verdict === "WATCH" ? "bg-amber-950 text-amber-200" : "text-zinc-500"}`}>{r.verdict}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {shown.length > 300 && <p className="mt-1 text-[11px] text-zinc-500">Showing top 300 by spend — full list in CSV.</p>}
+          </div>
+        );
+      })()}
 
       {err && <p className="mt-3 text-red-400">{err}</p>}
       {out && (

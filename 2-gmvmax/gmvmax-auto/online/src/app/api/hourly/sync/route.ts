@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getHourlyScorecard, getHourlyView, syncHourly } from "@/lib/hourly";
-import { requireAllowlistedUser } from "@/lib/authz";
+import { requireModule } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 // Live TikTok pull for one day, Telegram suppressed (silent), then returns
 // the fresh single-day view + range scorecard for that date.
 export async function POST(request: Request) {
-  const access = await requireAllowlistedUser();
+  const access = await requireModule("gmv-max");
   if (!access.ok) return access.response;
   const body = await request.json().catch(() => ({}));
   const shopNumber = String(body.shopNumber ?? "1");
@@ -19,8 +19,11 @@ export async function POST(request: Request) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: "need date (YYYY-MM-DD)" }, { status: 400 });
   }
+  const t = String(body.type ?? "all").toLowerCase();
+  const types: ("LIVE_GMV_MAX" | "PRODUCT_GMV_MAX")[] | undefined =
+    t === "live" ? ["LIVE_GMV_MAX"] : t === "product" ? ["PRODUCT_GMV_MAX"] : undefined;
   try {
-    const synced = await syncHourly(shopNumber, date, { silent: true });
+    const synced = await syncHourly(shopNumber, date, { silent: true, types });
     const view = await getHourlyView(shopNumber, date);
     let scorecard: unknown[] = [];
     try {

@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
-import { syncHourly } from "@/lib/hourly";
+import { syncHourly, type HourlyPromoType } from "@/lib/hourly";
+import { alertCronFailure } from "@/lib/cron-alert";
 
 export const dynamic = "force-dynamic";
 
 const cleanEnv = (v: string | undefined) =>
   (v ?? "").trim().replace(/^["']|["']$/g, "");
 
-// GET /api/cron/hourly-sync?shopNumber=1&date=YYYY-MM-DD
+// GET /api/cron/hourly-sync?shopNumber=1&date=YYYY-MM-DD&type=live|product|all
 // Meant for an external hourly pinger (Hobby-safe). Same CRON_SECRET guard.
+// type=live|product pulls one promotion type (15min live cadence); all = both.
 export async function GET(request: Request) {
   const secret = cleanEnv(process.env.CRON_SECRET);
   if (!secret) return NextResponse.json({ error: "CRON_SECRET missing" }, { status: 500 });
@@ -19,11 +21,15 @@ export async function GET(request: Request) {
   const date =
     searchParams.get("date") ??
     new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+  const t = (searchParams.get("type") ?? "all").toLowerCase();
+  const types: HourlyPromoType[] | undefined =
+    t === "live" ? ["LIVE_GMV_MAX"] : t === "product" ? ["PRODUCT_GMV_MAX"] : undefined;
   try {
-    return NextResponse.json({ ok: true, ...(await syncHourly(shopNumber, date)) });
+    return NextResponse.json({ ok: true, type: t, ...(await syncHourly(shopNumber, date, { silent: true, types })) });
   } catch (e) {
     const message = e instanceof Error ? e.message : "hourly sync failed";
     console.error("[hourly-sync]", message);
+    await alertCronFailure("hourly-sync", message);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
