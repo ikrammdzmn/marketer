@@ -55,6 +55,12 @@ export interface TtamAd {
   name: string;
   status: string | null;
   spend: number;
+  tiktok_item_id: string | null;
+  display_name: string | null;
+  identity_type: string | null;
+  ad_text: string | null;
+  label: string | null;
+  caption: string | null;
   metrics: Record<string, number> | null;
   scores: Record<string, number | null> | null;
   sfvProxy: boolean;
@@ -233,11 +239,29 @@ export async function getTtamAds(
       const row = spendBy.get(id);
       const raw = row ? toRaw(row) : null;
       const scored = raw ? scoreTtamRow(raw, false) : null;
+      const rawName = a.ad_name ?? a.name ?? id;
+      const postId = a.tiktok_item_id != null && String(a.tiktok_item_id) !== "" ? String(a.tiktok_item_id) : null;
+      // Choice A: ad_name is often "{caption} _{post_id}" (creation-flow default).
+      // Strip the trailing post-ID suffix; what remains is the human title.
+      let title: string | null = String(rawName ?? "");
+      title = title.replace(/[\s_]*\d{19}\s*$/, "").trim();
+      if (!title || (postId && title === postId)) title = null;
+      const text = a.ad_text != null && String(a.ad_text).trim() !== "" ? String(a.ad_text).trim() : null;
+      // Dedupe: when title and text match, show the caption once.
+      const same = !!text && !!title && text === title;
+      const label = !text ? title : same ? null : title;
+      const caption = text ?? null;
       return {
         ad_id: id,
         name: a.ad_name ?? a.name ?? id,
         status: normalizeStatus(a.operation_status ?? a.status ?? a.secondary_status ?? null),
         spend: raw ? raw.spend : 0,
+        tiktok_item_id: a.tiktok_item_id != null && String(a.tiktok_item_id) !== "" ? String(a.tiktok_item_id) : null,
+        display_name: (a.display_name ?? a.app_name ?? null) != null && String(a.display_name ?? a.app_name ?? "") !== "" ? String(a.display_name ?? a.app_name) : null,
+        identity_type: a.identity_type != null && String(a.identity_type) !== "" ? String(a.identity_type) : null,
+        ad_text: a.ad_text != null && String(a.ad_text) !== "" ? String(a.ad_text) : null,
+        label,
+        caption,
         metrics: full && row ? row : null,
         scores: scored ? scored.scores : null,
         sfvProxy: false,

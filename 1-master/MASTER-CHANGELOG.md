@@ -4,6 +4,30 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 29 Oct 2026
+
+- `gmvmax-auto` creator grants + affiliate room detail LIVE on `/shop-live` (036/037 owner-run prod; temp grant page mints 10-min links, creator-token Live Data `v202502` room bundle, `(creator ✓)` badges, null-aware List grain; proof room 7700018251179002645 GMV 49,302.23 = List exact; B123–B130) — tsc clean, 15 deploys, uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto` creative Posted/Age columns + xlsx-import fallback (035 item_meta owner-run dev+prod; Round-7 verdict: no TikTok endpoint returns organic post dates; parked MID priority) — tsc clean, 5 deploys, uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
+## 28 Oct 2026
+
+- `gmvmax-auto` TTAM live-Ad triage in Ads Manager via browser MCP (CPC >0.04: 13 ticked = 9 KILL + 4 WATCH, full IDs logged; shadow-DOM table technique + selection-restore lesson) + new repo skill `skills/browser-access/` — docs only, uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
+## 27 Oct 2026 (creative analytics port)
+
+- `gmvmax-auto` creative analytics port (B117 totals fix + per-day chunked fetch, kill verdict/Post-ID/columns/sort/Daily/Shape/diagnostics, accounts + daily/multi-line trend + per-creative table merged, account kinds + Product-card label, shared calendar, slim sync) — 14 deploys, all live-verified, uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
+## 27 Oct 2026
+
+- `gmvmax-auto` TTAM creative identity + search + deep-find (account/post ID on every ad row, caption dedupe + collapse, per-adgroup search, cross-branch deep-find with jump) — tsc clean, deployed prod, uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto` DB-first total/live/product (instant snapshot + silent live swap, cached/live pills, 60-min staleness) + nightly 40001 fix (per-advertiser credential fallback, per-shop fail-open, shop-1-only alerts) + shop-1-only lock — tsc clean, uncommitted, undeployed
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
 ## 26 Oct 2026
 
 - `gmvmax-auto` rename to Marketer HW (header, tab title, sign-in, AI intro, indexes — zero leftovers)

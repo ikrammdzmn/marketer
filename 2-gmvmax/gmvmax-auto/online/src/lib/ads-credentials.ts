@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { SHOPS } from "./shops";
 
 const cleanEnv = (v: string | undefined) =>
   (v ?? "").trim().replace(/^["']|["']$/g, "");
@@ -9,14 +10,6 @@ export interface AdsCredentials {
   access_token: string;
   refresh_token: string | null;
 }
-
-// Env fallback chain (names only in logs, never values).
-const ENV_FALLBACKS = [
-  "TIKTOK_ADS_ACCOUNT1_ACCESS_TOKEN",
-  "TIKTOK_ADS_ACCOUNT2_ACCESS_TOKEN",
-  "TIKTOK_ADS_ACCOUNT3_ACCESS_TOKEN",
-  "TIKTOK_PROD_ACCESS_TOKEN",
-];
 
 export async function getAdsCredentials(
   advertiserId: string
@@ -34,8 +27,14 @@ export async function getAdsCredentials(
   } catch (e) {
     console.error("[ads-credentials] db lookup failed, trying env fallback");
   }
-  for (const name of ENV_FALLBACKS) {
-    const tok = cleanEnv(process.env[name]);
+  // Per-advertiser env fallback (rule 8): NEVER hand another shop's token
+  // over — a 40001 (wrong token) looks identical to a permission loss and
+  // pages the owner nightly. Only the shop's own accessTokenEnv applies.
+  const ownEnv = Object.values(SHOPS).find(
+    (s) => s.advertiserId === advertiserId
+  )?.accessTokenEnv;
+  if (ownEnv) {
+    const tok = cleanEnv(process.env[ownEnv]);
     if (tok) return { advertiser_id: advertiserId, label: null, access_token: tok, refresh_token: null };
   }
   return null;

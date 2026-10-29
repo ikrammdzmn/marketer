@@ -14,6 +14,11 @@ import { createHmac } from "crypto";
 const SHOP_BASE = "https://open-api.tiktokglobalshop.com";
 const ANALYTICS_VERSION = "202510";
 // List path is versioned separately (verified from the List doc):
+const SHOP1_ID = "7495609155379170274"; // Him.DrSamhan (shop-1-only lock)
+// Live Room detail family (Live Data scope): documented version is 202502.
+// The bundled OAS baseline only knew 202309 (stale) — 202309 calls 500 with
+// 36009003 regardless of token. Always use this const for room calls.
+const LIVE_ROOM_VERSION = "202502";
 const LIVES_PATH = "/analytics/202609/shop_lives/performance";
 const MAX_PAGES = 15; // 15 × 100 one-minute intervals = 25h ceiling
 const MAX_LIST_PAGES = 5; // list pages (370-session range ≈ 4 pages)
@@ -178,6 +183,206 @@ export async function fetchShopLiveSessions(
   return { sessions, latestAvailableDate, totalCount, pages };
 }
 
+// Debug-only: first page of UNFILTERED TikTok rows (reveals fields the
+// picker drops). Same auth/shape as fetchShopLiveSessions page 1.
+export async function fetchShopLiveSessionsRaw(
+  shopNumber: string,
+  startDateGe: string,
+  endDateLt: string,
+  accountType: string,
+  currency = "LOCAL"
+): Promise<{
+  latestAvailableDate: string | null;
+  totalCount: number;
+  rawRows: any[];
+}> {
+  if (shopNumber !== "1") throw new Error("shop-live is shop-1-only for now");
+  const { appKey, appSecret, accessToken, shopCipher } = await resolveLiveCreds();
+  const qp: Record<string, string> = {
+    app_key: appKey,
+    shop_cipher: shopCipher,
+    start_date_ge: startDateGe,
+    end_date_lt: endDateLt,
+    account_type: accountType,
+    currency,
+    page_size: "100",
+  };
+  const urlForSign =
+    `${SHOP_BASE}${LIVES_PATH}?` +
+    Object.keys(qp).sort().map((k) => `${k}=${encodeURIComponent(qp[k])}`).join("&");
+  const sig = signShopUrl(urlForSign, appSecret);
+  if (sig instanceof Error) throw new Error(`sign failed: ${sig.message}`);
+  const finalParams: Record<string, string> = {
+    ...qp,
+    sign: String(sig.signature),
+    timestamp: String(sig.timestamp),
+  };
+  const finalQs = Object.keys(finalParams)
+    .sort().map((k) => `${k}=${encodeURIComponent(finalParams[k])}`).join("&");
+  const res = await fetch(`${SHOP_BASE}${LIVES_PATH}?${finalQs}`, {
+    method: "GET",
+    headers: {
+      "x-tts-access-token": accessToken,
+      "content-type": "application/json",
+    },
+  });
+  const body = await res.json();
+  if (body.code !== 0) {
+    throw new Error(`shop-live sessions code=${body.code}: ${body.message ?? "failed"}`);
+  }
+  const data = body.data ?? {};
+  const rows = Array.isArray(data.live_stream_sessions) ? data.live_stream_sessions : [];
+  return {
+    latestAvailableDate: data.latest_available_date ?? null,
+    totalCount: Number(data.total_count ?? 0),
+    rawRows: rows,
+  };
+}
+
+// Debug-only: hunt one session id across up to 5 raw pages (AFFILIATE lists
+// run 500+ rows; raw=1 shows page 1 only). Returns the UNFILTERED row.
+export async function findShopLiveSessionRaw(
+  shopNumber: string,
+  startDateGe: string,
+  endDateLt: string,
+  accountType: string,
+  sessionId: string,
+  currency = "LOCAL"
+): Promise<{
+  found: boolean;
+  page: number;
+  rowKeys: string[];
+  row: any | null;
+}> {
+  if (shopNumber !== "1") throw new Error("shop-live is shop-1-only for now");
+  if (!sessionId) throw new Error("need sessionId (digits)");
+  const { appKey, appSecret, accessToken, shopCipher } = await resolveLiveCreds();
+  let pageToken = "";
+  for (let page = 1; page <= MAX_LIST_PAGES; page++) {
+    const qp: Record<string, string> = {
+      app_key: appKey,
+      shop_cipher: shopCipher,
+      start_date_ge: startDateGe,
+      end_date_lt: endDateLt,
+      account_type: accountType,
+      currency,
+      page_size: "100",
+    };
+    if (pageToken) qp.page_token = pageToken;
+    const urlForSign =
+      `${SHOP_BASE}${LIVES_PATH}?` +
+      Object.keys(qp).sort().map((k) => `${k}=${encodeURIComponent(qp[k])}`).join("&");
+    const sig = signShopUrl(urlForSign, appSecret);
+    if (sig instanceof Error) throw new Error(`sign failed: ${sig.message}`);
+    const finalParams: Record<string, string> = {
+      ...qp,
+      sign: String(sig.signature),
+      timestamp: String(sig.timestamp),
+    };
+    const finalQs = Object.keys(finalParams)
+      .sort().map((k) => `${k}=${encodeURIComponent(finalParams[k])}`).join("&");
+    const res = await fetch(`${SHOP_BASE}${LIVES_PATH}?${finalQs}`, {
+      method: "GET",
+      headers: {
+        "x-tts-access-token": accessToken,
+        "content-type": "application/json",
+      },
+    });
+    const body = await res.json();
+    if (body.code !== 0) {
+      throw new Error(`shop-live sessions code=${body.code}: ${body.message ?? "failed"}`);
+    }
+    const data = body.data ?? {};
+    const rows = Array.isArray(data.live_stream_sessions) ? data.live_stream_sessions : [];
+    for (const r of rows) {
+      if (String(r?.id ?? "") === sessionId) {
+        return { found: true, page, rowKeys: Object.keys(r ?? {}), row: r };
+      }
+    }
+    pageToken = String(data.next_page_token ?? "");
+    if (!pageToken) break;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  return { found: false, page: -1, rowKeys: [], row: null };
+}
+
+// Debug-only: distinct creators across up to 5 raw AFFILIATE pages.
+// open_ids lengths-only here (prefix) — answers whether a grant identity
+// appears anywhere in shop data without pasting 500 rows.
+export async function scanAffiliateCreators(
+  shopNumber: string,
+  startDateGe: string,
+  endDateLt: string,
+  accountType: string,
+  currency = "LOCAL"
+): Promise<Array<{
+  user_name: string | null;
+  nick_name: string | null;
+  author_type: string | null;
+  open_prefix: string;
+  rooms: number;
+}>> {
+  if (shopNumber !== "1") throw new Error("shop-live is shop-1-only for now");
+  const { appKey, appSecret, accessToken, shopCipher } = await resolveLiveCreds();
+  const seen = new Map<string, { user_name: string | null; nick_name: string | null; author_type: string | null; open_prefix: string; rooms: number }>();
+  let pageToken = "";
+  for (let page = 1; page <= MAX_LIST_PAGES; page++) {
+    const qp: Record<string, string> = {
+      app_key: appKey,
+      shop_cipher: shopCipher,
+      start_date_ge: startDateGe,
+      end_date_lt: endDateLt,
+      account_type: accountType,
+      currency,
+      page_size: "100",
+    };
+    if (pageToken) qp.page_token = pageToken;
+    const urlForSign =
+      `${SHOP_BASE}${LIVES_PATH}?` +
+      Object.keys(qp).sort().map((k) => `${k}=${encodeURIComponent(qp[k])}`).join("&");
+    const sig = signShopUrl(urlForSign, appSecret);
+    if (sig instanceof Error) throw new Error(`sign failed: ${sig.message}`);
+    const finalParams: Record<string, string> = {
+      ...qp,
+      sign: String(sig.signature),
+      timestamp: String(sig.timestamp),
+    };
+    const finalQs = Object.keys(finalParams)
+      .sort().map((k) => `${k}=${encodeURIComponent(finalParams[k])}`).join("&");
+    const res = await fetch(`${SHOP_BASE}${LIVES_PATH}?${finalQs}`, {
+      method: "GET",
+      headers: {
+        "x-tts-access-token": accessToken,
+        "content-type": "application/json",
+      },
+    });
+    const body = await res.json();
+    if (body.code !== 0) {
+      throw new Error(`shop-live sessions code=${body.code}: ${body.message ?? "failed"}`);
+    }
+    const data = body.data ?? {};
+    const rows = Array.isArray(data.live_stream_sessions) ? data.live_stream_sessions : [];
+    for (const r of rows) {
+      const c = r?.creator ?? {};
+      const oid = String(c.open_id ?? "");
+      const key = oid || `noid:${String(c.user_name ?? "?")}`;
+      const cur = seen.get(key) ?? {
+        user_name: c.user_name ?? null,
+        nick_name: c.nick_name ?? null,
+        author_type: c.author_type ?? null,
+        open_prefix: oid.slice(0, 8),
+        rooms: 0,
+      };
+      cur.rooms++;
+      seen.set(key, cur);
+    }
+    pageToken = String(data.next_page_token ?? "");
+    if (!pageToken) break;
+    await new Promise((r) => setTimeout(r, 400));
+  }
+  return [...seen.values()].sort((a, b) => b.rooms - a.rooms);
+}
+
 function mytHourLabel(tsSec: number): string {
   const d = new Date(tsSec * 1000);
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -336,9 +541,10 @@ export async function fetchShopLivePerformance(
   return { overall: normalizeOverall(overall), intervals, pages, totalCount };
 }
 
-// 202309 live-room detail family (bundled OAS baseline). Unlike the 202609
-// minute endpoint, these are keyed by room and may predate its creator-type
-// permission wall — the probe that decides affiliate detail.
+// 202502 live-room detail family (Live Data scope, creator token only).
+// Unlike the 202609 minute endpoint, these are keyed by room. The bundled
+// OAS baseline only knew 202309 (stale) — 202309 calls 500 with 36009003.
+// The probe that decides affiliate detail.
 export async function fetchLiveCoreStats(
   shopNumber: string,
   liveRoomId: string
@@ -346,7 +552,7 @@ export async function fetchLiveCoreStats(
   if (shopNumber !== "1") throw new Error("shop-live is shop-1-only for now");
   if (!liveRoomId) throw new Error("need liveRoomId (digits, e.g. from the room picker or Seller Center URL)");
   const { appKey, appSecret, accessToken } = await resolveLiveCreds();
-  const path = `/analytics/202309/live_rooms/${encodeURIComponent(liveRoomId)}/core_stats`;
+  const path = `/analytics/${LIVE_ROOM_VERSION}/live_rooms/${encodeURIComponent(liveRoomId)}/core_stats`;
   // OAS lists no query params, but the API answers 36009004 unless app_key
   // travels in-query (and signed). Cipher stays out unless asked.
   const qp: Record<string, string> = { app_key: appKey };
@@ -373,6 +579,230 @@ export async function fetchLiveCoreStats(
     throw new Error(`shop-live core-stats code=${body.code}: ${body.message ?? "failed"}`);
   }
   return { liveRoomId, stats: body.data?.stats ?? body.data ?? {} };
+}
+
+// Creator-token reader for 036 (fail-closed: no row = no call, never falls
+// back to the seller token — that path is the 28001022 under test).
+export interface CreatorGrant {
+  creator_open_id: string;
+  creator_user: string | null;
+  creator_name: string | null;
+  access_token: string;
+  refresh_token: string | null;
+}
+
+export async function getShopCreatorGrant(
+  creatorOpenId: string
+): Promise<CreatorGrant> {
+  if (!creatorOpenId) throw new Error("need creatorOpenId (from /shop-auth/grant status)");
+  const { query } = await import("./db");
+  try {
+    await query(`SELECT shop_id FROM credentials.shop_creator_tokens LIMIT 0`);
+  } catch {
+    throw new Error("creator table unreadable (run 036 on this DB?)");
+  }
+  const r = await query(
+    `SELECT creator_open_id, creator_user, creator_name, access_token, refresh_token
+     FROM credentials.shop_creator_tokens WHERE shop_id = $1 AND creator_open_id = $2`,
+    [SHOP1_ID, creatorOpenId]
+  );
+  if (r.rows.length > 0 && r.rows[0].access_token) return r.rows[0] as CreatorGrant;
+  throw new Error(
+    `no creator grant for open_id ${creatorOpenId.slice(0, 8)}… (len ${creatorOpenId.length}) — Copy id from /shop-auth/grant status`
+  );
+}
+
+export async function listShopCreatorGrants(): Promise<Array<{
+  creator_open_id: string;
+  creator_user: string | null;
+  creator_name: string | null;
+  tokenLen: number;
+}>> {
+  const { query } = await import("./db");
+  try {
+    const r = await query(
+      `SELECT creator_open_id, creator_user, creator_name, access_token
+       FROM credentials.shop_creator_tokens WHERE shop_id = $1 ORDER BY updated_at DESC`,
+      [SHOP1_ID]
+    );
+    return r.rows.map((row: any) => ({
+      creator_open_id: String(row.creator_open_id ?? ""),
+      creator_user: row.creator_user ?? null,
+      creator_name: row.creator_name ?? null,
+      tokenLen: String(row.access_token ?? "").length,
+    }));
+  } catch {
+    return [];
+  }
+}
+
+// Live Room Core Stats with a CREATOR token (Live Data scope). Same 202502
+// path as fetchLiveCoreStats, but the creator's access_token replaces the
+// seller token. First live run decides: cipher needed or not, room id =
+// live id or not. Errors propagate verbatim (code + message) for mapping.
+export async function fetchLiveCoreStatsAsCreator(
+  creatorOpenId: string,
+  liveRoomId: string
+): Promise<{ liveRoomId: string; creator: string; stats: any }> {
+  const out = await fetchLiveRoomAsCreator(creatorOpenId, liveRoomId, "core_stats");
+  return { liveRoomId: out.liveRoomId, creator: out.creator, stats: out.data };
+}
+
+const LIVE_ROOM_ENDPOINTS = [
+  "core_stats",
+  "traffic_performances",
+  "gmv_trend_performances",
+  "product_stats",
+] as const;
+
+// Generic Live Room caller with a CREATOR token. Endpoint is one of the
+// 202502 live_rooms family. Returns data or throws code + request_id.
+export async function fetchLiveRoomAsCreator(
+  creatorOpenId: string,
+  liveRoomId: string,
+  endpoint: string,
+  opts: { withCipher?: boolean } = {}
+): Promise<{ liveRoomId: string; creator: string; endpoint: string; data: any }> {
+  if (!creatorOpenId) throw new Error("need creatorOpenId (from /shop-auth/grant status)");
+  if (!liveRoomId) throw new Error("need liveRoomId (digits, affiliate room id from the AFFILIATE list)");
+  if (!endpoint) throw new Error("need endpoint (one of the 202502 live_rooms family)");
+  const { getAnalyticsAppKeys } = await import("./shop-analytics-credentials");
+  const grant = await getShopCreatorGrant(creatorOpenId);
+  const { key, secret } = getAnalyticsAppKeys();
+  if (!key || !secret) throw new Error("missing SHOP_ANALYTICS_APP_KEY/SECRET env");
+  const path = `/analytics/${LIVE_ROOM_VERSION}/live_rooms/${encodeURIComponent(liveRoomId)}/${endpoint}`;
+  const qp: Record<string, string> = { app_key: key };
+  if (opts.withCipher) {
+    const live = await resolveLiveCreds();
+    qp.shop_cipher = live.shopCipher;
+  }
+  const urlForSign =
+    `${SHOP_BASE}${path}?` +
+    Object.keys(qp).sort().map((k) => `${k}=${encodeURIComponent(qp[k])}`).join("&");
+  const sig = signShopUrl(urlForSign, secret);
+
+  const finalParams: Record<string, string> = {
+    ...qp,
+    sign: String(sig.signature),
+    timestamp: String(sig.timestamp),
+  };
+  const finalQs = Object.keys(finalParams)
+    .sort().map((k) => `${k}=${encodeURIComponent(finalParams[k])}`).join("&");
+  const res = await fetch(`${SHOP_BASE}${path}?${finalQs}`, {
+    method: "GET",
+    headers: {
+      "x-tts-access-token": grant.access_token,
+      "content-type": "application/json",
+    },
+  });
+  const body = await res.json();
+  if (body.code !== 0) {
+    throw new Error(`creator ${endpoint} code=${body.code}: ${body.message ?? "failed"} (req=${body.request_id ?? "?"})`);
+  }
+  return {
+    liveRoomId,
+    creator: grant.creator_user ?? grant.creator_open_id,
+    endpoint,
+    data: body.data?.stats ?? body.data ?? {},
+  };
+}
+
+export { LIVE_ROOM_ENDPOINTS };
+
+// Grant lookup by admin label (case-insensitive). Open_ids differ across
+// surfaces (alliance nAKT… vs shop B35v… for the same human), so matching
+// runs on the labeled username, which the admin sets at grant time.
+export async function findShopCreatorGrantByUser(
+  creatorUser: string
+): Promise<CreatorGrant> {
+  const want = creatorUser.trim().replace(/^@/, "").toLowerCase();
+  if (!want) throw new Error("need creatorUser (affiliate row creator.user_name)");
+  const { query } = await import("./db");
+  let rows: any[] = [];
+  try {
+    const r = await query(
+      `SELECT creator_open_id, creator_user, creator_name, access_token, refresh_token
+       FROM credentials.shop_creator_tokens WHERE shop_id = $1`,
+      [SHOP1_ID]
+    );
+    rows = r.rows ?? [];
+  } catch {
+    throw new Error("creator table unreadable (run 036 on this DB?)");
+  }
+  const hit = rows.find(
+    (x) => String(x.creator_user ?? "").replace(/^@/, "").toLowerCase() === want && x.access_token
+  );
+  if (!hit) {
+    throw new Error(
+      `no creator grant labeled "${want}" (mint a link on /shop-auth/grant, approve as @${want}, then set Name/Username)`
+    );
+  }
+  return hit as CreatorGrant;
+}
+
+// Full room bundle for /shop-live AFFILIATE rooms: all four Live Data
+// endpoints in parallel, fail-open per endpoint (one red endpoint never
+// kills the other three). Hobby-safe: ~4 calls, seconds total.
+export async function fetchLiveRoomBundleAsCreator(
+  creatorUser: string,
+  liveRoomId: string
+): Promise<{
+  liveRoomId: string;
+  creator: string;
+  core: any | null;
+  traffic: any | null;
+  gmvTrend: any | null;
+  products: any | null;
+  errors: Array<{ endpoint: string; code: string }>;
+}> {
+  if (!liveRoomId) throw new Error("need liveRoomId (affiliate live_id from the AFFILIATE list)");
+  const { getAnalyticsAppKeys } = await import("./shop-analytics-credentials");
+  const grant = await findShopCreatorGrantByUser(creatorUser);
+  const { key, secret } = getAnalyticsAppKeys();
+  if (!key || !secret) throw new Error("missing SHOP_ANALYTICS_APP_KEY/SECRET env");
+  async function call(endpoint: string): Promise<any> {
+    const path = `/analytics/${LIVE_ROOM_VERSION}/live_rooms/${encodeURIComponent(liveRoomId)}/${endpoint}`;
+    const qp: Record<string, string> = { app_key: key };
+    const urlForSign =
+      `${SHOP_BASE}${path}?` +
+      Object.keys(qp).sort().map((k) => `${k}=${encodeURIComponent(qp[k])}`).join("&");
+    const sig = signShopUrl(urlForSign, secret);
+    const finalParams: Record<string, string> = {
+      ...qp,
+      sign: String(sig.signature),
+      timestamp: String(sig.timestamp),
+    };
+    const finalQs = Object.keys(finalParams)
+      .sort().map((k) => `${k}=${encodeURIComponent(finalParams[k])}`).join("&");
+    const res = await fetch(`${SHOP_BASE}${path}?${finalQs}`, {
+      method: "GET",
+      headers: {
+        "x-tts-access-token": grant.access_token,
+        "content-type": "application/json",
+      },
+    });
+    const body = await res.json();
+    if (body.code !== 0) {
+      throw new Error(`creator ${endpoint} code=${body.code}: ${body.message ?? "failed"} (req=${body.request_id ?? "?"})`);
+    }
+    return body.data ?? {};
+  }
+  const eps = ["core_stats", "traffic_performances", "gmv_trend_performances", "product_stats"] as const;
+  const settled = await Promise.allSettled(eps.map((ep) => call(ep)));
+  const out: any = { liveRoomId, creator: grant.creator_user ?? grant.creator_open_id, core: null, traffic: null, gmvTrend: null, products: null, errors: [] };
+  settled.forEach((s, i) => {
+    const ep = eps[i];
+    if (s.status === "fulfilled") {
+      const d = s.value ?? {};
+      if (ep === "core_stats") out.core = d.stats ?? d;
+      else if (ep === "traffic_performances") out.traffic = d.traffic_performances ?? [];
+      else if (ep === "gmv_trend_performances") out.gmvTrend = d.gmv_trend_performances ?? [];
+      else out.products = d.product_stats ?? [];
+    } else {
+      out.errors.push({ endpoint: ep, code: s.reason instanceof Error ? s.reason.message : "failed" });
+    }
+  });
+  return out;
 }
 
 function normalizeOverall(o: any): ShopLiveOverall {

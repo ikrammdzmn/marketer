@@ -1,12 +1,154 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 48 first (current facts), then Checkpoints 47/46/45/44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 54 first (current facts), then Checkpoints 53/52/51/50/49/48/47/46/45/44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 54 — 29 Oct 2026 (creator grants + affiliate room detail LIVE on /shop-live; 15 deploys, all UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner opened with "the /shop-live is incomplete" and drove a full-day evidence arc: TikTok MCP reads (Business API can't see Shop minute data, 5 advertisers green) → opened Partner Center themselves → API Testing Tool 105002 → re-auth via localhost callback → green List (8 MARKETING rooms) + green Minute (399 intervals) → mapped minute-vs-list GMV mismatch (intervals 1355.30 ≈ list 1434.37, minute-overall 418.50 is stale — trust intervals) → demanded affiliate detail → Live Data scope enabled mid-session → creator alliance flow (state-required, API-list-empty-before-scope) → approved as wrong TikTok login first (Ikram, not dr.samhan — caught by identity check, re-granted right) → 36009003 wall → v202502 discovery → GREEN on all 4 room endpoints → wired into /shop-live with owner eyeballing every step ("gooooodd", then dashboard-compare screenshots). Mood: high-trust, high-tempo, owner tests on prod between every deploy and pastes exact results. Terse "ok go" = build + deploy immediately. "wrap up" came only after the dashboard-parity question was answered.
+
+**What shipped (tsc clean every step, 15 prod deploys, all owner-verified live, all UNCOMMITTED; latest `dpl_4MWdtsbKqu6MaPmMSrfLtxvbne1Y`).**
+- `036_shop_creator_tokens.sql` + `037` (scopes/user_type cols) — owner ran prod (confirm dev too). Per-creator store keyed `(shop_id, creator_open_id)`.
+- Temp `/shop-auth/grant` (admin-only, Settings → Shop grants, unlisted otherwise): 10-min HMAC-minted seller/creator links (`start?format=json`), seller 302 flow kept, creator alliance URL `shop.tiktok.com/alliance/creator/auth?app_key&state`.
+- `callback`: creator branch verifies query-state HMAC with NO session (minted link is the capability; legacy cookie flow keeps session gate); seller minted-links also session-free cross-device. `status` (lengths-only inventory) + creator `PUT label` (Name/Username, survives re-grants) + MYT timestamps.
+- `middleware.ts`: `/api/shop-auth/callback` public at edge (route still enforces HMAC/expiry).
+- Creator probe → room detail: `GET /api/shop-live/creator-probe` (matrix: core_stats + traffic + gmv_trend + product, fail-open each) and `GET /api/shop-live/room-detail` (username-labeled grant lookup + 4-call bundle); `GET /api/shop-live/creator-grants` (username inventory for badges); `sessions` gains `raw=1/find=/scan=creators` debug.
+- `/shop-live` renders: `(creator ✓)` picker badges, Fetch room detail (KPIs + traffic sources w/ share % + products w/ exposure/stock + 15-min GMV trend), List-grain row (impressions/views/clicks/tap-through exact/avg-watch/sales, null-aware `n/a`), CTOR field fix (`click_order_rate`), live-now lag hint.
+- Proof run: room `7700018251179002645` (24 Oct Mid-Month Sale, dr.samhan affiliate) — 4/4 green, GMV 49,302.23 = List live_gmv exact. Ongoing live `7701965489588816692` renders live too.
+- TTS Open Toolkit: already installed (CLI 0.1.7 `tts_open_toolkit`, skills in Claude dir, MY profile authed) — used its skill pack in-chat (OAS/FAQ); CLI proxy unused.
+
+**Bugs + lessons (sequence continues B122).**
+- B123 circulated-id mismatch: probe said "no grant" while status showed the row — my pasted open_id carried an invisible difference. Lesson: open_ids are Copy-id-from-table bytes only, never retyped; lookup errors now echo looked-up prefix+len.
+- B124 middleware 401'd the session-less callback before the route's HMAC check ran. Lesson: self-authenticating routes (signed state + expiry) belong in the middleware public list; the route still enforces.
+- B125 seller minted-link "admin only" on another device. Lesson: the minted HMAC link IS the capability (10-min + single-use code) — session gate only for legacy cookie flow.
+- B126 creator open_id (alliance `nAKT…`) ≠ shop List open_id (`B35v…`) for the SAME human; exchange carries no username. Lesson: match grants↔rooms by admin-labeled username, never cross-surface open_ids; labels are manual (one per creator, survives re-grants).
+- B127 Live Room `202309` 500s `36009003` on every endpoint regardless of token — bundled OAS was stale; documented version is `v202502`. Lesson: for brand-new TikTok APIs, verify the version against live Partner docs/Testing Tool, never the bundled OAS.
+- B128 affiliate List rows omit `traffic.impressions/ctr/tap_through_rate` (verified in raw dumps). Lesson: absent key ≠ 0 — render `n/a`, keep the mapping ready; never substitute product_impressions.
+- B129 product CTOR field is `click_order_rate` on product rows vs `click_to_order_rate` on core — same family, different names. Lesson: check field names per endpoint, never assume symmetry.
+- B130 `getShopCreatorGrant` swallowed DB errors into "no grant". Lesson: split table-missing vs no-row errors at the lookup boundary.
+- Lesson: wrong-login approvals are silent (grant stores with "@?") — always verify the TikTok profile on the approval screen BEFORE tapping Authorize; the username can't be recovered afterward (exchange has no name field).
+- Lesson: `seller token → 36009005` vs `creator token → 36009003` on the same call is a clean token-type discriminator — probe the seller control first when a new creator endpoint fails.
+
+**Open (owner vs next-build).**
+- Owner: label remaining creator rows as grants land (1/36: dr.samhan); eyeball room detail vs Seller Center dashboard; support tickets HELD (v202502 works — do not send the drafted 36009003 ticket); optional single-field ticket for affiliate `traffic.impressions` (dashboard-only today).
+- Next-build: parked post-authorize landing UI polish; affiliate minute (28001022) stays denied by design — room detail is the path, no further work; Ads Cost + GMV Max ROI join (Marketing API) if owner asks; TTS CLI `openapi` proxy for future probes (optional).
+- Standing: tree mixes Cp53 + sibling uncommitted work — touch only shop-auth/shop-live files; commit/push never unasked (owner commits).
+
+## Checkpoint 53 — 29 Oct 2026 (creative Posted/Age: columns live, API path dead, xlsx-import fallback; PARKED mid-priority)
+
+**To next-you: get back in this headspace instantly.** Owner asked for one thing — "posted time and age on /creative" — then steered probe-first through four TikTok dead ends without flinching ("can we probe to try see it?", pasted every Round 7 result back verbatim). Accepted the honest verdict (API can't give organic post dates) and parked it mid-priority instead of pushing a fifth guess. Same terse loop as Cp51: "go", screenshot, "wrap up". Sibling session touched the same tree all day (shop-auth, nightly-sync, gmv-max page) — my files are creative/*, creative.ts, creative-meta, 035, skill §5 only.
+
+**What shipped (tsc clean every step, 5 prod deploys, all UNCOMMITTED; latest `dpl_2hZxJenpT4AJuGH1M8dvapC5pGtJ`).**
+- `035_creative_item_meta.sql` (owner ran dev+prod): `creative.item_meta(item_id PK, posted_at, source)`.
+- `/creative` Posted + Age columns (kill list + Columns… picker + CSV `posted,age_days` + all-rows table); MYT age from `posted_at`, `—` when unknown.
+- Sync auto-fill (`enrichItemMeta`, fail-open, `metaForce` retries misses on manual Sync): `file/video/ad/info` → `ad/get` → `gmv_max/video/get` (store_id+store_authorized_bc_id, page_size ≤50).
+- Round 7 probe (3 real post IDs): file + creative/report = 40001-gated; ad/get = 0 ads; video/get = code 0 / 0 rows (uploads, not organic posts). Verdict: **no TikTok endpoint returns organic post dates** — recorded in `skills/tiktok-api/SKILL.md` §5, do not re-probe.
+- Fallback that works: `POST /api/creative-meta` + Import posted times block (paste `Post ID,Time posted` from xlsx, fills empties only, naive = MYT).
+
+**Parked (MID priority, resume later).** True auto post-dates need app approval (re-probe the 40001s) or a Shop/Research-API path. Resume: Run probe → Round 7 → if any source green, wire into `enrichItemMeta`; else keep xlsx-import.
+
+**Bugs + lessons.**
+- B121 edit ate `round2Probe`'s closing brace (insert anchored on `return out; }` + export consumed the brace; tsc caught it at EOF). Lesson (B93/B106/B118 repeat, logged honestly): structural inserts need a re-read of BOTH seams before verifying — tsc catches it, eyes find it faster.
+- B122 `gmv_max/video/get` at page_size 100 40002s ("number must be most 50") while enrich silently missed. Lesson: when TikTok names a number in an error message, apply it to every caller immediately (enrich now pages 50).
+- Lesson: probe-then-wire beats guessing — 4 endpoints × 3 deploys of evidence killed the API path in one session instead of a week of maybes.
+
+**Open (owner vs next-build).**
+- Owner: commits (tree mixes other uncommitted work); eyeball Posted/Age after an import.
+- Next-build: nothing pending on this arc.
+
+## Checkpoint 52 — 28 Oct 2026 (TTAM live-Ad creative triage in Ads Manager via browser MCP; docs only, UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner drove live in their own Chrome (tab 31, TTAM Ad view, Brand Consideration 28 Sep–27 Oct): "tick all above 0.04" → "exclude 0.04 and below, 0.05+ only" → "what did I tick?" → "analysis, kill or not?" → defended 4 WATCH → "untick the 4 watch" → "I see 12 selected" → "list full numbers" → "wrap up". Terse throughout, decides fast, trusts screenshots over claims. Sparring stayed ON (CPC-line honesty, asymmetric-risk case for WATCH). No code, no deploys, no commits (owner commits). Standing rules kept: agreed tab only, no sign-in touches, no agent tabs left open.
+
+**What happened (verified via chrome-devtools MCP, not guesses).**
+- Rule locked: Cost per consideration strictly >0.04 (0.04 and below excluded). 13 rows qualify.
+- Verdicts: CPC nominates, CPM vs 5.03 avg + 6s-hold vs 10.83% avg decide → 9 KILL + 4 WATCH (~RM2,238 of 14,490 at stake).
+- WATCH (4, keep): `7664088569220173074` (0.05, 214 clicks — best pull, fix hook), `7664498275264761095` (0.05, CPM 5.42 ≈ avg), `7664088569220173074` (0.05, rate 13.43% ≈ mean), `7664499552828820754` (0.06, thin evidence 17k impr).
+- KILL (9): `7664866336257953042` (0.11) / `7665617581130255624` + `7664155824754789650` (0.08) / `7668986026152496392` + `7665617335671115026` + `7664868135668829448` (0.07) / `7670470280048889096` (0.06, CPM 9.31) / `7668981355144809736` + `7664867079840877832` (0.05).
+- Final live state: all 13 ticked (header count bounced 9/12/13 mid-sweep — virtualized re-renders; ground truth = per-row DOM read, 13/13 confirmed).
+
+**Bugs + lessons.**
+- B119 table restores prior selection on re-render: snapshot-uid clicks + `input.click()` unticks reverted; header count disagreed with mounted DOM (9 vs 12). Lesson: on this Ads Manager table, treat selection as sticky-per-row-identity — verify by sweeping ALL virtual windows and reading checked-state per row, never by header count or single-window DOM.
+- B120 TikTok creative table lives in shadow DOM: `querySelector('table')` = null, `innerText` = empty, `textContent` + shadow-piercing `deep()` works. Lesson: any future Ads Manager DOM work starts with the shadow-walk + `deep()` text helper, not snapshot uids.
+- Lesson: `skills/browser-access/SKILL.md` created this session (UNCOMMITTED, untracked) — checkbox-flow setup + agreed-tabs-only rules. Next browser session: read it first, `list_pages` first call, never `taskkill` Chrome.
+- Lesson: 0.04 is the account's own Total-row average, not a benchmark — it drifts down as the tail is killed. If CPC becomes a rule, relative form (`>2x trailing avg`) is defensible; absolute 0.04 is eyeball.
+
+**Open (owner vs next-build).**
+- Owner: bulk action on the 13 (or untick 4 WATCH first — hand them the 13 full IDs above); TTAM score eyeball after focused-6s switch + Kill/Scale for sample-13 → userscript v1 still parked.
+- Next-build: nothing pending on this arc. Tree still mixes Cp49–51 uncommitted work + untracked `skills/browser-access/` — touch only docs until owner commits.
+
+## Checkpoint 51 — 27 Oct 2026 (creative analytics port: accounts/trends/verdicts/columns/diagnostics; 14 deploys, all live-verified, UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner drove screenshot-first all day: pasted Ads Manager vs board mismatches, asked "why different?", then steered each fix ("ok go", "ok next", "ok next phase", "deploy each one"). Started from a real 28% gap on himcoffee 24→26 Oct — diagnosed as read-path LIMIT-2000 (B117), proved with a single-day exact match, then ported half the local creative-analysis tool online phase by phase. Frequent Plan/Build toggles — roll with it, words-first in Plan, build on "go". Sibling session active all day (Cp50, `ttam.ts` + skill touches) — touch only creative/gmv files. Owner commits, never us.
+
+**What shipped (tsc green every step, 14 prod deploys, all owner-verified live, all UNCOMMITTED).**
+- B117 fix: KPIs from server-side full-range SUMs (`totals` + `totalsStatus`, `?status=` + `?totalsOnly=1` support); 24→26 reconciles exact 1765/14264/8.08. Follow-up: per-day chunked Fetch (oldest day starved again at 2000 rows — newest-first LIMIT serves 27+26 before 25).
+- Kill list: verdict filter, Post ID column (copy), Columns… picker (All/None, state-only reset), Spend/GMV rank toggle, Daily ▸ day-columns + Total (metric-driven, hidden by default), Shape column (solo popup entry), hook/hold diagnostics in `Why` + expandable quartile/CTR/CVR strip + per-post sparkline.
+- Analytics blocks: Top-10-accounts cards (5×2 grid kept) + collapsible per-account summary, ads-daily trend (5 tickable cards, vs-previous deltas, Chart.js multi-line, day table), trend-per-creative (top-10 chart, pivot table w/ `=` absent, solo popup, CSV) — later merged into kill list; chart/CSV/solo survive.
+- Account kinds (owner rules): registered plain = internal, top_affiliate = top affiliate, unregistered = affiliate, inactive + spending = red ⚠ + banner + `Why` fragment, Product-card bucket = no pill (server CASE label). Kind filter + per-kind subtotals.
+- Shared skill calendar on `/creative` (Range button + DateRangePicker, no fork); slimmed sync (roi/cpo mapper-computed, dropped from pull).
+- Product-card "0"-account diagnosis: raw `tt_account_name` sentinel, same family as B98.
+
+**Bugs + lessons.**
+- B117 KPI-on-truncated-rows: aggregates server-side, never from display sets.
+- B118 edit-tool appetite, 3 hits one session (TrendChart signature, loadTargets decl, rows-toggle opener eaten by partial-oldString edits). Lesson (B93/B106 repeat, logged honestly): big-block replaces need a re-read of BOTH seams before verifying — tsc catches it, eyes find it faster.
+- Lesson: sibling deploys carry your uncommitted code to prod (Cp50) — deploy IDs in this tree are shared; note shared-tree deploys in the checkpoint, don't claim sole ownership.
+- Lesson: exact-count labels ("2000 rows.") are tripwires — when a count sits exactly on a known cap, it's the cap until proven otherwise.
+
+**Open (owner vs next-build).**
+- Owner: eyeball prod `/creative` end-to-end (kinds, Daily ▸, solo, trend CSV); tonight's nightly confirms no 40001 page.
+- Next-build: parked defensive sync-caps fix (build only if a campaign passes 20 products or surprise `skipped`); commit/push never unasked (tree mixes sibling work).
+
+## Checkpoint 50 — 27 Oct 2026 (TTAM creative identity + per-adgroup search + deep-find; tsc clean, deployed prod, UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Same terse "ok/go" loop, owner testing on prod between builds (screenshots of the TTAM drill). Arc: TTAM creative analysis (ad `...274913` hogging 84.6% of its adgroup) → challenger-split plan → `adgroup_create` IN_ROLL_OUT blocked (manual Ads Manager path handed over, still pending) → built the visibility tooling instead so the owner can see creatives without relying on ad names. Two plan-mode interludes (freshness-panel question → DB-first plan now lives in `C:\Users\darkv\.opencode\plan\` for the other chat; deep-find 60s question → answered from architecture, no new code needed). Closed "ok wrap up" → ritual, docs only, zero commits.
+
+**What shipped (tsc green after every edit, 6 prod deploys, all UNCOMMITTED; latest `dpl_BQGPPA6EXh7w5T8PZ97AvSEgsmQe`).**
+- TTAM ad identity (`ttam.ts`): `TtamAd` carries `tiktok_item_id/display_name/identity_type/ad_text` from `/ad/get/` (fields were fetched, mapper dropped them) + `label/caption` with Choice-A dedupe (strip trailing `_19digits` from `ad_name`; title==text renders once). Short post-ID names pass through untouched.
+- Per-adgroup creative search + caption collapse (`page.tsx`): filter box per open adgroup (matches ad/post/account/text/caption, `n/m` counter); caption collapses to one ellipsis line with ▸/▾ toggle; post ID always on line 1.
+- Deep-find (`page.tsx`): button next to the campaign search fans out client-side across unexpanded campaigns/adgroups (spend order, `first hit stops` default on), streams clickable matches, jumps (expand + scroll + highlight + verdict filter reset), Stop/skip accounting (`scanned N, skipped M`), resume-from-cache. No new API routes.
+- Deploy trail: `dpl_…nlbvu7md` (identity+search) → `dpl_FNRgNkGDLeLnjvomgTkf63M2uCT7` (collapse) → `dpl_EMP7TY…` (unverified mid) → `dpl_9boRatqT2…` (Choice A) → `dpl_F5sa5nmDqZd…` (deep-find) → `dpl_BQGPPA6EXh7w5T8PZ97AvSEgsmQe` (close-out, current prod).
+
+**Findings (verified via MCP, not guesses).**
+- `ad_name` is verbatim stored: `...775394` rows store `"{caption} _{post_id}"` (creation-flow default), while the same posts in another account store bare post IDs. API never composes — Ads Manager just renders its own short form. Lesson: strip `/[\s_]*\d{19}\s*$/` before comparing/displaying names.
+- Write tools gated: `adgroup_create` → `NOT_AVAILABLE/IN_ROLL_OUT` per-advertiser till Dec (deterministic, pre-validation). Challenger split (RM20, winner stays) parked on manual Ads Manager duplicate. Reads all green.
+- Post-ID-only reverse lookup: no single tool (`tt_video_info_get` needs auth code); practical path is `ad_get` pull + client-side `tiktok_item_id` match, or `identity_video_info_get` once identity known.
+
+**Open (owner vs next-build).**
+- Owner: manual challenger split in Ads Manager (4 losers → `EVENT | CHALLENGER` RM20, pause originals after delivery); then ask for a 5-way spend-share re-pull to confirm. Do NOT commit (explicit).
+- Next-build: nothing pending on this arc. Standing constraints: shop-1-only (Cp49 order, still active); tree mixes Cp49's uncommitted DB-first work — touch only my files.
+- ⚠️ CORRECTION to Cp49: it claims UNDEPLOYED, but this session deployed prod 5× from this same dirty tree — **prod already contains Cp49's DB-first code** (plus mine). Owner's "already do" on thread 3 is consistent with that. Do not re-deploy Cp49's arc as "new".
+
+## Checkpoint 49 — 27 Oct 2026 (DB-first total + 40001 nightly fix + shop-1-only lock + creative totals/picker; tsc clean, deployed `dpl_6ac4gJQ7MyqojPJVdxur4Z3dbN2P`, UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Plan-mode → "go" loop, all terse. Owner confirmed the two open decisions fast (60-min staleness, silent background-fill) then tested while I built. Mid-session they pasted a Telegram `nightly-sync FAILED: campaign/get 40001` alert — diagnosed from code-shape alone (wrong-token substitution, not a permission loss) and fixed same session. Closed with a standing order: **shop 1 only from here on, ignore other shops everywhere** — treat as an active constraint until explicitly lifted. Then "wrap up" → full ritual, docs only, zero commits (owner commits). No deploys this session (nothing left the laptop; owner deploys).
+
+**What shipped (tsc green after every edit, all UNCOMMITTED + UNDEPLOYED).**
+- DB-first total/live/product (`gmv-max/page.tsx`): auto-load renders the Neon snapshot instantly with a `cached · synced Xm ago` pill, then a silent live refresh atomically replaces it (no merger double-count). Fresh singles stay cached (Fetch Data = live, as today); total + stale (>60 min) singles auto-refresh; missing/empty snapshot → fetch-first as today; live failure keeps cache + retry note. Merged rows carry `cached/pulledAt/partial`; live rows show a green `live` pill.
+- Hourly-shop badge (`hourly-shop.ts` + page): `getHourlyShopView` returns `snapshot { shopUpdatedAt, adsPulledAt, ageMin, stale }` (fail-open); UI pill `cached · synced Xm ago`, red `stale (>60m)` when stale.
+- B115 fix (`ads-credentials.ts`): env fallback is per-advertiser only (shop's own `accessTokenEnv` via SHOPS) — another shop's token can never be handed over mislabeled again.
+- B116 fix (`cron/nightly-sync`): per-shop fail-open (one shop's error records + continues, guard-heal too); Telegram alerts on shop-1 failure only.
+- Shop-1-only lock (owner order): nightly-sync hard-defaults to `["1"]`; explicit non-1 `shopNumber` → 400. Hourly/TTAM crons already default `shopNumber=1`; dashboard `VALID_SHOPS` was already `{"1"}`.
+- Creative totals fix (`api/creative-sync` full-range SUMs + `totalsStatus`, page KPIs from totals; B117 LIMIT-2000 diagnosis proven by 26-Oct single-day exact match) + shared skill calendar picker on `/creative` (Range button + DateRangePicker popup, no fork).
+- Deployed `dpl_6ac4gJQ7MyqojPJVdxur4Z3dbN2P` (READY, `/api/health` ok; owner-asked). Still UNCOMMITTED. Note Cp50's correction: sibling session's 5 deploys had already carried Cp49's DB-first code to prod — this deploy adds the creative arc on top.
+- Kill-list follow-ups: verdict filter (ALL/SCALE/WATCH/KILL/FATIGUE, drives summary+CSV+draft) + Post ID column (mono, click-to-copy) + Columns… picker (All/None + 12 checkboxes, state-only reset). Deployed `dpl_EUqz2K8NV48dVrwz1QVFEtzCqJRB` (READY, health ok; owner-asked). Still UNCOMMITTED.
+- Creative analytics port (all `tsc` clean, each phase deployed owner-asked: `dpl_HwDYC2gJamz4WMCnoGFKBQdWpWyD` layout → `dpl_5k2o2bqmU5Z7vNACmZMgjNT5jDR3` accounts → `dpl_Afson7omjfmASTxw7bmq8ztbQ5gM` table-collapse → `dpl_7FEgkgvg2QgBsNvpWPxAMZC3wimk` Product-card label → `dpl_DPuZLLkzEjK3rHNdTXZUkUK43PnG` sort toggle + ads-daily sparkline → `dpl_84QM8BCNz7GyQ8VhrVo7jLZryFgE` per-creative strip → `dpl_AdELLaEb9YxE1sv3HmySwrBgNduz` local-style trend cards/chart/vs-prev → `dpl_FkGQrJ9krbHecWa4Z4KNWehoTQFd` per-day chunked fetch). Still UNCOMMITTED.
+
+**Bugs + lessons.**
+- B115 env-chain token substitution: `ENV_FALLBACKS` returned the first non-empty token for ANY advertiser — shop 2 ran on shop 1's token → `campaign/get 40001`. Lesson: credential fallbacks resolve per-identity or not at all; a chain that "helpfully" substitutes is a wrong-token bug wearing a resilience costume (rule 8 exists for exactly this).
+- B116 nightly multi-shop abort: `Object.keys(SHOPS)` loop with a single outer try/catch meant shop 2's 40001 killed shops 3/4 + guard-heal + paged the owner. Lesson: every multi-tenant cron loop is per-tenant try/catch with per-tenant results; the alert fires on the money tenant only.
+- B117 KPI-on-truncated-rows: creative KPIs summed the `LIMIT 2000` display set, understating a 3-day range ~28% (kept-ROI 8.50 > full-ROI 8.08 was the fingerprint — `gmv DESC` keeps the head). Lesson: aggregates always compute server-side over the full set; display limits never feed totals (B79's family).
+- Lesson: `getManualCampaigns` 40001 was a red herring (fail-open catch) — the fatal throw was `getGMVMaxIds` one call earlier in `fetchManualSpend` (outside any try). When an alert names an endpoint, grep ALL throw sites with that prefix before blaming the first one found.
+- Lesson: `ttam.ts` shows `M` in this tree — another session's uncommitted work. tsc covers the whole tree, so their file gates my deploys; touch only my files, note theirs.
+
+**Open (owner vs next-build).**
+- Owner: eyeball prod tabs (DB-first badges, creative 24→26 Oct ≈ 1765/14264/8.08, creative 📅 picker); tonight's nightly run confirms shop 1 green + no 40001 page.
+- Next-build: nothing pending on this arc. Parked: defensive sync-caps fix (paginate product grain + 20-chunk group loop; audit 27 Oct closed clean — himcoffee 24→26 reconciles exact, no cap bit; build only if a campaign passes 20 products or an unexpected `skipped` appears). Standing constraints: shop-1-only; commit/push never unasked (tree mixes sibling session's `ttam.ts` + Cp50 work — touch only my files).
 
 ## Checkpoint 48 — 26 Oct 2026 (TikTok MCP + DB-first hourly + task notes + kill-list; all deployed, owner-verified live)
 

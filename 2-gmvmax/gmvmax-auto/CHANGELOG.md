@@ -2,6 +2,32 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 29 Oct 2026 — creator grants + affiliate room detail LIVE on /shop-live (tsc clean, 15 deploys, UNCOMMITTED; latest `dpl_4MWdtsbKqu6MaPmMSrfLtxvbne1Y`)
+
+- `036_shop_creator_tokens.sql` + `037` (granted_scopes/user_type) — per-creator token store `(shop_id, creator_open_id)`; temp admin `/shop-auth/grant` (Settings → Shop grants) mints 10-min seller/creator links; `callback` verifies creator state HMAC-only (no session), minted seller links work cross-device; `middleware` exempts callback at edge; Name/Username labels per row (survive re-grants) + MYT timestamps + lengths-only status.
+- Affiliate room detail (Live Data `v202502` — bundled OAS `202309` was stale and 500s): `room-detail` bundles core_stats + traffic + gmv_trend + product (fail-open each), `(creator ✓)` picker badges via labeled-username match, `sessions` debug (`raw=1/find=/scan=creators`); `/shop-live` renders KPIs + traffic share % + products (exposure/stock) + 15-min GMV trend + null-aware List grain (`n/a`, never fake 0). Proof: room `7700018251179002645` 4/4 green, GMV 49,302.23 = List exact. Bugs B123–B130 (id-bytes, middleware-401, minted-link session, open_id scoping, 202309 staleness, absent-keys, CTOR field names, swallowed DB errors).
+- Open threads parked: support tickets HELD (no longer needed); affiliate `traffic.impressions` dashboard-only (mapping ready, `n/a` rendered); post-authorize landing polish; 35 creators still to grant; Ads Cost/GMV Max ROI join optional.
+
+## 29 Oct 2026 — creative Posted/Age + xlsx-import (tsc clean, 5 deploys, UNCOMMITTED; latest `dpl_2hZxJenpT4AJuGH1M8dvapC5pGtJ`)
+
+- `035_creative_item_meta.sql` (owner ran dev+prod): `creative.item_meta(item_id PK, posted_at, source)`; Posted + Age columns on kill list (Columns… picker, CSV `posted,age_days`) + all-rows table, MYT age, `—` unknown.
+- Round 7 probe (3 real post IDs, verdict recorded in `skills/tiktok-api/SKILL.md` §5): `file/video/ad/info` + `creative/report/get` 40001-gated, `ad/get` 0 ads on GMV PRODUCT, `gmv_max/video/get` code 0 / 0 rows (uploads, not organic posts) — no TikTok endpoint returns organic post dates, do not re-probe; `page_size` max is 50 (B122).
+- `POST /api/creative-meta` + Import posted times block (paste `Post ID,Time posted` from xlsx, fills empties only, naive = MYT) — the working fallback, parked MID priority (resume after app approval → re-probe → wire `enrichItemMeta`).
+
+## 28 Oct 2026 — TTAM live-Ad triage in Ads Manager via browser MCP (docs only, UNCOMMITTED)
+
+- CPC >0.04 rule (0.04 and below excluded): 13 rows ticked live (9 KILL + 4 WATCH with full post IDs in `DEV_NOTES.md` Cp52); KILL = CPM 7.3–9.3 + weak hold, WATCH = near-avg CPM / clicks / thin evidence; unticks reverted on re-render (table restores selection) — verify per-row across all virtual windows, never by header count. New repo skill `skills/browser-access/` (checkbox-flow setup + agreed-tabs-only rules, untracked).
+
+## 27 Oct 2026 — TTAM creative identity + search + deep-find (tsc clean, deployed prod `dpl_BQGPPA6EXh7w5T8PZ97AvSEgsmQe`, UNCOMMITTED)
+
+- Ad rows carry TikTok account + post ID (`ttam.ts` keeps `tiktok_item_id/display_name/ad_text` + `label/caption` with trailing-`_postid` strip dedupe); per-adgroup creative search, one-line collapsed captions with ▸/▾, client-side deep-find with jump-to-match. NOTE: prod deploys from this tree also shipped the uncommitted DB-first arc below.
+
+## 27 Oct 2026 — DB-first total + 40001 nightly fix + shop-1-only lock + creative analytics port (deployed `dpl_6ac4gJQ7MyqojPJVdxur4Z3dbN2P` + `dpl_EUqz2K8NV48dVrwz1QVFEtzCqJRB` + `dpl_HwDYC2gJamz4WMCnoGFKBQdWpWyD` + `dpl_5k2o2bqmU5Z7vNACmZMgjNT5jDR3` + `dpl_Afson7omjfmASTxw7bmq8ztbQ5gM` + `dpl_7FEgkgvg2QgBsNvpWPxAMZC3wimk` + `dpl_DPuZLLkzEjK3rHNdTXZUkUK43PnG` + `dpl_84QM8BCNz7GyQ8VhrVo7jLZryFgE` + `dpl_AdELLaEb9YxE1sv3HmySwrBgNduz` + `dpl_FkGQrJ9krbHecWa4Z4KNWehoTQFd`, `/api/health` ok; UNCOMMITTED)
+
+- Total/LIVE/Product render the Neon snapshot instantly (amber `cached · synced Xm ago` pill) then swap in live numbers silently (green `live` pill); staleness threshold 60 min, fail-open everywhere. Hourly-shop snapshot badge + red `stale (>60m)` pill.
+- Nightly 40001 fix: `getAdsCredentials` env fallback is per-advertiser only (no more wrong-token substitution); nightly-sync is per-shop fail-open with Telegram alerts on shop-1 failure only.
+- Shop-1-only lock (owner order): nightly-sync hard-defaults `["1"]` (non-1 → 400); other shops ignored everywhere from here on.
+
 ## 26 Oct 2026 — rename GMV Max Online → Marketer HW (deployed, zero leftovers repo-wide)
 
 ## 26 Oct 2026 — DB-first hourly + freshness panel + task notes + creative kill-list (deployed, owner-verified live)

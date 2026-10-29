@@ -7,6 +7,8 @@ import { fetchShopLiveSessions } from "@/lib/shop-live";
 // accountType values verified in the Testing Tool: MARKETING (detail
 // readable) and AFFILIATE_ACCOUNTS (metadata only — minute detail answers
 // 28001022 for those rooms by TikTok design).
+// &raw=1: returns the first page of UNFILTERED TikTok rows (debug only —
+// reveals fields the picker drops, e.g. a room id distinct from session id).
 export async function GET(request: Request) {
   const access = await requireModule("shop-live");
   if (!access.ok) return access.response;
@@ -24,6 +26,22 @@ export async function GET(request: Request) {
   }
   try {
     const out = await fetchShopLiveSessions(shopNumber, startDateGe, endDateLt, accountType, 5, currency);
+    const find = (searchParams.get("find") ?? "").trim();
+    if (find) {
+      const { findShopLiveSessionRaw } = await import("@/lib/shop-live");
+      const hit = await findShopLiveSessionRaw(shopNumber, startDateGe, endDateLt, accountType, find, currency);
+      return NextResponse.json(hit);
+    }
+    if (searchParams.get("scan") === "creators") {
+      const { scanAffiliateCreators } = await import("@/lib/shop-live");
+      const creators = await scanAffiliateCreators(shopNumber, startDateGe, endDateLt, accountType, currency);
+      return NextResponse.json({ creators });
+    }
+    if (searchParams.get("raw") === "1") {
+      const { fetchShopLiveSessionsRaw } = await import("@/lib/shop-live");
+      const raw = await fetchShopLiveSessionsRaw(shopNumber, startDateGe, endDateLt, accountType, currency);
+      return NextResponse.json(raw);
+    }
     return NextResponse.json(out);
   } catch (e) {
     const message = e instanceof Error ? e.message : "shop-live sessions failed";

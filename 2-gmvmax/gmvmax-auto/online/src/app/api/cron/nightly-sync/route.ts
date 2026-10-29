@@ -4,7 +4,6 @@ import { getShopROAS, syncShopCampaigns } from "@/lib/gmv";
 import { alertCronFailure } from "@/lib/cron-alert";
 import { refreshShopHourly } from "@/lib/hourly-shop";
 import { fetchShopDayOrders } from "@/lib/shop-orders";
-import { SHOPS } from "@/lib/shops";
 
 export const dynamic = "force-dynamic";
 
@@ -115,8 +114,13 @@ export async function GET(request: Request) {
   }
   const { searchParams } = new URL(request.url);
   const date = searchParams.get("date") || klYesterday();
+  // Shop-1-only (owner call): other shops are ignored everywhere. An
+  // explicit non-1 shopNumber fails loud instead of syncing the wrong shop.
   const only = searchParams.get("shopNumber");
-  const shops = only ? [only] : Object.keys(SHOPS);
+  if (only && only !== "1") {
+    return NextResponse.json({ error: "shop-1-only: other shops are ignored" }, { status: 400 });
+  }
+  const shops = ["1"];
   const results: Record<string, unknown> = {};
   try {
     for (const s of shops) {
@@ -127,11 +131,20 @@ export async function GET(request: Request) {
       } catch (e) {
         console.error("[nightly-sync] campaign names sync failed, metrics kept", e instanceof Error ? e.message : "failed");
       }
-      results[`shop_${s}_${date}`] = await syncOne(s, date);
-      results[`hourly_shop_${s}_${date}`] = await syncShopHourly(s, date);
+      // Per-shop fail-open: one shop's 40001/expired token must not abort
+      // the remaining shops or the guard-heal below. Shop 1 decides the
+      // alert (see end of handler); other shops record + continue.
+      try {
+        results[`shop_${s}_${date}`] = await syncOne(s, date);
+        results[`hourly_shop_${s}_${date}`] = await syncShopHourly(s, date);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "sync failed";
+        console.error(`[nightly-sync] shop ${s} failed, continuing`, message);
+        results[`shop_${s}_${date}`] = { ok: false, error: message };
+      }
       await new Promise((r) => setTimeout(r, 500));
     }
-    // Guard-heal: past 2 days, missing rows only.
+    // Guard-heal: past 2 days, missing rows only (fail-open per shop).
     const todayKL = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
     for (const g of [subDaysKL(todayKL, 1), subDaysKL(todayKL, 2)]) {
       if (g === date) continue;
@@ -141,10 +154,29 @@ export async function GET(request: Request) {
           [parseInt(s, 10), g]
         );
         if (ex.rows.length === 0) {
-          results[`heal_shop_${s}_${g}`] = await syncOne(s, g);
+          try {
+            results[`heal_shop_${s}_${g}`] = await syncOne(s, g);
+          } catch (e) {
+            const message = e instanceof Error ? e.message : "sync failed";
+            console.error(`[nightly-sync] heal shop ${s} ${g} failed, continuing`, message);
+            results[`heal_shop_${s}_${g}`] = { ok: false, error: message };
+          }
           await new Promise((r) => setTimeout(r, 500));
         }
       }
+    }
+    // Alert on shop 1 only (the money shop): other shops' token gaps are
+    // recorded in results, not paged to Telegram every night.
+    const shop1Keys = Object.keys(results).filter((k) => k.includes("_1_"));
+    const shop1Failed = shop1Keys.some(
+      (k) => (results[k] as { ok?: boolean })?.ok === false
+    );
+    if (shop1Failed) {
+      const first = shop1Keys
+        .map((k) => `${k}: ${(results[k] as { error?: string })?.error ?? "failed"}`)
+        .join("; ");
+      await alertCronFailure("nightly-sync", first);
+      return NextResponse.json({ ok: false, error: first, results }, { status: 500 });
     }
     return NextResponse.json({ ok: true, date, results });
   } catch (e) {

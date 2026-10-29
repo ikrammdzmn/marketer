@@ -10,6 +10,7 @@ function isPublicPath(path: string): boolean {
     path === "/api/auth" || path.startsWith("/api/auth/") ||
     path === "/api/tg-webhook" ||
     path === "/api/tg-probe" ||
+    path === "/api/shop-auth/callback" ||
     path === "/api/campaigns/sync" ||
     path === "/api/cron" || path.startsWith("/api/cron/");
 }

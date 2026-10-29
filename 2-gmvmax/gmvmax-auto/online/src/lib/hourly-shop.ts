@@ -153,11 +153,55 @@ export async function getHourlyShopView(shopNumber: string, date: string, startD
       missing,
     });
   }
+  // DB-first staleness meta: max shop updated_at + max ads pulled_at for
+  // the date. Fail-open nulls — the UI falls back to updatedAt/agoStr.
+  let shopUpdatedAt: string | null = null;
+  let adsPulledAt: string | null = null;
+  try {
+    const mu = await query(
+      `SELECT MAX(updated_at) AS m FROM gmv.shop_hourly_orders
+       WHERE shop_number = $1 AND date = $2::date`,
+      [parseInt(shopNumber, 10), date]
+    );
+    const v = mu.rows[0]?.m;
+    shopUpdatedAt = v ? new Date(v).toISOString() : null;
+  } catch {
+    const first = [...cmap.values()][0]?.u ?? null;
+    try {
+      shopUpdatedAt = first ? new Date(String(first)).toISOString() : null;
+    } catch {
+      shopUpdatedAt = null;
+    }
+  }
+  try {
+    const mp = await query(
+      `SELECT MAX(pulled_at) AS m FROM gmv.hourly_campaign_metrics
+       WHERE shop_id = $1 AND hour_slot LIKE $2`,
+      [shop.shopId, `${date}%`]
+    );
+    const v = mp.rows[0]?.m;
+    adsPulledAt = v ? new Date(v).toISOString() : null;
+  } catch {
+    adsPulledAt = null;
+  }
+  const newest = [shopUpdatedAt, adsPulledAt]
+    .map((s) => (s ? new Date(s).getTime() : NaN))
+    .filter((n) => Number.isFinite(n));
+  const ageMin = newest.length
+    ? Math.max(0, Math.floor((Date.now() - Math.max(...newest)) / 60000))
+    : null;
+  const snapshot = {
+    shopUpdatedAt,
+    adsPulledAt,
+    ageMin,
+    stale: cmap.size === 0 || ageMin === null || ageMin > 60,
+  };
   return {
     shopName: shop.name, date,
     hours,
     cachedHours: cmap.size,
-    updatedAt: [...cmap.values()][0]?.u ?? null,
+    updatedAt: shopUpdatedAt ?? [...cmap.values()][0]?.u ?? null,
+    snapshot,
     ...(await getShopHourlyScorecardBlock(shopNumber, startDate ?? date, endDate ?? date)),
   };
 }

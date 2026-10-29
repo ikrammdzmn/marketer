@@ -97,15 +97,29 @@ Time-posted at creative grain.
   TikTok confirmation. EDS/ERRI use exact inputs — no gap.
 - Skip `"-"` placeholder rows. Hobby kills at 60s — batch writes (500/chunk),
   chunk syncs (≤7d), external pinger for hourly.
+- Write tools gated per-advertiser: `adgroup_create` → `NOT_AVAILABLE /
+  IN_ROLL_OUT` (est. Dec, deterministic, pre-validation) while reads stay
+  green — MCP is read-only for gated advertisers; use Ads Manager for creates.
+- `ad_name` is verbatim stored, never composed on read: Spark/duplicate flows
+  often write `"{caption} _{post_id}"` (suffix = 19-digit `tiktok_item_id`);
+  strip `/[\s_]*\d{19}\s*$/` before comparing or displaying names.
 - Chart.js `order`: higher = BEHIND. PowerShell: `;` chaining, no unix pipes.
 
 ## 5. Unprobed candidates (from Buer2333/tiktok-ads-mcp diff, 10 Oct 2026)
 
-- `gmv_max/video/get/` — per-store GMV video library (needs `store_id`).
-- `creative/report/get/` (`VIDEO_INSIGHT`) — creative-level video insights.
-- `file/video/ad/info/` — asset details incl. `create_time` (Time-posted
-  candidate), ≤100 video IDs/req. Note: GMV `item_id`s are post IDs —
-  may not resolve here.
+- `gmv_max/video/get/` — per-store GMV video library. Needs `store_id` +
+  `store_authorized_bc_id` (either alone 40002s); `page_size` max 50.
+  Round 7 (shop 1, Oct 2026): code 0 but **0 rows** incl. with a `video_ids`
+  filter — the library holds uploads, NOT organic posted videos, so NO
+  Time-posted for GMV creatives. Do not re-probe for post dates.
+- `creative/report/get/` (`VIDEO_INSIGHT`) — 40001 permission-gated
+  (round 7, Oct 2026). Retry after app approval.
+- `file/video/ad/info/` — 40001 permission-gated (round 7, Oct 2026). Retry
+  after app approval. (Was: `create_time` candidate, ≤100 video IDs/req.)
+- Round 7 also confirmed: GMV PRODUCT campaigns own **0** auction ads
+  (`ad/get` code 0, 0 rows), so no `tiktok_item_id → create_time` mapping
+  exists. Live Time-posted source: manual xlsx import into
+  `creative.item_meta` (`POST /api/creative-meta`).
 - Their patterns worth borrowing: `-` row skip, lag-tolerance completeness
   check, `tenacity`-style retry on rate-limit (ours uses fixed sleeps).
 - The fork itself is NOT a dependency — reference only, no second credential path.

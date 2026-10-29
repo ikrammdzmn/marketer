@@ -57,7 +57,7 @@ Lineage: v51-port `DateRangePicker.tsx` (dashboard) + v52 single-click fix
 - Presets include Last 3 days between Yesterday and Last 7
   (`applyPreset` handles all `days:N` entries generically).
 - One shared `DateRangePicker.tsx` serves every online page (gmv-max,
-  shop-live import it) — edit once, all pickers sync. Add per-page
+  shop-live, creative import it) — edit once, all pickers sync. Add per-page
   props only if caps/rules ever diverge.
 - Week/month presets (Oct 2026): This week (Mon→today), Last week
   (Mon→Sun), This month (1st→today), Last month (full month) sit

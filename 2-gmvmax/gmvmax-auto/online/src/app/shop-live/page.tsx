@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "../toast";
 import DateRangePicker from "../DateRangePicker";
 import { ModuleRedirect } from "../module-gate";
@@ -62,6 +62,20 @@ export default function ShopLivePage() {
   const [probe, setProbe] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [probing, setProbing] = useState(false);
+  const [grants, setGrants] = useState<string[]>([]);
+  const [room, setRoom] = useState<any>(null);
+  const [roomLoading, setRoomLoading] = useState(false);
+  const [roomMsg, setRoomMsg] = useState("");
+
+  useEffect(() => {
+    fetch("/api/shop-live/creator-grants", { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) return;
+        const body = await r.json();
+        if (Array.isArray(body.users)) setGrants(body.users);
+      })
+      .catch(() => {});
+  }, []);
 
   async function loadRooms() {
     setRoomsLoading(true);
@@ -114,7 +128,7 @@ export default function ShopLivePage() {
   async function runFetch() {
     if (!liveId.trim()) { toast("Enter a liveId first.", "err"); return; }
     if (sessions.some((s: any) => String(s.id) === liveId.trim() && s.author_type === "AFFILIATE")) {
-      toast("AFFILIATE room: TikTok denies minute detail (28001022) — metadata only.", "err");
+      toast("AFFILIATE room: use Room detail below (creator grant) — minute detail denied 28001022.", "err");
       return;
     }
     setLoading(true);
@@ -132,6 +146,37 @@ export default function ShopLivePage() {
       toast(m, "err");
     } finally {
       setLoading(false);
+    }
+  }
+
+  const selRoom = sessions.find((s: any) => String(s.id) === liveId.trim());
+  const selCreator = selRoom?.creator_user ?? "";
+  const selGranted = selCreator && grants.includes(String(selCreator).replace(/^@/, "").toLowerCase());
+
+  async function runRoomDetail() {
+    if (!liveId.trim()) { toast("Enter a liveId first.", "err"); return; }
+    if (!selRoom) { toast("Load rooms first (or paste a liveId from the AFFILIATE list).", "err"); return; }
+    const creator = String(selRoom.creator_user ?? "").trim();
+    if (!creator) { toast("Room has no creator user — cannot match a grant.", "err"); return; }
+    setRoomLoading(true);
+    setRoom(null);
+    setRoomMsg("");
+    try {
+      const r = await fetch(
+        `/api/shop-live/room-detail?shopNumber=1&roomId=${encodeURIComponent(liveId.trim())}&creatorUser=${encodeURIComponent(creator)}`
+      );
+      const body = await r.json();
+      if (!r.ok) throw new Error(body.error ?? `HTTP ${r.status}`);
+      setRoom(body);
+      const n = (body.errors ?? []).length;
+      setRoomMsg(n > 0 ? `${4 - n}/4 blocks ok (${(body.errors ?? []).map((e: any) => e.endpoint).join(", ")} failed).` : "4/4 blocks ok.");
+      toast("Room detail fetched.");
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "room detail failed";
+      setRoomMsg(m);
+      toast(m, "err");
+    } finally {
+      setRoomLoading(false);
     }
   }
 
@@ -173,7 +218,7 @@ export default function ShopLivePage() {
                 {sessions.map((s: any) => (
                   <option key={s.id} value={s.id}>
                     {(s.start_time ?? "").slice(0, 10)} · {s.title ?? "(untitled)"} · {s.creator_nick ?? s.creator_user ?? ""}
-                    {s.author_type === "AFFILIATE" ? " (metadata only)" : ""}
+                    {s.author_type === "AFFILIATE" ? (grants.includes(String(s.creator_user ?? "").replace(/^@/, "").toLowerCase()) ? " (creator ✓)" : " (metadata only)") : ""}
                   </option>
                 ))}
               </select>
@@ -204,6 +249,11 @@ export default function ShopLivePage() {
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium hover:bg-emerald-500 disabled:opacity-50">
             {loading ? "Fetching…" : "Fetch overview"}
           </button>
+          <button onClick={runRoomDetail} disabled={roomLoading}
+            title="AFFILIATE room detail via the labeled creator grant (Live Data v202502)"
+            className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium hover:bg-sky-500 disabled:opacity-50">
+            {roomLoading ? "Fetching…" : "Fetch room detail"}
+          </button>
           <a href="/api/shop-auth/start?app=analytics" title="Admin + seller login; grant lands in Neon"
             className="rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-200 hover:bg-zinc-800">
             Authorize analytics app
@@ -226,6 +276,121 @@ export default function ShopLivePage() {
             <div className="text-zinc-400">Title: {probe.overall?.live_title ?? "—"} · intervals on page: {probe.intervalsOnFirstPage}</div>
             <pre className="mt-2 overflow-x-auto text-[11px] text-zinc-300">{JSON.stringify({ keys: probe.intervalKeys, coverage: probe.coverage }, null, 2)}</pre>
           </div>
+        )}
+
+        {roomMsg && (
+          <p className="mb-2 text-[11px] text-zinc-500">{roomMsg}</p>
+        )}
+        {room && (
+          <>
+            <div className="mb-1 text-sm font-medium">
+              Room detail — {room.creator} · {room.liveRoomId}
+            </div>
+            {(room.errors ?? []).length > 0 && (
+              <div className={`${cardCls} mb-3 text-xs text-amber-300`}>
+                Partial: {(room.errors ?? []).map((e: any) => `${e.endpoint}: ${e.code}`).join(" · ")}
+              </div>
+            )}
+            {room.core && (
+              <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Kpi label="GMV" value={`${room.core.local_gmv?.currency ?? ""} ${fmt(Number(room.core.local_gmv?.amount ?? 0))}`} sub={`${room.core.sales ?? 0} items sold`} />
+                <Kpi label="Paid orders" value={String(room.core.paid_order_count ?? 0)} sub={`${room.core.buyer_count ?? 0} buyers · AOV ${fmt(Number(room.core.local_unit_price?.amount ?? 0))}`} />
+                <Kpi label="Watch PV" value={Number(room.core.watch_pv ?? 0).toLocaleString()} sub={`${Number(room.core.product_view_count ?? 0).toLocaleString()} product views`} />
+                <Kpi label="CTR" value={pct(Number(room.core.click_through_rate))} sub={`CTOR ${pct(Number(room.core.click_order_rate))}`} />
+                <Kpi label="Avg watch" value={`${room.core.avg_watching_duration ?? 0}s`} sub={`peak ${Number(room.core.peak_concurrent_user_count ?? 0).toLocaleString()} concurrent`} />
+                <Kpi label="Engagement" value={Number(room.core.accumulated_comment_count ?? 0).toLocaleString()} sub={`${Number(room.core.accumulated_new_follower_count ?? 0).toLocaleString()} new followers · ${Number(room.core.accumulated_sharing_count ?? 0).toLocaleString()} shares`} />
+              </div>
+            )}
+            {selRoom?.traffic && (
+              <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+                <Kpi label="Impressions (list)" value={selRoom.traffic.impressions == null ? "n/a" : Number(selRoom.traffic.impressions).toLocaleString()} sub="session grain — absent on affiliate rows" />
+                <Kpi label="Views (list)" value={selRoom.traffic.views == null ? "n/a" : Number(selRoom.traffic.views).toLocaleString()} sub={`${selRoom.traffic.viewers == null ? "?" : Number(selRoom.traffic.viewers).toLocaleString()} unique · dashboard Views`} />
+                <Kpi label="Product clicks (list)" value={selRoom.traffic.product_clicks == null ? "n/a" : Number(selRoom.traffic.product_clicks).toLocaleString()} sub="dashboard Product clicks" />
+                <Kpi label="Tap-through (list)" value={pct(selRoom.traffic.tap_through_rate == null ? null : Number(selRoom.traffic.tap_through_rate))} sub={`CTR ${pct(selRoom.traffic.ctr == null ? null : Number(selRoom.traffic.ctr))} · CTOR ${pct(selRoom.traffic.ctor_sku_order == null ? null : Number(selRoom.traffic.ctor_sku_order))} · exact fields, not derived`} />
+                <Kpi label="Avg viewing (list)" value={`${selRoom.traffic.avg_viewing_duration ?? "n/a"}${selRoom.traffic.avg_viewing_duration == null ? "" : "s"}`} sub={`GMV/h ${(selRoom.traffic.gmv_per_hour?.amount ?? "—")} ${selRoom.traffic.gmv_per_hour?.currency ?? ""}`} />
+                <Kpi label="Live GMV (list)" value={`${selRoom.sales_performance?.live_gmv?.currency ?? ""} ${fmt(Number(selRoom.sales_performance?.live_gmv?.amount ?? 0))}`} sub={`indirect ${fmt(Number(selRoom.sales_performance?.live_indirect_gmv?.amount ?? 0))} · attributed ${fmt(Number(selRoom.sales_performance?.live_attributed_gmv?.amount ?? 0))}${(() => { try { return Date.parse(String(selRoom.end_time ?? "").replace(" ", "T") + "+08:00") > Date.now() ? " · live now — list lags, trust room grain" : ""; } catch { return ""; } })()}`} />
+              </div>
+            )}
+            {(room.traffic ?? []).length > 0 && (() => {
+              const totalPV = (room.traffic ?? []).reduce((a: number, t: any) => a + Number(t.source?.watch_pv ?? 0), 0);
+              const share = (v: number) => totalPV > 0 ? `${(v / totalPV * 100).toFixed(1)}%` : "—";
+              return (
+              <div className={`${cardCls} mb-4 text-xs`}>
+                <div className="mb-1 text-sm font-medium">Traffic sources (watch PV + share)</div>
+                <table className="w-full text-sm">
+                  <thead><tr className="text-left text-xs uppercase tracking-wide text-zinc-400">
+                    <th className="px-2 py-2 font-medium">Channel</th>
+                    <th className="px-2 py-2 text-right font-medium">Watch PV</th>
+                    <th className="px-2 py-2 text-right font-medium">Share</th>
+                    <th className="px-2 py-2 font-medium">Breakdown</th>
+                  </tr></thead>
+                  <tbody>
+                    {(room.traffic ?? []).map((t: any, i: number) => (
+                      <tr key={i} className="border-t border-zinc-800 first:border-t-0">
+                        <td className="px-2 py-1">{t.source?.name ?? "?"}</td>
+                        <td className="px-2 py-1 text-right tabular-nums">{Number(t.source?.watch_pv ?? 0).toLocaleString()}</td>
+                        <td className="px-2 py-1 text-right tabular-nums">{share(Number(t.source?.watch_pv ?? 0))}</td>
+                        <td className="px-2 py-1 text-zinc-500">{(t.sub_sources ?? []).map((x: any) => `${x.name} ${Number(x.watch_pv ?? 0).toLocaleString()}`).join(" · ")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              );
+            })()}
+            {(room.products ?? []).length > 0 && (
+              <div className={`${cardCls} mb-4 text-xs`}>
+                <div className="mb-1 text-sm font-medium">Products ({(room.products ?? []).length})</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="text-left text-xs uppercase tracking-wide text-zinc-400">
+                      <th className="px-2 py-2 font-medium">Product</th>
+                      <th className="px-2 py-2 text-right font-medium">GMV</th>
+                      <th className="px-2 py-2 text-right font-medium">Paid</th>
+                      <th className="px-2 py-2 text-right font-medium">CTR</th>
+                      <th className="px-2 py-2 text-right font-medium">CTOR</th>
+                      <th className="px-2 py-2 text-right font-medium">Exposure</th>
+                      <th className="px-2 py-2 text-right font-medium">Stock</th>
+                    </tr></thead>
+                    <tbody>
+                      {[...(room.products ?? [])].sort((a: any, b: any) => Number(b.local_gmv?.amount ?? 0) - Number(a.local_gmv?.amount ?? 0)).map((p: any) => (
+                        <tr key={p.product_id} className="border-t border-zinc-800">
+                          <td className="max-w-72 truncate px-2 py-2" title={p.product_name}>{p.product_name}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{fmt(Number(p.local_gmv?.amount ?? 0))}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{p.paid_order_count}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{pct(Number(p.click_through_rate))}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{pct(Number(p.click_to_order_rate ?? p.click_order_rate))}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{p.exposure_count == null ? "n/a" : Number(p.exposure_count).toLocaleString()}</td>
+                          <td className="px-2 py-2 text-right tabular-nums">{p.inventory_left_count == null ? "n/a" : Number(p.inventory_left_count).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            {(room.gmvTrend ?? []).length > 0 && (
+              <div className={`${cardCls} mb-4 text-xs`}>
+                <div className="mb-1 text-sm font-medium">GMV trend (15-min, MYT)</div>
+                <div className="max-h-64 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {(room.gmvTrend.find((g: any) => g.stats_type === "TREND_GMV")?.data_points ?? []).map((d: any) => {
+                        const o = (room.gmvTrend.find((g: any) => g.stats_type === "TREND_CREATED_ORDER")?.data_points ?? []).find((x: any) => x.timestamp === d.timestamp);
+                        return (
+                          <tr key={d.timestamp} className="border-t border-zinc-800 first:border-t-0">
+                            <td className="px-2 py-1 tabular-nums">{new Date(Number(d.timestamp) * 1000).toLocaleString("en-GB", { timeZone: "Asia/Kuala_Lumpur", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })}</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{fmt(Number(d.gmv?.amount ?? 0))}</td>
+                            <td className="px-2 py-1 text-right tabular-nums">{o?.order_count ?? 0} orders</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {s && (

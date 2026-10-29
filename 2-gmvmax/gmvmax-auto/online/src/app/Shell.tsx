@@ -48,6 +48,7 @@ const SETTINGS_LINKS = [
   { href: "/catalog", label: "Catalog", icon: P.tag, match: "/catalog", mod: "catalog" },
   { href: "/calendar-settings", label: "Calendar filters", icon: P.sliders, match: "/calendar-settings", mod: "calendar" },
   { href: "/access", label: "Access", icon: P.key, match: "/access", admin: true },
+  { href: "/shop-auth/grant", label: "Shop grants", icon: P.bag, match: "/shop-auth/grant", admin: true },
 ];
 
 const SHOP_LINKS = [{ value: "1", label: "Him.DrSamhan", icon: P.store }];

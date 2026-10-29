@@ -431,6 +431,8 @@ export default function Page() {
   const [adExpanded, setAdExpanded] = useState<Set<string>>(new Set());
   const [ttamAds, setTtamAds] = useState<Record<string, any>>({});
   const [ttamAdLoading, setTtamAdLoading] = useState<string | null>(null);
+  const [ttamAdSearch, setTtamAdSearch] = useState<Record<string, string>>({});
+  const [ttamCapExpanded, setTtamCapExpanded] = useState<Set<string>>(new Set());
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [cooldown, setCooldown] = useState(0);
   // Freshness panel (Stage 3): DB-first stamps from /api/sync-status.
@@ -842,6 +844,95 @@ export default function Page() {
     }
   }
 
+  // Deep find: fan out across unexpanded campaigns/adgroups matching a post
+  // ID (or ad ID / account / text). Client-side, one small API call per
+  // branch, streams matches as branches return. Fail-open per branch.
+  const [deepRunning, setDeepRunning] = useState(false);
+  const [deepProgress, setDeepProgress] = useState("");
+  const [deepResults, setDeepResults] = useState<any[]>([]);
+  const [deepStopFirst, setDeepStopFirst] = useState(true);
+  const [jumpId, setJumpId] = useState<string | null>(null);
+  const deepCancel = useRef(false);
+
+  async function deepFind() {
+    const q = ttamQuery.trim().toLowerCase();
+    if (!q || deepRunning || data?.kind !== "ttam") return;
+    deepCancel.current = false;
+    setDeepRunning(true);
+    setDeepResults([]);
+    setJumpId(null);
+    setDeepProgress("starting…");
+    const camps = sortByStatus([...(data.manualCampaigns ?? [])], (c: any) => Number(c.spend ?? 0));
+    const base = `shopNumber=${shop}&startDate=${start}&endDate=${end}`;
+    const seenAg = new Set<string>();
+    const seenAd = new Set<string>();
+    const found: any[] = [];
+    let scanned = 0;
+    let skipped = 0;
+    const hit = (a: any) => [a.ad_id, a.tiktok_item_id, a.display_name, a.name, a.label, a.caption, a.ad_text]
+      .some((v) => v != null && String(v).toLowerCase().includes(q));
+    try {
+      outer: for (const c of camps) {
+        if (deepCancel.current) break;
+        let agList = ttamAdgroups[c.campaign_id]?.adgroups;
+        if (!agList && !seenAg.has(c.campaign_id)) {
+          seenAg.add(c.campaign_id);
+          try {
+            const r = await fetch(`/api/ttam-adgroups?${base}&campaignId=${c.campaign_id}`);
+            if (!r.ok) throw new Error((await r.json()).error ?? "adgroups failed");
+            const body = await r.json();
+            setTtamAdgroups((p) => ({ ...p, [c.campaign_id]: body }));
+            agList = body.adgroups ?? [];
+          } catch {
+            skipped++;
+            setDeepProgress(`scanning… found ${found.length} (${skipped} skipped)`);
+            continue;
+          }
+        }
+        for (const g of sortByStatus([...(agList ?? [])], (x: any) => Number(x.spend ?? 0))) {
+          if (deepCancel.current) break outer;
+          let adList = ttamAds[g.adgroup_id]?.ads;
+          if (!adList && !seenAd.has(g.adgroup_id)) {
+            seenAd.add(g.adgroup_id);
+            try {
+              const r = await fetch(`/api/ttam-ads?${base}&adgroupId=${g.adgroup_id}`);
+              if (!r.ok) throw new Error((await r.json()).error ?? "ads failed");
+              const body = await r.json();
+              setTtamAds((p) => ({ ...p, [g.adgroup_id]: body }));
+              adList = body.ads ?? [];
+            } catch {
+              skipped++;
+              continue;
+            }
+          }
+          for (const a of adList ?? []) {
+            if (hit(a)) {
+              found.push({ cid: c.campaign_id, cname: c.name, gid: g.adgroup_id, gname: g.name, ad: a });
+              setDeepResults([...found]);
+              if (deepStopFirst) break outer;
+            }
+          }
+          scanned++;
+          setDeepProgress(`scanned ${scanned} adgroups… found ${found.length}${skipped ? ` (${skipped} skipped)` : ""}`);
+        }
+      }
+    } finally {
+      setDeepRunning(false);
+      setDeepProgress(deepCancel.current
+        ? `stopped — ${found.length} found, ${scanned} adgroups scanned${skipped ? `, ${skipped} skipped` : ""}`
+        : `${found.length} found — ${scanned} adgroups scanned${skipped ? `, ${skipped} skipped (timeout)` : ""}`);
+    }
+  }
+
+  function jumpTo(m: any) {
+    setVerdictFilter("ALL");
+    setTtamQuery("");
+    setTtamExpanded((p) => new Set(p).add(m.cid));
+    setAdExpanded((p) => new Set(p).add(m.gid));
+    setJumpId(m.ad.ad_id);
+    setTimeout(() => document.getElementById(`ttam-ad-${m.ad.ad_id}`)?.scrollIntoView({ block: "center" }), 250);
+  }
+
   async function refreshShopTokenAction() {
     if (shopTokenRefreshing) return;
     setShopTokenRefreshing(true);
@@ -993,8 +1084,51 @@ export default function Page() {
     }
   }
 
-  // live=false (auto-load, tab switches): LIVE/PRODUCT single views read the
-  // hourly cache. live=true (Fetch Data button): live TikTok pull as before.
+  // DB-first render: snapshot older than 60 min (or missing) falls back to
+  // fetch-first as today. Fresh snapshots render instantly with a
+  // "cached · synced Xm ago" badge, then live numbers replace them.
+  const SNAPSHOT_STALE_MIN = 60;
+  function snapshotAgeMin(iso: string | null | undefined): number | null {
+    if (!iso) return null;
+    const ms = Date.now() - new Date(iso).getTime();
+    if (!Number.isFinite(ms) || ms < 0) return 0;
+    return Math.floor(ms / 60000);
+  }
+  function snapshotStale(iso: string | null | undefined): boolean {
+    const age = snapshotAgeMin(iso);
+    return age === null || age > SNAPSHOT_STALE_MIN;
+  }
+  function mergeGmvParts(parts: any[], shopNo: string, cached: boolean) {
+    const gmv = parts.reduce((s, p) => s + (p.gmv ?? 0), 0);
+    const cost = parts.reduce((s, p) => s + (p.cost ?? 0), 0);
+    const orders = parts.reduce((s, p) => s + (p.orderCount ?? 0), 0);
+    const net = gmv * 0.75;
+    const pulledList = parts.map((p) => p.pulledAt).filter(Boolean).sort();
+    return {
+      kind: "gmv", shopNumber: shopNo, shopName: parts[0]?.shopName, gmv, cost,
+      roi: cost > 0 ? gmv / cost : 0, net, net_roi: cost > 0 ? net / cost : 0,
+      orders, currency: "MYR", oneDay: start === end,
+      cached,
+      pulledAt: pulledList.length ? pulledList[0] : null,
+      partial: parts.some((p) => p.partial),
+      budgetRefreshRemaining: parts.reduce((s, p) => s + Number(p.budgetRefreshRemaining ?? 0), 0),
+      accountFillRemaining: parts.reduce((s, p) => s + Number(p.accountFillRemaining ?? 0), 0),
+      accountDeferredRemaining: parts.reduce((s, p) => s + Number(p.accountDeferredRemaining ?? 0), 0),
+      accountBracketOnly: parts.reduce((s, p) => s + Number(p.accountBracketOnly ?? 0), 0),
+      budgetDeferredRemaining: parts.reduce((s, p) => s + Number(p.budgetDeferredRemaining ?? 0), 0),
+      sections: parts.map((p) => ({
+        key: p.promotionType,
+        title: p.promotionType === "LIVE_GMV_MAX" ? "LIVE GMV Max" : "Product GMV Max",
+        accounts: p.accounts ?? [],
+        campaigns: p.campaigns ?? [],
+      })),
+      live: parts.find((p) => p.promotionType === "LIVE_GMV_MAX"),
+      product: parts.find((p) => p.promotionType === "PRODUCT_GMV_MAX"),
+    };
+  }
+  // live=false (auto-load, tab switches): DB snapshot first, then live
+  // refresh in background (silent fill). live=true (Fetch Data button):
+  // live TikTok pull as before.
   async function fetchData(nextShop?: string, nextMetric?: string, live = false) {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
@@ -1069,49 +1203,20 @@ export default function Page() {
         return;
       }
       const types = metricId === "total" ? ["LIVE_GMV_MAX", "PRODUCT_GMV_MAX"] : [metricId];
-      const parts = [];
-      for (const t of types) {
-        const src = t === "LIVE_GMV_MAX" ? `&accountSource=${liveAccountSourceRef.current}` : "";
-        const url = (!live && metricId !== "total")
-          ? `/api/hourly-report?${q}&promotion_type=${t}${src}`
-          : `/api/gmv-max?${q}&promotion_type=${t}${src}`;
-        const r = await fetch(url);
-        if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
-        parts.push(await r.json());
-      }
-      const gmv = parts.reduce((s, p) => s + (p.gmv ?? 0), 0);
-      const cost = parts.reduce((s, p) => s + (p.cost ?? 0), 0);
-      const orders = parts.reduce((s, p) => s + (p.orderCount ?? 0), 0);
-      const net = gmv * 0.75;
-      setFetchedAt(new Date().toISOString());
-      setData({
-        kind: "gmv", shopNumber: shopNo, shopName: parts[0]?.shopName, gmv, cost,
-        roi: cost > 0 ? gmv / cost : 0, net, net_roi: cost > 0 ? net / cost : 0,
-        orders, currency: "MYR", oneDay: start === end,
-        budgetRefreshRemaining: parts.reduce((s, p) => s + Number(p.budgetRefreshRemaining ?? 0), 0),
-        accountFillRemaining: parts.reduce((s, p) => s + Number(p.accountFillRemaining ?? 0), 0),
-        accountDeferredRemaining: parts.reduce((s, p) => s + Number(p.accountDeferredRemaining ?? 0), 0),
-        accountBracketOnly: parts.reduce((s, p) => s + Number(p.accountBracketOnly ?? 0), 0),
-        budgetDeferredRemaining: parts.reduce((s, p) => s + Number(p.budgetDeferredRemaining ?? 0), 0),
-        sections: parts.map((p) => ({
-          key: p.promotionType,
-          title: p.promotionType === "LIVE_GMV_MAX" ? "LIVE GMV Max" : "Product GMV Max",
-          accounts: p.accounts ?? [],
-          campaigns: p.campaigns ?? [],
-        })),
-        live: parts.find((p) => p.promotionType === "LIVE_GMV_MAX"),
-        product: parts.find((p) => p.promotionType === "PRODUCT_GMV_MAX"),
-      });
-      if (parts.some((p) => p.cached)) {
-        const empty = parts.every((p) => (p.campaigns ?? []).length === 0);
-        if (empty) setBudgetNotice("Cached view: no hourly rows for this range yet — run the backfill or press Fetch Data for a live pull.");
-        else if (parts.some((p) => p.partial)) setBudgetNotice("Cached view: newest hour is partial (TikTok revises intraday). Fetch Data re-pulls live.");
-      }
-      // Auto-check live rooms for ON LIVE campaigns (cap 5, silent fail-open)
-      // so campaign/account pills can reflect 🟢 Active without extra clicks.
-      // Prioritize ON + spending campaigns by spend desc so top-spend rows
-      // like Dr.Samhan get checked first; fill leftovers with other ON rows.
-      {
+      const fetchParts = async (base: "hourly-report" | "gmv-max") => {
+        const out = [];
+        for (const t of types) {
+          const src = t === "LIVE_GMV_MAX" ? `&accountSource=${liveAccountSourceRef.current}` : "";
+          const url = base === "hourly-report"
+            ? `/api/hourly-report?${q}&promotion_type=${t}${src}`
+            : `/api/gmv-max?${q}&promotion_type=${t}${src}`;
+          const r = await fetch(url);
+          if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
+          out.push(await r.json());
+        }
+        return out;
+      };
+      const checkRooms = (parts: any[]) => {
         const cands: { campaignId: string; cost: number }[] = [];
         for (const p of parts) {
           if (p.promotionType !== "LIVE_GMV_MAX") continue;
@@ -1123,13 +1228,65 @@ export default function Page() {
         }
         cands.sort((a, b) => b.cost - a.cost);
         const ids = cands.slice(0, 5).map((x) => x.campaignId);
-        // Force refresh because setSessions({}) is async and the closure may
-      // still hold session rows from a previous range/fetch. Queue requests
-      // sequentially to avoid hammering the Marketing API on the rate limit.
-      void (async () => {
-        for (const id of ids) await loadSessions(id, true, shopNo);
-      })();
+        void (async () => {
+          for (const id of ids) await loadSessions(id, true, shopNo);
+        })();
+      };
+      if (live) {
+        const parts = await fetchParts("gmv-max");
+        setFetchedAt(new Date().toISOString());
+        setData(mergeGmvParts(parts, shopNo, false));
+        checkRooms(parts);
+        setFetchedAt(new Date().toISOString());
+        return;
       }
+      // Auto-load: try the DB snapshot first (fail-open to live).
+      let snapParts: any[] | null = null;
+      try {
+        snapParts = await fetchParts("hourly-report");
+      } catch {
+        snapParts = null;
+      }
+      const snapRows = (snapParts ?? []).reduce((s, p) => s + ((p.campaigns ?? []).length), 0);
+      const snapPulled = (snapParts ?? []).map((p) => p.pulledAt).filter(Boolean).sort()[0] ?? null;
+      const snapStale = !snapParts || snapRows === 0 || snapshotStale(snapPulled);
+      if (snapParts && snapRows > 0) {
+        // Instant render from Neon, then silent background live refresh.
+        const snapAge = snapshotAgeMin(snapPulled);
+        const snapAgeTxt = snapAge === null ? "synced time unknown" : snapAge < 1 ? "synced just now" : `synced ${agoStr(snapPulled)}`;
+        setFetchedAt(new Date().toISOString());
+        setData(mergeGmvParts(snapParts, shopNo, true));
+        if (snapStale) {
+          setBudgetNotice(`Cached view (stale · ${snapAgeTxt}) — refreshing live…`);
+        } else if (snapParts.some((p) => p.partial)) {
+          setBudgetNotice(`Cached view · ${snapAgeTxt} — newest hour is partial (TikTok revises intraday). Refreshing live…`);
+        } else {
+          setBudgetNotice(`Cached view · ${snapAgeTxt} — refreshing live…`);
+        }
+        checkRooms(snapParts);
+        // Singles with a fresh snapshot stay cached (Fetch Data = live).
+        // Total + stale singles continue to a silent live refresh below.
+        if (metricId !== "total" && !snapStale) {
+          setFetchedAt(new Date().toISOString());
+          return;
+        }
+        try {
+          const liveParts = await fetchParts("gmv-max");
+          setFetchedAt(new Date().toISOString());
+          setData(mergeGmvParts(liveParts, shopNo, false));
+          setBudgetNotice(null);
+          checkRooms(liveParts);
+        } catch {
+          // Live refresh failed — keep the cached numbers on screen.
+          setBudgetNotice(`Cached view · ${snapAgeTxt} — live refresh failed, showing cache. Press Fetch Data to retry.`);
+        }
+        setFetchedAt(new Date().toISOString());
+        return;
+      }
+      const parts = await fetchParts("gmv-max");
+      setFetchedAt(new Date().toISOString());
+      setData(mergeGmvParts(parts, shopNo, false));
+      checkRooms(parts);
       setFetchedAt(new Date().toISOString());
     } catch (e) {
       setError(e instanceof Error ? e.message : "fetch failed");
@@ -1276,6 +1433,18 @@ export default function Page() {
               </div>
             )}
             <h3 className="mb-2 text-sm font-semibold text-zinc-200">Breakdown by Account (click a row to expand)</h3>
+            {data.cached ? (
+              <p className="mb-2 text-[11px]">
+                <span className="rounded-full bg-amber-900 px-2 py-0.5 text-amber-200">
+                  cached · {data.pulledAt ? `synced ${agoStr(data.pulledAt)}` : "synced time unknown"}
+                </span>
+                <span className="ml-2 text-zinc-500">live numbers replace this automatically</span>
+              </p>
+            ) : (
+              <p className="mb-2 text-[11px]">
+                <span className="rounded-full bg-emerald-900 px-2 py-0.5 text-emerald-200">live</span>
+              </p>
+            )}
             <p className="mb-2 text-[11px] text-zinc-500">Campaign budget shows the current daily amount for ON campaigns. Account budget is the sum of ON campaigns only (OFF ignored); marked partial when an ON budget is still unknown. % used is shown only for one selected day (ON day spend / ON budget sum; historical budget changes are not tracked). Uncached budget lookups fill in batches of 15 as you fetch again. LIVE groups can switch between the <span className="text-zinc-300">[Bracket]</span> name and the TikTok account behind the campaign (fills in batches of 15 like budgets).</p>
             {Number(data.budgetRefreshRemaining ?? 0) > 0 && (
               <p className="mb-2 text-[11px] text-amber-300">{data.budgetRefreshRemaining} active campaign budget(s) still need an API lookup. Fetch again to continue filling the cache.{Number(data.budgetDeferredRemaining ?? 0) > 0 && ` ${data.budgetDeferredRemaining} look unresolvable and retry weekly instead of every Fetch.`}</p>
@@ -1490,7 +1659,36 @@ export default function Page() {
               <option value="LEARNING">LEARNING</option>
             </select>
             <input value={ttamQuery} onChange={(e) => setTtamQuery(e.target.value)} placeholder="Search name or ID…" className={`${inputCls} w-40 text-[11px]`} />
+            <button
+              type="button"
+              onClick={() => { if (deepRunning) deepCancel.current = true; else void deepFind(); }}
+              disabled={!ttamQuery.trim()}
+              title="Search across unexpanded campaigns/adgroups too (fans out branch by branch)"
+              className={`${inputCls} text-[11px] hover:bg-zinc-800 disabled:opacity-50`}
+            >{deepRunning ? "Stop" : "Deep find"}</button>
+            <label className="flex items-center gap-1 text-[11px] text-zinc-500" title="Stop scanning at the first match">
+              <input type="checkbox" checked={deepStopFirst} onChange={(e) => setDeepStopFirst(e.target.checked)} />
+              first hit stops
+            </label>
           </div>
+          {(deepRunning || deepProgress || deepResults.length > 0) && (
+            <div className="border-b border-zinc-800 bg-zinc-900/60 px-3 py-2 text-[11px]">
+              <span className="text-zinc-400">{deepRunning ? <Spin /> : null} {deepRunning ? "Deep finding… " : ""}{deepProgress}</span>
+              {deepResults.length > 0 && (
+                <div className="mt-1 flex max-h-32 flex-col gap-1 overflow-y-auto">
+                  {deepResults.map((m: any) => (
+                    <button
+                      key={m.ad.ad_id}
+                      type="button"
+                      onClick={() => jumpTo(m)}
+                      className="truncate text-left text-emerald-300 hover:underline"
+                      title={`Jump to ${m.ad.ad_id} in ${m.cname} / ${m.gname}`}
+                    >{m.ad.display_name ?? "?"} · post {m.ad.tiktok_item_id ?? "?"} · ad {m.ad.ad_id} <span className="text-zinc-500">({m.cname} / {m.gname})</span></button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
             <p className="mb-2 px-3 text-[11px] text-zinc-500">Budget is shown at campaign level when set there, otherwise as the sum of compatible daily ad-group budgets. % used appears only for one-day selections (day spend ÷ current budget); lifetime, unlimited, or mixed modes show no percentage.</p>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -1570,10 +1768,59 @@ export default function Page() {
                                 <VerdictCell r={g} vis={visibleScores} bands={bands} enough={enoughDays} learning={isLearning(g)} guard={guard} defs={presetMetrics} />
                                 <ScoreCells r={g} vis={visibleScores} bands={bands} cols={cols} defs={presetMetrics} />
                               </tr>
-                              {gOpen && sortByStatus(adList, (a: any) => Number(a.spend ?? 0)).filter((a: any) => verdictFilter === "ALL" || rowState(a) === verdictFilter).map((a: any) => (
-                                <tr key={a.ad_id} className="border-t border-zinc-800 bg-black/40">
+                              {gOpen && (() => {
+                                const q = (ttamAdSearch[g.adgroup_id] ?? "").trim().toLowerCase();
+                                const matches = (a: any) => {
+                                  if (!q) return true;
+                                  return [a.ad_id, a.tiktok_item_id, a.display_name, a.name, a.label, a.caption, a.ad_text]
+                                    .some((v) => v != null && String(v).toLowerCase().includes(q));
+                                };
+                                const shown = sortByStatus(adList, (a: any) => Number(a.spend ?? 0))
+                                  .filter((a: any) => (verdictFilter === "ALL" || rowState(a) === verdictFilter) && matches(a));
+                                return (<>
+                                <tr key={`${g.adgroup_id}-search`} className="border-t border-zinc-800 bg-black/60">
                                   <td className={tdCls}></td>
-                                  <td className={`${tdCls} pl-12 text-[11px]`}>{a.name} <span className="text-zinc-500">({a.ad_id})</span></td>
+                                  <td className={`${tdCls} pl-12`} colSpan={8}>
+                                    <input
+                                      type="text"
+                                      value={ttamAdSearch[g.adgroup_id] ?? ""}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onChange={(e) => setTtamAdSearch((p) => ({ ...p, [g.adgroup_id]: e.target.value }))}
+                                      placeholder="Search creative: paste post ID, ad ID, account or text…"
+                                      className="w-full max-w-md rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-200 placeholder:text-zinc-500"
+                                    />
+                                    {q && <span className="ml-2 text-[11px] text-zinc-500">{shown.length}/{adList.length} match</span>}
+                                  </td>
+                                </tr>
+                                {shown.map((a: any) => (
+                                <tr key={a.ad_id} id={`ttam-ad-${a.ad_id}`} className={`border-t border-zinc-800 ${jumpId === a.ad_id ? "bg-emerald-950/60" : "bg-black/40"}`}>
+                                  <td className={tdCls}></td>
+                                  <td className={`${tdCls} pl-12 text-[11px]`}>
+                                    <div>{a.label ? <>{a.label} </> : null}<span className="text-zinc-500">({a.ad_id})</span>
+                                      {(a.display_name || a.tiktok_item_id) && (
+                                        <span className="text-emerald-300"> — {a.display_name ?? "?"}{a.tiktok_item_id ? ` · post ${a.tiktok_item_id}` : ""}</span>
+                                      )}
+                                    </div>
+                                    {a.caption && (
+                                      <div className="text-zinc-400">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setTtamCapExpanded((p) => {
+                                              const n = new Set(p);
+                                              if (n.has(a.ad_id)) n.delete(a.ad_id);
+                                              else n.add(a.ad_id);
+                                              return n;
+                                            });
+                                          }}
+                                          className="mr-1 text-zinc-500 hover:text-zinc-300"
+                                          title={ttamCapExpanded.has(a.ad_id) ? "Collapse caption" : "Expand caption"}
+                                        >{ttamCapExpanded.has(a.ad_id) ? "▾" : "▸"}</button>
+                                        <span style={ttamCapExpanded.has(a.ad_id) ? undefined : { display: "inline-block", maxWidth: "420px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", verticalAlign: "bottom" }}>“{a.caption}”</span>
+                                      </div>
+                                    )}
+                                  </td>
                                   <td className={tdCls}>
                                     <span className={`rounded-full px-2 py-0.5 text-[10px] ${a.status === "ON" ? "bg-emerald-900 text-emerald-200" : a.status === "OFF" ? "bg-zinc-700 text-zinc-200" : "bg-amber-900 text-amber-200"}`}>{a.status ?? "?"}</span>
                                   </td>
@@ -1582,7 +1829,8 @@ export default function Page() {
                                   <VerdictCell r={a} vis={visibleScores} bands={bands} enough={enoughDays} learning={isLearning(a)} guard={guard} defs={presetMetrics} />
                                   <ScoreCells r={a} vis={visibleScores} bands={bands} cols={cols} defs={presetMetrics} />
                                 </tr>
-                              ))}
+                                ))}
+                                </>);})()}
                             </>
                           );
                         })}
@@ -1740,7 +1988,11 @@ export default function Page() {
                 className="rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
               >{shopHourlyRefreshing ? "Refreshing…" : `Refresh ${start === end ? end : `${start}–${end}`}`}</button>
               {(data.cachedHours ?? 0) === 0 && <span className="text-xs text-zinc-500">Cache empty — press Refresh (pulls the day live, then buckets).</span>}
-              {(data.updatedAt) && <span className="text-xs text-zinc-500">Cached {String(data.updatedAt).slice(0, 16).replace("T", " ")}</span>}
+              {(data.updatedAt) && (
+                <span className={`rounded-full px-2 py-0.5 text-[11px] ${data.snapshot?.stale ? "bg-red-900 text-red-200" : "bg-amber-900 text-amber-200"}`}>
+                  cached · {data.snapshot?.shopUpdatedAt ? `synced ${agoStr(data.snapshot.shopUpdatedAt)}` : `cached ${String(data.updatedAt).slice(0, 16).replace("T", " ")}`}{data.snapshot?.stale ? " · stale (>60m)" : ""}
+                </span>
+              )}
             </div>
             <div className={`${cardCls} mb-3`}><h4 className="mb-2 text-sm font-medium">Performance Over Time ({data.date})</h4><canvas ref={shopHourlyRef} /></div>
             {(() => {

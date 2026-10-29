@@ -69,6 +69,26 @@ Never compare across pull times (intraday restatement).
   (seller_live/video/product_card, affiliate_*, shop_tab). Same gaps: no
   90d-split, no `assisted_*` (28-day shown-ad = ad attribution, not seller API).
 - Needs `TikTok Shop Analytics` scope (dual-key analytics app, 025).
+- Affiliated LIVE rooms likewise need a creator token, NOT the seller token
+  (seller calls answer 36009005 user-type or 28001022 minute-denied by design).
+
+## Live Room creator APIs (verified 29 Oct 2026, Cp54, green on prod)
+
+- Documented family is `v202502` — the bundled OAS only knew `202309`,
+  which 500s `36009003` on every endpoint regardless of token. Verify new
+  TikTok API versions against live Partner docs, never the bundled snapshot.
+- `GET /analytics/202502/live_rooms/{live_room_id}/{core_stats,traffic_performances,gmv_trend_performances,product_stats}`:
+  creator `access_token` in header + signed `app_key` in query, NO
+  `shop_cipher` (36009004 if sent). Product CTOR field is
+  `click_order_rate` here vs `click_to_order_rate` on core — check per
+  endpoint, never assume symmetry.
+- AFFILIATE List rows (`202609`, `accountType=AFFILIATE_ACCOUNTS`) omit
+  `traffic.impressions/ctr/tap_through_rate` — absent key ≠ 0, render `n/a`,
+  keep the mapping ready; never substitute product impressions.
+- Creator open_ids are context-scoped: the alliance grant open_id differs
+  from the shop List open_id for the SAME human, and the exchange carries no
+  username. Match grants↔rooms by admin-set username label; always Copy id
+  from the table (never retype); verify the TikTok profile pre-approve.
 
 ## Evidence index
 

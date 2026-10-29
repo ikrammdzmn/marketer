@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { query } from "@/lib/db";
 import { getAdsCredentials } from "@/lib/ads-credentials";
 import { requireModule } from "@/lib/authz";
 import { SHOPS } from "@/lib/shops";
@@ -404,6 +405,156 @@ async function round2Probe(accessToken: string, advertiserId: string, date: stri
   return out;
 }
 
+// Round 7: Time-posted candidates for real GMV item_ids (probe only, no writes).
+// Samples come from cached daily_rows so the IDs are ones we actually need.
+async function round7Probe(accessToken: string, shop: any) {
+  const out: Record<string, any> = {};
+  const sleep150 = () => new Promise((r) => setTimeout(r, 150));
+  const hdr = { "Access-Token": accessToken, "Content-Type": "application/json" };
+  let samples: string[] = [];
+  try {
+    const r = await query(
+      `SELECT DISTINCT item_id FROM creative.daily_rows
+       WHERE item_id NOT IN ('', '-1', 'N/A') ORDER BY item_id DESC LIMIT 3`
+    );
+    samples = r.rows.map((x: any) => String(x.item_id)).filter(Boolean);
+  } catch {
+    out.samples_error = "daily_rows unreadable (run 018 first)";
+    return out;
+  }
+  out.samples = samples;
+  if (samples.length === 0) { out.note = "no item_ids cached — Sync from TikTok first"; return out; }
+  // A. file/video/ad/info (asset details, create_time candidate).
+  try {
+    const params = new URLSearchParams({
+      advertiser_id: shop.advertiserId,
+      video_ids: JSON.stringify(samples),
+    });
+    const res = await fetch(`${BASE_URL}/open_api/${API_VERSION}/file/video/ad/info/?${params.toString()}`, { headers: hdr });
+    const body = await res.json();
+    const list = body.data?.list ?? body.data?.videos ?? body.data?.video_list ?? [];
+    out.video_ad_info = {
+      code: body.code ?? -1,
+      message: String(body.message ?? "").slice(0, 120),
+      rows: list.length,
+      sample: list.length > 0 ? JSON.stringify(list[0]).slice(0, 500) : null,
+    };
+  } catch (e) {
+    out.video_ad_info = { error: e instanceof Error ? e.message : "failed" };
+  }
+  await sleep150();
+  // B. ad/get mapped by tiktok_item_id (2 pages max — probe only).
+  try {
+    let campaignIds: string[] = [];
+    try {
+      const c = await query(
+        `SELECT campaign_id FROM gmv.gmv_campaigns WHERE advertiser_id = $1 AND promotion_type = 'PRODUCT_GMV_MAX' ORDER BY campaign_id LIMIT 5`,
+        [shop.advertiserId]
+      );
+      campaignIds = c.rows.map((x: any) => String(x.campaign_id)).filter(Boolean);
+    } catch { /* unfiltered fallback below */ }
+    const filterStr = campaignIds.length > 0
+      ? JSON.stringify({ campaign_ids: campaignIds })
+      : "";
+    let rows = 0, withPost = 0, withTime = 0, matched = 0;
+    let firstKeys: string[] = [], firstSample: string | null = null;
+    for (let page = 1; page <= 2; page++) {
+      const base: Record<string, string> = {
+        advertiser_id: shop.advertiserId,
+        page: String(page),
+        page_size: "100",
+      };
+      if (filterStr) base.filtering = filterStr;
+      const params = new URLSearchParams(base);
+      const res = await fetch(`${BASE_URL}/open_api/${API_VERSION}/ad/get/?${params.toString()}`, { headers: hdr });
+      const body = await res.json();
+      if (body.code !== 0) {
+        out.ad_get = { code: body.code ?? -1, message: String(body.message ?? "").slice(0, 120) };
+        break;
+      }
+      const list = body.data?.list ?? [];
+      rows += list.length;
+      if (page === 1 && list.length > 0) {
+        firstKeys = Object.keys(list[0]).slice(0, 60);
+        firstSample = JSON.stringify(list[0]).slice(0, 500);
+      }
+      for (const a of list) {
+        const pid = a.tiktok_item_id != null && String(a.tiktok_item_id) !== "" ? String(a.tiktok_item_id) : null;
+        if (pid) withPost++;
+        if (a.create_time != null && String(a.create_time) !== "") withTime++;
+        if (pid && samples.includes(pid)) matched++;
+      }
+      const total = body.data?.page_info?.total_page ?? 1;
+      if (page >= total) break;
+      await sleep150();
+    }
+    if (!out.ad_get) {
+      out.ad_get = { code: 0, rows, with_tiktok_item_id: withPost, with_create_time: withTime, sample_match: `${matched}/${samples.length}`, firstKeys, firstSample };
+    }
+  } catch (e) {
+    out.ad_get = { error: e instanceof Error ? e.message : "failed" };
+  }
+  await sleep150();
+  // C. gmv_max/video/get store library (store_id + store_authorized_bc_id —
+  // the pair identity/get uses; either alone 40002s in the first probe).
+  // Code 0 so far but 0 rows — try filter variants (video_ids, big page).
+  try {
+    const attempts: any[] = [];
+    const bc = String((shop as any).storeBcId ?? "");
+    const shapes: { label: string; params: Record<string, string> }[] = [];
+    if (bc) {
+      const base = {
+        advertiser_id: shop.advertiserId,
+        store_id: String(shop.shopId),
+        store_authorized_bc_id: bc,
+      };
+      shapes.push(
+        { label: "video_ids", params: { ...base, video_ids: JSON.stringify(samples), page: "1", page_size: "10" } },
+        { label: "page100", params: { ...base, page: "1", page_size: "100" } },
+        { label: "plain", params: { ...base, page: "1", page_size: "10" } },
+      );
+    }
+    for (const s of shapes) {
+      const res = await fetch(`${BASE_URL}/open_api/${API_VERSION}/gmv_max/video/get/?${new URLSearchParams(s.params).toString()}`, { headers: hdr });
+      const body = await res.json();
+      const list = body.data?.list ?? body.data?.videos ?? body.data?.video_list ?? [];
+      attempts.push({
+        shape: s.label,
+        code: body.code ?? -1,
+        message: String(body.message ?? "").slice(0, 120),
+        rows: list.length,
+        sample: list.length > 0 ? JSON.stringify(list[0]).slice(0, 500) : null,
+      });
+      await sleep150();
+    }
+    if (attempts.length === 0) attempts.push({ shape: "video_ids", code: -2, message: "no storeBcId on shop — check SHOPS map" });
+    out.gmv_video_get = { attempts };
+  } catch (e) {
+    out.gmv_video_get = { error: e instanceof Error ? e.message : "failed" };
+  }
+  await sleep150();
+  // D. creative/report/get minimal shape (unprobed — code/message is the finding).
+  try {
+    const params = new URLSearchParams({
+      advertiser_id: shop.advertiserId,
+      page: "1",
+      page_size: "5",
+    });
+    const res = await fetch(`${BASE_URL}/open_api/${API_VERSION}/creative/report/get/?${params.toString()}`, { headers: hdr });
+    const body = await res.json();
+    const list = body.data?.list ?? [];
+    out.creative_report_get = {
+      code: body.code ?? -1,
+      message: String(body.message ?? "").slice(0, 120),
+      rows: list.length,
+      sample: list.length > 0 ? JSON.stringify(list[0]).slice(0, 500) : null,
+    };
+  } catch (e) {
+    out.creative_report_get = { error: e instanceof Error ? e.message : "failed" };
+  }
+  return out;
+}
+
 export async function GET(request: Request) {
   const access = await requireModule("creative");
   if (!access.ok) return access.response;
@@ -470,6 +621,7 @@ export async function GET(request: Request) {
       integrated_basic: basic,
       round2: await round2Probe(creds.access_token, shop.advertiserId, date),
       round5: await round5Probe(creds.access_token, shop.shopId, shop.advertiserId, date),
+      round7: await round7Probe(creds.access_token, shop),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "creative probe failed";

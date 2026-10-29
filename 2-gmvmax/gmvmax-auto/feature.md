@@ -13,7 +13,7 @@
 - Account names come from the first `[brackets]` in the campaign name — rename campaigns in Ads Manager to regroup them, then press **Sync names** (next to Fetch Data) and Fetch again. The board reads saved names, so Fetch alone never shows a rename.
 - LIVE groups can switch between **Bracket** and **TT account** (toggle in the LIVE section header, remembered): TT account groups by the TikTok account actually behind the campaign (name + `@username`, bracket shown as hint). Names fill in the background in small batches — Fetch a few times until the notice clears. A few accounts TikTok never names (affiliate/unauthorized ones) stay under `[Bracket]` with a grey note — that's expected, not missing data.
 - Budget `% used` (one-day view only) is color-coded: under 70% plain, 70–79% yellow, 80–89% red text, 90–100% white-on-red pill that gently pulses, over 100% a brighter bold red pill (spent more than the daily budget).
-- Numbers can move slightly during the day (TikTok settles sales figures over hours while spend stays fixed). If a number looks off versus an hour ago, press Fetch Data again — newest wins, nothing is lost.
+- Numbers can move slightly during the day (TikTok settles sales figures over hours while spend stays fixed). If a number looks off versus an hour ago, press Fetch Data again — newest wins, nothing is lost. Total, LIVE and Product open instantly from saved numbers (amber `cached · synced Xm ago` pill) and quietly swap in live TikTok numbers seconds later (green `live` pill) — no more blank waiting on open or tab switch. Snapshots older than an hour say so and refresh themselves.
 - Sign in with a Google account that the administrator has approved — you stay signed in for 30 days, even with the browser closed. The administrator can give you a display name on the **Access** page so the sidebar shows your name instead of your email. Removing an account blocks its next dashboard-data request.
 - If you’re signed out, the main link opens Google sign-in first. Once signed in, it takes you to the dashboard; `/sign-in` is also available directly.
 
@@ -30,7 +30,7 @@
 
 - Same look, real shop sales: your actual orders bucketed by order hour (cancelled/refunded excluded) as bars, plus your ad spend that hour as an optional dashed line (toggle on/off) and TRUE ROI line.
 - 24-hour table (future hours blank), All + hour chips to focus one hour (picked bar lights up), same DEAD/GOLDEN/WATCH scorecard across your range (needs 3+ saved days).
-- First view of a new range is empty — press **Refresh** once (pulls every day in the range, then redraws). The notice says tied (bucketed hours match the day total) or flags untied days.
+- First view of a new range is empty — press **Refresh** once (pulls every day in the range, then redraws). The notice says tied (bucketed hours match the day total) or flags untied days. Saved hours carry an amber `cached · synced Xm ago` pill that turns red with `stale (>60m)` when the auto-save hasn't run for over an hour.
 
 ## Shop GMV over days (Metric = Shop GMV, multi-day range)
 
@@ -39,9 +39,9 @@
 
 ## Shop Live (sidebar → Shop Live, shop 1)
 
-- Pick a date range, press **Load rooms**, pick a room, then **Probe shape** (checks what TikTok returns) or **Fetch overview** (full numbers + hour table). Rooms come in two kinds: MARKETING rooms show full numbers; AFFILIATE rooms list fine but TikTok blocks their minute-by-minute detail (you'll get a clear note, not an error dump).
-- Summary cards: sales, SKU orders, views/impressions, click rates, order rates, average order value, sales per hour, peak viewers. Numbers lag about 2 days behind real life (watch the "Latest data" line) and sales include returns/refunds — that's TikTok's counting.
-- First-time setup is a one-tap **Authorize analytics app** button (administrator + seller login). Token details never show on screen.
+- Pick a date range, press **Load rooms**, pick a room, then **Probe shape** (checks what TikTok returns), **Fetch overview** (full numbers + hour table, MARKETING rooms) or **Fetch room detail** (AFFILIATE rooms whose creator approved — look for `(creator ✓)` on the room name). Rooms come in two kinds: MARKETING rooms show full numbers; AFFILIATE rooms list fine, and rooms with a creator grant show full room detail (sales, traffic sources, products, 15-minute sales trend) while ungranted ones show metadata only with a clear note.
+- Summary cards: sales, SKU orders, views/impressions, click rates, order rates, average order value, sales per hour, peak viewers. Impressions show `n/a` on affiliate rooms (TikTok doesn't send that number for affiliates — only its own dashboard has it); missing numbers always show `n/a`, never a fake 0. Numbers lag about 2 days behind real life (watch the "Latest data" line) and sales include returns/refunds — that's TikTok's counting. Ongoing lives show a "live now" note because the saved list lags behind the live room.
+- First-time setup is a one-tap **Authorize analytics app** button (administrator + seller login). Affiliate creators approve separately: the administrator sends them a link (Settings → Shop grants), they approve while logged into their own TikTok, and the administrator names the row so rooms match. Token details never show on screen.
 
 ## AI Analyst (sidebar → AI Analyst, shop 1)
 
@@ -52,9 +52,14 @@
 ## Creative analysis (Creative tab, shop 1)
 
 - No more Excel exports: per-video rows pulled straight from TikTok (PRODUCT campaigns) — title, account, status, cost, orders, sales, ROI, views and view-rate bars. Pick a campaign (himcoffee first), pick dates, **Sync from TikTok**, then read.
-- Four columns can't come from TikTok (posted time, creative source, second-level exploration verdicts) — those are recomputed or labelled, never faked.
-- **Kill list** sits under the rows: every video summed across your dates with a KILL (red) / WATCH (amber) / SCALE (green) verdict, the hero's share of spend, and wasted-spend total. Tick boxes (or **Select KILL**) then **Copy draft** to get the post IDs for removal in Ads Manager — the system only drafts, it never deletes by itself. A status filter (All / DELIVERING / LEARNING / …) with counts drives both tables, `#` numbers every row, and CSV exports exactly what you see.
+- Four columns can't come from TikTok (posted time, creative source, second-level exploration verdicts) — those are recomputed or labelled, never faked. Posted time has one exception: **Import posted times** (under the Sync row) takes `Post ID,Time posted` lines pasted from the TikTok export and fills the same Posted/Age columns — empties only, never overwrites.
+- **Kill list** sits under the rows: every video summed across your dates with a KILL (red) / WATCH (amber) / SCALE (green) verdict, the hero's share of spend, and wasted-spend total. Tick boxes (or **Select KILL**) then **Copy draft** to get the post IDs for removal in Ads Manager — the system only drafts, it never deletes by itself. A status filter (All / DELIVERING / …) with counts, a verdict filter (SCALE / WATCH / KILL / FATIGUE), an account-kind filter (Internal / Top affiliate / Affiliate / Inactive, matched against your Accounts page — unregistered names count as affiliates, unattributed spend shows as Product card with no label), a Spend/GMV rank toggle, and a **Columns…** picker (show/hide any column, resets on reload) drive the table, `#` numbers every row, Post ID copies on click, and CSV exports exactly what you see. **Daily ▸** expands per-day columns + Total for the picked metric (hidden by default). Each row opens hook/hold diagnostics (2s hook, quartile hold, CTR/CVR) with a per-post trend sparkline and an enlarged popup (total / latest / change / days present). Inactive accounts that still spend show red with a warning banner.
 - **Accounts page** holds your TikTok accounts (grouped: Internal / Top Affiliate / Inactive) with username, Account ID, Ads Identity ID and notes, plus SOP targets. Tables first, Edit only when you tap it; Save keeps everything. Each Live-ticked row also has a **Live note** dropdown (Internal Acc / External Acc / AI / Relive — or type your own, it becomes a choice next time). **Live board** (preview on top of Accounts, full page under Settings → Live board) groups live accounts into those four columns plus Other when someone types a new value. **Catalog page** holds friendly campaign/product names the same way.
+- The date range uses the same 📅 calendar as the other boards (presets, two-month grid, 31-day cap) — synced ranges cap at 7 days per press.
+- **Top 10 accounts by revenue** cards with revenue-share bars, plus a collapsible per-account summary (posts, sales, cost, ROI, orders) with internal/affiliate/inactive subtotals.
+- **Daily trend**: tickable Cost / Revenue / Orders / CPO / ROI cards with vs-previous changes, a multi-line chart (tick up to 2 to draw, missing days break the line), and a day table.
+- **Trend per creative**: top-10 chart, per-video day columns (`=` = absent that day), solo popups, CSV export.
+- The 2000-row raw table hides behind **Show all rows** at the page bottom.
 - Every save anywhere in the system pops a small confirmation (green = saved, red = what went wrong) — you never have to guess whether a press worked.
 - Data freshness: the boards now read the saved database first (instant), with a **Data Freshness & Sync** card showing when each part last updated — **Fetch Data** re-pulls live TikTok whenever you want ground truth. Newest hour is always marked partial (TikTok revises intraday).
 
@@ -131,6 +136,12 @@
   numbers (LQS still presumed: effective views stand in for 10-second views).
 - Score switches hide grades you don't care about (hidden grades also leave the
   verdict). Verdict dropdown + search box filter the tree.
+- Every ad shows who it is: TikTok account + post ID on the first line, caption
+  collapsed to one line (tap ▸ to read it). If the ad was named with its full
+  caption, you see it once — no repeats. A search box inside each open ad group
+  finds ads by post ID, ad ID, account, or words. **Deep find** (next to the
+  campaign search) looks through ad groups you haven't opened yet and jumps you
+  to the match.
 - Units: ERRI, HPS, EDS, HRQ show as % (e.g. 12.50%); ACS shows as RM
   (e.g. RM 0.0234); the rest are plain numbers. Hover a grade header for its unit.
 - Formulas (same words the `/presets` tab shows under each grade):
