@@ -2,6 +2,10 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 01 Nov 2026 — /accounts UX polish (tsc clean, UNDEPLOYED, UNCOMMITTED)
+
+- `@` usernames (type `foo` or `@foo`, displays `@foo`, stores `@`-less client + server); top-only action bar (`＋ Add` + `Save` + collapsed `Export ▾` + `Edit/Cancel`, bottom row removed); `Save` auto-exits edit mode, `Cancel` discards via reload; dynamic live board (new `Live note` values get their own A→Z cards, blanks under `Unlabeled`, `Other` removed). Bug B131 (`@@` guard on legacy rows).
+
 ## 29 Oct 2026 — creator grants + affiliate room detail LIVE on /shop-live (tsc clean, 15 deploys, UNCOMMITTED; latest `dpl_4MWdtsbKqu6MaPmMSrfLtxvbne1Y`)
 
 - `036_shop_creator_tokens.sql` + `037` (granted_scopes/user_type) — per-creator token store `(shop_id, creator_open_id)`; temp admin `/shop-auth/grant` (Settings → Shop grants) mints 10-min seller/creator links; `callback` verifies creator state HMAC-only (no session), minted seller links work cross-device; `middleware` exempts callback at edge; Name/Username labels per row (survive re-grants) + MYT timestamps + lengths-only status.

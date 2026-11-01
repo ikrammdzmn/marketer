@@ -145,6 +145,8 @@ export default function CreativePage() {
   const [crKind, setCrKind] = useState("all");
   const [crAccounts, setCrAccounts] = useState<any[]>([]);
   const [crKillSort, setCrKillSort] = useState<"spend" | "gmv">("spend");
+  const [scaleTop, setScaleTop] = useState<string>("ALL");
+  const [scaleCustom, setScaleCustom] = useState<string>("");
   const [crColsOpen, setCrColsOpen] = useState(false);
   const [crHidden, setCrHidden] = useState<Set<string>>(new Set());
   const [killOpen, setKillOpen] = useState<Set<string>>(new Set());
@@ -787,11 +789,15 @@ export default function CreativePage() {
         const shown = (crStatus === "ALL" ? k.rows : k.rows.filter((r) => (r.status || "—") === crStatus))
           .filter((r) => crVerdict === "ALL" || r.verdict === crVerdict)
           .filter((r) => crKind === "all" || (r.account !== "Product card" && acctKind(r.account) === crKind));
-        const sCost = shown.reduce((s, r) => s + r.cost, 0);
-        const sGmv = shown.reduce((s, r) => s + r.gmv, 0);
+        const scaleLimit = crVerdict === "SCALE"
+          ? scaleTop === "ALL" ? null : scaleTop === "CUSTOM" ? Math.min(300, Math.max(1, parseInt(scaleCustom) || 0)) || null : Math.min(300, Math.max(1, parseInt(scaleTop) || 0)) || null
+          : null;
+        const displayed = scaleLimit ? shown.slice(0, scaleLimit) : shown;
+        const sCost = displayed.reduce((s, r) => s + r.cost, 0);
+        const sGmv = displayed.reduce((s, r) => s + r.gmv, 0);
         const sRoi = sCost > 0 ? sGmv / sCost : 0;
-        const sHero = shown[0];
-        const sTail = shown.filter((r) => r.roi < 2).reduce((s, r) => s + r.cost, 0);
+        const sHero = displayed[0];
+        const sTail = displayed.filter((r) => r.roi < 2).reduce((s, r) => s + r.cost, 0);
         const kindBase = crStatus === "ALL" ? k.rows : k.rows.filter((r) => (r.status || "—") === crStatus);
         const inactSpend = new Map<string, number>();
         for (const row of kindBase) {
@@ -836,6 +842,19 @@ export default function CreativePage() {
                   <option key={v} value={v}>{v === "ALL" ? "Verdict: All" : v}</option>
                 ))}
               </select>
+              {crVerdict === "SCALE" && (
+                <span className="inline-flex items-center gap-1 text-xs" title="Show only top N SCALE rows by current Spend/GMV rank">
+                  <span className="text-zinc-500">Top</span>
+                  <select value={scaleTop} onChange={(e) => setScaleTop(e.target.value)} className="rounded bg-zinc-900 px-2 py-1 text-xs">
+                    {([["ALL", "All"], ["10", "10"], ["20", "20"], ["30", "30"], ["CUSTOM", "Custom"]] as const).map(([v, l]) => (
+                      <option key={v} value={v}>{l}</option>
+                    ))}
+                  </select>
+                  {scaleTop === "CUSTOM" && (
+                    <input value={scaleCustom} onChange={(e) => setScaleCustom(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))} placeholder="N" inputMode="numeric" title="Custom N (1–300)" className="w-14 rounded bg-zinc-900 px-2 py-1 text-xs" />
+                  )}
+                </span>
+              )}
               <select value={crKind} onChange={(e) => setCrKind(e.target.value)} title="Filter by account kind (/accounts)" className="rounded bg-zinc-900 px-2 py-1 text-xs">
                 {([["all", "Kind: All"], ["internal", "Internal"], ["top affiliate", "Top affiliate"], ["affiliate", "Affiliate"], ["inactive", "Inactive"]] as const).map(([v, l]) => (
                   <option key={v} value={v}>{l}</option>
@@ -849,12 +868,12 @@ export default function CreativePage() {
               <button onClick={() => setCrColsOpen((v) => !v)} title="Show/hide columns (resets on reload)" className="rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800">Columns…</button>
               <button onClick={() => setDailyOpen((v) => !v)} title="Show/hide per-day columns" className="rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800">Daily {dailyOpen ? "▾" : "▸"}</button>
               <span className="text-[11px] text-zinc-500">
-                {shown.length} posts · spend MYR {sCost.toFixed(0)} · GMV {sGmv.toFixed(0)} · ROI {sRoi.toFixed(2)}
+                {scaleLimit ? `Top ${displayed.length} of ${shown.length}` : `${shown.length} posts`} · spend MYR {sCost.toFixed(0)} · GMV {sGmv.toFixed(0)} · ROI {sRoi.toFixed(2)}
                 {sHero && sCost > 0 ? ` · hero ${(100 * sHero.cost / sCost).toFixed(0)}% (${sHero.title.slice(0, 28) || sHero.id})` : ""}
                 {sTail > 0 ? ` · tail waste MYR ${sTail.toFixed(0)}` : ""}
               </span>
               {!k.fatigueOn && <span className="text-[11px] text-zinc-600">(FATIGUE off — need 3+ days)</span>}
-              <button onClick={() => killCsv(shown)} className="ml-auto rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800">CSV</button>
+              <button onClick={() => killCsv(displayed)} className="ml-auto rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800">CSV</button>
               <button onClick={selectKills} className="rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800" title="Select all KILL rows (excludes Unattributed)">Select KILL</button>
               <button onClick={() => void copyDraft()} disabled={exSel.size === 0} className="rounded-lg border border-red-900 px-2 py-1 text-xs text-red-200 hover:bg-red-950 disabled:opacity-50" title="Copy selected post IDs — remove them in Ads Manager by hand">
                 {exCopied ? `Copied ${exSel.size}!` : `Copy draft (${exSel.size})`}
@@ -886,7 +905,7 @@ export default function CreativePage() {
                   {dailyOpen && <th className="px-2 py-1 text-right">Total</th>}
                 </tr></thead>
                 <tbody>
-                  {shown.slice(0, 300).map((r, i) => (
+                  {displayed.slice(0, 300).map((r, i) => (
                     <Fragment key={r.id}>
                     <tr className="border-t border-zinc-800">
                       {!crHidden.has("num") && <td className="px-2 py-1 text-zinc-500">{i + 1}</td>}
@@ -942,7 +961,8 @@ export default function CreativePage() {
                 </tbody>
               </table>
             </div>
-            {shown.length > 300 && <p className="mt-1 text-[11px] text-zinc-500">Showing top 300 by spend — full list in CSV.</p>}
+            {displayed.length > 300 && <p className="mt-1 text-[11px] text-zinc-500">Showing top 300 by {crKillSort} — full list in CSV.</p>}
+            {scaleLimit && shown.length > displayed.length && <p className="mt-1 text-[11px] text-zinc-500">Top {displayed.length} by {crKillSort} — switch Top to All for the full SCALE list.</p>}
           </div>
             {soloK && (() => {
               const svals = rdays.map((d) => { const v = soloK.perDay.get(d); return v ? dmv(v) : null; });

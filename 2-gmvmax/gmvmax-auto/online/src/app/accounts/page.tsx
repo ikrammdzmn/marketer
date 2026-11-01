@@ -22,6 +22,7 @@ export default function AccountsPage() {
   const [dragUid, setDragUid] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showExport, setShowExport] = useState(false);
   const [acctCols, setAcctCols] = useState<Record<string, boolean>>(() => {
     try { return { name: true, username: true, account_id: true, identity_id: true, note: true, active: true, live: true, live_note: true, top_affiliate: true, updated_at: true, row_num: true, ...JSON.parse(localStorage.getItem("creative-acct-cols") ?? "{}") }; }
     catch { return { name: true, username: true, account_id: true, identity_id: true, note: true, active: true, live: true, live_note: true, top_affiliate: true, updated_at: true, row_num: true }; }
@@ -111,7 +112,7 @@ export default function AccountsPage() {
     let bad = -1;
     flat.forEach((a, i) => {
       const name = String(a.name ?? "").trim();
-      const username = String(a.username ?? "").trim();
+      const username = String(a.username ?? "").trim().replace(/^@+/, "");
       const account_id = String(a.account_id ?? "").trim();
       const identity_id = String(a.identity_id ?? "").trim();
       const note = String(a.note ?? "").trim();
@@ -177,6 +178,7 @@ export default function AccountsPage() {
         }
         localStorage.setItem("creative-live-note-customs", JSON.stringify([...customs].slice(0, 50)));
       } catch { /* private mode */ }
+      setEditing(false);
       loadAll();
     } finally {
       setSaving(false);
@@ -216,7 +218,20 @@ export default function AccountsPage() {
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold">Accounts</h2>
         <span className="flex-1" />
-        <button onClick={() => setEditing(!editing)} className={`rounded-lg px-3 py-1.5 text-[13px] ${editing ? "bg-amber-800 hover:bg-amber-700" : "border border-zinc-700 hover:bg-zinc-800"}`}>{editing ? "Done editing" : "Edit"}</button>
+        {editing && <button onClick={() => { uidRef.current += 1; setAccounts([...accounts, { _uid: uidRef.current, name: "", username: "", account_id: "", identity_id: "", note: "", active: true, live: false, live_note: "", top_affiliate: false }]); }} className="rounded-lg border border-zinc-700 px-3 py-1.5 text-[13px] hover:bg-zinc-800">＋ Add account</button>}
+        <button onClick={saveAll} disabled={saving} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-[13px] hover:bg-emerald-600 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
+        <div className="relative">
+          <button onClick={() => setShowExport((v) => !v)} className="rounded-lg border border-zinc-700 px-3 py-1.5 text-[13px] hover:bg-zinc-800">Export ▾</button>
+          {showExport && (
+            <div className="absolute right-0 z-10 mt-1 w-40 overflow-hidden rounded-lg border border-zinc-700 bg-zinc-900 shadow-lg">
+              <button onClick={() => { setShowExport(false); downloadJSON(); }} className="block w-full px-3 py-2 text-left text-[13px] hover:bg-zinc-800">Download JSON</button>
+              <button onClick={() => { setShowExport(false); downloadCSV(); }} className="block w-full px-3 py-2 text-left text-[13px] hover:bg-zinc-800">Download CSV</button>
+            </div>
+          )}
+        </div>
+        {editing
+          ? <button onClick={() => { setEditing(false); loadAll(); }} disabled={saving} className="rounded-lg bg-amber-800 px-3 py-1.5 text-[13px] hover:bg-amber-700 disabled:opacity-50">Cancel</button>
+          : <button onClick={() => setEditing(true)} disabled={saving} className="rounded-lg border border-zinc-700 px-3 py-1.5 text-[13px] hover:bg-zinc-800 disabled:opacity-50">Edit</button>}
       </div>
       <p className="mb-2 text-[12px] text-zinc-400">Names must match the Excel file exactly (username, account ID, identity ID and notes are display-only). Ticking Top/Active moves rows between groups live; drag ⠿ to reorder — Save keeps the shown order.</p>
       <datalist id="live-note-presets">
@@ -239,12 +254,15 @@ export default function AccountsPage() {
                   <div className="border-b border-zinc-800 bg-zinc-900/60 px-2 py-1 text-center text-[11px] font-semibold uppercase tracking-wide text-zinc-200">{c.title} ({c.rows.length})</div>
                   <ul className="divide-y divide-zinc-800/60">
                     {c.rows.length === 0 && <li className="px-2 py-1.5 text-[12px] text-zinc-600">—</li>}
-                    {c.rows.slice(0, preview).map((a: any) => (
-                      <li key={String(a.name)} title={a.username ? `${a.name} (@${a.username})` : String(a.name)} className="px-2 py-1.5">
+                    {c.rows.slice(0, preview).map((a: any) => {
+                      const dispUser = String(a.username ?? "").trim().replace(/^@+/, "");
+                      return (
+                      <li key={String(a.name)} title={dispUser ? `${a.name} (@${dispUser})` : String(a.name)} className="px-2 py-1.5">
                         <div className="truncate text-[12px] font-medium text-zinc-100">{a.name}</div>
-                        {a.username && <div className="truncate text-[11px] text-zinc-500">@{a.username}</div>}
+                        {dispUser && <div className="truncate text-[11px] text-zinc-500">@{dispUser}</div>}
                       </li>
-                    ))}
+                      );
+                    })}
                     {c.rows.length > preview && (
                       <li className="px-2 py-1.5 text-[11px] text-zinc-500">
                         <Link href="/accounts/live" className="hover:underline">+{c.rows.length - preview} more →</Link>
@@ -312,7 +330,7 @@ export default function AccountsPage() {
                         {acctCols.row_num && <td className="w-8 px-1 py-1 text-right text-zinc-500">{n}.</td>}
                         {editing && <td className="w-8 px-1 py-1"><span draggable title="Drag to reorder" onDragStart={() => setDragUid(a._uid)} onDragEnd={() => setDragUid(null)} className="cursor-move text-zinc-500">⠿</span></td>}
                         {acctCols.name && <td className="px-1 py-1">{editing ? <input value={a.name ?? ""} title={a.name ?? ""} onChange={(e) => patch(a._uid, { name: e.target.value })} placeholder="Exact account name" className="w-56 rounded bg-zinc-900 px-1 py-0.5" /> : <span title={a.name ?? ""} className="font-medium">{a.name}</span>}</td>}
-                        {acctCols.username && <td className="px-1 py-1">{editing ? <input value={a.username ?? ""} title={a.username ?? ""} onChange={(e) => patch(a._uid, { username: e.target.value })} placeholder="username (no @)" className="w-44 rounded bg-zinc-900 px-1 py-0.5" /> : <span title={a.username ?? ""} className="text-zinc-400">{a.username || "—"}</span>}</td>}
+                        {acctCols.username && <td className="px-1 py-1">{editing ? <input value={a.username ?? ""} title={String(a.username ?? "").trim().replace(/^@+/, "")} onChange={(e) => patch(a._uid, { username: e.target.value })} placeholder="username or @username" className="w-44 rounded bg-zinc-900 px-1 py-0.5" /> : (() => { const dispUser = String(a.username ?? "").trim().replace(/^@+/, ""); return <span title={dispUser} className="text-zinc-400">{dispUser ? `@${dispUser}` : "—"}</span>; })()}</td>}
                         {acctCols.account_id && <td className="px-1 py-1">{editing ? <input value={a.account_id ?? ""} title={a.account_id ?? ""} onChange={(e) => patch(a._uid, { account_id: e.target.value })} placeholder="ID (optional)" className="w-48 rounded bg-zinc-900 px-1 py-0.5 focus:w-64" /> : <span title={a.account_id ?? ""} className="break-all text-zinc-500">{a.account_id || "—"}</span>}</td>}
                         {acctCols.identity_id && <td className="px-1 py-1">{editing ? <input value={a.identity_id ?? ""} title={a.identity_id ?? ""} onChange={(e) => patch(a._uid, { identity_id: e.target.value })} placeholder="Identity ID (optional)" className="w-72 rounded bg-zinc-900 px-1 py-0.5 focus:w-96" /> : <span title={a.identity_id ?? ""} className="break-all text-zinc-500">{a.identity_id || "—"}</span>}</td>}
                         {acctCols.note && <td className="px-1 py-1">{editing ? <input value={a.note ?? ""} title={a.note ?? ""} onChange={(e) => patch(a._uid, { note: e.target.value })} placeholder="note (optional)" className="w-48 rounded bg-zinc-900 px-1 py-0.5" /> : <span title={a.note ?? ""} className="text-zinc-400">{a.note || "—"}</span>}</td>}
@@ -331,12 +349,6 @@ export default function AccountsPage() {
           </div>
         ));
       })()}
-      <div className="flex flex-wrap items-center gap-2 text-[12px]">
-        {editing && <button onClick={() => { uidRef.current += 1; setAccounts([...accounts, { _uid: uidRef.current, name: "", username: "", account_id: "", identity_id: "", note: "", active: true, live: false, live_note: "", top_affiliate: false }]); }} className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-800">＋ Add account</button>}
-        <button onClick={saveAll} disabled={saving} className="rounded bg-emerald-700 px-3 py-1.5 hover:bg-emerald-600 disabled:opacity-50">{saving ? "Saving…" : "Save"}</button>
-        <button onClick={downloadJSON} className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-800">Download JSON</button>
-        <button onClick={downloadCSV} className="rounded border border-zinc-700 px-3 py-1.5 hover:bg-zinc-800">Download CSV</button>
-      </div>
     </main>
   );
 }

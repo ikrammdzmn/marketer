@@ -4,6 +4,11 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 01 Nov 2026
+
+- `gmvmax-auto` /accounts UX polish (@ usernames client+server strip, top-only Edit/Save/Cancel/Export▾, Save auto-exits, Cancel discards, dynamic live-board cards + Unlabeled; B131) — tsc clean, undeployed, uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
 ## 29 Oct 2026
 
 - `gmvmax-auto` creator grants + affiliate room detail LIVE on `/shop-live` (036/037 owner-run prod; temp grant page mints 10-min links, creator-token Live Data `v202502` room bundle, `(creator ✓)` badges, null-aware List grain; proof room 7700018251179002645 GMV 49,302.23 = List exact; B123–B130) — tsc clean, 15 deploys, uncommitted

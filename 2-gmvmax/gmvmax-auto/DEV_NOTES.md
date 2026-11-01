@@ -1,12 +1,31 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 54 first (current facts), then Checkpoints 53/52/51/50/49/48/47/46/45/44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 55 first (current facts), then Checkpoints 54/53/52/51/50/49/48/47/46/45/44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 55 — 01 Nov 2026 (/accounts UX polish: @ usernames, top-only actions, dynamic live board; tsc clean, UNDEPLOYED, UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner drove screenshot-led micro-polish on `/accounts` in short bursts across Plan/Build mode ping-pong: "@ in Username + accept both forms" → "all buttons on top?" → "export collapsed" → "top only" → "what is Done editing for?" → "why 2 actions?" → "Cancel instead". Every "ok go" meant build exactly the specced slice, tsc, stop. No deploys this session — owner deploys via `deploy_online.py`; tree mixes sibling uncommitted work (`opencode.json` 1-liner + Cp53/Cp54 arcs), so my files are accounts-only (4 files) and commit/push stays never-unasked.
+
+**What shipped (tsc clean every step, 0 deploys, all UNCOMMITTED, owner eyeball pending).**
+- `@` usernames: table view renders `@{stripped}` (`—` when blank); input accepts `foo` or `@foo` (placeholder `username or @username`); `collectRows` + `POST /api/creative-accounts` both strip leading `@`s (client UX + server invariant, same pattern as creator-label + creative `normAcct`); preview + `/accounts/live` defensive-strip so legacy `@`-stored rows never render `@@`. Stored value stays `@`-less — no migration.
+- Top-only action bar: bottom row deleted; top = `＋ Add` (editing only) + `Save` + `Export ▾` + `Edit/Cancel`. `Export` collapsed by default (`showExport=false`), closes after a download; same `downloadJSON/downloadCSV` handlers.
+- One-action save: `Save` auto-exits edit mode on full success (accounts + targets), stays in edit mode on any failure; `Edit`/`Cancel` disabled while saving.
+- `Done editing` → `Cancel`: discards via `setEditing(false)` + `loadAll()` reload (old button only hid inputs, edits lingered locally — weak cancel).
+- Dynamic live board (`liveBoard.ts`, shared preview + full page, still pure): known-4 first, each new `Live note` value gets its own card (case-insensitive merge, first-seen casing, A→Z — `Re-Live OBS` now has a card); blank notes → `Unlabeled` last; `Other` bucket removed. Grid wraps, no layout change.
+
+**Bugs + lessons (sequence continues B130).**
+- B131 `@@` on legacy rows: a display that prefixes `@` must strip at the display boundary too, not just at save — old `@`-stored data would double up. Lesson: normalize at every render of a prefixed value, never only at write.
+- Tooling: Windows PowerShell has no `head` — piped `| head -n` fails the verify command. Lesson: run bare `npx tsc --noEmit` on this box, never unix-piped.
+
+**Open (owner vs next-build).**
+- Owner: deploy `deploy_online.py` (build must list no new routes — none added); eyeball save flow (Save exits edit, Cancel reverts), Export menu, `Re-Live OBS` card + `Unlabeled` on board; commit/push when ready (never unasked).
+- Next-build: nothing parked from this arc; resume Cp54 opens (creator labels 35 to go, tickets held) or Cp53 parked (Posted/Age MID).
 
 ## Checkpoint 54 — 29 Oct 2026 (creator grants + affiliate room detail LIVE on /shop-live; 15 deploys, all UNCOMMITTED)
 

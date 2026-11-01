@@ -48,12 +48,15 @@ export default function LiveBoardPage() {
             </div>
             <ul className="divide-y divide-zinc-800/60">
               {c.rows.length === 0 && <li className="px-3 py-2 text-[13px] text-zinc-600">—</li>}
-              {c.rows.map((a: any) => (
-                <li key={String(a.name)} title={a.username ? `${a.name} (@${a.username})` : String(a.name)} className="px-3 py-2">
+              {c.rows.map((a: any) => {
+                const dispUser = String(a.username ?? "").trim().replace(/^@+/, "");
+                return (
+                <li key={String(a.name)} title={dispUser ? `${a.name} (@${dispUser})` : String(a.name)} className="px-3 py-2">
                   <div className="text-[13px] font-medium text-zinc-100">{a.name}</div>
-                  {a.username && <div className="truncate text-[12px] text-zinc-500">@{a.username}</div>}
+                  {dispUser && <div className="truncate text-[12px] text-zinc-500">@{dispUser}</div>}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         ))}

@@ -101,7 +101,7 @@ export async function POST(request: Request) {
       for (const a of list) {
         const name = a.name.trim();
         const row = {
-          username: String(a.username ?? ""), account_id: String(a.account_id ?? ""),
+          username: String(a.username ?? "").trim().replace(/^@+/, ""), account_id: String(a.account_id ?? ""),
           identity_id: String(a.identity_id ?? "").trim(),
           note: String(a.note ?? ""), active: a.active !== false,
           live: a.live === true, live_note: String(a.live_note ?? ""),

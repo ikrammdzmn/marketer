@@ -21,19 +21,32 @@ export function groupLiveAccounts(accounts: any[]): LiveGroups {
   const live = (accounts ?? []).filter((a: any) => a.live === true);
   const buckets = new Map<string, any[]>();
   for (const p of LIVE_ORDER) buckets.set(p, []);
-  const other: any[] = [];
+  const customs = new Map<string, { title: string; rows: any[] }>();
+  const unlabeled: any[] = [];
   for (const a of live) {
-    const norm = normalizeLiveType(a.live_note);
+    const raw = String(a.live_note ?? "").trim();
+    if (!raw) { unlabeled.push(a); continue; }
+    const norm = normalizeLiveType(raw);
     if (buckets.has(norm)) buckets.get(norm)!.push(a);
-    else if (norm) other.push(a);
-    else other.push(a);
+    else {
+      const key = norm.toLowerCase();
+      const hit = customs.get(key);
+      if (hit) hit.rows.push(a);
+      else customs.set(key, { title: norm, rows: [a] });
+    }
   }
   for (const rows of buckets.values()) {
     rows.sort((x: any, y: any) => String(x.name ?? "").localeCompare(String(y.name ?? "")));
   }
-  other.sort((x: any, y: any) => String(x.name ?? "").localeCompare(String(y.name ?? "")));
+  for (const c of customs.values()) {
+    c.rows.sort((x: any, y: any) => String(x.name ?? "").localeCompare(String(y.name ?? "")));
+  }
+  unlabeled.sort((x: any, y: any) => String(x.name ?? "").localeCompare(String(y.name ?? "")));
   const cols = LIVE_ORDER.map((p) => ({ key: p, title: p, rows: buckets.get(p) ?? [] }));
-  if (other.length > 0) cols.push({ key: "Other", title: "Other", rows: other });
+  for (const c of [...customs.values()].sort((a, b) => a.title.localeCompare(b.title))) {
+    cols.push({ key: `custom:${c.title.toLowerCase()}`, title: c.title, rows: c.rows });
+  }
+  if (unlabeled.length > 0) cols.push({ key: "Unlabeled", title: "Unlabeled", rows: unlabeled });
   let revisedAt: string | null = null;
   for (const a of live) {
     const u = a.updated_at ? String(a.updated_at) : "";
