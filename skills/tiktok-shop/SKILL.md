@@ -72,6 +72,20 @@ Never compare across pull times (intraday restatement).
 - Affiliated LIVE rooms likewise need a creator token, NOT the seller token
   (seller calls answer 36009005 user-type or 28001022 minute-denied by design).
 
+## Shop video analytics (verified 05 Nov 2026, owner probe pastes, green on prod)
+
+- `GET /analytics/202509/shop_videos/performance`: row key is `id`
+  (not `video_id`); money is `{amount, currency}` objects (unwrap `.amount`
+  or every sale reads 0); metadata rides the same rows — `username`,
+  `title`→caption, `video_post_time` (`YYYY-MM-DD HH:mm:ss`, zoneless =
+  MYT), `duration`, `hash_tags[]`, `products[{id,name}]`.
+- `GET /analytics/202509/shop_videos/{id}/products/performance` returns
+  one row PER PRODUCT (`{products: [{product_impressions,
+  product_clicks, ...}]}`) — SUM across the array for video-day imp/clicks.
+- Date columns differ by schema: `creative.video_day_organic.date` is DATE,
+  `creative.daily_rows.date` is TEXT — never share an uncast `$n` across
+  the boundary (`::date` / `::text` per use).
+
 ## Live Room creator APIs (verified 29 Oct 2026, Cp54, green on prod)
 
 - Documented family is `v202502` — the bundled OAS only knew `202309`,

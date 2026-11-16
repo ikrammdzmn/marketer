@@ -6,8 +6,13 @@ export function normalizeEmail(value: unknown): string {
 }
 
 export function isBootstrapAdmin(email: string): boolean {
-  const adminEmail = normalizeEmail(process.env.AUTH_ADMIN_EMAIL);
-  return !!adminEmail && email === adminEmail;
+  // Comma-separated to allow more than one fixed admin
+  // (e.g. "owner@gmail.com,second@gmail.com"). Single email still works.
+  const raw = process.env.AUTH_ADMIN_EMAIL ?? "";
+  return raw
+    .split(",")
+    .map((part) => normalizeEmail(part))
+    .some((adminEmail) => !!adminEmail && email === adminEmail);
 }
 
 export function validEmail(email: string): boolean {

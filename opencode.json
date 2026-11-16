@@ -18,11 +18,12 @@
         "GOOGLE_SERVICE_ACCOUNT_FILE": "{env:GOOGLE_SHEETS_CRED}"
       }
     },
+    "canva": {
+      "type": "remote",
+      "url": "https://mcp.canva.com/mcp",
+      "enabled": true
+    },
     "servers": {
-      "tiktok-business": {
-        "type": "remote",
-        "url": "https://business-api.tiktok.com/open_mcp/tt-ads-mcp-layer"
-      }
     }
   }
 }

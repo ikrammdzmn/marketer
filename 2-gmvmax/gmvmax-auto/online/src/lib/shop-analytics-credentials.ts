@@ -1,4 +1,5 @@
 import { query } from "./db";
+import { refreshShopToken, shopTokenExpiryMs } from "./shop-credentials";
 
 // Second Shop Custom app (Analytics & Reporting category: LIVE minute
 // performance). Dual-key model: orders keep SHOP_APP_KEY/SECRET +
@@ -25,6 +26,8 @@ export interface ShopAnalyticsCredentials {
 }
 
 // DB-first, env fallback. Tolerates pre-025 DBs (missing table → env).
+// Auto-refreshes when past expiry-1h (mirrors shop-credentials.ts —
+// the missing half that caused 105002 once the 7-day token died).
 export async function getShopAnalyticsCredentials(
   shopNumber: string
 ): Promise<ShopAnalyticsCredentials | null> {
@@ -33,12 +36,33 @@ export async function getShopAnalyticsCredentials(
   try {
     const r = await query(
       `SELECT shop_id, shop_number, shop_name, access_token, refresh_token,
-              shop_cipher
+              shop_cipher, access_token_expire_in, updated_at
        FROM credentials.shop_analytics_tokens WHERE shop_id = $1`,
       [shopId]
     );
     if (r.rows.length > 0 && r.rows[0].access_token) {
-      return r.rows[0] as ShopAnalyticsCredentials;
+      const row = r.rows[0];
+      const ana = getAnalyticsAppKeys();
+      let needsRefresh = false;
+      if (row.updated_at && ana.key && ana.secret) {
+        const expiry = shopTokenExpiryMs(row.updated_at, row.access_token_expire_in ?? 86400);
+        if (expiry !== null && Date.now() >= expiry - 3600_000) needsRefresh = true;
+      }
+      if (needsRefresh && row.refresh_token) {
+        const fresh = await refreshShopToken(ana.key, ana.secret, row.refresh_token);
+        if (fresh?.access_token) {
+          await query(
+            `UPDATE credentials.shop_analytics_tokens
+             SET access_token = $1, refresh_token = $2,
+                 access_token_expire_in = $3, updated_at = now()
+             WHERE shop_id = $4`,
+            [fresh.access_token, fresh.refresh_token ?? row.refresh_token, fresh.expires_in ?? 86400, shopId]
+          );
+          row.access_token = fresh.access_token;
+          row.refresh_token = fresh.refresh_token ?? row.refresh_token;
+        }
+      }
+      return row as ShopAnalyticsCredentials;
     }
   } catch {
     console.error("[shop-analytics] db lookup failed (run 025 migration?), trying env fallback");

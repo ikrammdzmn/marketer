@@ -2,6 +2,84 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 14 Nov 2026 — /creative video-ID search (tsc clean, 2 deploys, UNCOMMITTED)
+
+- Quick + deep ID search (`dpl_2FQQCDgvywPRqkMVkWaei84D6MHM`): `Post ID…` box filters loaded rows (ID/title, both tables) + `Find everywhere` (`GET /api/creative-sync?itemId=`, ≤200 rows + totals + campaigns + span) with `Load that range` (last-31d clamp).
+- Panel fix (`dpl_GvBduKTuey51TFz9S7pcvnuA7DL3`): B150 Orders showed row-count → real orders; B151 campaigns last-4 → full IDs; B152 range button clamped to Fetch 31d cap.
+
+## 14 Nov 2026 — seller-creative arc + All Creative hub + local backfill (tsc clean, 16 deploys, UNCOMMITTED)
+
+- Fetch popup on Seller (`dpl_AzD4MVbpRJE8tgXR3PuX9VHZh7MR`): elapsed/ETA/10s-stay/Cancel on Fetch + Sync + Fill legs.
+- Seller Top-5 + B-taxonomy (`dpl_2Ytrw9Rj1Dhw8ApbErkYa72CgAWp`, `dpl_5RT8enaycicKjZhNXsx1DNjQDeh1`, `dpl_3TmzJ6pyqz8zPmKLYSyi7DoABZxZ`, `dpl_Cxf4LPZgzmNf2t3GZrZu4vYagEMt`): card view, /accounts classes (post-pull enrichment, regex fail-open), class chips, cover_url consumer (no producer yet), video ids.
+- Defaults + auto-load (`dpl_J9cr2J6mx671QLgHjmk3jcjhDQtC`, `dpl_ADopuN5se1nqyRYagUaMppfaxch8`, `dpl_2aJT4swRwN8cz6F2SWxWidzGtjFN`): past-7d default, lag note, DB-first auto-load (Sync stays sole writer).
+- Profit leg (`dpl_D7JtZfy8zJJd7bD97ix9tUgrBviM`): untung = GMV×0.35 − kos ads + ROI (overview + table + detail; tab moved to Product).
+- Panel merge (`dpl_5kKnhvQxcWPVRYsx4soFquuDaMxN`, `dpl_HZHDbQN9WC8jyrDZhVxDwf1dCz5i`, `dpl_8brHQ3i1fh6XyE49B35ySkiXjwUk`): one player+data panel, eye deleted, card + table rows tappable, shared openId.
+- Product Top-5 (`dpl_5mFNY5EUwiiyK1vFvENFUhqkv1dE`): docs/04 5 lists + Juga + Tiada-pertindihan + sebenar-rank; Seller stripped to single GMV list (was wrong tab).
+- All Creative hub (`dpl_2zD7x8tVqJd4Zi4ctUS5NKzwKCVD`, `dpl_34HrFgj2ga1Cpmxb7Fhv3mCrey68`): /all-creative + snapshot API + Menu entry + Refresh (read-only).
+- Local backfill (no deploy): seller-backfill.py + SellerBackfill-Nightly 12:30am task (25-min cap); 7d proven (1389 video-days, 300 imp, 1.7 min); Telegram topic-30 routing.
+
+## 14 Nov 2026 — total DB-first + 5m auto-refresh (tsc clean, 2 deploys, UNCOMMITTED)
+
+- Fresh total stays cached (`dpl_68sSy8LyzhY9jukUZjcy2YGewqQm`): `gmv-max/page.tsx` auto-load gate now `!snapStale` (was total-excluded), so `?metric=total` paints Neon `hourly-report` instantly like singles; Fetch Data still live.
+- 5m/partial revalidate (`dpl_AYf76rWc789wAskHrwnd3fhcygZB`): `<5m` non-partial stays cached; `>=5m`/partial/stale paints cache then silent live refresh (fail keeps cache). Notices updated accordingly.
+
+## 14 Nov 2026 — sidebar reorg (tsc clean, 9 deploys, UNCOMMITTED)
+
+- Live/Product collapsible groups (`dpl_AT9CpQ8Jn5df7VTjNiT5T69zJViP`, `dpl_FSsx4efoQXSPp9xjaDMVUFrHJhqs`): `Live GMV Max ▸` → LGMVM campaign + Live Dashboard (renamed /shop-live); `Product GMV Max ▸` → PGMVM campaign + PGMVM Creative (renamed /creative, out of Settings); all collapsed by default with persist + auto-expand.
+- Collapsible SHOP/TIKTOK ADS/TIKTOK SHOPS sections (`dpl_CRPyMNXxeWEpDj4F65NNA6FKymmX`): all-open default, persist, auto-expand on active child, forced open in icon mode.
+- Shop row killed + Accounts group (`dpl_GtxmTWsbEPaCaWeQGhgD6wq7RS6Q`, `dpl_B1RB8kossXuogYNt3y6fVtMBaMcN`): dead Him.DrSamhan row deleted; Seller Creative → TikTok Shops bottom, empty Shop section deleted; `Accounts ▸` → Accounts + Live board inside Settings.
+- Icon dedupe (`dpl_B1RB8kossXuogYNt3y6fVtMBaMcN`, `dpl_EhruHZNqzP8PVa8KC8baUWtXrYDR`): new shield (guardrails), receipt (Shop Cost), chart (Hourly Ads) paths; Hourly Shop→bag→clock, Calendar filters→cal; `bag` still shared by Shop GMV + Shop grants (admin-only, accepted).
+- Order + rename (`dpl_AseeFXHDRZ8CnGh2WXPN9jVux2Vj`, `dpl_DbfJ1sMQN2Nct8S6UjBaHLRzkDMt`): TikTok Shops funnel order (Shop GMV → Hourly Shop → Shop Cost → Live ROI → Seller Creative); `TTAM (Manual, excl GMV)` → `TTAM campaign` (rename-only per owner).
+
+## 12 Nov 2026 — calendar TikTok parity + long ranges on all ad tabs (tsc clean, 8 deploys, UNCOMMITTED)
+
+- TikTok parity (`dpl_HnEhViVGs2irf75orBEbc8abLFtm`): dual Last-7 ("Last 7 days" 8d incl-today for GMV Max parity, "Past 7 days" 7 closed for TTAM) + Sunday-start weeks (`mytWeekdaySun0`) in the one shared `DateRangePicker.tsx`.
+- GMV Max long ranges (`dpl_3m8TvMJDZBfsstKzZHRbQxbvj1rN`): picker `maxDays`/`showLong` props (gmv-max 365 + Last 3/6/12m); 30d newest-first chunked live fetch + `mergeSliceParts` + floating progress popup with Cancel.
+- Popup on every fetch + MYT stamp (`dpl_GkjHqw5cAqktFDhcWp2wMPuvMrXp`): snapshot + single-day fetches show the popup; `Fetched: dd-mm-yyyy (hh:mm:ss MYT)`.
+- Range labels on all 6 pages (`dpl_9DUfPnndWTUbjkFMhvjphERaRzMZ`): pure `rangeLabel`/`fmtDayMY` added to `ttam-scores.ts`; single-day buttons show one date + ` (Today)`/` (Yesterday)`.
+- Elapsed/ETA/10s stay (`dpl_6mVb4YzTXFMwTXywQiimVE2niJsV`): 0.5s elapsed ticker, `≈Ns left` on multi-slice, `Done ✓` stays 10s.
+- Preset hover preview (`dpl_DsYEowk8…`): hover any preset → grid highlights + footer range, no grid jump; footers all dd-mm-yyyy now.
+- Fixes (`dpl_EC4KhUKFprqKBzpPqr6Kar9LMHVj`): B147 indeterminate pulse chunk at 0%; B149 close-timer hygiene (cleared at every fetch start + unmount); fresh-snapshot path gets the 10s stay too.
+- Long ranges everywhere (`dpl_Fz1ze3AbJz4HQGmy4BP58RCbLWBw`): shop-cost chunked + merge + long picker; shop-gmv + ttam/roas chunked merges (`mergeRoasSlices`/`mergeShopGmvSlices`, first slice pays budget enrichment); shop-gmv/hourly-shop refreshes split into 31d runs; hourly scorecards uncapped (full-range aggregate, fail-open). Servers unchanged (≤31d/run). Bugs B148 (const-before-use → function declarations, tsc-caught).
+
+## 10 Nov 2026 — System-wide ROI color bands + /presets General tab (tsc clean, 1 deploy, UNCOMMITTED)
+
+- New `039_general_bands.sql` (owner runs dev+prod): `core.general_bands` single active row `key='roi'` (tick/green/yellow/red cutoffs, updated_by audit; seeded 10/7.5/5/4). Readers tolerate pre-039 via hardcoded defaults.
+- New `GET/POST /api/general-bands`: shared read (gmv-max/creative/live-roi/presets modules) with fallback flag; writes need presets scope + PRESET_WRITE_KEY, strict tick>green>yellow>red>0 ordering.
+- `/presets` gains **TTAM | General** tab switch: TTAM editor untouched; General tab has 4 cutoff inputs + live preview (12/8/6/4.5/3) + Save/Reload + migration-fallback notice.
+- Display (`dpl_Cr1tP9ZrCWMYrQLnywPsonqtcJze`): shared `roiTier()`/`Roi` helper in `ttam-scores.ts` (pure, client-safe); /gmv-max header blended+net ROI, channel cards, ROI KPI, all 3 agenda tables + legend; /creative ROI column (replaces old ≥10 / <2+cost≥20 rule per owner); /live-roi blended/session ROIs + legend; hourly Telegram ROI H·D gains 🟢🟡🔴/🚨 prefix. TTAM-drill + shop-truth ROAS deliberately excluded (feeder metric / different scale).
+- Zero-spend plain (`dpl_7YbK6S7Ed1wRG6e3HkwKciXnpBy1`): ROI with no spend now renders plain `0.00x` (no color, no mark) — no spend means no judgment. `Roi`/`RoiBand` take an optional `cost` prop; spent-with-zero-return still lands crit red+⚠. Missing ROI stays —.
+
+## 05 Nov 2026 — Seller Creative module (tsc clean, 2 deploys, UNCOMMITTED)
+
+- New `/seller-creative` module (`dpl_7G2BZGCfM4i9iemb88rvi9Z2Btva` READY): 5 tabs (Seller Center organic / Product → /creative / Live → /shop-live / Ads placeholder / Evergreen rule preview). New `038_creative_organic.sql` (owner runs dev+prod): `creative.video_day_organic` (video_id,date PK, imp/clicks NULL = not yet pulled) + `video_meta` (dual posted dates, account_class) + `ads_manager_day` + `live_room`. New `lib/seller-creative.ts` (server-only: Shop 202509 `shop_videos/performance` dual-sort pull + `products/performance` imp leg ≤40/run + local signer + snowflake posted time + name-match class). Routes `probe` (read-only) / `sync` (≤7d, per-day fail-open, rewrite-on-revise) / `overview` (DB read, class filter, side-by-side only — never sums with GMV Max). Shell Settings link (module `seller-creative`).
+- Follow-up fix (`dpl_AaJ9myj3GdaJvysNomPzTA2dKumE`): probe hit Shop `105002` (expired access token) — root cause was a missing half: the Analytics app credential reader never auto-refreshed (orders app had it since P0). `getShopAnalyticsCredentials` now mirrors `shop-credentials.ts` (expiry-1h check via `shopTokenExpiryMs` + `refreshShopToken` + DB update, new tokens saved each rotation). Table already had the columns (025). If the refresh token itself is dead, TikTok rejects and owner re-authorizes via Shop grants. Bug B138.
+- Follow-up fix (`dpl_37kpYVQP1MCCh8htf5aup4aXhpW6`): sync chunk timed out (Vercel HTML "An error occurred" broke `res.json()` — B139). Budget fixes: non-JSON responses now throw the HTTP + snippet; views-sort early-stops after 2 thin pages (desc order — gmv pass still catches low-view sellers); inter-page sleep 400→150ms; imp cap 40→15/day (top views first, rest backfill later); client chunks single days (≤31) instead of 7d. Retry one day at a time.
+- Follow-up fix (`dpl_8znevcaV72c68SfgWgdwyM1tSf1Y`): single-day sync STILL timed out — the parse error came from the page (route HTML), not the Shop call (B140). Split the slow leg out: `POST /api/seller-creative/imp` fills product imp/clicks in batches of ≤5 (~15-20s each, page loops to `remaining: 0`); sync is now listing-only (`withImp: false`) + gmv-pass early-stop (2 seller-free pages — gmv=0 rows were already covered by the views pass); page gets a **Fill product views** button + HTML-safe `postJSON` with timeout hint. Sync one day, then Fill, then widen.
+- Follow-up fix (`dpl_GGY2dZW2kdhiMKMxX4svx4Pijttf`): timeout persisted because the real hog was the SAVING, not the walk (B141): `upsertVideoMeta` made one DB round-trip per video (188 sequential INSERTs). Batched to one trip per 200 videos (same shape as the day-rows saver, same COALESCE semantics). Probe always fit because it writes nothing.
+- Phase 1 Seller upgrades (`dpl_9FoBW43o2jsgGKPCmGFh3ALCTKYL`): overview returns breakdown per class + top account, `selling` count, per-row `in_gmvmax` join (daily_rows same video_id, side-by-side only), `order_per_1k`, status (Winner/Baik/Sampel kecil/Tiada jualan, rule exposed in UI + API), 60+40 split (60 by GMV + 40 by views deduped); page gains 5th KPI (Video menjual), breakdown cards, status filter, Status/Ord-1k/GMV-Max columns.
+- Metadata + money fix (`dpl_3hxc5abzTpphKz6HRzk3TYg22o9e`): probe rawSample revealed two misses — (1) GMV arrives as `{amount,currency}` object, plain `Number()` zeroed every sale (B142: 61 orders / RM0); new `money()` unwraps `.amount`. (2) True field names: `id` (not `video_id`), `username`, `title`→caption, `video_post_time` (MYT, no zone — parsed +08:00), `duration`, `hash_tags[]`, `products[{id,name}]`; `pickRows` maps all six into `video_meta` via sync (account_class derives from username), dedupe backfills nulls across passes. Verified by owner probe: 42 sellers (was 0), `username: dr.samhan` flowing.
+- Probe display fix (`dpl_J3U4sSpyzovGL1cDbhpR6CHicZY2`): output was sliced at 2000 chars (cut the rawSample mid-product) — now full JSON in a scrollable block.
+- Hourly retry (`dpl_F11KUieXXJLYxbdnKXjrEbaZqfkf`): `fetchHourlyRows` had no retry — one transient TikTok blip threw bare "fetch failed" and the Telegram alert relayed it verbatim (B145). Now 4 attempts with 2s backoff, error names promotionType + page.
+- Join-type fix (`dpl_2dacvRPA3ZWmW7cgTHEQJPEPd9eM`): Phase-1 GMV-Max join reused `$1/$2` across a DATE column (organic) and a TEXT column (daily_rows) — Postgres typed them text and threw `operator does not exist: date >= text` (B143). Fix: explicit `::date` / `::text` casts per use.
+- Imp-shape fix (`dpl_GXGz9Gymxe8D2iXzVW8FCGcA22Tr`): "Filled 40" with empty columns = calls succeeded but parser found nothing (B144: products/performance shape never verified). Parser now tries nested/top-level/list forms + candidate keys; probe returns `impKeys/impSample` for ground truth; imp route reports `empty` vs `filled` and the page stops with a paste prompt instead of looping blind.
+- Imp-array fix (`dpl_9mGFdaQp3kKQohf3wanKcD56vHUZ`): probe revealed `products` is a per-PRODUCT array (`[{product_impressions, product_clicks}]`) — parser now SUMs across it. Sample video: 704+856=1560 imp, 26+33=59 clicks.
+- Open: owner runs 038 on dev+prod; probe one day then sync a week; check Analytics app scopes if probe 403s.
+
+## 04 Nov 2026 — creative Sync-flex + Insight + noCard + global Kind + 2nd admin + freshness pill (tsc clean, 7 deploys, all UNCOMMITTED)
+
+- Sync follows calendar (`dpl_AA7wtpJHtArjJVgiTcUYnuzfYpsv`): client ≤7d chunking newest-first, server 7d guard stays; Fetch/Sync spinners + mutual-disable (`dpl_6EsDbwhCPKpBKJpzQ7uyE9xCq33P`, new `crFetching`, sync awaits trailing refresh).
+- Insight port (`dpl_F9Tojr4qfWz4kpaV918L8Vcn9Urg`): file-adaptive benchmarks over aggregated posts, dropdown + column + live bars + CSV cols; Boost sec-clause KIV (no Exploration status in pulls). Bugs B133 (v75 field-map typo, pre-tsc catch) + B134 (guide insert ate a neighbor, pre-tsc catch).
+- `Exclude Product Card` (`dpl_DRXZMW9NqBUmABNpQNf18wznYPhn`): `?noCard=1` server-exact rows+totals+totalsOnly, global tick default off, `crTotalsNoCard` guard.
+- Global Kind (`dpl_5LjJPYkRVijZTzHqKGQEbgqUWBm2`): `?kind=` server-exact via correlated subqueries replicating `acctKind` (any kind implies no-card), control moved global, `crTotalsKind` guard; drives KPIs/SOP/kill/by-account/trend/CSV/vs-previous.
+- Multi-admin (`dpl_8avF9w7mz4PXHqNmZ7wbT`): `isBootstrapAdmin` comma-splits `AUTH_ADMIN_EMAIL`; OWNER STEP PENDING: append second email in Vercel + redeploy.
+- Freshness pill (`dpl_4bPLreazuqEdXWcumQYLU1Zw9HrR`): card collapsed by default, pill toggle, 60s re-check untouched.
+
+## 01 Nov 2026 — creative SCALE Top + calendar popup task notes (tsc clean, 2 deploys)
+
+- `/creative` SCALE Top (`dpl_4S7mXwrTELcadrJzmipdvYqhQ5sG`, code committed `bb98404`): Verdict=SCALE gains `Top [All|10|20|30|Custom]` + N input (1–300), slices current Spend/GMV order (default All); summary/table/CSV follow the slice. Bug B132 (tsx `as const` needs parens).
+- `/calendar` day popup (`dpl_EQxBdY7o7kRuUMPrvqH4hGEjCmV9`, UNCOMMITTED): popup opens on task-only days (`hasPopup`) and renders Task notes block (dot + title + owner/agent + body, done struck) mirroring SidePanel.
+
 ## 01 Nov 2026 — /accounts UX polish (tsc clean, UNDEPLOYED, UNCOMMITTED)
 
 - `@` usernames (type `foo` or `@foo`, displays `@foo`, stores `@`-less client + server); top-only action bar (`＋ Add` + `Save` + collapsed `Export ▾` + `Edit/Cancel`, bottom row removed); `Save` auto-exits edit mode, `Cancel` discards via reload; dynamic live board (new `Live note` values get their own A→Z cards, blanks under `Unlabeled`, `Other` removed). Bug B131 (`@@` guard on legacy rows).

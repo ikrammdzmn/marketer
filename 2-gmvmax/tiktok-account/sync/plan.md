@@ -34,7 +34,14 @@
   - 23 Sep: `Creative age` added (col C), all 10 tabs migrated
 - [x] `--full` backfill for stats older than 7d (optional; daily window is enough)
   - 23 Sep: ran for `Dr. Samhan` (22 tracked + 2,521 backfilled, re-sorted)
-- [ ] Windows Task Scheduler daily job (same file, when manual gets boring)
+- [x] Windows Task Scheduler daily job (setup-schedule.ps1, 05 Nov 2026):
+  TikTokSync-Morning 08:00 + TikTokSync-Evening 17:00 + TikTokSync-Night 23:00
+  (-> run-scheduled.ps1 --all --days 7, logs/sync-YYYY-MM-DD.log) +
+  PCShutdown-1AM 01:00 (shutdown /s /f /t 120). Power-ON 07:00 via BIOS
+  RTC Alarm (manual step).
+- [x] Schedule status view (05 Nov 2026): dashboard /schedule + /api/schedule
+  (4 tasks + boot + power cfg + log tail), Sync status link on dashboard,
+  TikTokDashboard autostart (schtasks onlogon, Startup .cmd fallback).
 - [ ] History sheet for vs-any-date growth charts (only if light deltas prove insufficient)
 - [x] v21: Dashboard col A `No` (1-N static, Account shifts to B, 10-col A-J)
 - [x] v21: numbered tab titles `N. @user / Name` + canonical tab-strip

@@ -1,0 +1,52 @@
+2026-11-14 16:05:38 INFO backfill start db=prod range=2026-11-13..2026-11-13 dry_run=True (deadline 25 min)
+2026-11-14 16:05:39 INFO token ok (len=143)
+2026-11-14 16:05:39 INFO class map: 26 accounts
+2026-11-14 16:05:39 INFO latest_available_date=2026-11-13
+2026-11-14 16:05:51 INFO OK 2026-11-13 videos=157 imp_filled=37 (pages n/a)
+2026-11-14 16:05:51 INFO seller-backfill DRY: 1 day(s) ok, 0 failed, 157 video-days, 37 imp calls, 0.2 min
+2026-11-14 16:06:03 INFO backfill start db=prod range=2026-11-13..2026-11-13 dry_run=False (deadline 25 min)
+2026-11-14 16:06:04 INFO token ok (len=143)
+2026-11-14 16:06:04 INFO class map: 26 accounts
+2026-11-14 16:06:04 INFO latest_available_date=2026-11-13
+2026-11-14 16:06:16 INFO OK 2026-11-13 videos=157 imp_filled=37 (pages n/a)
+2026-11-14 16:06:16 INFO seller-backfill prod: 1 day(s) ok, 0 failed, 157 video-days, 37 imp calls, 0.2 min
+2026-11-14 16:06:16 WARNING telegram skipped (no BOT_TOKEN/CHAT_ID)
+2026-11-14 16:06:38 INFO backfill start db=prod range=2026-11-07..2026-11-13 dry_run=False (deadline 25 min)
+2026-11-14 16:06:39 INFO token ok (len=143)
+2026-11-14 16:06:39 INFO class map: 26 accounts
+2026-11-14 16:06:39 INFO latest_available_date=2026-11-13
+2026-11-14 16:06:50 INFO OK 2026-11-13 videos=157 imp_filled=37 (pages n/a)
+2026-11-14 16:07:03 INFO OK 2026-11-12 videos=187 imp_filled=38 (pages n/a)
+2026-11-14 16:07:20 INFO OK 2026-11-11 videos=201 imp_filled=48 (pages n/a)
+2026-11-14 16:07:35 INFO OK 2026-11-10 videos=199 imp_filled=45 (pages n/a)
+2026-11-14 16:07:49 INFO OK 2026-11-09 videos=203 imp_filled=45 (pages n/a)
+2026-11-14 16:08:03 INFO OK 2026-11-08 videos=220 imp_filled=37 (pages n/a)
+2026-11-14 16:08:18 INFO OK 2026-11-07 videos=222 imp_filled=50 (pages n/a)
+2026-11-14 16:08:18 INFO seller-backfill prod: 7 day(s) ok, 0 failed, 1389 video-days, 300 imp calls, 1.7 min
+2026-11-14 16:08:18 WARNING telegram skipped (no BOT_TOKEN/CHAT_ID)
+2026-11-14 16:26:07 INFO backfill start db=prod range=2026-11-13..2026-11-13 dry_run=False (deadline 25 min)
+2026-11-14 16:26:08 INFO token ok (len=143)
+2026-11-14 16:26:08 INFO class map: 26 accounts
+2026-11-14 16:26:08 INFO latest_available_date=2026-11-13
+2026-11-14 16:26:21 INFO OK 2026-11-13 videos=157 imp_filled=37 (pages n/a)
+2026-11-14 16:26:21 INFO seller-backfill prod: 1 day(s) ok, 0 failed, 157 video-days, 37 imp calls, 0.2 min
+2026-11-14 16:29:46 INFO backfill start db=prod range=2026-11-13..2026-11-13 dry_run=False (deadline 25 min)
+2026-11-14 16:29:47 INFO token ok (len=143)
+2026-11-14 16:29:47 INFO class map: 26 accounts
+2026-11-14 16:29:47 INFO latest_available_date=2026-11-13
+2026-11-14 16:30:01 INFO OK 2026-11-13 videos=157 imp_filled=37 (pages n/a)
+2026-11-14 16:30:01 INFO seller-backfill prod: 1 day(s) ok, 0 failed, 157 video-days, 37 imp calls, 0.2 min
+2026-11-15 00:30:02 INFO backfill start db=prod range=2026-11-13..2026-11-14 dry_run=False (deadline 25 min)
+2026-11-15 00:30:04 INFO token ok (len=143)
+2026-11-15 00:30:04 INFO class map: 26 accounts
+2026-11-15 00:30:04 INFO latest_available_date=2026-11-13
+2026-11-15 00:30:04 INFO skip 2026-11-14 (newer than latest_available)
+2026-11-15 00:30:16 INFO OK 2026-11-13 videos=157 imp_filled=37 (pages n/a)
+2026-11-15 00:30:16 INFO seller-backfill prod: 1 day(s) ok, 0 failed, 157 video-days, 37 imp calls, 0.2 min
+2026-11-16 00:30:02 INFO backfill start db=prod range=2026-11-14..2026-11-15 dry_run=False (deadline 25 min)
+2026-11-16 00:30:03 INFO token ok (len=143)
+2026-11-16 00:30:03 INFO class map: 26 accounts
+2026-11-16 00:30:04 INFO latest_available_date=2026-11-14
+2026-11-16 00:30:04 INFO skip 2026-11-15 (newer than latest_available)
+2026-11-16 00:30:22 INFO OK 2026-11-14 videos=180 imp_filled=30 (pages n/a)
+2026-11-16 00:30:22 INFO seller-backfill prod: 1 day(s) ok, 0 failed, 180 video-days, 30 imp calls, 0.3 min

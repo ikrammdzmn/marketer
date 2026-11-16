@@ -10,17 +10,23 @@ Lineage: v51-port `DateRangePicker.tsx` (dashboard) + v52 single-click fix
 
 ## Layout
 
-- Left preset rail: All time / Today / Yesterday / Last 7 / 30d / 3 / 6 / 12m,
+- Left preset rail: Today / Yesterday / Last 3 / This week / Last week /
+  This month / Last month / Last 7 / Past 7 / Last 14 / 30d, plus
+  Last 3 / 6 / 12m (90/180/365d) on long pages only,
   anchored to latest data date (never wall-clock alone).
 - Two-month grid side by side; « ‹ ✕ › » nav clamped to data months
   (disabled bounds at edges); month-jump input.
-- 31-day cap on ranges (single shared constant, read by labels).
+- Per-page day cap via `maxDays` prop (default 31; long pages 365) +
+  `showLong` for the 3/6/12m presets; labels read the prop.
 
 ## Interaction
 
 - Two-click range + hover preview (second click confirms, hover shows
   candidate range). Pending pick clears on popup open/close so one click
   always lands a single day (v52).
+- Preset hover preview (Nov 2026): hovering a preset highlights its dates
+  on the visible grid + footer shows its range — never jumps the month
+  view. Two-click anchor flow wins while picking.
 - Future dates disabled, no-data dates dim. Day cells as table buttons
   with dim/disabled/selected/in-range states + hover preview.
 - ≥2-files-in-window enable rule for presets (fewer = disabled preset).
@@ -35,7 +41,7 @@ Lineage: v51-port `DateRangePicker.tsx` (dashboard) + v52 single-click fix
 ## Reuse checklist (per new usage)
 
 1. Anchor source (latest file? today MYT? Neon max date?) — presets die
-   without it. 2. Cap constant + labels read it. 3. Enable rules per
+   without it. 2. `maxDays` prop + labels + footer read it. 3. Enable rules per
    preset. 4. Dark-mode chip classes match host page. 5. Single-click
    clears pending range.
 
@@ -57,20 +63,26 @@ Lineage: v51-port `DateRangePicker.tsx` (dashboard) + v52 single-click fix
 - Presets include Last 3 days between Yesterday and Last 7
   (`applyPreset` handles all `days:N` entries generically).
 - One shared `DateRangePicker.tsx` serves every online page (gmv-max,
-  shop-live, creative import it) — edit once, all pickers sync. Add per-page
-  props only if caps/rules ever diverge.
-- Week/month presets (Oct 2026): This week (Mon→today), Last week
-  (Mon→Sun), This month (1st→today), Last month (full month) sit
-  between Last 3 days and Last 7. Monday-first via a MYT-aware
-  weekday helper (UTC+8 math) — server-local `Date` math shifts week
-  edges on UTC clocks. All four fit the 31-day cap (last month max
-  31d); year boundaries fall out of `isoMonth`/`isoAdd` overflow.
+  shop-live, creative import it) — edit once, all pickers sync. Caps
+  diverge per page via `maxDays` + `showLong` props (gmv-max + shop-cost
+  take 365; rest stay 31).
+- Week presets (Nov 2026, TikTok parity): This week (Sun→today), Last
+  week (prior Sun→Sat). Sunday-first via a MYT-aware weekday helper
+  (UTC+8 math) — server-local `Date` math shifts week edges on UTC
+  clocks. Dual Last-7: "Last 7 days" = today−7→today (8 dates, TikTok
+  match), "Past 7 days" = today−7→yesterday (7 closed) via a generic
+  `days:N` branch plus one closed-range special. All fit their caps;
+  year boundaries fall out of `isoMonth`/`isoAdd` overflow.
+- Range buttons render `rangeLabel` (pure, lives in ttam-scores so client
+  files may import it): single day → one `dd-mm-yyyy` + ` (Today)` /
+  ` (Yesterday)`; multi-day → `dd-mm-yyyy – dd-mm-yyyy`.
 - Never use native `<input type="month">` for month-jump: its
   dropdown is browser chrome, unthemeable, and silently dead on some
   browsers/schemes. Use month-name + year `<select>`s on the same
   `YYYY-MM` state, clamped to `[MIN_MONTH, maxMonth]`, out-of-range
   months `disabled` per selected year.
-- Footer shows live selection: `from – to · N days` from props,
+- Footer shows live selection in `dd-mm-yyyy`: preset-hover range first
+  (`01-11-2026 – 07-11-2026 · 7 days · Last week`), then
   `anchor · pick end date…` after first click, `lo – hi · N days`
   hover preview; max-cap warning overrides.
 

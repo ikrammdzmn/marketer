@@ -29,6 +29,10 @@ Owner runs migrations in the SQL Editor, dev first then prod.
   partial progress persists, reruns continue (B27).
 - Batch multi-row upserts (500/chunk). Range loops capped per endpoint.
 - Per-day fail-open with `skipped` reporting — never all-or-nothing.
+- Client-match replication: to filter by a registry (e.g. account kind
+  from `creative.accounts`) without JOINs, use correlated scalar
+  subqueries with the same normalization (lower/trim) + username-first
+  COALESCE; echo the filter back so the client can staleness-guard.
 
 ## Key tables
 

@@ -17,6 +17,76 @@ export const TTAM_THEORY_BANDS: Record<string, { k: number; s: number; invert?: 
   BCE: { k: 0.5, s: 2 },
 };
 
+// System-wide ROI color bands (owner-editable in /presets General tab,
+// stored in core.general_bands key='roi'). Pure + browser-safe like the rest.
+// Tiers: >= tick emerald+tick · >= green emerald · >= yellow amber ·
+// >= red red · below red red+warn. Defaults = owner-locked 10 / 7.5 / 5 / 4.
+export interface RoiBands {
+  tick_at: number;
+  green_at: number;
+  yellow_at: number;
+  red_at: number;
+}
+
+export const GENERAL_BANDS_DEFAULT: RoiBands = {
+  tick_at: 10,
+  green_at: 7.5,
+  yellow_at: 5,
+  red_at: 4,
+};
+
+export function sanitizeRoiBands(v: any): RoiBands | null {
+  const t = Number(v?.tick_at);
+  const g = Number(v?.green_at);
+  const y = Number(v?.yellow_at);
+  const r = Number(v?.red_at);
+  if (![t, g, r, y].every(Number.isFinite)) return null;
+  if (!(t > g && g > y && y > r && r > 0)) return null;
+  return { tick_at: t, green_at: g, yellow_at: y, red_at: r };
+}
+
+export type RoiTier = "tick" | "green" | "yellow" | "red" | "crit";
+
+export function roiTier(roi: number, b: RoiBands = GENERAL_BANDS_DEFAULT): RoiTier {
+  if (!Number.isFinite(roi)) return "crit";
+  if (roi >= b.tick_at) return "tick";
+  if (roi >= b.green_at) return "green";
+  if (roi >= b.yellow_at) return "yellow";
+  if (roi >= b.red_at) return "red";
+  return "crit";
+}
+
+// Tailwind classes (same palette as the creative ROI cell + budget tiers).
+export const ROI_TIER_CLS: Record<RoiTier, string> = {
+  tick: "text-emerald-300 font-bold",
+  green: "text-emerald-300",
+  yellow: "text-amber-300",
+  red: "text-red-300",
+  crit: "text-red-300 font-bold",
+};
+
+export const ROI_TIER_MARK: Record<RoiTier, string> = {
+  tick: " ✓",
+  green: "",
+  yellow: "",
+  red: "",
+  crit: " ⚠",
+};
+
+// Telegram has no color — emoji prefix carries the same 5 tiers.
+export const ROI_TIER_EMOJI: Record<RoiTier, string> = {
+  tick: "🟢",
+  green: "🟢",
+  yellow: "🟡",
+  red: "🔴",
+  crit: "🚨",
+};
+
+// Short legend for table footers. Pass the active bands so it stays truthful.
+export function roiLegend(b: RoiBands = GENERAL_BANDS_DEFAULT): string {
+  return `ROI ≥${b.tick_at} ✓ · ≥${b.green_at} · ≥${b.yellow_at} · ≥${b.red_at} · <${b.red_at} ⚠`;
+}
+
 // Short → full names (from the vol2-focused-v3 preset) for hover tooltips.
 export const SCORE_NAMES: Record<string, string> = {
   ERRI: "Enter Room Rate Impression",
@@ -148,6 +218,23 @@ export const SCORE_EXPRESSIONS: Record<string, string> = {
 export const EXPRESSION_KEYS =
   "spend, imp, clicks, reach, sfv, prof, likes, sh, com, fol, awt, live, live10 + HR, PVR, EDSraw, ACS + preset params";
 
+// TikTok video ID snowflake → upload time. Upper 32 bits = unix seconds
+// (UTC). Local math, no API call — fills Posted/Age for every numeric
+// Post ID. Returns ISO string or null (Product Card / -1 / N/A / garbage).
+// Note: ID time is upload/draft time; Shop publish time can run hours later
+// (measured ~36% differ >1h, mostly <1d) — fine for day-granularity Age.
+export function postedFromId(id: unknown): string | null {
+  const s = String(id ?? "").trim();
+  if (!/^\d{8,25}$/.test(s)) return null;
+  try {
+    const ts = Number(BigInt(s) >> BigInt(32));
+    const now = Math.floor(Date.now() / 1000);
+    if (!Number.isFinite(ts) || ts < 1451606400 || ts > now + 86400) return null;
+    return new Date(ts * 1000).toISOString();
+  } catch {
+    return null;
+  }
+}
 // One renderer for every score cell: "%" → 12.50%, "RM" → RM 0.0234
 // (ACS keeps 4 decimals, other money 2), else plain 2 decimals.
 // Non-finite → "–" (same empty glyph the tables already use).
@@ -156,4 +243,23 @@ export function formatScore(short: string, format: string | null | undefined, v:
   if (format === "%") return `${v.toFixed(2)}%`;
   if (format === "RM") return `RM ${v.toFixed(short === "ACS" ? 4 : 2)}`;
   return v.toFixed(2);
+}
+
+// Range-button + fetch-popup labels (browser-safe, MYT-anchored).
+// Single day → one dd-mm-yyyy with (Today)/(Yesterday) when it matches;
+// multi-day → dd-mm-yyyy – dd-mm-yyyy.
+export function fmtDayMY(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+  if (!m) return String(iso || "");
+  return `${m[3]}-${m[2]}-${m[1]}`;
+}
+export function rangeLabel(s: string, e: string): string {
+  const t = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+  const y = new Date(new Date(`${t}T00:00:00Z`).getTime() - 86400000).toISOString().slice(0, 10);
+  if (s && s === e) {
+    if (s === t) return `${fmtDayMY(s)} (Today)`;
+    if (s === y) return `${fmtDayMY(s)} (Yesterday)`;
+    return fmtDayMY(s);
+  }
+  return `${fmtDayMY(s)} – ${fmtDayMY(e)}`;
 }

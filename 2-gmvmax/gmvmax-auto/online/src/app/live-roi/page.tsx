@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  GENERAL_BANDS_DEFAULT, roiTier, ROI_TIER_CLS, ROI_TIER_MARK, roiLegend,
+  type RoiBands, rangeLabel,
+} from "@/lib/ttam-scores";
 import { toast } from "../toast";
 import DateRangePicker from "../DateRangePicker";
 import { ModuleRedirect } from "../module-gate";
@@ -18,7 +22,16 @@ const fmt = (n: number) =>
   (n ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtInt = (n: number) => (n ?? 0).toLocaleString();
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
+// Inline banded ROI/ROAS (bands from /presets General tab).
+// Zero/absent spend renders plain 0.00 — never a red false alarm.
+function RoiBand({ value, bands, cost, prefix = "" }: { value: number; bands: RoiBands; cost?: number | null; prefix?: string }) {
+  if (cost !== undefined && cost !== null && !(Number(cost) > 0))
+    return <span>{prefix}0.00x</span>;
+  const t = roiTier(Number(value ?? 0), bands);
+  return <span className={ROI_TIER_CLS[t]}>{prefix}{Number(value ?? 0).toFixed(2)}x{ROI_TIER_MARK[t]}</span>;
+}
+
+function Kpi({ label, value, sub }: { label: string; value: any; sub?: any }) {
   return (
     <div className={cardCls}>
       <div className="text-xs text-zinc-400">{label}</div>
@@ -81,6 +94,14 @@ export default function LiveRoiPage() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [sessMsg, setSessMsg] = useState("");
   const [sessLoading, setSessLoading] = useState(false);
+  // System-wide ROI color bands (owner-editable in /presets General tab).
+  const [roiBands, setRoiBands] = useState<RoiBands>(GENERAL_BANDS_DEFAULT);
+  useEffect(() => {
+    fetch(`/api/general-bands`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((b) => { if (b?.bands) setRoiBands({ ...GENERAL_BANDS_DEFAULT, ...b.bands }); })
+      .catch(() => {});
+  }, []);
   const [picked, setPicked] = useState<any | null>(null);
   const [sessQ, setSessQ] = useState("");
   // All groups collapsed by default; user expands what they want.
@@ -321,7 +342,7 @@ function shortEnd(launchedMyt: unknown, endMyt: string | null): string | null {
             setCalOpen((v) => !v);
           }}
         >
-          {start} → {end}
+          {rangeLabel(start, end)}
         </button>
         <button type="button" className={inputCls} onClick={loadSessions} disabled={sessLoading}>
           {sessLoading ? "Loading…" : "1 · Load sessions"}
@@ -366,21 +387,22 @@ function shortEnd(launchedMyt: unknown, endMyt: string | null): string | null {
         <div className="mt-4">
           <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
             <Kpi label="Session GMV" value={`RM ${fmt(result.session?.gmv ?? 0)}`} sub={`${fmtInt(result.session?.orders ?? 0)} orders · room ${result.session?.roomId ?? ""}`} />
-            <Kpi label="GMV Max session cost" value={`RM ${fmt(result.session?.cost ?? 0)}`} sub={`room ROI ${Number(result.session?.roi ?? 0).toFixed(2)}x`} />
+            <Kpi label="GMV Max session cost" value={`RM ${fmt(result.session?.cost ?? 0)}`} sub={<RoiBand value={Number(result.session?.roi ?? 0)} bands={roiBands} cost={result.session?.cost} prefix="room ROI " />} />
             <Kpi label="TTAM picked cost" value={`RM ${fmt(result.ttamSpend ?? 0)}`} sub={`${(result.ttamPicked ?? []).length} adgroups`} />
             <Kpi label="Total ad cost" value={`RM ${fmt(result.totalCost ?? 0)}`} sub="GMV Max + TTAM" />
             <Kpi
               label="Blended ROAS"
-              value={result.blendedRoas === null ? "n/a" : `${Number(result.blendedRoas).toFixed(2)}x`}
+              value={result.blendedRoas === null ? "n/a" : <RoiBand value={Number(result.blendedRoas)} bands={roiBands} cost={result.totalCost} />}
               sub="GMV / total cost"
             />
             <Kpi
               label="Blended net ROI"
-              value={result.blendedNetRoi === null ? "n/a" : `${Number(result.blendedNetRoi).toFixed(2)}x`}
+              value={result.blendedNetRoi === null ? "n/a" : <RoiBand value={Number(result.blendedNetRoi)} bands={roiBands} cost={result.totalCost} />}
               sub={`gross × ${(1 - Number(result.feeRate ?? 0.25)).toFixed(2)} / total`}
             />
           </div>
           <p className="mt-2 text-xs text-zinc-500">{result.note}</p>
+          <p className="mt-1 text-[11px] text-zinc-600">ROI {roiLegend(roiBands)} · bands edit in /presets General</p>
         </div>
       )}
 
@@ -474,7 +496,7 @@ function shortEnd(launchedMyt: unknown, endMyt: string | null): string | null {
                                 </td>
                                 <td className="text-right tabular-nums">RM {fmt(s.cost)}</td>
                                 <td className="text-right tabular-nums">RM {fmt(s.gmv)}</td>
-                                <td className="text-right tabular-nums">{Number(s.roi ?? 0).toFixed(2)}x</td>
+                                <td className="text-right tabular-nums"><RoiBand value={Number(s.roi ?? 0)} bands={roiBands} cost={s.cost} /></td>
                               </tr>
                             );
                           })}

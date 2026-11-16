@@ -6,3 +6,59 @@ body {
   background: #09090b;
   color: #f4f4f5;
 }
+
+/* Light theme (opt-in via <html class="light">, Shell toggle, default dark).
+   Neutral surfaces/text flip; accent pills + buttons keep their dark
+   variants (readable on white). No !important: html.light prefix outranks
+   single-class utilities. */
+html.light {
+  color-scheme: light;
+}
+html.light body {
+  background: #f4f4f5;
+  color: #18181b;
+}
+html.light .bg-zinc-950 { background-color: #ffffff; }
+html.light .bg-zinc-950\/90 { background-color: rgba(255, 255, 255, 0.9); }
+html.light .bg-zinc-900 { background-color: #ffffff; }
+html.light .bg-zinc-900\/60 { background-color: rgba(255, 255, 255, 0.7); }
+html.light .bg-zinc-800 { background-color: #e4e4e7; }
+html.light .bg-zinc-700 { background-color: #d4d4d8; }
+html.light .bg-zinc-600 { background-color: #a1a1aa; }
+/* Selected/active pills use zinc-100: flip to dark-selected in light mode. */
+html.light .bg-zinc-100 { background-color: #27272a; color: #fafafa; }
+html.light .border-zinc-800 { border-color: #e4e4e7; }
+html.light .border-zinc-700 { border-color: #d4d4d8; }
+html.light .border-zinc-600 { border-color: #a1a1aa; }
+html.light .divide-zinc-800 > :not([hidden]) ~ :not([hidden]),
+html.light .divide-zinc-800\/60 > :not([hidden]) ~ :not([hidden]) { border-color: #e4e4e7; }
+html.light .text-zinc-100 { color: #18181b; }
+html.light .text-zinc-200 { color: #27272a; }
+html.light .text-zinc-300 { color: #3f3f46; }
+html.light .text-zinc-400 { color: #52525b; }
+html.light .text-zinc-50 { color: #18181b; }
+/* Light accent text darkens for contrast on white. */
+html.light .text-emerald-400 { color: #059669; }
+html.light .text-emerald-300 { color: #059669; }
+html.light .text-emerald-200 { color: #047857; }
+html.light .text-emerald-100 { color: #065f46; }
+html.light .text-red-400 { color: #dc2626; }
+html.light .text-red-300 { color: #dc2626; }
+html.light .text-red-200 { color: #b91c1c; }
+html.light .text-amber-200 { color: #b45309; }
+html.light .text-amber-300 { color: #d97706; }
+html.light .text-amber-400 { color: #d97706; }
+html.light .text-sky-200 { color: #0284c7; }
+html.light .text-sky-400 { color: #0284c7; }
+html.light .text-orange-200 { color: #c2410c; }
+/* Hover states follow their resting maps. */
+html.light .hover\:bg-zinc-800:hover { background-color: #e4e4e7; }
+html.light .hover\:bg-zinc-900:hover { background-color: #f4f4f5; }
+html.light .hover\:bg-zinc-700:hover { background-color: #d4d4d8; }
+html.light .hover\:bg-zinc-200:hover { background-color: #e4e4e7; }
+html.light .hover\:text-zinc-200:hover { color: #27272a; }
+html.light .hover\:text-zinc-300:hover { color: #3f3f46; }
+html.light .hover\:text-zinc-100:hover { color: #18181b; }
+html.light .hover\:border-zinc-600:hover { border-color: #a1a1aa; }
+html.light input::placeholder,
+html.light textarea::placeholder { color: #a1a1aa; }

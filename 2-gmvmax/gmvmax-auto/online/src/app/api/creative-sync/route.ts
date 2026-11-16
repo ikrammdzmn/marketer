@@ -33,10 +33,83 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "campaign cache not synced yet — Fetch dashboard data once" }, { status: 503 });
     }
   }
+  const itemId = (searchParams.get("itemId") ?? "").trim();
+  if (/^\d{5,25}$/.test(itemId)) {
+    try {
+      const hasMeta = await hasItemMeta();
+      const r = await query(
+        hasMeta
+          ? `SELECT d.date, d.campaign_id, d.item_group_id, d.item_id, d.title,
+                   CASE WHEN d.tt_account IS NULL OR d.tt_account IN ('', '0') THEN 'Product card' ELSE d.tt_account END AS tt_account,
+                   d.content_type, d.status,
+                   d.cost, d.orders, d.gmv, d.roi, d.cpo, d.impressions, d.clicks, d.click_rate, d.conv_rate,
+                   d.v2s, d.v6s, d.vp25, d.vp50, d.vp75, d.vp100, d.synced_at,
+                   m.posted_at AS posted_at, m.source AS posted_source
+            FROM creative.daily_rows d LEFT JOIN creative.item_meta m ON m.item_id = d.item_id
+            WHERE d.item_id = $1 ORDER BY d.date DESC LIMIT 200`
+          : `SELECT date, campaign_id, item_group_id, item_id, title,
+                   CASE WHEN tt_account IS NULL OR tt_account IN ('', '0') THEN 'Product card' ELSE tt_account END AS tt_account,
+                   content_type, status,
+                   cost, orders, gmv, roi, cpo, impressions, clicks, click_rate, conv_rate,
+                   v2s, v6s, vp25, vp50, vp75, vp100, synced_at
+            FROM creative.daily_rows WHERE item_id = $1 ORDER BY date DESC LIMIT 200`,
+        [itemId]
+      );
+      const t = await query(
+        `SELECT SUM(cost)::float AS cost, SUM(gmv)::float AS gmv, SUM(orders)::float AS orders,
+                SUM(impressions)::float AS imp, COUNT(*)::int AS n,
+                MIN(date)::text AS first_date, MAX(date)::text AS last_date
+         FROM creative.daily_rows WHERE item_id = $1`,
+        [itemId]
+      );
+      const c = await query(
+        `SELECT campaign_id, COUNT(*)::int AS days, SUM(gmv)::float AS gmv, SUM(cost)::float AS cost
+         FROM creative.daily_rows WHERE item_id = $1 GROUP BY campaign_id ORDER BY SUM(gmv) DESC LIMIT 20`,
+        [itemId]
+      );
+      return NextResponse.json({
+        itemId,
+        rows: r.rows,
+        totals: t.rows[0] ?? null,
+        campaigns: c.rows,
+        found: r.rows.length > 0,
+      });
+    } catch (e) {
+      return NextResponse.json({ error: "018_creative_daily.sql not run yet" }, { status: 503 });
+    }
+  }
   const startDate = searchParams.get("startDate") ?? "";
   const endDate = searchParams.get("endDate") ?? startDate;
   const campaignId = searchParams.get("campaignId") ?? "";
   const status = searchParams.get("status") ?? "";
+  const noCard = searchParams.get("noCard") === "1";
+  const noCardClause = (col: string) => `AND NOT (${col} IS NULL OR ${col} IN ('', '0', 'Product card'))`;
+  // Global kind filter (server-exact): replicates client acctKind() —
+  // username-first then name (lower/trim, strip @), inactive = active=false,
+  // internal = active plain; affiliate is ONE scope = unregistered + active
+  // top_affiliate (old ?kind=top+affiliate normalized here). Badges still
+  // show the finer label; only filtering merges.
+  // Any kind implies no-card (Product card has no kind).
+  const rawKind = (searchParams.get("kind") ?? "all").trim().toLowerCase().replace(/_/g, " ");
+  const kind = rawKind === "top affiliate" ? "affiliate" : (["internal", "affiliate", "inactive"].includes(rawKind) ? rawKind : "all");
+  const kindClause = (col: string): string => {
+    if (kind === "all") return "";
+    const blank = `NOT (${col} IS NULL OR ${col} IN ('', '0', 'Product card'))`;
+    const norm = `LTRIM(LOWER(TRIM(${col})), '@')`;
+    const uAct = `(SELECT a.active FROM creative.accounts a WHERE NULLIF(LTRIM(LOWER(TRIM(a.username)), '@'), '') = ${norm} LIMIT 1)`;
+    const nAct = `(SELECT a.active FROM creative.accounts a WHERE LOWER(TRIM(a.name)) = LOWER(TRIM(${col})) LIMIT 1)`;
+    const uTop = `(SELECT a.top_affiliate FROM creative.accounts a WHERE NULLIF(LTRIM(LOWER(TRIM(a.username)), '@'), '') = ${norm} LIMIT 1)`;
+    const nTop = `(SELECT a.top_affiliate FROM creative.accounts a WHERE LOWER(TRIM(a.name)) = LOWER(TRIM(${col})) LIMIT 1)`;
+    const effAct = `COALESCE(${uAct}, ${nAct})`;
+    const effTop = `COALESCE(${uTop}, ${nTop})`;
+    const matched = `(${uAct} IS NOT NULL OR ${nAct} IS NOT NULL)`;
+    switch (kind) {
+      case "internal": return `AND ${blank} AND ${matched} AND ${effAct} IS TRUE AND ${effTop} IS FALSE`;
+      case "affiliate": return `AND ${blank} AND ((${uAct} IS NULL AND ${nAct} IS NULL) OR (${matched} AND ${effAct} IS TRUE AND ${effTop} IS TRUE))`;
+      case "inactive": return `AND ${blank} AND ${matched} AND ${effAct} IS FALSE`;
+      default: return `AND ${blank} AND ${uAct} IS NULL AND ${nAct} IS NULL`;
+    }
+  };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
     return NextResponse.json({ error: "need startDate/endDate YYYY-MM-DD" }, { status: 400 });
   }
@@ -48,6 +121,8 @@ export async function GET(request: Request) {
       filter = "AND campaign_id = $3";
       args.push(campaignId);
     }
+    if (noCard) filter += ` ${noCardClause("tt_account")}`;
+    if (kind !== "all") filter += ` ${kindClause("tt_account")}`;
     // Shared totals filter (campaign + optional status), also used by
     // ?totalsOnly=1 (lightweight aggregates, no rows — for vs-previous).
     const tArgs: any[] = [startDate, endDate];
@@ -60,13 +135,15 @@ export async function GET(request: Request) {
       tFilter += ` AND status = $${tArgs.length + 1}`;
       tArgs.push(status);
     }
+    if (noCard) tFilter += ` ${noCardClause("tt_account")}`;
+    if (kind !== "all") tFilter += ` ${kindClause("tt_account")}`;
     const totalsQuery = `SELECT SUM(cost)::float AS cost, SUM(gmv)::float AS gmv,
               SUM(orders)::float AS orders, SUM(impressions)::float AS imp,
               COUNT(*)::int AS n
        FROM creative.daily_rows WHERE date >= $1 AND date <= $2 ${tFilter}`;
     if (searchParams.get("totalsOnly") === "1") {
       const t = await query(totalsQuery, tArgs);
-      return NextResponse.json({ totals: t.rows[0] ?? null });
+      return NextResponse.json({ totals: t.rows[0] ?? null, noCard, kind });
     }
     const r = await query(
       hasMeta
@@ -77,7 +154,7 @@ export async function GET(request: Request) {
                d.v2s, d.v6s, d.vp25, d.vp50, d.vp75, d.vp100, d.synced_at,
                m.posted_at AS posted_at, m.source AS posted_source
         FROM creative.daily_rows d LEFT JOIN creative.item_meta m ON m.item_id = d.item_id
-        WHERE d.date >= $1 AND d.date <= $2 ${filter.replaceAll("campaign_id", "d.campaign_id")}
+        WHERE d.date >= $1 AND d.date <= $2 ${filter.replaceAll("campaign_id", "d.campaign_id").replaceAll("tt_account", "d.tt_account")}
         ORDER BY d.date DESC, d.gmv DESC LIMIT 2000`
         : `SELECT date, campaign_id, item_group_id, item_id, title,
               CASE WHEN tt_account IS NULL OR tt_account IN ('', '0') THEN 'Product card' ELSE tt_account END AS tt_account,
@@ -93,7 +170,7 @@ export async function GET(request: Request) {
     // the tail and understated a 3-day range by ~28%). Optional ?status=
     // scopes the totals to the active filter (rows stay client-filtered).
     const t = await query(totalsQuery, tArgs);
-    return NextResponse.json({ rows: r.rows, totals: t.rows[0] ?? null, totalsStatus: status || "ALL" });
+    return NextResponse.json({ rows: r.rows, totals: t.rows[0] ?? null, totalsStatus: status || "ALL", noCard, kind });
   } catch (e) {
     return NextResponse.json({ error: "018_creative_daily.sql not run yet" }, { status: 503 });
   }

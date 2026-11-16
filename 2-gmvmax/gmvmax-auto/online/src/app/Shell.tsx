@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { logOut } from "./logout-action";
 import type { ToastKind } from "./toast";
 import { canSee, useWhoami } from "./module-gate";
+import { useTheme } from "./theme";
 
 function I({ d }: { d: string }) {
   return (
@@ -33,41 +34,53 @@ const P = {
   tag: "M20 12l-8 8-9-9V4h7zM7.5 7.5h.01",
   gear: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.9 2.9l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.9-2.9l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.9-2.9l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.9 2.9l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
   gauge: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 12l4-4M12 12h.01",
+  shield: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z",
+  receipt: "M6 3h12v18l-2-1.6-2 1.6-2-1.6L10 21l-2-1.6L6 21zM9 8h6M9 12h6",
+  chart: "M4 20h16M7 20v-6M12 20V6M17 20v-9",
 };
 
 const DASH_LINK = { href: "/", label: "Dashboard", icon: P.grid, match: "/" };
 const AI_LINK = { href: "/ai", label: "AI Analyst", icon: P.target, match: "/ai" };
 const CAL_LINK = { href: "/calendar", label: "Calendar", icon: P.cal, match: "/calendar" };
+const ALL_CREATIVE_LINK = { href: "/all-creative", label: "All Creative", icon: P.film, match: "/all-creative", mod: ["gmv-max", "creative", "shop-live", "seller-creative", "live-roi"] };
 
 const SETTINGS_LINKS = [
   { href: "/presets", label: "Presets", icon: P.sliders, match: "/presets", mod: "presets" },
-  { href: "/ai/guardrail", label: "AI guardrails", icon: P.gauge, match: "/ai/guardrail", mod: "ai" },
-  { href: "/creative", label: "Creative", icon: P.film, match: "/creative", mod: "creative" },
-  { href: "/accounts", label: "Accounts", icon: P.users, match: "/accounts", mod: "accounts" },
-  { href: "/accounts/live", label: "Live board", icon: P.live, match: "/accounts/live", mod: "accounts" },
+  { href: "/ai/guardrail", label: "AI guardrails", icon: P.shield, match: "/ai/guardrail", mod: "ai" },
   { href: "/catalog", label: "Catalog", icon: P.tag, match: "/catalog", mod: "catalog" },
-  { href: "/calendar-settings", label: "Calendar filters", icon: P.sliders, match: "/calendar-settings", mod: "calendar" },
+  { href: "/calendar-settings", label: "Calendar filters", icon: P.cal, match: "/calendar-settings", mod: "calendar" },
   { href: "/access", label: "Access", icon: P.key, match: "/access", admin: true },
   { href: "/shop-auth/grant", label: "Shop grants", icon: P.bag, match: "/shop-auth/grant", admin: true },
 ];
 
-const SHOP_LINKS = [{ value: "1", label: "Him.DrSamhan", icon: P.store }];
+// Accounts group (collapsible, collapsed by default): Accounts + Live board.
+const ACCOUNTS_LINK = { href: "/accounts", label: "Accounts", icon: P.users, match: "/accounts", mod: "accounts" };
+const LIVE_BOARD_LINK = { href: "/accounts/live", label: "Live board", icon: P.live, match: "/accounts/live", mod: "accounts" };
+
+const SELLER_CREATIVE_LINK = { href: "/seller-creative", label: "Seller Creative", icon: P.store, match: "/seller-creative", mod: "seller-creative" };
 
 const ADS_LINKS = [
   { id: "total", name: "Total GMV Max", icon: P.layers },
   { id: "LIVE_GMV_MAX", name: "LIVE GMV Max", icon: P.live },
   { id: "PRODUCT_GMV_MAX", name: "Product GMV Max", icon: P.box },
-  { id: "ttam", name: "TTAM (Manual, excl GMV)", icon: P.target },
+  { id: "ttam", name: "TTAM campaign", icon: P.target },
   { id: "roas", name: "ROAS", icon: P.coins },
-  { id: "hourly", name: "Hourly Ads", icon: P.clock },
+  { id: "hourly", name: "Hourly Ads", icon: P.chart },
 ];
+
+// Product group header doubles as the Product GMV Max row (collapsible,
+// collapsed by default). PGMVM Creative lives inside it.
+const GMV_CREATIVE_LINK = { href: "/creative", label: "PGMVM Creative", icon: P.film, match: "/creative", mod: "creative" };
+// Live group header (collapsible, collapsed by default). Live Dashboard
+// (/shop-live) lives inside it.
+const LIVE_DASHBOARD_LINK = { href: "/shop-live", label: "Live Dashboard", icon: P.live, match: "/shop-live", mod: "shop-live" };
 
 const SHOP_METRIC_LINKS = [
-  { id: "hourly-shop", name: "Hourly Shop", icon: P.clock, mod: "gmv-max" },
   { id: "shop-gmv", name: "Shop GMV", icon: P.bag, mod: ["gmv-max", "shop-cost"] },
+  { id: "hourly-shop", name: "Hourly Shop", icon: P.clock, mod: "gmv-max" },
 ];
 
-const SHOP_COST_LINK = { href: "/shop-cost", label: "Shop Cost", icon: P.coins, match: "/shop-cost" };
+const SHOP_COST_LINK = { href: "/shop-cost", label: "Shop Cost", icon: P.receipt, match: "/shop-cost" };
 const LIVE_ROI_LINK = { href: "/live-roi", label: "Live ROI", icon: P.gauge, match: "/live-roi" };
 
 const VALID_METRICS = new Set([...ADS_LINKS, ...SHOP_METRIC_LINKS].map((m) => m.id));
@@ -119,8 +132,24 @@ export default function Shell({
   const [settingsOpen, setSettingsOpen] = useState(() => {
     try { return localStorage.getItem("shell-settings-open") === "1"; } catch { return false; }
   });
+  const [productOpen, setProductOpen] = useState(() => {
+    try { return localStorage.getItem("shell-product-open") === "1"; } catch { return false; }
+  });
+  const [liveOpen, setLiveOpen] = useState(() => {
+    try { return localStorage.getItem("shell-live-open") === "1"; } catch { return false; }
+  });
+  const [adsSecOpen, setAdsSecOpen] = useState(() => {
+    try { return localStorage.getItem("shell-adssec-open") !== "0"; } catch { return true; }
+  });
+  const [shopsSecOpen, setShopsSecOpen] = useState(() => {
+    try { return localStorage.getItem("shell-shopssec-open") !== "0"; } catch { return true; }
+  });
+  const [accountsOpen, setAccountsOpen] = useState(() => {
+    try { return localStorage.getItem("shell-accounts-open") === "1"; } catch { return false; }
+  });
   const [toasts, setToasts] = useState<{ id: number; message: string; kind: ToastKind }[]>([]);
   const [todayTitles, setTodayTitles] = useState<string[] | null>(null);
+  const [theme, setTheme] = useTheme();
 
   // Global save-toast host: any page dispatches window event "app-toast".
   useEffect(() => {
@@ -169,11 +198,68 @@ export default function Shell({
   const settingsLinks = SETTINGS_LINKS.filter((m) => !m.admin || isAdmin);
   const { modules: scope } = useWhoami();
   const visibleSettings = settingsLinks.filter((m) => !("mod" in m) || canSee(scope, (m as { mod: string }).mod));
-  const settingsActive = visibleSettings.some((m) => pathname === m.match || pathname.startsWith(m.match + "/"));
+  const canAccounts = canSee(scope, ACCOUNTS_LINK.mod);
+  const accountsActive =
+    pathname === ACCOUNTS_LINK.match || pathname.startsWith(ACCOUNTS_LINK.match + "/") ||
+    pathname === LIVE_BOARD_LINK.match || pathname.startsWith(LIVE_BOARD_LINK.match + "/");
+  const settingsActive = visibleSettings.some((m) => pathname === m.match || pathname.startsWith(m.match + "/")) || (canAccounts && accountsActive);
   const showSettings = settingsOpen || settingsActive;
   const toggleSettings = () => {
     setSettingsOpen((v) => {
       try { localStorage.setItem("shell-settings-open", v ? "0" : "1"); } catch { /* private mode */ }
+      return !v;
+    });
+  };
+  const canProduct = canSee(scope, "gmv-max");
+  const canGmvCreative = canSee(scope, GMV_CREATIVE_LINK.mod);
+  const productBoardActive = metric === "PRODUCT_GMV_MAX" && onBoard;
+  const gmvCreativeActive = pathname === GMV_CREATIVE_LINK.match || pathname.startsWith(GMV_CREATIVE_LINK.match + "/");
+  const productActive = productBoardActive || gmvCreativeActive;
+  const showProduct = productOpen || productActive;
+  const toggleProduct = () => {
+    setProductOpen((v) => {
+      try { localStorage.setItem("shell-product-open", v ? "0" : "1"); } catch { /* private mode */ }
+      return !v;
+    });
+  };
+  const canLiveBoard = canSee(scope, "gmv-max");
+  const canLiveDash = canSee(scope, LIVE_DASHBOARD_LINK.mod);
+  const liveBoardActive = metric === "LIVE_GMV_MAX" && onBoard;
+  const liveDashActive = pathname === LIVE_DASHBOARD_LINK.match || pathname.startsWith(LIVE_DASHBOARD_LINK.match + "/");
+  const liveActive = liveBoardActive || liveDashActive;
+  const showLive = liveOpen || liveActive;
+  const toggleLive = () => {
+    setLiveOpen((v) => {
+      try { localStorage.setItem("shell-live-open", v ? "0" : "1"); } catch { /* private mode */ }
+      return !v;
+    });
+  };
+  const ADS_METRICS = ["total", "LIVE_GMV_MAX", "PRODUCT_GMV_MAX", "ttam", "roas", "hourly"];
+  const sellerCreativeActive = pathname === SELLER_CREATIVE_LINK.match || pathname.startsWith(SELLER_CREATIVE_LINK.match + "/");
+  const adsSecActive = liveActive || productActive || (onBoard && ADS_METRICS.includes(metric));
+  const shopsSecActive =
+    (onBoard && (metric === "hourly-shop" || metric === "shop-gmv")) ||
+    pathname === SHOP_COST_LINK.match || pathname.startsWith(SHOP_COST_LINK.match + "/") ||
+    pathname === LIVE_ROI_LINK.match || pathname.startsWith(LIVE_ROI_LINK.match + "/") ||
+    sellerCreativeActive;
+  const showAdsSec = adsSecOpen || adsSecActive || collapsed;
+  const showShopsSec = shopsSecOpen || shopsSecActive || collapsed;
+  const toggleAdsSec = () => {
+    setAdsSecOpen((v) => {
+      try { localStorage.setItem("shell-adssec-open", v ? "0" : "1"); } catch { /* private mode */ }
+      return !v;
+    });
+  };
+  const toggleShopsSec = () => {
+    setShopsSecOpen((v) => {
+      try { localStorage.setItem("shell-shopssec-open", v ? "0" : "1"); } catch { /* private mode */ }
+      return !v;
+    });
+  };
+  const showAccounts = accountsOpen || accountsActive;
+  const toggleAccounts = () => {
+    setAccountsOpen((v) => {
+      try { localStorage.setItem("shell-accounts-open", v ? "0" : "1"); } catch { /* private mode */ }
       return !v;
     });
   };
@@ -215,29 +301,31 @@ export default function Shell({
           <span className={labelCls}>{CAL_LINK.label}</span>
         </Link>
         )}
+        {canSee(scope, ALL_CREATIVE_LINK.mod) && (
+        <Link
+          href={ALL_CREATIVE_LINK.href}
+          title={ALL_CREATIVE_LINK.label}
+          onClick={() => setOpen(false)}
+          className={itemCls(pathname === ALL_CREATIVE_LINK.match)}
+        >
+          <I d={ALL_CREATIVE_LINK.icon} />
+          <span className={labelCls}>{ALL_CREATIVE_LINK.label}</span>
+        </Link>
+        )}
       </div>
       {canSee(scope, "gmv-max") && (
       <div className="mt-4">
-        <div className={headCls}>Shop</div>
-        {SHOP_LINKS.map((s) => (
-          <Link
-            key={s.value}
-            href={`/gmv-max?shop=${s.value}&metric=${metric}`}
-            scroll={false}
-            title={s.label}
-            onClick={() => setOpen(false)}
-            className={itemCls(shop === s.value && onBoard)}
-          >
-            <I d={s.icon} />
-            <span className={labelCls}>{s.label}</span>
-          </Link>
-        ))}
-      </div>
-      )}
-      {canSee(scope, "gmv-max") && (
-      <div className="mt-4">
-        <div className={headCls}>TikTok Ads</div>
-        {ADS_LINKS.map((m) => (
+        <button
+          type="button"
+          onClick={toggleAdsSec}
+          title="TikTok Ads"
+          className={`flex w-full items-center gap-2 px-2 text-left text-[11px] uppercase tracking-wide text-zinc-500 hover:text-zinc-300 ${collapsed ? "lg:hidden" : ""}`}
+        >
+          <span>TikTok Ads</span>
+          <span className="ml-auto text-xs">{showAdsSec ? "▾" : "▸"}</span>
+        </button>
+        {showAdsSec && (<>
+        {ADS_LINKS.filter((m) => m.id === "total").map((m) => (
           <Link
             key={m.id}
             href={`/gmv-max?shop=${shop}&metric=${m.id}`}
@@ -250,11 +338,116 @@ export default function Shell({
             <span className={labelCls}>{m.name}</span>
           </Link>
         ))}
+        {(canLiveBoard || canLiveDash) && (
+          <div>
+            <button
+              type="button"
+              onClick={toggleLive}
+              title="Live GMV Max"
+              className={itemCls(liveActive && !showLive)}
+            >
+              <I d={P.live} />
+              <span className={labelCls}>Live GMV Max</span>
+              <span className={`ml-auto text-xs text-zinc-500 ${labelCls}`}>{showLive ? "▾" : "▸"}</span>
+            </button>
+            {showLive && (
+              <div className={`ml-4 border-l border-zinc-800 pl-2 ${collapsed ? "lg:ml-0 lg:border-l-0 lg:pl-0" : ""}`}>
+                {canLiveBoard && (
+                  <Link
+                    href={`/gmv-max?shop=${shop}&metric=LIVE_GMV_MAX`}
+                    scroll={false}
+                    title="LGMVM campaign"
+                    onClick={() => setOpen(false)}
+                    className={itemCls(liveBoardActive)}
+                  >
+                    <I d={P.live} />
+                    <span className={labelCls}>LGMVM campaign</span>
+                  </Link>
+                )}
+                {canLiveDash && (
+                  <Link
+                    href={LIVE_DASHBOARD_LINK.href}
+                    title={LIVE_DASHBOARD_LINK.label}
+                    onClick={() => setOpen(false)}
+                    className={itemCls(liveDashActive)}
+                  >
+                    <I d={LIVE_DASHBOARD_LINK.icon} />
+                    <span className={labelCls}>{LIVE_DASHBOARD_LINK.label}</span>
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {(canProduct || canGmvCreative) && (
+          <div>
+            <button
+              type="button"
+              onClick={toggleProduct}
+              title="Product GMV Max"
+              className={itemCls(productActive && !showProduct)}
+            >
+              <I d={P.box} />
+              <span className={labelCls}>Product GMV Max</span>
+              <span className={`ml-auto text-xs text-zinc-500 ${labelCls}`}>{showProduct ? "▾" : "▸"}</span>
+            </button>
+            {showProduct && (
+              <div className={`ml-4 border-l border-zinc-800 pl-2 ${collapsed ? "lg:ml-0 lg:border-l-0 lg:pl-0" : ""}`}>
+                {canProduct && (
+                  <Link
+                    href={`/gmv-max?shop=${shop}&metric=PRODUCT_GMV_MAX`}
+                    scroll={false}
+                    title="PGMVM campaign"
+                    onClick={() => setOpen(false)}
+                    className={itemCls(productBoardActive)}
+                  >
+                    <I d={P.box} />
+                    <span className={labelCls}>PGMVM campaign</span>
+                  </Link>
+                )}
+                {canGmvCreative && (
+                  <Link
+                    href={GMV_CREATIVE_LINK.href}
+                    title={GMV_CREATIVE_LINK.label}
+                    onClick={() => setOpen(false)}
+                    className={itemCls(gmvCreativeActive)}
+                  >
+                    <I d={GMV_CREATIVE_LINK.icon} />
+                    <span className={labelCls}>{GMV_CREATIVE_LINK.label}</span>
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {ADS_LINKS.filter((m) => m.id !== "total" && m.id !== "LIVE_GMV_MAX" && m.id !== "PRODUCT_GMV_MAX").map((m) => (
+          <Link
+            key={m.id}
+            href={`/gmv-max?shop=${shop}&metric=${m.id}`}
+            scroll={false}
+            title={m.name}
+            onClick={() => setOpen(false)}
+            className={itemCls(metric === m.id && onBoard)}
+          >
+            <I d={m.icon} />
+            <span className={labelCls}>{m.name}</span>
+          </Link>
+        ))}
+        </>)}
       </div>
       )}
-      {canSee(scope, "gmv-max") && (
+      {(canSee(scope, "gmv-max") || canSee(scope, SELLER_CREATIVE_LINK.mod)) && (
       <div className="mt-4">
-        <div className={headCls}>TikTok Shops</div>
+        <button
+          type="button"
+          onClick={toggleShopsSec}
+          title="TikTok Shops"
+          className={`flex w-full items-center gap-2 px-2 text-left text-[11px] uppercase tracking-wide text-zinc-500 hover:text-zinc-300 ${collapsed ? "lg:hidden" : ""}`}
+        >
+          <span>TikTok Shops</span>
+          <span className="ml-auto text-xs">{showShopsSec ? "▾" : "▸"}</span>
+        </button>
+        {showShopsSec && (<>
         {SHOP_METRIC_LINKS.filter((m) => canSee(scope, (m as { mod: string | string[] }).mod)).map((m) => (
           <Link
             key={m.id}
@@ -268,17 +461,6 @@ export default function Shell({
             <span className={labelCls}>{m.name}</span>
           </Link>
         ))}
-        {canSee(scope, "shop-live") && (
-        <Link
-          href="/shop-live"
-          title="Shop Live"
-          onClick={() => setOpen(false)}
-          className={itemCls(pathname === "/shop-live")}
-        >
-          <I d={P.live} />
-          <span className={labelCls}>Shop Live</span>
-        </Link>
-        )}
         {canSee(scope, "shop-cost") && (
         <Link
           href={SHOP_COST_LINK.href}
@@ -301,6 +483,18 @@ export default function Shell({
           <span className={labelCls}>{LIVE_ROI_LINK.label}</span>
         </Link>
         )}
+        {canSee(scope, SELLER_CREATIVE_LINK.mod) && (
+        <Link
+          href={SELLER_CREATIVE_LINK.href}
+          title={SELLER_CREATIVE_LINK.label}
+          onClick={() => setOpen(false)}
+          className={itemCls(sellerCreativeActive)}
+        >
+          <I d={SELLER_CREATIVE_LINK.icon} />
+          <span className={labelCls}>{SELLER_CREATIVE_LINK.label}</span>
+        </Link>
+        )}
+        </>)}
       </div>
       )}
       <div className="mt-auto pt-4">
@@ -314,7 +508,8 @@ export default function Shell({
           <span className={labelCls}>Settings</span>
           <span className={`ml-auto text-xs text-zinc-500 ${labelCls}`}>{showSettings ? "▾" : "▸"}</span>
         </button>
-        {showSettings && visibleSettings.map((m) => (
+        {showSettings && (<>
+        {visibleSettings.filter((m) => m.match === "/presets" || m.match === "/ai/guardrail").map((m) => (
           <Link
             key={m.href}
             href={m.href}
@@ -326,6 +521,52 @@ export default function Shell({
             <span className={labelCls}>{m.label}</span>
           </Link>
         ))}
+        {canAccounts && (
+          <div>
+            <button
+              type="button"
+              onClick={toggleAccounts}
+              title="Accounts"
+              className={itemCls(accountsActive && !showAccounts)}
+            >
+              <I d={P.users} />
+              <span className={labelCls}>Accounts</span>
+              <span className={`ml-auto text-xs text-zinc-500 ${labelCls}`}>{showAccounts ? "▾" : "▸"}</span>
+            </button>
+            {showAccounts && (
+              <div className={`ml-4 border-l border-zinc-800 pl-2 ${collapsed ? "lg:ml-0 lg:border-l-0 lg:pl-0" : ""}`}>
+                {[ACCOUNTS_LINK, LIVE_BOARD_LINK].map((a) => {
+                  const aActive = pathname === a.match || pathname.startsWith(a.match + "/");
+                  return (
+                    <Link
+                      key={a.href}
+                      href={a.href}
+                      title={a.label}
+                      onClick={() => setOpen(false)}
+                      className={itemCls(aActive)}
+                    >
+                      <I d={a.icon} />
+                      <span className={labelCls}>{a.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+        {visibleSettings.filter((m) => m.match !== "/presets" && m.match !== "/ai/guardrail").map((m) => (
+          <Link
+            key={m.href}
+            href={m.href}
+            title={m.label}
+            onClick={() => setOpen(false)}
+            className={itemCls(pathname === m.match)}
+          >
+            <I d={m.icon} />
+            <span className={labelCls}>{m.label}</span>
+          </Link>
+        ))}
+        </>)}
       </div>
       <div className="mt-3 border-t border-zinc-800 pt-3">
         {email ? (
@@ -385,6 +626,24 @@ export default function Shell({
             <span className="md:hidden">{todayTitles.length > 0 ? `[${todayTitles.length} today]` : "[none today]"}</span>
           </Link>
         )}
+        <button
+          type="button"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          className={`rounded-lg px-2 py-1.5 text-zinc-200 hover:bg-zinc-800 ${todayTitles === null ? "ml-auto" : ""}`}
+        >
+          {theme === "dark" ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+          )}
+        </button>
         {!email && (
           <Link href="/sign-in" className="ml-auto rounded-lg px-3 py-1.5 text-sm hover:bg-zinc-800">Sign in</Link>
         )}

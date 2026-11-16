@@ -16,6 +16,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" style={{ colorScheme: "dark" }}>
       <body className="bg-zinc-950 text-zinc-100">
+        {/* Anti-flash: apply saved theme before first paint (default dark). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(localStorage.getItem("shell-theme")==="light"){document.documentElement.classList.add("light");document.documentElement.style.colorScheme="light";}}catch(e){}})();`,
+          }}
+        />
         <Suspense>
           <Shell email={email} displayName={displayName} isAdmin={isAdmin}>
             {children}

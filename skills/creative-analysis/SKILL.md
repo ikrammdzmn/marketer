@@ -33,6 +33,10 @@ tab (probe, rows sync, Manage popup). `app.js?v=N` bump per change.
   exclusion states. Status-by-day: one column per file, never summed.
 - Insight engine: file-adaptive benchmarks (median CPM, top-20 min impr,
   median 2s rate/AOV, p90 ROI) — thresholds in code, never hardcoded.
+  Online port live on /creative (aggregated posts, impression-weighted
+  rates, derived CPM/AOV, targets override): same priority, Boost
+  sec-clause KIV (no Exploration status in TikTok pulls) — do not
+  re-add sec without a status source.
 - Ratio totals recomputed from summed bases per metric, never summed ratios.
 - `MAX_FILES = 31` single constant drives all gates + labels.
 
@@ -55,6 +59,19 @@ tab (probe, rows sync, Manage popup). `app.js?v=N` bump per change.
   column chips (localStorage), changed-only stamps, JSON/CSV export.
 - Ceiling: revenue/ROI per creative ✅ (round 6), Time-posted ❌,
   Creative-source ❌, secondary status = derived.
+- Seller organic verified (Nov-26 probes): Shop `shop_videos/performance`
+  returns NO cover field (rawKeys witnessed); imp = PRODUCT impressions
+  (~87.5% of views), never video FYP; `latest_available_date` lags 1–2d;
+  username/title/post_time/duration confirmed de-facto (ex-[andaian]).
+  oEmbed has no `thumbnail_url` (embed `player/v1/{id}` iframe verified live,
+  use click-to-play, never hotlink covers). Per-video-day calls run
+  0.5–10s (Claude-measured); scope imp to ≥10k views or sales.
+- Product Top-5 lives on /creative per docs/04 table (Revenue/Click
+  rate/CVR/25% view/Untung + Juga + Tiada-pertindihan); Seller stays a
+  single GMV list — never put metric tabs on Seller.
+- Local twin `seller-backfill.py` (+ 12:30am `SellerBackfill-Nightly`
+  task): same walk/floors/upserts as the online lib; hub `/all-creative`
+  is read-only (snapshot + Refresh, zero TikTok pulls).
 
 ## Evidence index
 

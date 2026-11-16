@@ -58,7 +58,7 @@ Clone fresh, never USB-copy:
 - `marketer/` + `tools/` repos (`.venv/` rebuilds on first `uv run`)
 - `csvs/` caches (rebuild on first pull)
 
-Per-PC (see root `exit-entry.md` ENTRY):
+Per-PC (see `repo-docs/exit-entry.md` ENTRY):
 - `uv` via WinGet, IDE started after install, Python 3, Git
 - `opencode.json` MCP paths carry the old PC's username - edit locally,
   never commit that hunk; same for Antigravity `mcp_config.json`

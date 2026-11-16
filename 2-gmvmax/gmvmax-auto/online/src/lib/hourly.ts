@@ -2,6 +2,7 @@ import { query } from "./db";
 import { getAdsCredentials } from "./ads-credentials";
 import { SHOPS, type ShopConfig } from "./shops";
 import { sendTelegramFull } from "./telegram";
+import { GENERAL_BANDS_DEFAULT, roiTier, ROI_TIER_EMOJI, sanitizeRoiBands } from "./ttam-scores";
 
 const BASE_URL = "https://business-api.tiktok.com";
 const API_VERSION = "v1.3";
@@ -51,11 +52,24 @@ async function fetchHourlyRows(
       page: String(page),
       page_size: "1000",
     });
-    const res = await fetch(
-      `${BASE_URL}/open_api/${API_VERSION}/gmv_max/report/get/?${params.toString()}`,
-      { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
-    );
-    const body = await res.json();
+    // Retry transient network drops (undici throws bare "fetch failed" —
+    // B145: one blip killed the whole hourly run with no context).
+    let body: any = null;
+    let lastErr = "";
+    for (let attempt = 0; attempt <= 3; attempt++) {
+      try {
+        const res = await fetch(
+          `${BASE_URL}/open_api/${API_VERSION}/gmv_max/report/get/?${params.toString()}`,
+          { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
+        );
+        body = await res.json();
+        break;
+      } catch (e) {
+        lastErr = e instanceof Error ? e.message : "fetch failed";
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt));
+      }
+    }
+    if (!body) throw new Error(`hourly ${promotionType} p${page} network failed x4: ${lastErr}`);
     if (body.code !== 0) throw new Error(`hourly report code=${body.code}: ${body.message ?? ""}`);
     for (const item of body.data?.list ?? []) {
       rows.push({
@@ -127,6 +141,17 @@ export async function syncHourly(shopNumber: string, date: string, opts?: { sile
   );
   const pmap = new Map<string, string>();
   for (const c of cmap0.rows) pmap.set(c.campaign_id, c.promotion_type);
+  // System-wide ROI bands for the telegram band emoji (owner-editable in
+  // /presets General tab; pre-039 DBs fall back to defaults — glance only,
+  // dashboard stays the source of truth).
+  let roiBands = GENERAL_BANDS_DEFAULT;
+  try {
+    const gb = await query(`SELECT tick_at, green_at, yellow_at, red_at FROM core.general_bands WHERE key = 'roi'`);
+    const s = sanitizeRoiBands(gb.rows[0]);
+    if (s) roiBands = s;
+  } catch { /* pre-migration → defaults */ }
+  const bandMark = (txt: string) =>
+    txt === "n/a" ? "" : ROI_TIER_EMOJI[roiTier(parseFloat(txt), roiBands)];
   const keep = (r: HourlyRow, want: string) => {
     const t = pmap.get(r.campaignId);
     return !t || t === want;
@@ -420,7 +445,7 @@ export async function syncHourly(shopNumber: string, date: string, opts?: { sile
         `<code>${esc(shortCampaign(d, topIdL))}</code>\n` +
         `cost ${pc0.toFixed(2)} → <b>${d.cost.toFixed(2)}</b> (${sCost} ${arrow(d.dCost)}) | ` +
         `gmv ${pg0.toFixed(2)} → <b>${d.gmv.toFixed(2)}</b> (${sGmv} ${arrow(d.dGmv)})\n` +
-        `ROI H ${roiH(d)} · D ${roiD(d)} | ord ${po0} → <b>${d.orders}</b> (${sOrd}) | ${budOf(d)}`
+        `ROI H ${bandMark(roiH(d))}${roiH(d)} · D ${bandMark(roiD(d))}${roiD(d)} | ord ${po0} → <b>${d.orders}</b> (${sOrd}) | ${budOf(d)}`
       );
     });
     let text = head + (lines.join("\n") || "<i>no movers this hour</i>");
@@ -508,7 +533,7 @@ export async function syncHourly(shopNumber: string, date: string, opts?: { sile
         nameCell(shortCampaign(d, topId)),
         cell(`${pc0.toFixed(2)} → ${d.cost.toFixed(2)} (${sCost} ${arrow(d.dCost)})`, false, true),
         cell(`${pg0.toFixed(2)} → ${d.gmv.toFixed(2)} (${sGmv} ${arrow(d.dGmv)})`, false, true),
-        cell(`H ${roiHB(d)} · D ${roiDB(d)}`, false, true),
+        cell(`H ${bandMark(roiHB(d))}${roiHB(d)} · D ${bandMark(roiDB(d))}${roiDB(d)}`, false, true),
         cell(`${po0} → ${d.orders} (${sOrd})`, false, true),
         cell(budB(d), false, true),
       ];
@@ -779,8 +804,9 @@ export interface HourScore {
   cpa: number | null;
 }
 
-// Scorecard across a date range (selected range, cap 31 days): per hour SHOP
-// (00:00-23:00) totals averaged over days present. Future slots of today are
+// Scorecard across a date range (no day cap — single aggregate query, fail-open
+// at the route when the scan is too slow): per hour SHOP (00:00-23:00) totals
+// averaged over days present. Future slots of today are
 // missing (excluded); explicit zeros stay. ROAS/CPA recomputed, never averaged.
 export async function getHourlyScorecard(
   shopNumber: string, startDate: string, endDate: string
@@ -790,7 +816,7 @@ export async function getHourlyScorecard(
   const days: string[] = [];
   const d = new Date(`${startDate}T00:00:00`);
   const end = new Date(`${endDate}T00:00:00`);
-  while (d <= end && days.length < 31) {
+  while (d <= end) {
     days.push(d.toISOString().slice(0, 10));
     d.setTime(d.getTime() + 86400000);
   }

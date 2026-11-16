@@ -6,7 +6,12 @@ import { toast } from "../toast";
 import { ModuleRedirect } from "../module-gate";
 import Chart from "chart.js/auto";
 import DateRangePicker from "../DateRangePicker";
-import { flagsForRow, verdictOf, SCORE_NAMES, SCORE_FORMATS, formatScore, bandsFromPreset, applyCustomScores } from "@/lib/ttam-scores";
+import { flagsForRow, verdictOf, SCORE_NAMES, SCORE_FORMATS, formatScore, bandsFromPreset, applyCustomScores, rangeLabel } from "@/lib/ttam-scores";
+import {
+  GENERAL_BANDS_DEFAULT, roiTier, ROI_TIER_CLS, ROI_TIER_MARK, roiLegend,
+  type RoiBands,
+} from "@/lib/ttam-scores";
+import { chartTheme, useThemeTick } from "../theme";
 
 const VALID_SHOPS = new Set(["1"]);
 const VALID_METRICS = new Set([
@@ -54,6 +59,17 @@ function BudgetUse({ value }: { value: number | null | undefined }) {
   return <span>{txt}</span>;
 }
 
+// System-wide ROI color (bands from /presets General tab, fetched per page).
+// Zero/absent spend renders plain 0.00 — no spend means no judgment, never
+// a red false alarm. Missing ROI renders the dash.
+function Roi({ value, bands, cost, suffix = "x" }: { value: number | null | undefined; bands: RoiBands; cost?: number | null; suffix?: string }) {
+  const v = Number(value);
+  if (value === null || value === undefined || !Number.isFinite(v)) return <span className="text-zinc-500">—</span>;
+  if (cost !== undefined && cost !== null && !(Number(cost) > 0)) return <span className="tabular-nums">0.00{suffix}</span>;
+  const t = roiTier(v, bands);
+  return <span className={ROI_TIER_CLS[t]}>{v.toFixed(2)}{suffix}{ROI_TIER_MARK[t]}</span>;
+}
+
 function klToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
 }
@@ -92,26 +108,32 @@ const tipLabel = (ctx: any) => {
   const tag = String(ctx.dataset?.label ?? "");
   return /roas/i.test(tag) ? ` ${tag}: ${txt}x` : ` ${tag}: RM ${txt}`;
 };
-const comboScales = (): any => ({
-  x: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
-  y: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
-  y1: { position: "right", ticks: { color: "#999" }, grid: { drawOnChartArea: false } },
-});
+const comboScales = (): any => {
+  const ct = chartTheme();
+  return {
+    x: { ticks: { color: ct.tick }, grid: { color: ct.grid } },
+    y: { ticks: { color: ct.tick }, grid: { color: ct.grid } },
+    y1: { position: "right", ticks: { color: ct.tick }, grid: { drawOnChartArea: false } },
+  };
+};
 const comboOpts = (): any => ({
   responsive: true,
   interaction: { mode: "index", intersect: false },
-  plugins: { legend: { labels: { color: "#eee" } }, tooltip: { callbacks: { label: tipLabel } } },
+  plugins: { legend: { labels: { color: chartTheme().label } }, tooltip: { callbacks: { label: tipLabel } } },
   scales: comboScales(),
 });
-const barOpts = (): any => ({
-  responsive: true,
-  interaction: { mode: "index", intersect: false },
-  plugins: { legend: { labels: { color: "#eee" } }, tooltip: { callbacks: { label: tipLabel } } },
-  scales: {
-    x: { ticks: { color: "#999", maxRotation: 60, minRotation: 60 }, grid: { color: "#27272a" } },
-    y: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
-  },
-});
+const barOpts = (): any => {
+  const ct = chartTheme();
+  return {
+    responsive: true,
+    interaction: { mode: "index", intersect: false },
+    plugins: { legend: { labels: { color: ct.label } }, tooltip: { callbacks: { label: tipLabel } } },
+    scales: {
+      x: { ticks: { color: ct.tick, maxRotation: 60, minRotation: 60 }, grid: { color: ct.grid } },
+      y: { ticks: { color: ct.tick }, grid: { color: ct.grid } },
+    },
+  };
+};
 
 const inputCls =
   "bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1.5 text-sm text-zinc-100";
@@ -120,7 +142,7 @@ const thCls = "text-left text-xs uppercase tracking-wide text-zinc-400 font-medi
 const tdCls = "px-2 py-2";
 const numCls = "px-2 py-2 text-right tabular-nums";
 
-function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Kpi({ label, value, sub }: { label: string; value: any; sub?: string }) {
   return (
     <div className={cardCls}>
       <div className="text-xs text-zinc-400">{label}</div>
@@ -132,7 +154,7 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 
 // Total view dashboard: 4 top KPI cards + Channel Contribution cards
 // (LIVE Stream vs Product / Showcase) matching the Performance Dashboard mockup.
-function TotalPerformanceDashboard({ data }: { data: any }) {
+function TotalPerformanceDashboard({ data, bands }: { data: any; bands: RoiBands }) {
   const gmv = Number(data.gmv ?? 0);
   const cost = Number(data.cost ?? 0);
   const orders = Number(data.orders ?? 0);
@@ -206,11 +228,11 @@ function TotalPerformanceDashboard({ data }: { data: any }) {
 
         <div className={cardBg}>
           <div className="text-xs text-zinc-400">Blended ROI</div>
-          <div className="mt-1.5 text-xl font-bold tracking-tight text-emerald-400 tabular-nums">
-            {roi.toFixed(2)}x <span className="text-sm font-normal text-zinc-300">Gross</span>
+          <div className="mt-1.5 text-xl font-bold tracking-tight tabular-nums">
+            <Roi value={roi} bands={bands} cost={cost} /> <span className="text-sm font-normal text-zinc-300">Gross</span>
           </div>
           <div className="mt-2 text-xs text-zinc-400">
-            Net ROI: <span className="font-medium text-zinc-200 tabular-nums">{netRoi.toFixed(2)}x</span> <span className="text-zinc-500">(after 25% fee)</span>
+            Net ROI: <Roi value={netRoi} bands={bands} cost={cost} /> <span className="text-zinc-500">(after 25% fee)</span>
           </div>
         </div>
       </div>
@@ -261,8 +283,8 @@ function TotalPerformanceDashboard({ data }: { data: any }) {
                 </div>
                 <div>
                   <div className="text-[11px] text-zinc-400">Channel Efficiency (ROI)</div>
-                  <div className="mt-1 text-sm font-semibold text-emerald-400 tabular-nums">
-                    {lCost > 0 ? `${lRoi.toFixed(2)}x` : "—"}{" "}
+                  <div className="mt-1 text-sm font-semibold tabular-nums">
+                    <Roi value={lRoi} bands={bands} cost={lCost} />{" "}
                     <span className="text-xs font-normal text-zinc-300">Gross ROI</span>
                   </div>
                 </div>
@@ -310,8 +332,8 @@ function TotalPerformanceDashboard({ data }: { data: any }) {
                 </div>
                 <div>
                   <div className="text-[11px] text-zinc-400">Channel Efficiency (ROI)</div>
-                  <div className="mt-1 text-sm font-semibold text-emerald-400 tabular-nums">
-                    {pCost > 0 ? `${pRoi.toFixed(2)}x` : "—"}{" "}
+                  <div className="mt-1 text-sm font-semibold tabular-nums">
+                    <Roi value={pRoi} bands={bands} cost={pCost} />{" "}
                     <span className="text-xs font-normal text-zinc-300">Gross ROI</span>
                   </div>
                 </div>
@@ -405,6 +427,7 @@ export default function Page() {
   const [start, setStart] = useState(klToday());
   const [end, setEnd] = useState(klToday());
   const [data, setData] = useState<any>(null);
+  const themeTick = useThemeTick(); // rebuild canvas charts on theme toggle
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -415,6 +438,7 @@ export default function Page() {
   const [budgetRefreshing, setBudgetRefreshing] = useState<Set<string>>(new Set());
   const [budgetNotice, setBudgetNotice] = useState<string | null>(null);
   const [namesSyncing, setNamesSyncing] = useState(false);
+  const [freshOpen, setFreshOpen] = useState(false);
   const [shopToken, setShopToken] = useState<any>(null);
   const [shopTokenRefreshing, setShopTokenRefreshing] = useState(false);
   const [shopTokenNotice, setShopTokenNotice] = useState<string | null>(null);
@@ -439,6 +463,15 @@ export default function Page() {
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [syncStatusAt, setSyncStatusAt] = useState<string | null>(null);
   const [syncRefreshing, setSyncRefreshing] = useState<string | null>(null);
+  // System-wide ROI color bands (owner-editable in /presets General tab).
+  const [roiBands, setRoiBands] = useState<RoiBands>(GENERAL_BANDS_DEFAULT);
+
+  useEffect(() => {
+    fetch(`/api/general-bands`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((b) => { if (b?.bands) setRoiBands({ ...GENERAL_BANDS_DEFAULT, ...b.bands }); })
+      .catch(() => {});
+  }, []);
 
   function agoStr(iso: string | null): string {
     if (!iso) return "never synced";
@@ -459,6 +492,20 @@ export default function Page() {
         timeZone: "Asia/Kuala_Lumpur", day: "2-digit", month: "short",
         hour: "2-digit", minute: "2-digit", hour12: false,
       });
+    } catch { return iso; }
+  }
+
+  // Fetched stamp: dd-mm-yyyy (hh:mm:ss MYT). Stored as ISO UTC, rendered MYT.
+  function fetchedMYT(iso: string | null): string {
+    if (!iso) return "—";
+    try {
+      const p: Record<string, string> = {};
+      new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Asia/Kuala_Lumpur", day: "2-digit", month: "2-digit",
+        year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit",
+        hour12: false,
+      }).formatToParts(new Date(iso)).forEach((x) => { p[x.type] = x.value; });
+      return `${p.day}-${p.month}-${p.year} (${p.hour}:${p.minute}:${p.second} MYT)`;
     } catch { return iso; }
   }
 
@@ -515,6 +562,22 @@ export default function Page() {
   const autoRef = useRef(false);
   const liveAccountSourceRef = useRef<"bracket" | "api">(liveAccountSource);
   useEffect(() => { liveAccountSourceRef.current = liveAccountSource; }, [liveAccountSource]);
+  // Long-range fetch progress popup (3/6/12m chunked live pulls).
+  const [fetchProg, setFetchProg] = useState<{ total: number; done: number; label: string; failed: string[]; startedAt: number; finishedAt?: number } | null>(null);
+  const fetchCancelRef = useRef(false);
+  const fetchCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearProgClose = () => {
+    if (fetchCloseTimer.current) { clearTimeout(fetchCloseTimer.current); fetchCloseTimer.current = null; }
+  };
+  // Elapsed ticker for the popup (500ms while a fetch is in flight).
+  const [fetchNow, setFetchNow] = useState(0);
+  useEffect(() => {
+    if (!fetchProg) return;
+    setFetchNow(Date.now());
+    const id = setInterval(() => setFetchNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [fetchProg !== null]);
+  useEffect(() => () => clearProgClose(), []);
 
   async function pickPreset(key: string) {
     try {
@@ -650,7 +713,7 @@ export default function Page() {
       });
     }
     return () => { chartsRef.current.forEach((c) => c.destroy()); chartsRef.current = []; };
-  }, [data, hourPick]);
+  }, [data, hourPick, themeTick]);
 
   // Shop GMV multi-day chart (shop-hourly style): GMV bars + spend dashed
   // line + ROAS line, dual axis. Toggle picks the numerator; ROAS is always
@@ -685,7 +748,7 @@ export default function Page() {
     });
     shopChartsRef.current.push(c);
     return () => { c.destroy(); shopChartsRef.current = shopChartsRef.current.filter((x) => x !== c); };
-  }, [data, shopGmvMode]);
+  }, [data, shopGmvMode, themeTick]);
 
   async function loadSessions(campaignId: string, force = false, shopOverride?: string) {
     if (sessionsLoading === campaignId) return;
@@ -985,32 +1048,45 @@ export default function Page() {
     });
     shopHourlyChartsRef.current.push(c);
     return () => { c.destroy(); shopHourlyChartsRef.current = shopHourlyChartsRef.current.filter((x) => x !== c); };
-  }, [data, shopHourlyShowSpend, hourPickShop]);
+  }, [data, shopHourlyShowSpend, hourPickShop, themeTick]);
 
   async function refreshShopHourlyAction() {
     if (shopHourlyRefreshing) return;
     setShopHourlyRefreshing(true);
     setBudgetNotice(null);
     try {
-      const r = await fetch("/api/hourly-shop/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shopNumber: shop, startDate: start, endDate: end }),
-      });
-      const post = await r.json();
-      if (!r.ok) throw new Error(post.error ?? "hourly shop refresh failed");
+      const runs = daySpan > 31 ? splitRange30(start, end, 31) : [{ s: start, e: end }];
+      const refreshed: string[] = [];
+      const untied: Array<{ date: string; diff: number; unparseable: number }> = [];
+      const failed: Array<{ date: string; error: string }> = [];
+      for (const r0 of runs) {
+        const r = await fetch("/api/hourly-shop/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ shopNumber: shop, startDate: r0.s, endDate: r0.e }),
+        });
+        const post = await r.json();
+        if (!r.ok) {
+          failed.push({ date: rangeLabel(r0.s, r0.e), error: post.error ?? "hourly shop refresh failed" });
+          continue;
+        }
+        const rr = post.rangeRefresh ?? {};
+        refreshed.push(...(rr.refreshed ?? []));
+        untied.push(...(rr.untied ?? []));
+        failed.push(...(rr.failed ?? []));
+      }
+      if (!refreshed.length && failed.length) throw new Error(failed[0].error ?? "hourly shop refresh failed");
       const g = await fetch(`/api/hourly-shop?shopNumber=${shop}&date=${end}&startDate=${start}&endDate=${end}`);
       if (!g.ok) throw new Error((await g.json()).error ?? "fetch failed");
       setData({ kind: "hourly-shop", ...(await g.json()) });
       setHourPickShop(null);
       setFetchedAt(new Date().toISOString());
-      const rr = post.rangeRefresh ?? {};
-      const fails = (rr.failed ?? []).length;
-      const untied = (rr.untied ?? []).length;
+      const fails = failed.length;
+      const untiedN = untied.length;
       const okMsg =
-        `Shop hourly refreshed: ${(rr.refreshed ?? []).length} day(s)` +
+        `Shop hourly refreshed: ${refreshed.length} day(s)${runs.length > 1 ? ` (${runs.length} runs)` : ""}` +
         (fails > 0 ? `, ${fails} failed (old rows kept)` : "") +
-        (untied > 0 ? `, ${untied} untied (check create_time)` : " (tied)") + ".";
+        (untiedN > 0 ? `, ${untiedN} untied (check create_time)` : " (tied)") + ".";
       setBudgetNotice(okMsg);
       toast(fails > 0 ? okMsg : "Shop hourly refreshed.", fails > 0 ? "err" : "ok");
     } catch (e) {
@@ -1027,20 +1103,31 @@ export default function Page() {
     setShopDailyRefreshing(true);
     setBudgetNotice(null);
     try {
-      const r = await fetch("/api/shop-gmv/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shopNumber: shop, startDate: start, endDate: end }),
-      });
-      const body = await r.json();
-      if (!r.ok) throw new Error(body.error ?? "daily refresh failed");
+      const runs = daySpan > 31 ? splitRange30(start, end, 31) : [{ s: start, e: end }];
+      const refreshed: string[] = [];
+      const failed: Array<{ date: string; error: string }> = [];
+      for (const r0 of runs) {
+        const r = await fetch("/api/shop-gmv/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ shopNumber: shop, startDate: r0.s, endDate: r0.e }),
+        });
+        const body = await r.json();
+        if (!r.ok) {
+          failed.push({ date: rangeLabel(r0.s, r0.e), error: body.error ?? "daily refresh failed" });
+          continue;
+        }
+        refreshed.push(...(body.refreshed ?? []));
+        failed.push(...(body.failed ?? []));
+      }
+      if (!refreshed.length && failed.length) throw new Error(failed[0].error ?? "daily refresh failed");
       const g = await fetch(`/api/shop-gmv?shopNumber=${shop}&startDate=${start}&endDate=${end}`);
       if (!g.ok) throw new Error((await g.json()).error ?? "fetch failed");
       setData({ kind: "shop-gmv", ...(await g.json()) });
       setFetchedAt(new Date().toISOString());
-      const fails = (body.failed ?? []).length;
+      const fails = failed.length;
       const okMsg =
-        `Daily cache refreshed: ${(body.refreshed ?? []).length} day(s)` +
+        `Daily cache refreshed: ${refreshed.length} day(s)${runs.length > 1 ? ` (${runs.length} runs)` : ""}` +
         (fails > 0 ? `, ${fails} failed (old rows kept)` : "") + ".";
       setBudgetNotice(okMsg);
       toast(fails > 0 ? okMsg : "Daily cache refreshed.", fails > 0 ? "err" : "ok");
@@ -1085,9 +1172,11 @@ export default function Page() {
   }
 
   // DB-first render: snapshot older than 60 min (or missing) falls back to
-  // fetch-first as today. Fresh snapshots render instantly with a
-  // "cached · synced Xm ago" badge, then live numbers replace them.
+  // live refresh. Snapshots <5m and non-partial stay cached with a
+  // "cached · synced Xm ago" badge; older/partial auto-refresh live after
+  // painting cache. Fetch Data always pulls live.
   const SNAPSHOT_STALE_MIN = 60;
+  const SNAPSHOT_AUTO_MIN = 5;
   function snapshotAgeMin(iso: string | null | undefined): number | null {
     if (!iso) return null;
     const ms = Date.now() - new Date(iso).getTime();
@@ -1126,6 +1215,155 @@ export default function Page() {
       product: parts.find((p) => p.promotionType === "PRODUCT_GMV_MAX"),
     };
   }
+  // Long-range chunking (3/6/12m): split into ≤30d slices newest-first so
+  // each server call stays under the 60s Hobby kill. Per-slice fail-open.
+  function splitRange30(s: string, e: string, chunk = 30): Array<{ s: string; e: string }> {
+    const out: Array<{ s: string; e: string }> = [];
+    let hi = e;
+    while (hi >= s) {
+      const hiD = new Date(`${hi}T00:00:00Z`).getTime();
+      let loMs = hiD - (chunk - 1) * 86400000;
+      const sMs = new Date(`${s}T00:00:00Z`).getTime();
+      if (loMs < sMs) loMs = sMs;
+      const lo = new Date(loMs).toISOString().slice(0, 10);
+      out.push({ s: lo, e: hi });
+      if (lo <= s) break;
+      hi = new Date(loMs - 86400000).toISOString().slice(0, 10);
+    }
+    return out;
+  }
+  // Merge per-slice /api/gmv-max parts into one part per promotion type.
+  // Campaign money sums across slices; point-in-time meta (budget/status)
+  // comes from the newest slice. Accounts rebuild from merged campaigns.
+  function mergeSliceParts(sliceParts: any[][]) {
+    const byType = new Map<string, any[]>();
+    for (const parts of sliceParts) {
+      for (const p of parts ?? []) {
+        const t = String(p.promotionType ?? "UNKNOWN");
+        const arr = byType.get(t) ?? [];
+        arr.push(p);
+        byType.set(t, arr);
+      }
+    }
+    const merged: any[] = [];
+    for (const [t, arr] of byType) {
+      const camp = new Map<string, any>();
+      for (const p of arr) {
+        for (const c of p.campaigns ?? []) {
+          const id = String(c.campaignId ?? c.campaign_id ?? "");
+          if (!id) continue;
+          const prev = camp.get(id);
+          if (prev) {
+            prev.cost = Number(prev.cost ?? 0) + Number(c.cost ?? 0);
+            prev.gmv = Number(prev.gmv ?? 0) + Number(c.gmv ?? 0);
+            prev.orders = Number(prev.orders ?? 0) + Number(c.orders ?? 0);
+            prev.roi = Number(prev.cost) > 0 ? Number(prev.gmv) / Number(prev.cost) : 0;
+          } else {
+            camp.set(id, { ...c });
+          }
+        }
+      }
+      const campaigns = [...camp.values()].sort((a, b) =>
+        String(a.accountName ?? "").localeCompare(String(b.accountName ?? "")) || Number(b.gmv ?? 0) - Number(a.gmv ?? 0));
+      const acct = new Map<string, { cost: number; gmv: number; orders: number; campaigns: number }>();
+      for (const c of campaigns) {
+        const k = String(c.accountName ?? "Other");
+        const a = acct.get(k) ?? { cost: 0, gmv: 0, orders: 0, campaigns: 0 };
+        a.cost += Number(c.cost ?? 0); a.gmv += Number(c.gmv ?? 0); a.orders += Number(c.orders ?? 0); a.campaigns += 1;
+        acct.set(k, a);
+      }
+      const accounts = [...acct.entries()].map(([name, d]) => ({ name, ...d, roi: d.cost > 0 ? d.gmv / d.cost : 0 }))
+        .sort((a, b) => b.gmv - a.gmv);
+      const gmv = campaigns.reduce((s, c) => s + Number(c.gmv ?? 0), 0);
+      const cost = campaigns.reduce((s, c) => s + Number(c.cost ?? 0), 0);
+      const orders = campaigns.reduce((s, c) => s + Number(c.orders ?? 0), 0);
+      const first = arr[0] ?? {};
+      merged.push({
+        ...first,
+        promotionType: t,
+        shopName: first.shopName,
+        gmv, cost, orderCount: orders,
+        roi: cost > 0 ? gmv / cost : 0,
+        net: gmv * 0.75, net_roi: cost > 0 ? (gmv * 0.75) / cost : 0,
+        currency: "MYR",
+        dateRange: { start, end },
+        accounts, campaigns,
+        budgetRefreshRemaining: campaigns.filter((c: any) => c.status === "ON" && c.budget == null).length,
+      });
+    }
+    return merged;
+  }
+  // Merge per-slice /api/roas bodies (TTAM + ROAS tabs). Money sums across
+  // slices; campaign meta (name/status/budget) comes from the newest slice.
+  // First (newest) slice pays budget enrichment; later slices reuse the cache.
+  function mergeRoasSlices(bodies: any[]) {
+    const first = bodies[0] ?? {};
+    let gmv = 0, liveC = 0, prodC = 0, gmvMaxCost = 0, manualSpend = 0, orders = 0;
+    let manualCount = 0;
+    const camp = new Map<string, any>();
+    for (const b of bodies) {
+      gmv += Number(b.gmv ?? 0); liveC += Number(b.liveGMVMaxCost ?? 0);
+      prodC += Number(b.productGMVMaxCost ?? 0); gmvMaxCost += Number(b.gmvMaxCost ?? 0);
+      manualSpend += Number(b.manualCampaignSpend ?? 0); orders += Number(b.orderCount ?? 0);
+      manualCount = Math.max(manualCount, Number(b.manualCampaignCount ?? 0));
+      for (const c of b.manualCampaigns ?? []) {
+        const id = String(c.campaign_id ?? "");
+        if (!id) continue;
+        const prev = camp.get(id);
+        if (prev) prev.spend = Number(prev.spend ?? 0) + Number(c.spend ?? 0);
+        else camp.set(id, { ...c });
+      }
+    }
+    const manualCampaigns = [...camp.values()];
+    const totalAdsSpend = gmvMaxCost + manualSpend;
+    const sst = totalAdsSpend * 0.08, wht = totalAdsSpend * 0.08;
+    const totalCostWithTaxes = totalAdsSpend + sst + wht;
+    return {
+      ...first,
+      shopName: first.shopName,
+      gmv, liveGMVMaxCost: liveC, productGMVMaxCost: prodC, gmvMaxCost,
+      manualCampaignSpend: manualSpend,
+      manualCampaignCount: manualCount || manualCampaigns.length,
+      manualCampaigns,
+      orderCount: orders, totalAdsSpend, sst, wht, totalCostWithTaxes,
+      roas: totalAdsSpend > 0 ? gmv / totalAdsSpend : 0,
+      actualRoas: totalCostWithTaxes > 0 ? gmv / totalCostWithTaxes : 0,
+      currency: "MYR", dateRange: { start, end },
+    };
+  }
+  // Merge per-slice /api/shop-gmv bodies. Shop-order + ads money sums;
+  // daily cache rows concat in date order; point-in-time meta from newest.
+  function mergeShopGmvSlices(bodies: any[]) {
+    const first = bodies.find((b) => b?.configured) ?? bodies[0] ?? {};
+    if (!bodies.some((b) => b?.configured)) return { ...first, dateRange: { start, end } };
+    let shopGMV = 0, shopOrders = 0, shopTotal = 0, shopCancelC = 0, shopCancelG = 0, pages = 0;
+    let adsGMV = 0, adsOrders = 0, adsSpend = 0, adsTax = 0;
+    const daily: any[] = [];
+    const keys: string[] = [];
+    for (const b of bodies) {
+      if (!b?.configured) continue;
+      shopGMV += Number(b.shopOrderGMV ?? 0); shopOrders += Number(b.shopOrderCount ?? 0);
+      shopTotal += Number(b.shopTotalOrders ?? 0); shopCancelC += Number(b.shopCancelledCount ?? 0);
+      shopCancelG += Number(b.shopCancelledGMV ?? 0); pages += Number(b.pages ?? 0);
+      adsGMV += Number(b.adsGMV ?? 0); adsOrders += Number(b.adsOrderCount ?? 0);
+      adsSpend += Number(b.totalAdsSpend ?? 0); adsTax += Number(b.totalCostWithTaxes ?? 0);
+      for (const d of b.daily ?? []) daily.push(d);
+      for (const k of b.sampleKeys ?? []) if (keys.length < 20 && !keys.includes(k)) keys.push(k);
+    }
+    daily.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    return {
+      ...first,
+      shopOrderGMV: shopGMV, shopOrderCount: shopOrders, shopTotalOrders: shopTotal,
+      shopCancelledCount: shopCancelC, shopCancelledGMV: shopCancelG, sampleKeys: keys, pages,
+      adsGMV, adsOrderCount: adsOrders, totalAdsSpend: adsSpend, totalCostWithTaxes: adsTax,
+      trueRoas: adsSpend > 0 ? shopGMV / adsSpend : 0,
+      trueActualRoas: adsTax > 0 ? shopGMV / adsTax : 0,
+      adsRoas: adsSpend > 0 ? adsGMV / adsSpend : 0,
+      adsActualRoas: adsTax > 0 ? adsGMV / adsTax : 0,
+      deltaVsAds: adsGMV > 0 ? (shopGMV - adsGMV) / adsGMV : 0,
+      daily, currency: "MYR", dateRange: { start, end },
+    };
+  }
   // live=false (auto-load, tab switches): DB snapshot first, then live
   // refresh in background (silent fill). live=true (Fetch Data button):
   // live TikTok pull as before.
@@ -1147,10 +1385,12 @@ export default function Page() {
     try {
       const q = `shopNumber=${shopNo}&startDate=${start}&endDate=${end}`;
       if (metricId === "shop-gmv") {
-        const r = await fetch(`/api/shop-gmv?${q}`);
-        if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
-        setData({ kind: "shop-gmv", ...(await r.json()) });
+        const { merged, failed, cancelled, total, ok } = await fetchShopGmvProg();
+        setData({ kind: "shop-gmv", ...merged });
         setFetchedAt(new Date().toISOString());
+        if (total > 1 || failed.length || cancelled) {
+          setBudgetNotice(`${cancelled ? "Cancelled" : "Long range"}: ${ok}/${total} slice(s)${failed.length ? ` · ${failed.length} failed: ${failed.join(", ")}` : ""} · sums merge.`);
+        }
         try {
           const tr = await fetch(`/api/shop-token`);
           if (tr.ok) setShopToken(await tr.json());
@@ -1176,16 +1416,16 @@ export default function Page() {
         return;
       }
       if (metricId === "roas") {
-        const r = await fetch(`/api/roas?${q}`);
-        if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
-        setData({ kind: "roas", ...(await r.json()) });
+        const { merged, failed, cancelled, total, ok } = await fetchRoasProg(false);
+        setData({ kind: "roas", ...merged });
+        if (total > 1 || failed.length || cancelled) {
+          setBudgetNotice(`${cancelled ? "Cancelled" : "Long range"}: ${ok}/${total} slice(s)${failed.length ? ` · ${failed.length} failed: ${failed.join(", ")}` : ""} · sums merge.`);
+        }
         setFetchedAt(new Date().toISOString());
         return;
       }
       if (metricId === "ttam") {
-        const r = await fetch(`/api/roas?${q}&includeCampaignBudgets=1`);
-        if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
-        const body = await r.json();
+        const { merged: body, failed, cancelled, total, ok } = await fetchRoasProg(true);
         setData({ kind: "ttam", ...body });
         // Toggles follow the active preset's enabled flags.
         const enabled = (body?.preset?.metrics ?? [])
@@ -1198,6 +1438,9 @@ export default function Page() {
           if (pr.ok) setTtamPresets((await pr.json()).presets ?? []);
         } catch {
           // picker stays hidden; view still uses the fetched preset
+        }
+        if (total > 1 || failed.length || cancelled) {
+          setBudgetNotice(`${cancelled ? "Cancelled" : "Long range"}: ${ok}/${total} slice(s)${failed.length ? ` · ${failed.length} failed: ${failed.join(", ")}` : ""} · sums merge, budgets point-in-time.`);
         }
         setFetchedAt(new Date().toISOString());
         return;
@@ -1216,6 +1459,102 @@ export default function Page() {
         }
         return out;
       };
+      // Unified live fetch with progress popup for EVERY range (short = 1
+      // chunk, long = 30d slices newest-first, per-slice fail-open).
+      const fetchLiveProg = async () => {
+        const chunks = daySpan > 31 ? splitRange30(start, end, 30) : [{ s: start, e: end }];
+        const sliceParts: any[][] = [];
+        const failed: string[] = [];
+        const t0 = Date.now();
+        fetchCancelRef.current = false;
+        clearProgClose();
+        setFetchProg({ total: chunks.length, done: 0, label: chunks[0] ? rangeLabel(chunks[0].s, chunks[0].e) : "", failed: [], startedAt: t0 });
+        for (let i = 0; i < chunks.length; i++) {
+          if (fetchCancelRef.current) break;
+          const ch = chunks[i];
+          setFetchProg({ total: chunks.length, done: i, label: rangeLabel(ch.s, ch.e), failed: [...failed], startedAt: t0 });
+          try {
+            const out = [];
+            for (const t of types) {
+              const src = t === "LIVE_GMV_MAX" ? `&accountSource=${liveAccountSourceRef.current}` : "";
+              const r = await fetch(`/api/gmv-max?shopNumber=${shopNo}&startDate=${ch.s}&endDate=${ch.e}&promotion_type=${t}${src}`);
+              if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
+              out.push(await r.json());
+            }
+            sliceParts.push(out);
+          } catch {
+            failed.push(rangeLabel(ch.s, ch.e));
+          }
+          setFetchProg({ total: chunks.length, done: i + 1, label: rangeLabel(ch.s, ch.e), failed: [...failed], startedAt: t0 });
+        }
+        if (!sliceParts.length) throw new Error(failed.length ? `all ${failed.length} slice(s) failed: ${failed.join(", ")}` : "fetch failed");
+        const doneCount = sliceParts.length + failed.length;
+        const elapsedDone = Math.max(0, Math.round((Date.now() - t0) / 1000));
+        // Stay 10s so the total time is visible, then auto-close.
+        setFetchProg({ total: chunks.length, done: doneCount, label: `Done in ${elapsedDone}s`, failed: [...failed], startedAt: t0, finishedAt: Date.now() });
+        clearProgClose();
+        fetchCloseTimer.current = setTimeout(() => { setFetchProg(null); fetchCloseTimer.current = null; }, 10000);
+        return { merged: mergeSliceParts(sliceParts), failed, cancelled: fetchCancelRef.current, total: chunks.length, ok: sliceParts.length };
+      };
+      // Shared completion: "Done in Xs" stays 10s so the total is visible.
+      function finishProg(t0: number, total: number, okCount: number, failed: string[]) {
+        const doneCount = okCount + failed.length;
+        const elapsedDone = Math.max(0, Math.round((Date.now() - t0) / 1000));
+        setFetchProg({ total, done: doneCount, label: `Done in ${elapsedDone}s`, failed: [...failed], startedAt: t0, finishedAt: Date.now() });
+        clearProgClose();
+        fetchCloseTimer.current = setTimeout(() => { setFetchProg(null); fetchCloseTimer.current = null; }, 10000);
+        return { failed: [...failed], cancelled: fetchCancelRef.current, total, ok: okCount };
+      }
+      // Chunked /api/roas (TTAM + ROAS tabs): 30d slices newest-first.
+      async function fetchRoasProg(withBudgets: boolean) {
+        const chunks = daySpan > 31 ? splitRange30(start, end, 30) : [{ s: start, e: end }];
+        const bodies: any[] = [];
+        const failed: string[] = [];
+        const t0 = Date.now();
+        fetchCancelRef.current = false;
+        clearProgClose();
+        setFetchProg({ total: chunks.length, done: 0, label: chunks[0] ? rangeLabel(chunks[0].s, chunks[0].e) : "", failed: [], startedAt: t0 });
+        for (let i = 0; i < chunks.length; i++) {
+          if (fetchCancelRef.current) break;
+          const ch = chunks[i];
+          setFetchProg({ total: chunks.length, done: i, label: rangeLabel(ch.s, ch.e), failed: [...failed], startedAt: t0 });
+          try {
+            const r = await fetch(`/api/roas?shopNumber=${shopNo}&startDate=${ch.s}&endDate=${ch.e}${withBudgets ? "&includeCampaignBudgets=1" : ""}`);
+            if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
+            bodies.push(await r.json());
+          } catch {
+            failed.push(rangeLabel(ch.s, ch.e));
+          }
+          setFetchProg({ total: chunks.length, done: i + 1, label: rangeLabel(ch.s, ch.e), failed: [...failed], startedAt: t0 });
+        }
+        if (!bodies.length) throw new Error(failed.length ? `all ${failed.length} slice(s) failed: ${failed.join(", ")}` : "fetch failed");
+        return { merged: mergeRoasSlices(bodies), ...finishProg(t0, chunks.length, bodies.length, failed) };
+      }
+      // Chunked /api/shop-gmv (Shop GMV tab): 30d slices newest-first.
+      async function fetchShopGmvProg() {
+        const chunks = daySpan > 31 ? splitRange30(start, end, 30) : [{ s: start, e: end }];
+        const bodies: any[] = [];
+        const failed: string[] = [];
+        const t0 = Date.now();
+        fetchCancelRef.current = false;
+        clearProgClose();
+        setFetchProg({ total: chunks.length, done: 0, label: chunks[0] ? rangeLabel(chunks[0].s, chunks[0].e) : "", failed: [], startedAt: t0 });
+        for (let i = 0; i < chunks.length; i++) {
+          if (fetchCancelRef.current) break;
+          const ch = chunks[i];
+          setFetchProg({ total: chunks.length, done: i, label: rangeLabel(ch.s, ch.e), failed: [...failed], startedAt: t0 });
+          try {
+            const r = await fetch(`/api/shop-gmv?shopNumber=${shopNo}&startDate=${ch.s}&endDate=${ch.e}`);
+            if (!r.ok) throw new Error((await r.json()).error ?? "fetch failed");
+            bodies.push(await r.json());
+          } catch {
+            failed.push(rangeLabel(ch.s, ch.e));
+          }
+          setFetchProg({ total: chunks.length, done: i + 1, label: rangeLabel(ch.s, ch.e), failed: [...failed], startedAt: t0 });
+        }
+        if (!bodies.length) throw new Error(failed.length ? `all ${failed.length} slice(s) failed: ${failed.join(", ")}` : "fetch failed");
+        return { merged: mergeShopGmvSlices(bodies), ...finishProg(t0, chunks.length, bodies.length, failed) };
+      }
       const checkRooms = (parts: any[]) => {
         const cands: { campaignId: string; cost: number }[] = [];
         for (const p of parts) {
@@ -1233,49 +1572,77 @@ export default function Page() {
         })();
       };
       if (live) {
-        const parts = await fetchParts("gmv-max");
+        const { merged, failed, cancelled, total, ok } = await fetchLiveProg();
         setFetchedAt(new Date().toISOString());
-        setData(mergeGmvParts(parts, shopNo, false));
-        checkRooms(parts);
+        setData(mergeGmvParts(merged, shopNo, false));
+        checkRooms(merged);
+        if (total > 1 || failed.length || cancelled) {
+          setBudgetNotice(`${cancelled ? "Cancelled" : "Long range"}: ${ok}/${total} slice(s)${failed.length ? ` · ${failed.length} failed: ${failed.join(", ")}` : ""} · sums merge, budgets point-in-time.`);
+        } else {
+          setBudgetNotice(null);
+        }
+        setFetchedAt(new Date().toISOString());
+        return;
+      }
+      // Auto-load: long ranges skip the DB snapshot (hourly cache is 31d)
+      // and go straight to chunked live with the same progress popup.
+      const isLongAuto = (metricId === "total" || metricId === "LIVE_GMV_MAX" || metricId === "PRODUCT_GMV_MAX") && daySpan > 31;
+      if (isLongAuto) {
+        const { merged, failed, cancelled, total, ok } = await fetchLiveProg();
+        setFetchedAt(new Date().toISOString());
+        setData(mergeGmvParts(merged, shopNo, false));
+        checkRooms(merged);
+        setBudgetNotice(`${cancelled ? "Cancelled" : "Long range"}: ${ok}/${total} slice(s)${failed.length ? ` · ${failed.length} failed: ${failed.join(", ")}` : ""} · sums merge, budgets point-in-time.`);
         setFetchedAt(new Date().toISOString());
         return;
       }
       // Auto-load: try the DB snapshot first (fail-open to live).
+      // Snapshot phase shows in the same progress popup.
       let snapParts: any[] | null = null;
+      clearProgClose();
+      const snapT0 = Date.now();
+      setFetchProg({ total: types.length, done: 0, label: "Snapshot…", failed: [], startedAt: snapT0 });
       try {
         snapParts = await fetchParts("hourly-report");
       } catch {
         snapParts = null;
       }
+      setFetchProg(null);
       const snapRows = (snapParts ?? []).reduce((s, p) => s + ((p.campaigns ?? []).length), 0);
       const snapPulled = (snapParts ?? []).map((p) => p.pulledAt).filter(Boolean).sort()[0] ?? null;
       const snapStale = !snapParts || snapRows === 0 || snapshotStale(snapPulled);
       if (snapParts && snapRows > 0) {
-        // Instant render from Neon, then silent background live refresh.
+        // Instant render from Neon; >=5m/partial/stale auto-refreshes live.
         const snapAge = snapshotAgeMin(snapPulled);
         const snapAgeTxt = snapAge === null ? "synced time unknown" : snapAge < 1 ? "synced just now" : `synced ${agoStr(snapPulled)}`;
+        const snapPartial = snapParts.some((p) => p.partial);
+        const shouldAuto = snapStale || snapPartial || (snapAge !== null && snapAge >= SNAPSHOT_AUTO_MIN);
         setFetchedAt(new Date().toISOString());
         setData(mergeGmvParts(snapParts, shopNo, true));
+        if (!shouldAuto) {
+          setBudgetNotice(`Cached view · ${snapAgeTxt} — press Fetch Data for live.`);
+          checkRooms(snapParts);
+          setFetchedAt(new Date().toISOString());
+          const snapElapsed = Math.max(0, Math.round((Date.now() - snapT0) / 1000));
+          setFetchProg({ total: types.length, done: types.length, label: `Done in ${snapElapsed}s`, failed: [], startedAt: snapT0, finishedAt: Date.now() });
+          clearProgClose();
+          fetchCloseTimer.current = setTimeout(() => { setFetchProg(null); fetchCloseTimer.current = null; }, 10000);
+          return;
+        }
         if (snapStale) {
           setBudgetNotice(`Cached view (stale · ${snapAgeTxt}) — refreshing live…`);
-        } else if (snapParts.some((p) => p.partial)) {
+        } else if (snapPartial) {
           setBudgetNotice(`Cached view · ${snapAgeTxt} — newest hour is partial (TikTok revises intraday). Refreshing live…`);
         } else {
           setBudgetNotice(`Cached view · ${snapAgeTxt} — refreshing live…`);
         }
         checkRooms(snapParts);
-        // Singles with a fresh snapshot stay cached (Fetch Data = live).
-        // Total + stale singles continue to a silent live refresh below.
-        if (metricId !== "total" && !snapStale) {
-          setFetchedAt(new Date().toISOString());
-          return;
-        }
         try {
-          const liveParts = await fetchParts("gmv-max");
+          const { merged } = await fetchLiveProg();
           setFetchedAt(new Date().toISOString());
-          setData(mergeGmvParts(liveParts, shopNo, false));
+          setData(mergeGmvParts(merged, shopNo, false));
           setBudgetNotice(null);
-          checkRooms(liveParts);
+          checkRooms(merged);
         } catch {
           // Live refresh failed — keep the cached numbers on screen.
           setBudgetNotice(`Cached view · ${snapAgeTxt} — live refresh failed, showing cache. Press Fetch Data to retry.`);
@@ -1283,13 +1650,14 @@ export default function Page() {
         setFetchedAt(new Date().toISOString());
         return;
       }
-      const parts = await fetchParts("gmv-max");
+      const { merged } = await fetchLiveProg();
       setFetchedAt(new Date().toISOString());
-      setData(mergeGmvParts(parts, shopNo, false));
-      checkRooms(parts);
+      setData(mergeGmvParts(merged, shopNo, false));
+      checkRooms(merged);
       setFetchedAt(new Date().toISOString());
     } catch (e) {
       setError(e instanceof Error ? e.message : "fetch failed");
+      setFetchProg(null);
     } finally {
       setLoading(false);
       fetchingRef.current = false;
@@ -1339,7 +1707,7 @@ export default function Page() {
                 setCalPos({ top: r.bottom + 8, left: r.left });
               }
               setCalOpen((v) => !v);
-            }} className={`${inputCls}`}>{start} – {end} 📅</button>
+            }} className={`${inputCls}`}>{rangeLabel(start, end)} 📅</button>
           </div>
           <label className="text-xs text-zinc-400">Status
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className={`${inputCls} ml-2`}>
@@ -1359,28 +1727,73 @@ export default function Page() {
             title="Re-read campaign names from TikTok so renames show, then re-fetch"
             className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-200 hover:bg-zinc-800 disabled:opacity-50"
           >{namesSyncing ? "Syncing…" : "Sync names"}</button>
-          {fetchedAt && <span className="text-xs text-zinc-500">Fetched: {fetchedAt}</span>}
+          {fetchedAt && <span className="text-xs text-zinc-500">Fetched: {fetchedMYT(fetchedAt)}</span>}
         </div>
       </header>
 
       {calOpen && (
         <DateRangePicker
           from={start} to={end} pos={calPos}
+          maxDays={365} showLong
           onApply={(f, t) => { setStart(f); setEnd(t); setCalOpen(false); }}
           onClose={() => setCalOpen(false)}
         />
       )}
+      {fetchProg && (() => {
+        const endTs = fetchProg.finishedAt ?? fetchNow ?? fetchProg.startedAt;
+        const elapsed = Math.max(0, Math.floor((endTs - fetchProg.startedAt) / 1000));
+        const finished = !!fetchProg.finishedAt;
+        const eta = !finished && fetchProg.total > 1 && fetchProg.done > 0
+          ? Math.max(0, Math.round((elapsed / fetchProg.done) * (fetchProg.total - fetchProg.done)))
+          : null;
+        const pct = fetchProg.total ? Math.round((fetchProg.done / fetchProg.total) * 100) : 0;
+        const indeterminate = !finished && fetchProg.done === 0;
+        return (
+        <div className="fixed bottom-4 right-4 z-[60] w-72 rounded-xl border border-zinc-700 bg-zinc-900 p-3 shadow-xl">
+          <div className="flex items-center justify-between text-sm font-medium text-zinc-100">
+            <span>{finished ? `Done ✓ ${fetchProg.done}/${fetchProg.total} · ${elapsed}s` : `Fetching TikTok… ${fetchProg.done}/${fetchProg.total} · ${elapsed}s`}</span>
+            {fetchProg.total > 1 && !finished && (
+            <button
+              onClick={() => { fetchCancelRef.current = true; }}
+              className="rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800"
+            >Cancel</button>
+            )}
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+            {indeterminate
+              ? <div className="h-full w-1/4 animate-pulse rounded-full bg-emerald-500" />
+              : <div className="h-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />}
+          </div>
+          <div className="mt-1.5 text-[11px] text-zinc-400">{fetchProg.label}{eta !== null ? ` · ≈${eta}s left` : ""}</div>
+          {fetchProg.failed.length > 0 && (
+            <div className="mt-1 text-[11px] text-amber-300">{fetchProg.failed.length} slice(s) failed: {fetchProg.failed.join(", ")}</div>
+          )}
+        </div>
+        );
+      })()}
 
       <div className="px-4 pb-16 pt-4">
         <div className="mb-3 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium">Data Freshness &amp; Sync</span>
-            <span className="text-[11px] text-zinc-500">DB-first · auto re-checks every 60s{syncStatusAt ? ` · checked ${agoStr(syncStatusAt)}` : ""}</span>
             <button
-              onClick={() => void loadSyncStatus(shop)}
-              className="ml-auto rounded-lg border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800"
-            >Refresh stamps</button>
+              onClick={() => setFreshOpen((v) => !v)}
+              title={freshOpen ? "Collapse sync status" : "Expand sync status"}
+              className="inline-flex items-center gap-2 rounded-full border border-zinc-700 px-2.5 py-1 text-sm font-medium hover:bg-zinc-800"
+            >
+              <span className={`inline-block h-2 w-2 rounded-full ${syncStatus?.live?.pulled || syncStatus?.product?.pulled ? "bg-emerald-400" : "bg-zinc-600"}`} />
+              Data Freshness &amp; Sync
+              <span className="text-zinc-500">{freshOpen ? "▾" : "▸"}</span>
+            </button>
+            <span className="text-[11px] text-zinc-500">DB-first · auto re-checks every 60s{syncStatusAt ? ` · checked ${agoStr(syncStatusAt)}` : ""}</span>
+            {freshOpen && (
+              <button
+                onClick={() => void loadSyncStatus(shop)}
+                className="ml-auto rounded-lg border border-zinc-700 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-800"
+              >Refresh stamps</button>
+            )}
           </div>
+          {freshOpen && (
+          <>
           <div className="mt-2 grid gap-2 md:grid-cols-2">
             {(["live", "product", "ttam", "daily"] as const).map((k) => {
               const row = syncStatus?.[k] as { pulled?: string | null; slot?: string | null } | null | undefined;
@@ -1407,6 +1820,8 @@ export default function Page() {
             })}
           </div>
           <div className="mt-1.5 text-[11px] text-zinc-500">Timezone: GMT+8 (KL){syncStatus?.campaigns?.pulled ? ` · campaign names synced ${agoStr(syncStatus.campaigns.pulled)}` : ""}</div>
+          </>
+          )}
         </div>
         {error && <p className="mb-3 rounded-lg border border-red-900 bg-red-950 px-3 py-2 text-sm text-red-200">Error: {error}</p>}
         {budgetNotice && <p role="status" className="mb-3 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-300">{budgetNotice}</p>}
@@ -1414,12 +1829,12 @@ export default function Page() {
         {data && data.kind === "gmv" && (
           <>
             {metric === "total" ? (
-              <TotalPerformanceDashboard data={data} />
+              <TotalPerformanceDashboard data={data} bands={roiBands} />
             ) : (
               <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
                 <Kpi label="GMV" value={`MYR ${fmt(data.gmv)}`} sub={data.shopName} />
                 <Kpi label="Total Cost" value={`MYR ${fmt(data.cost)}`} sub={`${data.orders} orders`} />
-                <Kpi label="ROI (gross)" value={`${data.roi.toFixed(2)}x`} sub={`Net ${(data.net_roi ?? 0).toFixed(2)}x (fee 25%)`} />
+                <Kpi label="ROI (gross)" value={<Roi value={data.roi} bands={roiBands} cost={data.cost} />} sub={`Net ${(data.net_roi ?? 0).toFixed(2)}x (fee 25%)`} />
                 <Kpi
                   label="Split"
                   value={`L ${fmt(data.live?.gmv ?? 0)}`}
@@ -1433,6 +1848,7 @@ export default function Page() {
               </div>
             )}
             <h3 className="mb-2 text-sm font-semibold text-zinc-200">Breakdown by Account (click a row to expand)</h3>
+            <p className="mb-2 text-[11px] text-zinc-500">ROI {roiLegend(roiBands)} · guardrail ≥7.0</p>
             {data.cached ? (
               <p className="mb-2 text-[11px]">
                 <span className="rounded-full bg-amber-900 px-2 py-0.5 text-amber-200">
@@ -1546,7 +1962,7 @@ export default function Page() {
                                     )}
                                   </>);
                                 })()}
-                              </td><td className={numCls}>{fmt(a.cost)}</td><td className={numCls}>{fmt(a.gmv)}</td><td className={numCls}>{a.orders}</td><td className={numCls}>{a.roi.toFixed(2)}</td>
+                              </td><td className={numCls}>{fmt(a.cost)}</td><td className={numCls}>{fmt(a.gmv)}</td><td className={numCls}>{a.orders}</td><td className={numCls}><Roi value={a.roi} bands={roiBands} cost={a.cost} /></td>
                               <td className={numCls}>{onRows.length > 0 && accountBudget > 0 ? (<span><BudgetValue row={{ budget: accountBudget, budgetMode: "BUDGET_MODE_DAY" }} />{accountPartial ? <span className="ml-1 text-[10px] text-amber-300" title={`${onRows.length - knownOn.length} ON campaign(s) still need a budget lookup - Fetch again`}>partial</span> : null}</span>) : "—"}</td>
                               <td className={numCls}><BudgetUse value={accountBudgetUse} /></td>
                             </tr>
@@ -1578,7 +1994,7 @@ export default function Page() {
                                     <span className="text-red-400"> ({sessions[c.campaignId].error})</span>
                                   )}
                                 </td>
-                                <td className={numCls}>{fmt(c.cost)}</td><td className={numCls}>{fmt(c.gmv)}</td><td className={numCls}>{c.orders}</td><td className={numCls}>{c.roi.toFixed(2)}</td>
+                                <td className={numCls}>{fmt(c.cost)}</td><td className={numCls}>{fmt(c.gmv)}</td><td className={numCls}>{c.orders}</td><td className={numCls}><Roi value={c.roi} bands={roiBands} cost={c.cost} /></td>
                                 <td className={numCls}>
                                   <div className="flex flex-col items-end gap-1">
                                     <BudgetValue row={c} />
@@ -1606,7 +2022,7 @@ export default function Page() {
                                   )}
                                   <div className="mt-0.5 text-zinc-500">{s.liveTitle ? `room ${s.roomId || "(none)"} · ` : ""}started {s.liveLaunchedMyt ?? s.day}{s.liveDuration ? ` · ${s.liveDuration}` : ""}{(s.days ?? 1) > 1 ? ` · ${s.days}d (${s.firstDay}→${s.lastDay})` : ""}</div>
                                 </td>
-                                <td className={numCls}>{fmt(s.cost)}</td><td className={numCls}>{fmt(s.gmv)}</td><td className={numCls}>{s.orders}</td><td className={numCls}>{Number(s.roi ?? 0).toFixed(2)}</td><td className={numCls}></td><td className={numCls}></td>
+                                <td className={numCls}>{fmt(s.cost)}</td><td className={numCls}>{fmt(s.gmv)}</td><td className={numCls}>{s.orders}</td><td className={numCls}><Roi value={Number(s.roi ?? 0)} bands={roiBands} cost={s.cost} /></td><td className={numCls}></td><td className={numCls}></td>
                               </tr>
                               ))}
                               </Fragment>

@@ -1,12 +1,200 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 55 first (current facts), then Checkpoints 54/53/52/51/50/49/48/47/46/45/44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 65 first (current facts), then Checkpoints 64/63/62/61/60/59/58/57/56/55/54/53/52/51/50/49/48/47/46/45/44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 65 — 14 Nov 2026 (/creative video-ID search: quick filter + Find everywhere; panel fix; 2 deploys, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Short owner-driven arc inside the long uncommitted pile: "can i search the video by id?" → Plan-mode check (no box, only click-to-copy `item_id`) → "maybe both" → built quick + deep in one pass. Then owner screenshot of the green panel ("why it load like this") → 3 display bugs in one glance, fixed + redeployed. Parked the not-in-DB smart-sync idea on owner's "park it". Tree note: HEAD still `bb98404`; pile now Cp55–Cp65 + tiktok-account + skills, all UNCOMMITTED — commit/push ONLY on explicit go.
+
+**What shipped (tsc clean, prod READY, UNCOMMITTED; READY + tsc only, no signed-out smoke).**
+- Quick filter (`dpl_2FQQCDgvywPRqkMVkWaei84D6MHM` part 1): `Post ID…` box in `/creative` toolbar filters loaded rows client-side (`item_id` substring or title), both tables (rows + kill-list via shared `idPass`), `✕` clears, Enter = Find everywhere.
+- Deep lookup (same deploy part 2): `GET /api/creative-sync?itemId=` (numeric 5–25 digits, authz `creative`, no date params needed) returns ≤200 day-rows + totals (`SUM cost/gmv/orders/imp`, `first/last_date`) + per-campaign split; panel shows span, GMV/spend/orders, full campaign IDs, `Load that range` (clamps to last 31d for the Fetch cap).
+- Panel fix (`dpl_GvBduKTuey51TFz9S7pcvnuA7DL3`): B150 Orders slot read `totals.n` (row count) → now `totals.orders` + separate day-row count; B151 campaigns last-4 → full IDs; B152 46d range button → clamps `start=max(first,last-30)`.
+
+**Bugs + lessons (continuing B150–B152).**
+- B150 Wrong field, right type: `COUNT(*)` aliased `n` sat next to `SUM(orders)` aliased `orders` — both numbers, so tsc stayed green and the panel read "Orders 46d rows". Lesson: never render an aggregate without naming its unit in the variable (`rowCount` vs `orderCount`), and read the SELECT list when a count looks like a sum.
+- B151 Space-saving slice lies: `.slice(-4)` on campaign_ids saved pixels but produced mystery codes (`4178, 0162`). Lesson: IDs are identifiers — truncate only with the full value in `title`, or don't truncate.
+- B152 Writer ignores reader's cap: deep panel offered the video's full 46d span while `loadRows` rejects `>31d`. Lesson: any "load this" button must pre-clamp to the reader's limit (`last-30`), never hand the user a range you know will error.
+
+**Open (owner vs next-build).**
+- Owner: hard-refresh `/creative`, try Post ID box + Find everywhere on a known + unknown ID; eyeball full campaign IDs.
+- Next-build (PARKED per owner): not-in-DB smart path — show `last sync` + owning campaign + one-tap `Sync this campaign+week`, check `item_meta` (`known posted but zero sales` vs `never seen`). Spec in chat 14 Nov; build only on explicit go.
+
+## Checkpoint 64 — 14 Nov 2026 (seller-creative arc: popup, Top-5s, B-taxonomy, Untung, hub, local backfill+cron; 16 deploys, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Marathon owner-driven arc, all fragments ("go", "a", "b", screenshots). Loop: paste screenshot/ask → Plan-mode discuss (ELI5 when asked) → "go" → build + tsc + deploy. Two corrections you must internalize: (1) the metric-tab Top-5 I built on Seller belonged to the **Product** tab (owner caught it from Claude's dashboard — Seller is a single GMV list); (2) my long "why imp is slow" explainer described OUR Vercel module, not Claude's — Claude called it out, I owned it, gave them the calibrated numbers (their measured 0.5–10s/call). Parallel session landed Cp63 mid-arc — my number is 64, no overlap. Tree note: HEAD still `bb98404`; pile now Cp55–Cp64 + tiktok-account + skills, all UNCOMMITTED — commit/push ONLY on explicit go.
+
+**What shipped (all tsc clean, prod READY, UNCOMMITTED; READY + tsc only, no signed-out smoke).**
+- Fetch popup on Seller (`dpl_AzD4MVbpRJE8tgXR3PuX9VHZh7MR`): same elapsed/ETA/10s-stay/Cancel pattern, wired on Fetch + Sync + Fill legs.
+- Seller Top-5 + taxonomy (`dpl_2Ytrw9Rj1Dhw8ApbErkYa72CgAWp`, `dpl_5RT8enaycicKjZhNXsx1DNjQDeh1`, `dpl_3TmzJ6pyqz8zPmKLYSyi7DoABZxZ`, `dpl_Cxf4LPZgzmNf2t3GZrZu4vYagEMt`): card view → B-taxonomy classes from `/accounts` (internal/top_affiliate/affiliate/inactive, enrichment AFTER TikTok pull, legacy regex fail-open) → class chips + `cover_url` consumer (still null everywhere — no producer) + video ids on cards + table.
+- Seller defaults + auto-load (`dpl_J9cr2J6mx671QLgHjmk3jcjhDQtC`, `dpl_ADopuN5se1nqyRYagUaMppfaxch8`, `dpl_2aJT4swRwN8cz6F2SWxWidzGtjFN`): past-7d default (past7 preset shape), lag note (today/yesterday usually empty), DB-first auto-load on open (read-only; Sync stays the only writer).
+- Profit leg (`dpl_D7JtZfy8zJJd7bD97ix9tUgrBviM`): `untung = GMV×0.35 − kos ads` (docs/04, MARGIN const, margin-config parked) + ROI in overview; Untung tab lived briefly on Seller, then moved to Product per the correction.
+- Panel merge (`dpl_5kKnhvQxcWPVRYsx4soFquuDaMxN`, `dpl_HZHDbQN9WC8jyrDZhVxDwf1dCz5i`, `dpl_8brHQ3i1fh6XyE49B35ySkiXjwUk`): player + stats in ONE panel, eye deleted (tile only), whole card + table rows tappable, one shared openId. Table detail row (colSpan 14) carries player + Untung/kos + link.
+- Product Top-5 (`dpl_5mFNY5EUwiiyK1vFvENFUhqkv1dE`, with the Seller strip in the same deploy): docs/04 table verbatim — Revenue/Click rate/CVR/25% view/Untung with imp/click/order floors from skala, Juga tags, Tiada-pertindihan with Revenue→Click→CVR→25%→Untung priority + "Ranking sebenar #N", per-tab syarat + GMV-share box. Built on `killList().rows`, verdict + kind chips, click-▶-embed, video ids.
+- All Creative hub (`dpl_2zD7x8tVqJd4Zi4ctUS5NKzwKCVD`, `dpl_34HrFgj2ga1Cpmxb7Fhv3mCrey68`): `/all-creative` + `/api/all-creative` (product/seller sums + tops + live/product stamps, all fail-open) + Menu entry + Refresh ↻ (re-read only, never writes; "sync there, refresh here").
+- Local backfill (no deploy — laptop + Neon direct): `seller-backfill.py` (stdlib + psycopg; same walk/floors/upserts as online lib, token auto-refresh mirroring B138, class map, latest_available guard, --max-minutes 25, rotating `seller-backfill.log`, Telegram digest). Proven: dry-run → 1d real → 7d real (1389 video-days, 300 imp, 1.7 min, exit 0). `SellerBackfill-Nightly` task daily 12:30am --days 2, 25-min cap, StartWhenAvailable; Telegram routed to topic 30 via `TELEGRAM_THREAD_ID`. First run tonight.
+- Diagnostics (read-only, no code): Shop lag is 1–2d (`latest_available`); Shop listing has NO cover field (probe rawKeys); oEmbed `thumbnail_url` dead but `player/v1` embed verified live via curl; this PC runs TikTokSync-Morning/Evening/Night (account dashboard) + PCShutdown-1AM daily 1:00am (`/f`, verified) — NO `GMVMaxCollector30m` despite AGENTS.md (stale doc); sleep-after=Never on AC, so locked-at-midnight is fine.
+
+**Bugs + lessons.**
+- No new B-numbers (tsc green on all 16; my own extra `</div>` and `$var`-in-shell mangling caught pre-deploy — re-read + script-files rule holds; B-filter for "bugs" stays product-only).
+- Op lesson: shell tool interpolates `$vars` in inline commands — never inline PowerShell variables, always write a `.ps1` and run `-File` (then delete it).
+- Honesty log: two owner/Claude corrections this arc (wrong-tab Top-5, Vercel-not-Claude explainer) — both owned + fixed same session. When comparing against Claude's dashboard, verify which tab a pattern belongs to before building.
+
+**Open (owner vs next-build).**
+- Owner: confirm ✅ digest lands in topic 30 tomorrow morning (first 12:30am run tonight); hard-refresh Seller/Product/hub; sprite PNG + id-order list still the only path to real thumbnails (cover_url consumer ready, all null).
+- Next-build: Evergreen computed view (rule still `belum diluluskan`); Ads Manager integrated pull (table ready, 038); TTAM full group + `Admin ▸` split (parked since Cp62); fix AGENTS.md collector-task staleness (no 30m task on this PC).
+
+## Checkpoint 63 — 14 Nov 2026 (total DB-first + 5m auto-refresh; temp debug-table explainer; 2 deploys, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Quiet ELI5 arc after the sidebar storm — owner asked how temp `/debug-table-ikram` feels so fast, what's different on our `/gmv-max?shop=1&metric=total`, then "make ours fast without touching my approved live numbers". Two Plan-mode interludes (explain-first, then always-auto vs >5m/partial — owner picked `auto if >5m/partial` by quoting it back). Same fragment-go loop: "ok go" twice, built twice. Tree note: HEAD still `bb98404`; pile keeps growing (Cp55–Cp62 + this arc, all UNCOMMITTED) — commit/push ONLY when owner says go.
+
+**What shipped (tsc clean, prod READY, UNCOMMITTED; no signed-out smoke — READY + tsc only).**
+- Total stays cached when fresh (`dpl_68sSy8LyzhY9jukUZjcy2YGewqQm`): auto-load gate `page.tsx:1628` was `metricId !== total && !snapStale` → `!snapStale`, so fresh `total` paints Neon `hourly-report` and stops like LIVE/PRODUCT singles. Live `fetchLiveProg()` / Fetch Data untouched.
+- 5m/partial auto-refresh (`dpl_AYf76rWc789wAskHrwnd3fhcygZB`): new `SNAPSHOT_AUTO_MIN=5` (`page.tsx:1177-1186` comment block). `<5m` + non-partial stays cached (`press Fetch Data for live`); `>=5m` / `partial` / `>60m` stale paints cache then silent live refresh (fail keeps cache). Fixes the flicker-vs-quota tradeoff owner chose.
+- Explainer (no code): temp `debug-table-ikram/page.tsx` is live-only + parallel LIVE+PRODUCT + on-demand rooms/creatives, ROAS DB-cached; ours is DB-first snapshot paint + silent live verify + budgets/identities/TTAM/hourly/cron/Telegram the temp never had.
+
+**Bugs + lessons.**
+- No new B-numbers (no product bugs; tsc green both deploys).
+- Op lesson: `deploy_online.py` run from repo root (`python 2-gmvmax/gmvmax-auto/deploy_online.py`) — running it from `online/` 404s the script path. And piped `| Select-Object` makes even a READY deploy exit 1 in PowerShell — read the JSON `readyState`, not the exit code. Never trust `$LASTEXITCODE` through a pipe; always check the deployment body.
+
+**Open (owner vs next-build).**
+- Owner: hard-refresh `/gmv-max?shop=1&metric=total`, eyeball `Cached view · synced Xm ago` → auto `refreshing live…` → numbers swap; `Fetch Data` still forces live.
+- Next-build: validate `<5m` stay vs `>=5m` refresh on 24–27 Sep locked range (cached vs live diff must be ~0); consider same 5m rule for TTAM/ROAS tabs if owner likes it.
+
+## Checkpoint 62 — 14 Nov 2026 (sidebar reorg: collapsible sections + Live/Product groups + Accounts group + icon dedupe; 9 deploys, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Owner drove the whole arc from his phone screenshot — red boxes around SHOP / TIKTOK ADS / TIKTOK SHOPS, then one-line orders ("put in group", "kill", "go", "a"). Same loop as Cp61: fragment + prior context = full go, never ask twice. Plan-mode interludes happened twice (calendar of asks), owner confirmed with fragments both times. Sparring stayed off — naming came from the owner verbatim (`LGMVM campaign`, `PGMVM Creative`, `Live Dashboard`), don't normalize his casing (`Live Gmv max campaign` → kept as `LGMVM campaign` per his final wording; `TTAM campaign` rename-only per his "a" choice). Tree note: HEAD still `bb98404`; everything since Cp55 UNCOMMITTED (this arc = `Shell.tsx` only, +325/−39) — commit/push ONLY when owner says go.
+
+**What shipped (all tsc clean, prod READY, UNCOMMITTED; no signed-out smoke run — READY + tsc only).**
+- Product group (`dpl_AT9CpQ8Jn5df7VTjNiT5T69zJViP`): `/creative` renamed `GMV Max Creative`, moved out of Settings under a collapsed `Product GMV Max ▸` with the `PRODUCT_GMV_MAX` board row.
+- Live group (`dpl_FSsx4efoQXSPp9xjaDMVUFrHJhqs`): `Live GMV Max ▸` (collapsed) → `LGMVM campaign` + `Live Dashboard` (renamed `/shop-live`, removed from TikTok Shops); Product children renamed `PGMVM campaign` + `PGMVM Creative`.
+- Collapsible sections (`dpl_CRPyMNXxeWEpDj4F65NNA6FKymmX`): SHOP / TIKTOK ADS / TIKTOK SHOPS headers toggle, all-open default, `localStorage` persist (`shell-shopsec/adssec/shopssec-open`), auto-expand on active child, forced open in icon-collapsed mode so the icon bar never empties.
+- Seller Creative to Shop (`dpl_GtxmTWsbEPaCaWeQGhgD6wq7RS6Q`); then shop row killed + Accounts group + icon dedupe (`dpl_B1RB8kossXuogYNt3y6fVtMBaMcN`): dead `Him.DrSamhan` row deleted (shop-1 lock), `Accounts ▸` (collapsed) → Accounts + Live board inside Settings, guardrails `gauge`→new `shield`, Hourly Shop `clock`→`bag`, Shop Cost `coins`→`layers`, Calendar filters `sliders`→`cal`.
+- Fresh icons (`dpl_EhruHZNqzP8PVa8KC8baUWtXrYDR`): new single-path `receipt` (Shop Cost) + `chart` (Hourly Ads); Hourly Shop takes `clock` back. Every visible group now one-of-a-kind except `bag` on Shop GMV + Shop grants (admin-only, never adjacent — accepted, owner offered 3rd icon, parked).
+- Order + moves (`dpl_AseeFXHDRZ8CnGh2WXPN9jVux2Vj`, `dpl_9XzkkQaGsfVxjnArKHVB4XLQNmXW`, `dpl_DbfJ1sMQN2Nct8S6UjBaHLRzkDMt`): TikTok Shops reordered Shop GMV → Hourly Shop → Shop Cost → Live ROI; Seller Creative moved to bottom of TikTok Shops and the empty Shop section deleted (kills the `Shop` vs `TikTok Shops` name clash); `TTAM (Manual, excl GMV)` renamed `TTAM campaign` (rename-only, owner picked A over full TTAM group).
+
+**Bugs + lessons.**
+- No new B-numbers this arc (no product bugs found; tsc green on all 9 deploys).
+- Op lesson (not a B): PowerShell rejects `&&` chaining (`npx tsc --noEmit && python ...` died with ParserError) — never chain with `&&` on this box, always run `tsc` then deploy as two separate shell calls.
+
+**Open (owner vs next-build).**
+- Owner: hard-refresh to pick up the sidebar; eyeball icon shapes at 16px (receipt/chart are new single-path SVGs, first of their kind in `P`).
+- Next-build: TTAM full group (`TTAM ▸` → campaign + ROAS, owner parked it twice) + `Admin ▸` split (Access + Shop grants, explained, awaiting go).
+
+## Checkpoint 61 — 12 Nov 2026 (calendar TikTok parity + long ranges on all ad tabs; 8 deploys, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Owner drove entirely by screenshots this arc — paste a TikTok-vs-HW range pic, get a one-line verdict ("TikTok counts 8, you count 7"), say "go", watch it deploy. Same loop 8 times, zero design docs. Two Plan-mode interludes (step-3 scoping, popup wording) where the owner confirmed with fragments ("this", "yes", "go for all") — treat a fragment + prior context as a full go. Sparring stayed off: conventions came from the owner's screenshots, not theory (Sunday weeks, 8-day TikTok parity). Tree note: HEAD still `bb98404`; everything since Cp55 UNCOMMITTED (this arc + tiktok-account dashboard + skills deltas) — commit/push ONLY when owner says go.
+
+**What shipped (all tsc clean, prod READY, UNCOMMITTED; no signed-out smoke run — READY + tsc only).**
+- TikTok parity (`dpl_HnEhViVGs2irf75orBEbc8abLFtm`): dual Last-7 in `DateRangePicker.tsx` — "Last 7 days" = today−7→today (8 dates, TikTok match, GMV Max label), "Past 7 days" = today−7→yesterday (7 closed, TTAM label); weeks Sunday-start (`mytWeekdaySun0`: This = Sun→today, Last = prior Sun→Sat). Single shared picker, all pages sync.
+- GMV Max long ranges (`dpl_3m8TvMJDZBfsstKzZHRbQxbvj1rN`): picker `maxDays`/`showLong` props (default 31; gmv-max 365 + Last 3/6/12m = 90/180/365d); 30d newest-first chunked live fetch + `mergeSliceParts` + floating progress popup (Cancel).
+- Popup on every fetch + MYT stamp (`dpl_GkjHqw5cAqktFDhcWp2wMPuvMrXp`): snapshot phase + single-day ranges show the popup; `Fetched:` renders `dd-mm-yyyy (hh:mm:ss MYT)` via `fetchedMYT`.
+- Range labels everywhere (`dpl_9DUfPnndWTUbjkFMhvjphERaRzMZ`): pure `rangeLabel`/`fmtDayMY` in `ttam-scores.ts` (wall-safe import); all 6 Range buttons single-day + ` (Today)`/` (Yesterday)`.
+- Elapsed/ETA/10s stay (`dpl_6mVb4YzTXFMwTXywQiimVE2niJsV`): 0.5s ticker, `≈Ns left` on multi-slice (avg × remaining), `Done ✓ n/n · Xs` stays 10s (timer ref + unmount cleanup).
+- Preset hover preview (`dpl_DsYEowk8…`): `presetRange` extraction, `presetHov` state, grid highlight (two-click anchor wins), footer `dd-mm-yyyy – dd-mm-yyyy · N days · label`, no grid jump. Footer committed/anchor previews also dd-mm-yyyy now.
+- Pulse + stay fixes (`dpl_EC4KhUKFprqKBzpPqr6Kar9LMHVj`): B147 indeterminate 25% chunk at done==0; B149 timer hygiene (clear at every fetch start); fresh-snapshot early-return gets the same 10s stay.
+- Long ranges everywhere (`dpl_Fz1ze3AbJz4HQGmy4BP58RCbLWBw`): shop-cost chunked fetch + merge + long picker (sub-copy updated); shop-gmv + ttam/roas chunked via `mergeRoasSlices`/`mergeShopGmvSlices` (budget enrichment rides the newest slice, rest reuse Neon cache); `refreshShopDailyAction`/`refreshShopHourlyAction` split into 31d server runs; hourly scorecards uncapped (`hourly.ts`, `hourly-shop.ts` — full-range single aggregate, routes already fail-open). Servers stay ≤31d/run; each slice <60s.
+
+**Bugs + lessons (continuing B147–B149).**
+- B147 Pulse on a 0%-width fill is invisible — animating an empty element shows nothing while elapsed counts. Lesson: never animate a zero-size element; render an indeterminate fixed-width chunk until first progress lands.
+- B148 `const` chunk helpers called by earlier branches → tsc `used before declaration` (caught pre-deploy, zero prod impact). Lesson: shared fetch helpers inside a component must be `function` declarations (hoisted), never `const` arrows below their callers.
+- B149 A previous fetch's 10s done-timer fires mid-new-fetch and clears the new popup. Lesson: every fetch start clears the close timer; unmount cleanup; keep the timer ref next to the cancel ref.
+
+**Open (owner vs next-build).**
+- Owner: eyeball 3-month pulls (heaviest: shop-cost = 3 TikTok pulls/slice); hard-refresh if a Range button still shows ISO (cached HTML). Commit/push only when owner says go (pile now Cp55–Cp61 + tiktok-account dashboard + skills).
+- Next-build: creative/seller-creative/shop-live/live-roi stay 31d (creative 7d server chunks → 52 slices for 12m, parked); weekly bucketing for 365-pt charts/tables parked; TTAM creative identity parked per earlier plan.
+
+## Checkpoint 60 — 10 Nov 2026 (Seller Creative fix saga + hourly retry + ROI bands/General tab; 14 deploys, tsc clean, all UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Owner talks in short bursts + screenshots ("ok", "go", paste a JSON). The winning loop this arc: ship a probe that reveals the true API shape → owner pastes one JSON → map exactly what's there → redeploy. Three pastes cracked three shapes (listing metadata, money object, imp array). A Plan-mode interlude covered the ROI-band design (4 confirmation questions, single General row, TTAM ROAS excluded); owner said "go" and it built in one pass. Sparring stayed on: gaps in the owner's bands (4.0–4.49, 4.90–4.99) were closed as red before building. Tree note: HEAD still `bb98404`; everything since Cp55 UNCOMMITTED including prior arcs (calendar file, theme, posted-filter, kind work, shop-cost, tiktok-account dashboard) — commit/push ONLY when owner says go.
+
+**What shipped (all tsc clean, prod READY, all UNCOMMITTED).**
+- Seller fixes: B138 Analytics auto-refresh (`dpl_AaJ9myj3GdaJvysNomPzTA2dKumE`) → B139 non-JSON surfacing + walk budget (`dpl_37kpYVQP1MCCh8htf5aup4aXhpW6`) → B140 imp split-out route + Fill button (`dpl_8znevcaV72c68SfgWgdwyM1tSf1Y`) → B141 batched meta saver (`dpl_GGY2dZW2kdhiMKMxX4svx4Pijttf`) → probe rawKeys/rawSample (`dpl_wbaHLaEVPxeeZvaaNggUoJB7BT8n`) → Phase 1 table upgrades — breakdown, GMV-Max join, status, Video-menjual KPI, 60+40 split (`dpl_9FoBW43o2jsgGKPCmGFh3ALCTKYL`) → B142 money unwrap + metadata wiring (`dpl_3hxc5abzTpphKz6HRzk3TYg22o9e`, probe verified 42 sellers, was 0) → probe full-JSON display (`dpl_J3U4sSpyzovGL1cDbhpR6CHicZY2`) → B143 DATE/TEXT casts (`dpl_2dacvRPA3ZWmW7cgTHEQJPEPd9eM`) → B144 imp parser + impKeys/impSample (`dpl_GXGz9Gymxe8D2iXzVW8FCGcA22Tr`) → imp products-array sum (`dpl_9mGFdaQp3kKQohf3wanKcD56vHUZ`, sample video = 1560 imp / 59 clicks).
+- Hourly retry (B145, `dpl_F11KUieXXJLYxbdnKXjrEbaZqfkf`): 4 attempts + backoff, error names type+page.
+- ROI bands + presets General tab (`dpl_Cr1tP9ZrCWMYrQLnywPsonqtcJze`): `039_general_bands.sql` (owner runs dev+prod; readers tolerate pre-039), `GET/POST /api/general-bands`, TTAM|General tab switch, `roiTier()` in ttam-scores, colors on /gmv-max + /creative (old 2-rule replaced per owner) + /live-roi + legends, hourly telegram 🟢🟡🔴/🚨. TTAM-drill + shop-truth ROAS excluded (B146).
+- Zero-spend plain (`dpl_7YbK6S7Ed1wRG6e3HkwKciXnpBy1`): no spend → plain `0.00x` via `cost` prop; spent-zero-return stays crit ⚠.
+
+**Bugs + lessons (continuing).**
+- B142 Money arrives as an object: Shop GMV is `{amount, currency}` — `Number(object)` is NaN → 0, so 61 orders read RM0. Lesson: never trust a numeric field's type from docs marked [andaian]; unwrap `.amount` defensively (`money()`), and treat "orders without money" as a parser suspect first, data suspect second. (Owner paste cracked it.)
+- B143 Shared placeholder across types: one `$1` used for a DATE column (organic) and a TEXT column (daily_rows) → `operator does not exist: date >= text`. Lesson: when a join crosses schemas with different date types, cast every use explicitly (`::date` / `::text`) — never share an uncast placeholder across a type boundary.
+- B144 Wrong-grain read: products/performance returns one row PER PRODUCT (`{products: [...]}`), parser read it as one single row and found nothing ("Filled 40", columns still —). Lesson: when a fill reports success but columns stay empty, the shape is wrong, not the data — add a raw-sample probe for that endpoint before any other debugging.
+- (B145/B146 already logged below; kept in sequence.)
+
+**Open (owner vs next-build).**
+- Owner: run 038 + 039 on dev+prod → Sync Nov 4 → Fill product views → Fetch → confirm Imp/Clicks land; report /creative Nov-4 GMV for the organic cross-check; eyeball ROI colors + General tab; commit/push only when owner says go (pile keeps growing: Cp55–Cp60 arcs + tiktok-account dashboard + calendar file).
+- Next-build: Phase 2 profit leg (`untung = gmv×0.35 − cost`); nightly organic cron + imp backfill (after manual sync proven); Ads Manager pull; Evergreen (still proposal-flagged).
+
+## Checkpoint 59 — 07 Nov 2026 (shop-cost one-time Baseline/Incentive card: added then removed, note kept)
+
+**Note for the discussion.** Owner asked for a Baseline + Incentive card on `/shop-cost` (sheet ADS ID / cost analysis B37:G44 + B46:B49 as source of truth, 30d 10/8–11/6 with Nov-5 excluded → 29d baseline; Incentive 8–11 Nov $18,631 total / $4,657.75/day, FX 4.06, ~8.3x multiple). Built client-only in `online/src/app/shop-cost/page.tsx` (consts after `ranked`, card after hero, no API change, `dpl_4xdFUZhfsYUHhvZnnXy6Aa54ChfM`), then owner confirmed it was one-time only — card + consts removed same session. Values preserved here for reference: baseline cost 66078.38 / orders 5671 / gross 715479.95 / spend-day 2278.56 / orders-day 195.55 / ROI 10.8277 / CPO 11.65; incentive RM75,641 total / RM18,910/day. No migration, no `shop-cost.ts` / `shops.ts` / auth / Sheets change. Shop 1 only.
+
+## Checkpoint 58 — 05 Nov 2026 (Seller Creative module: Shop organic 5-tab port; tsc clean, 1 deploy, UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner asked for a new Seller Center creative module ("refer claude system how it do it"), decided full 5-tab port + reuse Analytics app token + separate tables (explained with the red/blue Lego-box ELI5), said "ok go" — one build + tsc + deploy, then docs. Same terse loop as Cp57. Tree note: HEAD still `bb98404`; everything since Cp55 UNCOMMITTED (calendar file + Cp57 arcs + this one). Owner runs 038 next.
+
+**What shipped (tsc clean, 1 prod deploy `dpl_7G2BZGCfM4i9iemb88rvi9Z2Btva` READY, all UNCOMMITTED).**
+- `038_creative_organic.sql` (owner runs dev+prod): 4 tables, all `IF NOT EXISTS`, PKs bare-column per 015 precedent (schema-qualified PK cols would fail — caught on re-read, not by tsc).
+- `lib/seller-creative.ts` (server-only): Shop 202509 organic pull — `shop_videos/performance` dual-sort (views + gmv, <100-view floor, keep views≥100 OR gmv>0) + `products/performance` imp leg (≥10k views or sales, ≤40/run, fail-open NULL) + local first-`=` signer (shop-live.ts bug class) + snowflake `postedFromId` + doc-04 name-match `classifyAccount`.
+- Routes `probe` (read-only, coverage map) / `sync` (≤7d guard, per-day fail-open, rewrite-on-revise, `COALESCE` imp preservation) / `overview` (DB read, class filter, side-by-side only — 13% rule).
+- `/seller-creative` page: 5 tabs (Seller full table + totals + probe + chunked sync; Product → /creative; Live → /shop-live; Ads placeholder w/ table-ready note; Evergreen rule preview w/ belum-diluluskan flag). Shell Settings link, module `seller-creative`.
+- Docs: CHANGELOG + feature.md (Seller Creative section) + AGENTS.md (038 line).
+
+**Bugs + lessons.**
+- B135 PK syntax: schema-qualifying PK columns (`PRIMARY KEY (creative.t.col)`) is invalid PG — bare columns like 015. Lesson: copy the 015 shape for every new migration, never improvise DDL.
+- B136 dead-code drift: `void x` markers + unused imports survive edits — tsc `noUnusedLocals` is off, so re-read the file tail after wiring. (Caught here pre-deploy.)
+- B137 HAVING vs default class: unclassified videos (no meta row) vanish under a strict `HAVING MAX(class)=` filter — use `COALESCE(...,'affiliate')` on both rows + totals queries.
+- B138 Analytics token never refreshed (105002): the orders-app credential reader auto-refreshes, the Analytics-app reader never did — same table shape, missing half. Lesson: any new token reader must copy the expiry-1h + refresh + save block, not just the SELECT. Fixed in `shop-analytics-credentials.ts` (`dpl_AaJ9myj3GdaJvysNomPzTA2dKumE`); if TikTok still rejects, the refresh token itself is dead → re-authorize via Shop grants.
+- B139 Sync timeout disguised as JSON error: a timed-out chunk returns Vercel HTML, and `res.json()` threw `Unexpected token 'A'` — the real cause (60s blowout from 40-page walks + 40 imp calls) was invisible. Lesson: always `res.text()` + `JSON.parse` with the HTTP + snippet in the throw, and budget heavy syncs (early-stop sorted walks, small imp caps, 1-day client chunks).
+- B140 Same error, different sender: after B139 the parse error came from the PAGE (route timed out → HTML → client `.json()` threw), not the Shop call. Lesson: when the message doesn't change after a server fix, check who parses next — instrument both ends. Fix: split slow legs into separate small routes (imp route ≤8/batch) instead of shrinking caps inside one request; client parses defensively with a timeout hint.
+- B141 The saver was the hog, not the fetcher: listing-only single-day sync STILL hit FUNCTION_INVOCATION_TIMEOUT because `upsertVideoMeta` did 188 sequential round-trips. Probe always fit — it writes nothing. Lesson: on any timeout, count the DB round-trips first (writes × latency), fetches second. Fix: batch meta upserts (200/chunk), same COALESCE semantics.
+- B145 Bare "fetch failed" killed hourly-sync with no context: `fetchHourlyRows` had zero retry — one transient TikTok network blip threw undici's bare message, alert relayed it verbatim. Lesson: every server-side TikTok fetch needs retry-with-backoff + which-call context (type + page) or the 3am alert is unactionable. Fix: 4 attempts, 2s exponential backoff, error names promotionType + page.
+- B146 (no bug — scoping call): ROI color applies to GMV Max ROI only (/gmv-max, /creative, /live-roi, hourly telegram emoji). TTAM-drill ROAS excluded — feeder traffic is judged on reach, never ROI, so everything would sit red. Shop-truth TRUE ROAS excluded — different metric, different scale. Revisit only if owner asks.
+
+**Open (owner vs next-build).**
+- Owner: run 038 dev+prod → Probe one day → Sync a week → eyeball Seller tab (class Chips, imp —, age). If probe 403s, check Partner Center scopes on the Analytics app (+5 min propagation). Commit/push when ready (never unasked — big UNCOMMITTED pile).
+- Next-build: Ads Manager integrated pull (Marketing API, ads token — `ads_manager_day` waits); Evergreen computed view (needs owner rule approval); Meta username/caption fill (payload shape `[andaian]` — verify on first green sync); nightly cron for organic + imp backfill.
+
+## Checkpoint 57 — 04 Nov 2026 (creative Sync-flex + Insight + noCard + global Kind + 2nd admin + freshness pill; tsc clean, 7 deploys, all UNCOMMITTED)
+
+**To next-you: get back in this headspace instantly.** Owner drove the whole arc in short bursts with Plan/Build ping-pong, same loop as Cp55/56: one-line ask or screenshot → plan discussion (Plan mode, words only) → "ok go" → build + tsc + deploy → next ask → "wrap up". Topics in order: 7-day sync why → flexible sync (A client-chunk) → spinner/mutual-disable → full filter parity (scoped to Insight first, status-map KIV) → Exclude Product Card (A+B) → global Kind filter (B server-exact) → second admin (env-list beats column) → freshness collapse → wrap up. Mood: fast trust, owner eyeballs prod between steps. Tree note: HEAD still `bb98404`; mixes Cp56 `calendar/page.tsx` UNCOMMITTED + untracked `2-gmvmax/tiktok-creative-analysis/claude system/` (unknown origin, untouched — do not touch).
+
+**What shipped (tsc clean every step, 7 prod deploys, all UNCOMMITTED).**
+- Flexible Sync (`dpl_AA7wtpJHtArjJVgiTcUYnuzfYpsv` READY): `syncRows` splits any calendar range into ≤7d chunks newest-first (server 7d guard stays — Hobby 60s), `metaForce` only on last chunk, per-chunk fail-open; button label drops `(≤7d)`.
+- Spinner + mutual-disable (`dpl_6EsDbwhCPKpBKJpzQ7uyE9xCq33P` READY): `Spin` + new `crFetching` (Fetch had no busy flag), both buttons `disabled={crBusy||crFetching}` with spinners, guards at entry, `syncRows` awaits trailing `loadRows` so the lock holds through refresh.
+- Insight port (`dpl_F9Tojr4qfWz4kpaV918L8Vcn9Urg` READY): local `insightOf/cliffOf/insBase/computeBench` ported as pure helpers over range-aggregated posts (impression-weighted rates, derived CPM/AOV, `crTargets` overrides like SOP); **KIV: Boost sec-clause omitted** (`daily_rows` has no Exploration status — rule is ROI≥3 + spend<50 + CPM≤bar); Insight dropdown (Drops collapsed) + column (chip+label, detail in title) + live-bars line + CSV `insight,insight_detail`.
+- Exclude Product Card (`dpl_DRXZMW9NqBUmABNpQNf18wznYPhn` READY): `?noCard=1` server-side (rows + totals + `totalsOnly`, raw `''/'0'/label` all excluded) + global tick (default off, local parity) + `crTotalsNoCard` staleness guard (falls back to client sums mid-toggle).
+- Global Kind (`dpl_5LjJPYkRVijZTzHqKGQEbgqUWBm2` READY): `?kind=` server-exact via correlated subqueries replicating `acctKind` (username-first, lower/trim, strip `@`; unregistered = affiliate; any kind implies no-card); Kind select moved from kill-header to global Fetch row; `crTotalsKind` guard; kill/by-account/trend/CSV/vs-previous all follow.
+- Multi-admin (`dpl_8avF9w7mz4PXHqNmZ7wbT` READY): `isBootstrapAdmin` comma-splits `AUTH_ADMIN_EMAIL` (single still works; self-protection in access-list covers all listed); `.env.example` comment. **OWNER STEP PENDING: append `,ads.himproduct01@gmail.com` to prod `AUTH_ADMIN_EMAIL` + redeploy** — code alone changes nothing.
+- Freshness pill (`dpl_4bPLreazuqEdXWcumQYLU1Zw9HrR` READY): `/gmv-max` Data Freshness card collapsed by default (`freshOpen=false`), pill toggle with status dot, `Refresh stamps` only when open; 60s auto re-check untouched.
+
+**Bugs + lessons (sequence continues B132).**
+- B133 insight field-map typo (`v75: r.r100 * 0 + r.r75`): caught on re-read before tsc — never trust a just-typed aggregate map, re-read the mapping block before verifying.
+- B134 structural insert ate a neighbor (`<p>` guide insert swallowed `{crColsOpen && (`): caught on re-read before tsc. Reaffirms rule 8 — re-read the edited region after EVERY structural edit, no exceptions.
+
+**Open (owner vs next-build).**
+- Owner: prod `AUTH_ADMIN_EMAIL` edit + redeploy, both admins sign-in test; run rule-12 paths (signed-out / allowed / denied / removal-revocation); eyeball Kind match rates (internal vs affiliate), Insight labels, noCard totals, freshness pill; commit/push all (never unasked — tree also holds Cp56 calendar file).
+- Next-build: filter-parity leftovers parked (account search, creative/Post-ID search, min ROI/orders, posted-within, sort, allowlist/1k+ ticks, status-map, `?insight=` deep-link); Boost sec-clause KIV (needs Exploration status source); `is_admin` column only if roster grows (env list suffices).
+
+## Checkpoint 56 — 01 Nov 2026 (creative SCALE Top filter + calendar popup task notes; tsc clean, 2 deploys)
+
+**To next-you: get back in this headspace instantly.** Owner asked for two small slices in one burst: SCALE verdict Top-N, then calendar day-popup parity. Same terse loop as Cp55 — one-line ask, "go", screenshot, "wrap up". Plan mode blocked the calendar ask once (discussed only), Build mode shipped both. Tree note: HEAD `bb98404` already committed the SCALE Top code (36-line `creative/page.tsx` diff) before this wrap-up — only `calendar/page.tsx` is dirty now.
+
+**What shipped (tsc clean every step, 2 prod deploys).**
+- Creative `/creative` SCALE Top (`dpl_4S7mXwrTELcadrJzmipdvYqhQ5sG` READY, code committed in `bb98404`): Verdict=SCALE shows `Top [All|10|20|30|Custom]` + N input (1–300); slices the current Spend/GMV order (default All, no new ranking); summary line (`Top N of M`), table, and CSV all follow the slice.
+- Calendar `/calendar` popup task notes (`dpl_EQxBdY7o7kRuUMPrvqH4hGEjCmV9` READY, UNCOMMITTED): day popup opens on task-only days too (`hasPopup = evs || notes`); popup renders Google events + `Task notes` block (kind dot + title + owner/agent + body, done = strikethrough) mirroring SidePanel; dots in cells unchanged.
+
+**Bugs + lessons (sequence continues B131).**
+- B132 `as const` in tsx needs parens: `{[[...]] as const).map` fails TS1005 inside JSX — always write `{(([[...]] as const).map(...)}` with the extra `(`. Lesson: copy the `([[...]] as const)` shape from the neighboring select, never hand-type the brackets.
+
+**Open (owner vs next-build).**
+- Owner: eyeball SCALE Top (All default, Custom N) + task-only day popup on prod; commit `calendar/page.tsx` when ready (never unasked).
+- Next-build: nothing parked from this arc.
 
 ## Checkpoint 55 — 01 Nov 2026 (/accounts UX polish: @ usernames, top-only actions, dynamic live board; tsc clean, UNDEPLOYED, UNCOMMITTED)
 

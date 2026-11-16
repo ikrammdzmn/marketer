@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "../toast";
 import DateRangePicker from "../DateRangePicker";
 import { ModuleRedirect } from "../module-gate";
+import { rangeLabel } from "@/lib/ttam-scores";
 
 // /shop-live — Shop LIVE minute performance module (Partner API 202510).
 // Server lib: src/lib/shop-live.ts. Read-only (no DB writes yet).
@@ -199,7 +200,7 @@ export default function ShopLivePage() {
                 setCalPos({ top: r.bottom + 8, left: r.left });
               }
               setCalOpen((v) => !v);
-            }} className={`${inputCls}`}>{sessStart} – {sessEnd} 📅</button>
+            }} className={`${inputCls}`}>{rangeLabel(sessStart, sessEnd)} 📅</button>
           </div>
           <label className="text-xs text-zinc-400">Rooms
             <select value={sessType} onChange={(e) => setSessType(e.target.value)} className={`${inputCls} ml-2`}>

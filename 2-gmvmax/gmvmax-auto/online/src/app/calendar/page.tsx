@@ -201,15 +201,16 @@ function MonthGrid({ y, m, spans, large, notes }: { y: number; m: number; spans:
             return <div key={`p${wi}-${ci}`} className={large ? "min-h-16 md:min-h-24" : "min-h-10"} />;
           }
           const evs = dayEvents(d);
-          const open = evs.length > 0 && openDay === d;
           const dayIso = isoOfCell(y, m, d);
           const dayNotes = (notes ?? []).filter((n) => n.date === dayIso);
+          const hasPopup = evs.length > 0 || dayNotes.length > 0;
+          const open = hasPopup && openDay === d;
           return (
             <div
               key={d}
-              onMouseEnter={() => { if (evs.length > 0) setOpenDay(d); }}
+              onMouseEnter={() => { if (hasPopup) setOpenDay(d); }}
               onMouseLeave={() => { if (openDay === d) setOpenDay(null); }}
-              onClick={() => { if (evs.length > 0) setOpenDay(openDay === d ? null : d); }}
+              onClick={() => { if (hasPopup) setOpenDay(openDay === d ? null : d); }}
               className={`relative rounded-lg border p-1 md:p-1.5 ${
                 large ? "min-h-16 md:min-h-24" : "min-h-10"
               } ${isToday(d) ? "border-emerald-600 bg-emerald-950/30" : isTomorrow(d) ? "border-zinc-500 bg-zinc-800/70" : "border-zinc-800 bg-zinc-900"}`}
@@ -271,6 +272,21 @@ function MonthGrid({ y, m, spans, large, notes }: { y: number; m: number; spans:
                       </li>
                     ))}
                   </ul>
+                  {dayNotes.length > 0 && (
+                    <ul className="mt-2 space-y-1.5 border-t border-zinc-800 pt-2">
+                      <div className="px-1 text-[10px] uppercase tracking-wide text-zinc-500">Task notes</div>
+                      {dayNotes.map((n) => (
+                        <li key={`note-${n.id}`} className="rounded-lg bg-zinc-800 px-2 py-1 text-xs leading-snug">
+                          <span className="flex items-center gap-1.5">
+                            <span className={`h-1.5 w-1.5 rounded-full ${KIND_DOT[n.kind] ?? "bg-zinc-500"} ${n.done ? "opacity-40" : ""}`} title={n.kind} />
+                            <span className={n.done ? "text-zinc-500 line-through" : "text-zinc-100"}>{n.title}</span>
+                            <span className="text-[10px] text-zinc-500">· {n.created_by}</span>
+                          </span>
+                          {n.body && <span className="mt-0.5 block text-[11px] text-zinc-400">{n.body}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </div>

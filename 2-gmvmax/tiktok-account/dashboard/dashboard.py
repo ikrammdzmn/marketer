@@ -13,11 +13,13 @@ tiktok-creative-analysis/data/accounts.json (read-only, exact match).
 import argparse
 import csv
 import datetime
+import glob
 import hashlib
 import html
 import json
 import os
 import secrets
+import subprocess
 import time
 import urllib.parse
 import urllib.request
@@ -35,6 +37,90 @@ if not os.path.exists(ACCOUNTS_PATH):
         HERE, "..", "..", "tiktok-creative-analysis", "data", "accounts.json"))
 TOKENS_DIR = os.path.join(HERE, "tokens")
 CSVS_DIR = os.path.join(HERE, "csvs")
+SYNC_DIR = os.path.join(PARENT, "sync")
+LOG_DIR = os.path.join(SYNC_DIR, "logs")
+SCHED_TASKS = [
+    ("TikTokSync-Morning", "sync 08:00"),
+    ("TikTokSync-Evening", "sync 17:00"),
+    ("TikTokSync-Night", "sync 23:00"),
+    ("PCShutdown-1AM", "shutdown 01:00"),
+]
+POWER_CFG = {"shutdown": "01:00 daily (PCShutdown-1AM)",
+             "poweron": "07:00 everyday (BIOS RTC Alarm, manual)"}
+
+
+def _schtask_detail(name):
+    try:
+        r = subprocess.run(["schtasks", "/query", "/tn", name, "/fo", "LIST", "/v"],
+                           capture_output=True, text=True, timeout=15)
+    except Exception as e:  # noqa: BLE001 - schtasks missing = not scheduled
+        return {"task": name, "ok": False, "error": str(e)[:120]}
+    if r.returncode != 0:
+        return {"task": name, "ok": False,
+                "error": (r.stderr or r.stdout or "not found")[:120]}
+    info = {"task": name, "ok": True}
+    for line in (r.stdout or "").splitlines():
+        if ":" not in line:
+            continue
+        k, v = line.split(":", 1)
+        k, v = k.strip(), v.strip()
+        if k in ("Status", "Next Run Time", "Last Run Time", "Last Result"):
+            info[k] = v
+    return info
+
+
+def _boot_iso():
+    try:
+        import ctypes
+        ms = ctypes.windll.kernel32.GetTickCount64()
+        dt = datetime.datetime.now() - datetime.timedelta(milliseconds=int(ms))
+        return dt.replace(microsecond=0).isoformat()
+    except Exception:  # noqa: BLE001 - non-Windows or no ctypes
+        return ""
+
+
+def _latest_log_tail(n=80):
+    try:
+        files = sorted(glob.glob(os.path.join(LOG_DIR, "sync-*.log")), reverse=True)
+    except Exception:  # noqa: BLE001
+        return {"file": "", "mtime": "", "tail": []}
+    if not files:
+        return {"file": "", "mtime": "", "tail": []}
+    p = files[0]
+    try:
+        mt = datetime.datetime.fromtimestamp(os.path.getmtime(p)).replace(
+            microsecond=0).isoformat()
+    except Exception:  # noqa: BLE001
+        mt = ""
+    try:
+        with open(p, "rb") as f:
+            raw = f.read()
+    except Exception as e:  # noqa: BLE001
+        return {"file": os.path.basename(p), "mtime": mt, "error": str(e)[:120]}
+    text = ""
+    try:
+        if raw.startswith(b"\xff\xfe") or raw.startswith(b"\xfe\xff"):
+            text = raw.decode("utf-16")
+        else:
+            text = raw.decode("utf-8-sig")
+    except Exception:  # noqa: BLE001
+        text = raw.decode("utf-8", errors="replace")
+    text = text.replace("\x00", "")
+    lines = text.splitlines()
+    keep = [ln for ln in lines if ln.strip()]
+    summary = [ln for ln in keep
+               if ln.startswith(("DRY ", "Done", "===== exit", "ERROR", "SKIP ", "Pull "))]
+    tail = keep[-n:]
+    return {"file": os.path.basename(p), "mtime": mt,
+            "lines": len(keep), "summary": summary[-12:], "tail": tail[-n:]}
+
+
+def schedule_status():
+    return {"tasks": [_schtask_detail(n) for n, _d in SCHED_TASKS],
+            "power": POWER_CFG,
+            "boot": _boot_iso(),
+            "log": _latest_log_tail(),
+            "now": datetime.datetime.now().replace(microsecond=0).isoformat()}
 
 AUTH_URL = "https://www.tiktok.com/v2/auth/authorize/"
 TOKEN_URL = "https://open.tiktokapis.com/v2/oauth/token/"
@@ -753,6 +839,72 @@ class H(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(b)))
             self.end_headers()
             self.wfile.write(b)
+            return
+        if parsed.path == "/api/schedule":
+            try:
+                self._json(schedule_status())
+            except Exception as e:  # noqa: BLE001
+                self._json({"error": str(e)[:200]}, 500)
+            return
+        if parsed.path == "/schedule":
+            page = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sync schedule status (local)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>body{font-family:'Inter',system-ui,sans-serif}
+.badge{display:inline-block;padding:2px 10px;border-radius:9999px;font-size:12px;font-weight:600}
+pre.log{white-space:pre-wrap;word-break:break-word}</style></head>
+<body class="bg-gray-100 text-gray-900 min-h-screen">
+<div class="mx-auto px-3 py-6" style="max-width:1100px">
+<header class="flex flex-wrap items-center justify-between gap-3 mb-4">
+<div><h1 class="text-2xl font-bold">Sync + power status</h1>
+<p class="text-sm text-gray-500">Local only — 127.0.0.1 · auto-refreshes every 60s · <span id="upd"></span></p></div>
+<div class="flex gap-2"><a href="/" class="px-3 py-1.5 rounded border border-gray-300 text-sm bg-white hover:bg-gray-50">Back to dashboard</a>
+<button onclick="go()" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Refresh now</button></div>
+</header>
+<section class="bg-white rounded-lg shadow p-4 mb-4"><h2 class="font-semibold mb-2">Scheduled tasks</h2>
+<div class="overflow-x-auto"><table class="w-full text-sm" id="tbl">
+<thead><tr class="text-left text-gray-500"><th class="py-1 pr-3">Task</th><th class="py-1 pr-3">What</th><th class="py-1 pr-3">Status</th><th class="py-1 pr-3">Next run</th><th class="py-1 pr-3">Last run</th><th class="py-1 pr-3">Result</th></tr></thead>
+<tbody id="rows"><tr><td colspan="6" class="text-gray-500">Loading…</td></tr></tbody></table></div>
+<p class="text-xs text-gray-500 mt-2">Result 0 = success · 267011 = never run yet.</p></section>
+<section class="grid md:grid-cols-3 gap-4 mb-4">
+<div class="bg-white rounded-lg shadow p-4"><div class="text-xs text-gray-500 font-semibold">NIGHTLY SHUTDOWN</div>
+<div class="text-lg font-bold" id="pwOff">—</div><div class="text-sm text-gray-500">PCShutdown-1AM</div></div>
+<div class="bg-white rounded-lg shadow p-4"><div class="text-xs text-gray-500 font-semibold">MORNING POWER-ON</div>
+<div class="text-lg font-bold" id="pwOn">—</div><div class="text-sm text-gray-500">BIOS RTC Alarm (manual)</div></div>
+<div class="bg-white rounded-lg shadow p-4"><div class="text-xs text-gray-500 font-semibold">LAST BOOT</div>
+<div class="text-lg font-bold" id="boot">—</div><div class="text-sm text-gray-500" id="now"></div></div>
+</section>
+<section class="bg-white rounded-lg shadow p-4 mb-4"><h2 class="font-semibold mb-1">Latest sync log <span id="logmeta" class="text-sm font-normal text-gray-500"></span></h2>
+<div id="sum" class="text-sm mb-2"></div>
+<h3 class="text-sm font-semibold text-gray-500 mb-1">Tail</h3>
+<pre id="log" class="log text-xs bg-slate-900 text-slate-100 p-3 rounded-lg overflow-auto" style="max-height:320px">Loading…</pre></section>
+</div>
+<script>
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function badge(ok,st){if(!ok)return '<span class="badge bg-red-100 text-red-800">missing</span>';
+if(st==="Ready")return '<span class="badge bg-green-100 text-green-800">Ready</span>';
+return '<span class="badge bg-amber-100 text-amber-800">'+esc(st||"?")+"</span>";}
+function resLabel(r){if(r==="0")return '<span class="badge bg-green-100 text-green-800">0 ok</span>';
+if(r==="267011")return '<span class="badge bg-gray-200 text-gray-600">never run</span>';return esc(r||"?");}
+async function go(){try{const r=await fetch("/api/schedule");const d=await r.json();
+const tb=document.getElementById("rows");tb.innerHTML="";
+const names={"TikTokSync-Morning":"sync 08:00","TikTokSync-Evening":"sync 17:00","TikTokSync-Night":"sync 23:00","PCShutdown-1AM":"shutdown 01:00"};
+for(const t of (d.tasks||[])){const tr=document.createElement("tr");tr.className="border-t";
+tr.innerHTML="<td class='py-1 pr-3 font-semibold'>"+esc(t.task)+"</td><td class='py-1 pr-3 text-gray-500'>"+esc(names[t.task]||"")+"</td><td class='py-1 pr-3'>"+badge(t.ok,t["Status"])+"</td><td class='py-1 pr-3'>"+esc(t["Next Run Time"]||"—")+"</td><td class='py-1 pr-3'>"+esc(t["Last Run Time"]||"—")+"</td><td class='py-1 pr-3'>"+resLabel(t["Last Result"])+"</td>";tb.appendChild(tr);}
+document.getElementById("pwOff").textContent=d.power.shutdown;
+document.getElementById("pwOn").textContent=d.power.poweron;
+document.getElementById("boot").textContent=d.boot||"unknown";
+document.getElementById("now").textContent="now "+d.now;
+document.getElementById("upd").textContent="updated "+d.now;
+const l=d.log||{};
+document.getElementById("logmeta").textContent=l.file?("· "+l.file+" · "+l.lines+" lines · "+l.mtime):"· no logs yet";
+document.getElementById("sum").innerHTML=(l.summary||[]).map(x=>"<div class='border-l-4 border-blue-200 pl-2 mb-1'>"+esc(x)+"</div>").join("")||"<span class='text-gray-500'>No summary yet.</span>";
+document.getElementById("log").textContent=(l.tail||[]).join("\\n")||"(empty)";}
+catch(e){document.getElementById("rows").innerHTML='<tr><td colspan="6" class="text-red-600">Error: '+esc(e)+"</td></tr>";}}
+go();setInterval(go,60000);</script></body></html>"""
+            self._html(page)
             return
         self._html("Not found", 404)
 

@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { rangeLabel } from "../lib/ttam-scores";
 
 // Date-range popup ported from the creative-analysis v51 calendar pattern:
 // preset rail + two-month grid + two-click pick with hover preview.
 // GMV differences: no file-availability logic (API serves any past date —
 // only future days disable) + 31-day span cap (API/Hobby safety).
+// Nov 2026: Sunday-start weeks (TikTok parity) + dual Last-7 —
+// "Last 7 days" = today-7 → today (8 dates, TikTok match),
+// "Past 7 days" = today-7 → yesterday (7 closed dates, TTAM).
 
 function mytToday(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
@@ -38,13 +42,14 @@ function isoMonth(iso: string, delta = 0): string {
   return `${d.getFullYear()}-${("0" + (d.getMonth() + 1)).slice(-2)}`;
 }
 
-// MYT weekday (Monday-first 0..6) for an ISO date. Server-local Date math
+// MYT weekday (Sunday-first 0..6) for an ISO date. Server-local Date math
 // would shift week edges on UTC clocks, so anchor on UTC+8 explicitly.
-function mytWeekdayMon0(iso: string): number {
+// TikTok parity: weeks start Sunday (was Monday-first before Nov 2026).
+function mytWeekdaySun0(iso: string): number {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
   if (!m) return NaN;
   const dow = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]) + 8 * 3600 * 1000).getUTCDay();
-  return (dow + 6) % 7;
+  return dow;
 }
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -57,22 +62,33 @@ const PRESETS = [
   { id: "lastWeek", label: "Last week" },
   { id: "thisMonth", label: "This month" },
   { id: "lastMonth", label: "Last month" },
-  { id: "last7", label: "Last 7 days", days: 7 },
+  { id: "last7", label: "Last 7 days", days: 8 },
+  { id: "past7", label: "Past 7 days", days: 7 },
   { id: "last14", label: "Last 14 days", days: 14 },
   { id: "last30", label: "Last 30 days", days: 30 },
 ];
 
-const MAX_DAYS = 31;
+const LONG_PRESETS = [
+  { id: "last90", label: "Last 3 months", days: 90 },
+  { id: "last180", label: "Last 6 months", days: 180 },
+  { id: "last365", label: "Last 12 months", days: 365 },
+];
+
+const DEFAULT_MAX_DAYS = 31;
 const MIN_MONTH = "2022-01";
 
 export default function DateRangePicker({
-  from, to, onApply, onClose, pos,
+  from, to, onApply, onClose, pos, maxDays, showLong,
 }: {
   from: string; to: string;
   onApply: (from: string, to: string) => void;
   onClose: () => void;
   pos?: { top: number; left: number } | null;
+  maxDays?: number;
+  showLong?: boolean;
 }) {
+  const cap = maxDays ?? DEFAULT_MAX_DAYS;
+  const presets = showLong ? [...PRESETS, ...LONG_PRESETS] : PRESETS;
   const today = mytToday();
   const maxMonth = isoMonth(today);
   const [left, setLeft] = useState(() => {
@@ -82,6 +98,9 @@ export default function DateRangePicker({
   const [anchor, setAnchor] = useState<string | null>(null);
   const [hov, setHov] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  // Preset hover preview: highlight grid + footer range, no grid jump.
+  // Yields to the two-click anchor flow while picking.
+  const [presetHov, setPresetHov] = useState<string | null>(null);
 
   const right = isoMonth(left, 1);
   const canPrev = left > MIN_MONTH;
@@ -103,37 +122,50 @@ export default function DateRangePicker({
       ? { top: Math.min(pos.top, window.innerHeight - 420), left: 8, right: 8 }
       : { top: 64, left: 8 };
 
-  function applyPreset(id: string) {
-    let f = today, t = today;
-    const p = PRESETS.find((x) => x.id === id);
-    if (!p) return;
+  function presetRange(id: string, ref: string): [string, string] | null {
+    const p = presets.find((x) => x.id === id);
+    if (!p) return null;
+    let f = ref, t = ref;
     if (id === "yesterday") {
-      f = isoAdd(today, -1);
+      f = isoAdd(ref, -1);
       t = f;
     } else if (id === "thisWeek") {
-      const wd = mytWeekdayMon0(today);
-      f = Number.isFinite(wd) ? isoAdd(today, -wd) : today;
-      t = today;
+      const wd = mytWeekdaySun0(ref);
+      f = Number.isFinite(wd) ? isoAdd(ref, -wd) : ref;
+      t = ref;
     } else if (id === "lastWeek") {
-      const wd = mytWeekdayMon0(today);
+      const wd = mytWeekdaySun0(ref);
       if (Number.isFinite(wd)) {
-        f = isoAdd(today, -wd - 7);
-        t = isoAdd(today, -wd - 1);
+        f = isoAdd(ref, -wd - 7);
+        t = isoAdd(ref, -wd - 1);
       }
+    } else if (id === "past7") {
+      f = isoAdd(ref, -7);
+      t = isoAdd(ref, -1);
     } else if (id === "thisMonth") {
-      f = today.slice(0, 8) + "01";
-      t = today;
+      f = ref.slice(0, 8) + "01";
+      t = ref;
     } else if (id === "lastMonth") {
-      const prev = isoMonth(today, -1);
+      const prev = isoMonth(ref, -1);
       f = `${prev}-01`;
-      const firstThis = `${today.slice(0, 8)}01`;
+      const firstThis = `${ref.slice(0, 8)}01`;
       t = isoAdd(firstThis, -1);
     } else if (p.days) {
-      f = isoAdd(today, -(p.days - 1));
-      t = today;
+      f = isoAdd(ref, -(p.days - 1));
+      t = ref;
     }
-    onApply(f, t);
+    return [f, t];
   }
+
+  function applyPreset(id: string) {
+    const r = presetRange(id, today);
+    if (!r) return;
+    onApply(r[0], r[1]);
+  }
+
+  // Active preset-hover range (ISO pair) for grid highlight + footer.
+  const hovRange: [string, string] | null =
+    !anchor && presetHov ? presetRange(presetHov, today) : null;
 
   function clickDay(iso: string) {
     setMsg(null);
@@ -148,8 +180,8 @@ export default function DateRangePicker({
     }
     const lo = anchor < iso ? anchor : iso;
     const hi = anchor < iso ? iso : anchor;
-    if (isoDiff(lo, hi) + 1 > MAX_DAYS) {
-      setMsg(`Max ${MAX_DAYS} days — pick a closer end date.`);
+    if (isoDiff(lo, hi) + 1 > cap) {
+      setMsg(`Max ${cap} days — pick a closer end date.`);
       return;
     }
     onApply(lo, hi);
@@ -160,7 +192,10 @@ export default function DateRangePicker({
     if (iso > today) return base + "text-zinc-700 cursor-not-allowed";
     if (adj) return base + "text-zinc-600";
     let sel = false, inr = false;
-    if (!anchor) {
+    if (!anchor && hovRange) {
+      if (iso === hovRange[0] || iso === hovRange[1]) sel = true;
+      else if (iso > hovRange[0] && iso < hovRange[1]) inr = true;
+    } else if (!anchor) {
       if (iso === from || iso === to) sel = true;
       else if (from && to && iso > from && iso < to) inr = true;
     } else if (!hov || hov === anchor) {
@@ -225,18 +260,24 @@ export default function DateRangePicker({
     );
   }
 
-  // Footer summary: current from–to + day count, or live anchor/hover preview.
+  // Footer summary: preset-hover preview first, then live anchor/hover
+  // preview, then current from–to. All dates dd-mm-yyyy.
   const rangeSummary = (() => {
-    if (anchor && (!hov || hov === anchor)) return `${anchor} · pick end date…`;
+    if (hovRange) {
+      const n = isoDiff(hovRange[0], hovRange[1]) + 1;
+      const lbl = presets.find((x) => x.id === presetHov)?.label ?? "";
+      return `${rangeLabel(hovRange[0], hovRange[1])} · ${Number.isFinite(n) ? n : "?"} day${n === 1 ? "" : "s"}${lbl ? ` · ${lbl}` : ""}`;
+    }
+    if (anchor && (!hov || hov === anchor)) return `${rangeLabel(anchor, anchor)} · pick end date…`;
     if (anchor && hov) {
       const lo = anchor < hov ? anchor : hov;
       const hi = anchor < hov ? hov : anchor;
       const n = isoDiff(lo, hi) + 1;
-      return `${lo} – ${hi} · ${Number.isFinite(n) ? n : "?"} day${n === 1 ? "" : "s"}`;
+      return `${rangeLabel(lo, hi)} · ${Number.isFinite(n) ? n : "?"} day${n === 1 ? "" : "s"}`;
     }
     const n = isoDiff(from, to) + 1;
-    if (!from || !to || !Number.isFinite(n)) return "Click = one day · second click = range. Max 31 days.";
-    return `${from} – ${to} · ${n} day${n === 1 ? "" : "s"}`;
+    if (!from || !to || !Number.isFinite(n)) return `Click = one day · second click = range. Max ${cap} days.`;
+    return `${rangeLabel(from, to)} · ${n} day${n === 1 ? "" : "s"}`;
   })();
 
   return (
@@ -245,8 +286,12 @@ export default function DateRangePicker({
       <div style={panelStyle} className="fixed z-50 max-h-[85vh] w-[calc(100vw-1rem)] max-w-[340px] overflow-y-auto rounded-xl border border-zinc-700 bg-zinc-900 p-3 shadow-xl md:w-auto md:max-w-none">
         <div className="flex flex-col gap-3 md:flex-row">
           <div className="flex flex-row flex-wrap gap-1 md:flex-col md:flex-nowrap">
-            {PRESETS.map((p) => (
+            {presets.map((p) => (
               <button key={p.id} onClick={() => applyPreset(p.id)}
+                onMouseEnter={() => setPresetHov(p.id)}
+                onMouseLeave={() => setPresetHov(null)}
+                onFocus={() => setPresetHov(p.id)}
+                onBlur={() => setPresetHov(null)}
                 className="rounded-lg px-2 py-1 text-left text-xs text-zinc-200 hover:bg-zinc-800">{p.label}</button>
             ))}
             {(() => {

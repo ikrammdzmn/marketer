@@ -6,6 +6,13 @@ import Chart from "chart.js/auto";
 import { toast } from "../toast";
 import { ModuleRedirect } from "../module-gate";
 import DateRangePicker from "../DateRangePicker";
+import { Hint } from "../hint";
+import { postedFromId, rangeLabel } from "../../lib/ttam-scores";
+import {
+  GENERAL_BANDS_DEFAULT, roiTier, ROI_TIER_CLS, ROI_TIER_MARK, roiLegend,
+  type RoiBands,
+} from "../../lib/ttam-scores";
+import { chartTheme, useThemeTick } from "../theme";
 
 function isoAddDays(iso: string, n: number): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
@@ -46,10 +53,12 @@ const TREND_METRIC_LABEL: Record<string, string> = { gmv: "Revenue (MYR)", cost:
 // missing days break the line.
 function TrendMultiChart({ days, series }: { days: string[]; series: { id: string; label: string; color: string; data: (number | null)[] }[] }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
+  const themeTick = useThemeTick();
   const sig = JSON.stringify([days, series]);
   useEffect(() => {
     let c: Chart | null = null;
     if (ref.current && days.length > 0 && series.length > 0) {
+      const ct = chartTheme();
       c = new Chart(ref.current, {
         data: {
           labels: days.map((d) => d.slice(5)),
@@ -68,25 +77,27 @@ function TrendMultiChart({ days, series }: { days: string[]; series: { id: strin
         options: {
           responsive: true,
           interaction: { mode: "index", intersect: false },
-          plugins: { legend: { labels: { color: "#eee", boxWidth: 12, font: { size: 10 } } } },
+          plugins: { legend: { labels: { color: ct.label, boxWidth: 12, font: { size: 10 } } } },
           scales: {
-            x: { ticks: { color: "#999", maxTicksLimit: 10 }, grid: { color: "#27272a" } },
-            y: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
+            x: { ticks: { color: ct.tick, maxTicksLimit: 10 }, grid: { color: ct.grid } },
+            y: { ticks: { color: ct.tick }, grid: { color: ct.grid } },
           },
         } as any,
       });
     }
     return () => { c?.destroy(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sig]);
+  }, [sig, themeTick]);
   return <canvas ref={ref} />;
 }
 function TrendChart({ days, sel }: { days: { date: string; cost: number; gmv: number; orders: number; gap?: boolean }[]; sel: string[] }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
+  const themeTick = useThemeTick();
   const sig = JSON.stringify([days, sel]);
   useEffect(() => {
     let c: Chart | null = null;
     if (ref.current && days.length > 0 && sel.length > 0) {
+      const ct = chartTheme();
       c = new Chart(ref.current, {
         data: {
           labels: days.map((d) => d.date.slice(5)),
@@ -106,12 +117,12 @@ function TrendChart({ days, sel }: { days: { date: string; cost: number; gmv: nu
         options: {
           responsive: true,
           interaction: { mode: "index", intersect: false },
-          plugins: { legend: { labels: { color: "#eee" } } },
+          plugins: { legend: { labels: { color: ct.label } } },
           scales: {
-            x: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
-            y: { ticks: { color: "#999" }, grid: { color: "#27272a" } },
+            x: { ticks: { color: ct.tick }, grid: { color: ct.grid } },
+            y: { ticks: { color: ct.tick }, grid: { color: ct.grid } },
             y1: {
-              position: "right", ticks: { color: "#999" }, grid: { drawOnChartArea: false },
+              position: "right", ticks: { color: ct.tick }, grid: { drawOnChartArea: false },
               display: sel.some((k) => TREND_DEFS[k]?.axis === "y1"),
             },
           },
@@ -120,8 +131,68 @@ function TrendChart({ days, sel }: { days: { date: string; cost: number; gmv: nu
     }
     return () => { c?.destroy(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sig]);
+  }, [sig, themeTick]);
   return <canvas ref={ref} />;
+}
+function Spin({ className = "h-3 w-3" }: { className?: string }) {
+  return (
+    <span className={`inline-block animate-spin rounded-full border border-zinc-500 border-t-transparent align-middle ${className}`} />
+  );
+}
+// Insight engine (port of 2-gmvmax/tiktok-creative-analysis/app.js insightOf).
+// File-adaptive benchmarks over aggregated posts; KIV blocker: local 🚀 Boost
+// also requires sec==Performing|Outstanding (xlsx Exploration 2nd status),
+// which creative.daily_rows lacks — online Boost omits the sec clause.
+type InsBench = { topN: number; topBar: number; topSrc: string; cpmBar: number; cpmSrc: string; medV2: number; medAOV: number; p90roi: number; medRev: number };
+type InsPost = { account: string; revenue: number; roi: number; cost: number; orders: number; impr: number; cpm: number; aov: number; v2: number; v25: number; v50: number; v75: number; v100: number };
+const INSIGHT_OPTS = ["Catalogue", "Template", "Review", "Boost", "Learning", "Hook weak", "Drops", "Small basket", "—"] as const;
+function insMedian(a: number[]): number {
+  if (a.length === 0) return 0;
+  const s = [...a].sort((x, y) => x - y);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+function insPct(a: number[], p: number): number {
+  if (a.length === 0) return 0;
+  const s = [...a].sort((x, y) => x - y);
+  return s[Math.min(s.length - 1, Math.floor(p * s.length))];
+}
+function insCliff(v2: number, v25: number, v50: number, v75: number, v100: number): string | null {
+  const seq: [string, number][] = [["25%", v25], ["50%", v50], ["75%", v75], ["100%", v100]];
+  let prev = v2, worst: string | null = null, worstDrop = 0.4;
+  for (const [label, cur] of seq) {
+    if (prev > 0) {
+      const drop = (prev - cur) / prev;
+      if (drop >= worstDrop) { worst = label; worstDrop = drop; }
+    }
+    prev = cur;
+  }
+  return worst;
+}
+function insOf(p: InsPost, B: InsBench): { chip: string; label: string; detail: string } {
+  const f2 = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : "—");
+  const fi = (v: number) => Math.round(v).toLocaleString("en-MY");
+  if (p.account === "Product card")
+    return { chip: "📇", label: "Catalogue", detail: "TikTok catalogue promo, not a creative." };
+  if (p.revenue > 0 && B.medRev > 0 && p.roi >= B.p90roi && p.revenue >= B.medRev)
+    return { chip: "⭐", label: "Template", detail: `Top-decile ROI (${f2(p.roi)}) with RM${f2(p.revenue)} revenue.` };
+  if (p.orders === 0 && p.cost >= 5)
+    return { chip: "🛑", label: "Review", detail: `RM${f2(p.cost)} spent, 0 orders${B.cpmBar > 0 && p.cpm > B.cpmBar ? ` — CPM ${f2(p.cpm)} above bar ${f2(B.cpmBar)}` : ""}.` };
+  if (p.roi >= 3 && p.cost < 50 && p.impr > 0 && B.cpmBar > 0 && p.cpm <= B.cpmBar)
+    return { chip: "🚀", label: "Boost", detail: `ROI ${f2(p.roi)}, RM${f2(p.cost)} spend, CPM ${f2(p.cpm)} at/below bar ${f2(B.cpmBar)}. Candidate to boost toward ${fi(B.topBar)} impr.` };
+  if (p.impr < 1000)
+    return { chip: "👀", label: "Learning", detail: `${fi(p.impr)} impressions — too early to judge.` };
+  if (B.medV2 > 0 && p.v2 < B.medV2)
+    return { chip: "🪝", label: "Hook weak", detail: `2s ${(p.v2 * 100).toFixed(1)}% below median ${(B.medV2 * 100).toFixed(1)}%.` };
+  const cliff = insCliff(p.v2, p.v25, p.v50, p.v75, p.v100);
+  if (cliff)
+    return { chip: "📉", label: `Drops @${cliff}`, detail: `Retention cliff at ${cliff}.` };
+  if (p.orders > 0 && B.medAOV > 0 && p.aov < B.medAOV)
+    return { chip: "🧺", label: "Small basket", detail: `AOV RM${f2(p.aov)} below median RM${f2(B.medAOV)}.` };
+  return { chip: "", label: "—", detail: "" };
+}
+function insBase(label: string): string {
+  return label.startsWith("Drops @") ? "Drops" : label;
 }
 export default function CreativePage() {
   const [out, setOut] = useState<any>(null);
@@ -135,16 +206,35 @@ export default function CreativePage() {
   const [crTotalsStatus, setCrTotalsStatus] = useState("ALL");
   const [crMsg, setCrMsg] = useState("");
   const [crBusy, setCrBusy] = useState(false);
+  const [crFetching, setCrFetching] = useState(false);
+  // System-wide ROI color bands (owner-editable in /presets General tab).
+  const [roiBands, setRoiBands] = useState<RoiBands>(GENERAL_BANDS_DEFAULT);
+  useEffect(() => {
+    fetch(`/api/general-bands`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((b) => { if (b?.bands) setRoiBands({ ...GENERAL_BANDS_DEFAULT, ...b.bands }); })
+      .catch(() => {});
+  }, []);
   const [metaText, setMetaText] = useState("");
   const [metaMsg, setMetaMsg] = useState("");
   const [metaBusy, setMetaBusy] = useState(false);
   const [crCamps, setCrCamps] = useState<any[]>([]);
   const [crCamp, setCrCamp] = useState("1858977225474178");
   const [crStatus, setCrStatus] = useState("ALL");
+  const [crIdq, setCrIdq] = useState("");
+  const [crDeep, setCrDeep] = useState<any | null>(null);
+  const [crDeepBusy, setCrDeepBusy] = useState(false);
+  const [crDeepMsg, setCrDeepMsg] = useState("");
   const [crVerdict, setCrVerdict] = useState("ALL");
+  const [crInsight, setCrInsight] = useState("ALL");
   const [crKind, setCrKind] = useState("all");
+  const [crPosted, setCrPosted] = useState("ALL");
   const [crAccounts, setCrAccounts] = useState<any[]>([]);
   const [crKillSort, setCrKillSort] = useState<"spend" | "gmv">("spend");
+  // Product Top-5 (docs/04: Revenue/Click rate/CVR/25% view/Untung + Juga + Tiada pertindihan).
+  const [crTopMetric, setCrTopMetric] = useState<"revenue" | "clickrate" | "cvr" | "view25" | "untung">("revenue");
+  const [crTopEmbed, setCrTopEmbed] = useState<string | null>(null);
+  const [crTopNoOverlap, setCrTopNoOverlap] = useState(false);
   const [scaleTop, setScaleTop] = useState<string>("ALL");
   const [scaleCustom, setScaleCustom] = useState<string>("");
   const [crColsOpen, setCrColsOpen] = useState(false);
@@ -166,10 +256,71 @@ export default function CreativePage() {
   }
   const [crTargets, setCrTargets] = useState<any>(null);
   const [crTopN, setCrTopN] = useState(20);
+  const [crNoCard, setCrNoCard] = useState(false);
+  const [crTotalsNoCard, setCrTotalsNoCard] = useState(false);
+  const [crTotalsKind, setCrTotalsKind] = useState("all");
   const [calOpen, setCalOpen] = useState(false);
   const [calPos, setCalPos] = useState<{ top: number; left: number } | null>(null);
   const rangeBtnRef = useRef<HTMLButtonElement | null>(null);
 
+  // Account-kind join (client-side, no migration): creative tt_account vs
+  // /accounts allowlist. Username first (@handle is stable), display name
+  // second. Registry rule (owner): registered plain = internal, registered
+  // + top_affiliate = top affiliate, registered + inactive = inactive,
+  // anything unregistered = affiliate. Product-card rows get no label
+  // (handled at render, not here). Defined BEFORE crShown: the filter chain
+  // below calls acctKind during render, so the maps must already exist.
+  const normAcct = (s: unknown) => String(s ?? "").trim().toLowerCase().replace(/^@/, "");
+  const acctByUser = new Map<string, any>();
+  const acctByName = new Map<string, any>();
+  for (const a of crAccounts) {
+    const u = normAcct(a.username);
+    if (u && !acctByUser.has(u)) acctByUser.set(u, a);
+    const n = normAcct(a.name);
+    if (n && !acctByName.has(n)) acctByName.set(n, a);
+  }
+  function acctKind(ttAccount: unknown): "internal" | "top affiliate" | "affiliate" | "inactive" {
+    const a = acctByUser.get(normAcct(ttAccount)) ?? acctByName.get(normAcct(ttAccount));
+    if (!a) return "affiliate";
+    if (a.active === false) return "inactive";
+    if (a.top_affiliate) return "top affiliate";
+    return "internal";
+  }
+  // Merged scope: "affiliate" covers top affiliates too (one scope).
+  // Badges still show the finer "top affiliate" label; only filtering merges.
+  function kindPass(ttAccount: unknown): boolean {
+    if (crKind === "all") return true;
+    const acc = String(ttAccount ?? "");
+    if (acc === "" || acc === "Product card") return false;
+    const k = acctKind(ttAccount);
+    if (crKind === "affiliate") return k === "affiliate" || k === "top affiliate";
+    return k === crKind;
+  }
+  // Posted-age buckets (auto from Post ID via postedFromId, import wins at
+  // row level). Tables-only filter — KPIs/totals stay range-wide, same as
+  // the Verdict filter. Fresh = too young to judge, Evergreen 60d+ matches
+  // the analysis-system rule.
+  function postedAgeDays(v: unknown): number | null {
+    const p = postedDay(v);
+    if (!p) return null;
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+    const n = isoDayCount(p, today);
+    if (!n || n <= 0) return null;
+    return n - 1;
+  }
+  function rowPosted(r: any): string | null {
+    return ((r as any).posted_at ?? postedFromId((r as any).item_id)) as string | null;
+  }
+  function postedPass(p: unknown): boolean {
+    if (crPosted === "ALL") return true;
+    const d = postedAgeDays(p);
+    if (crPosted === "UNKNOWN") return d === null;
+    if (d === null) return false;
+    if (crPosted === "FRESH") return d <= 7;
+    if (crPosted === "NEW") return d <= 30;
+    if (crPosted === "MATURING") return d < 60;
+    return d >= 60; // EVERGREEN
+  }
   // Status filter options derived from loaded rows (counts included).
   const crStatusCounts = (() => {
     const m = new Map<string, number>();
@@ -179,7 +330,36 @@ export default function CreativePage() {
     }
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
   })();
-  const crShown = crStatus === "ALL" ? crRows : crRows.filter((r) => String(r.status || "—") === crStatus);
+  // Quick ID filter (client-side over loaded rows): numeric Post ID substring
+  // or title substring. Deep lookup below hits Neon across all dates.
+  function idPass(r: any): boolean {
+    const q = crIdq.trim();
+    if (!q) return true;
+    if (String((r as any).item_id ?? "").includes(q)) return true;
+    return String((r as any).title ?? "").toLowerCase().includes(q.toLowerCase());
+  }
+  async function findEverywhere() {
+    const q = crIdq.trim();
+    if (!/^\d{5,25}$/.test(q)) { setCrDeepMsg("Paste a numeric Post ID (5–25 digits)."); return; }
+    setCrDeepBusy(true);
+    setCrDeepMsg("");
+    setCrDeep(null);
+    try {
+      const r = await fetch(`/api/creative-sync?itemId=${q}`).then((x) => x.json());
+      if ((r as any).error) throw new Error((r as any).error);
+      setCrDeep(r);
+      if (!(r as any).found) setCrDeepMsg("No rows anywhere in Neon for this ID — widen the range and Sync from TikTok.");
+    } catch (e) {
+      setCrDeepMsg(e instanceof Error ? e.message : "lookup failed");
+    } finally {
+      setCrDeepBusy(false);
+    }
+  }
+  const crShown = (crStatus === "ALL" ? crRows : crRows.filter((r) => String(r.status || "—") === crStatus))
+    .filter((r) => !crNoCard || String((r as any).tt_account ?? "") !== "Product card")
+    .filter((r) => kindPass((r as any).tt_account))
+    .filter((r) => postedPass(rowPosted(r)))
+    .filter((r) => idPass(r));
 
   const loadedRef = useRef(false);
   useEffect(() => {
@@ -203,13 +383,15 @@ export default function CreativePage() {
     const camp = crCamp === "ALL" ? "" : crCamp;
     const st = crStatus !== "ALL" ? `&status=${encodeURIComponent(crStatus)}` : "";
     const cid = camp ? `&campaignId=${camp}` : "";
+    const nc = crNoCard ? "&noCard=1" : "";
+    const kd = crKind !== "all" ? `&kind=${encodeURIComponent(crKind)}` : "";
     let dead = false;
-    fetch(`/api/creative-sync?shopNumber=1&startDate=${ps}&endDate=${pe}${cid}${st}&totalsOnly=1`)
+    fetch(`/api/creative-sync?shopNumber=1&startDate=${ps}&endDate=${pe}${cid}${st}${nc}${kd}&totalsOnly=1`)
       .then((x) => x.json())
       .then((b) => { if (!dead) setTrendPrev(b.totals ?? null); })
       .catch(() => { if (!dead) setTrendPrev(null); });
     return () => { dead = true; };
-  }, [crStart, crEnd, crCamp, crStatus]);
+  }, [crStart, crEnd, crCamp, crStatus, crNoCard, crKind]);
 
   async function loadTargets() {
     try {
@@ -225,7 +407,7 @@ export default function CreativePage() {
   // match the active status filter — never summed from the LIMIT-truncated
   // display rows (B117). Falls back to client sums otherwise.
   const kpis = (() => {
-    if (crTotals && crTotalsStatus === crStatus) {
+    if (crTotals && crTotalsStatus === crStatus && crTotalsNoCard === crNoCard && crTotalsKind === crKind) {
       const cost = Number(crTotals.cost ?? 0), gmv = Number(crTotals.gmv ?? 0);
       const orders = Number(crTotals.orders ?? 0), imp = Number(crTotals.imp ?? 0);
       return {
@@ -271,12 +453,18 @@ export default function CreativePage() {
   const f0 = (v: number) => (Number.isFinite(v) ? Math.round(v).toLocaleString("en-MY") : "—");
 
   async function loadRows() {
+    if (crFetching) return;
+    setCrFetching(true);
     setCrMsg("");
     try {
       const camp = crCamp === "ALL" ? "" : crCamp;
       const cid = camp ? `&campaignId=${camp}` : "";
       const st0 = crStatus;
       const st = st0 !== "ALL" ? `&status=${encodeURIComponent(st0)}` : "";
+      const wantNoCard = crNoCard;
+      const nc = wantNoCard ? "&noCard=1" : "";
+      const wantKind = crKind;
+      const kd = wantKind !== "all" ? `&kind=${encodeURIComponent(wantKind)}` : "";
       // Per-day chunked fetch (B117 follow-up): a single LIMIT-2000 read
       // serves newest-first, so the oldest day starves when the range is
       // big. One GET per day merges everything; per-day totals stay exact
@@ -289,7 +477,7 @@ export default function CreativePage() {
       for (let i = 0; i < n; i++) {
         const d = isoAddDays(crStart, i);
         try {
-          const r = await fetch(`/api/creative-sync?shopNumber=1&startDate=${d}&endDate=${d}${cid}${st}`).then((x) => x.json());
+          const r = await fetch(`/api/creative-sync?shopNumber=1&startDate=${d}&endDate=${d}${cid}${st}${nc}${kd}`).then((x) => x.json());
           if (r.rows) {
             all = all.concat(r.rows);
             if (r.totals) {
@@ -307,12 +495,16 @@ export default function CreativePage() {
       setCrRows(all);
       setCrTotals(all.length > 0 ? tot : null);
       setCrTotalsStatus(st0);
+      setCrTotalsNoCard(wantNoCard);
+      setCrTotalsKind(wantKind);
       if (all.length === 0) setCrMsg("No cached rows for this range yet — press Sync from TikTok.");
       else setCrMsg(`${all.length} rows${failed > 0 ? ` · ${failed}d failed (partial)` : ""}.`);
     } catch (e) {
       const m = e instanceof Error ? e.message : "fetch failed";
       setCrMsg(m);
       toast(m, "err");
+    } finally {
+      setCrFetching(false);
     }
   }
 
@@ -341,6 +533,7 @@ export default function CreativePage() {
     { key: "spend", label: "Spend" },
     { key: "gmv", label: "GMV" },
     { key: "roi", label: "ROI" },
+    { key: "insight", label: "Insight" },
     { key: "verdict", label: "Verdict" },
     { key: "why", label: "Why" },
   ];
@@ -350,28 +543,6 @@ export default function CreativePage() {
       if (n.has(key)) n.delete(key); else n.add(key);
       return n;
     });
-  }
-  // Account-kind join (client-side, no migration): creative tt_account vs
-  // /accounts allowlist. Username first (@handle is stable), display name
-  // second. Registry rule (owner): registered plain = internal, registered
-  // + top_affiliate = top affiliate, registered + inactive = inactive,
-  // anything unregistered = affiliate. Product-card rows get no label
-  // (handled at render, not here).
-  const normAcct = (s: unknown) => String(s ?? "").trim().toLowerCase().replace(/^@/, "");
-  const acctByUser = new Map<string, any>();
-  const acctByName = new Map<string, any>();
-  for (const a of crAccounts) {
-    const u = normAcct(a.username);
-    if (u && !acctByUser.has(u)) acctByUser.set(u, a);
-    const n = normAcct(a.name);
-    if (n && !acctByName.has(n)) acctByName.set(n, a);
-  }
-  function acctKind(ttAccount: unknown): "internal" | "top affiliate" | "affiliate" | "inactive" {
-    const a = acctByUser.get(normAcct(ttAccount)) ?? acctByName.get(normAcct(ttAccount));
-    if (!a) return "affiliate";
-    if (a.active === false) return "inactive";
-    if (a.top_affiliate) return "top affiliate";
-    return "internal";
   }
   function postedDay(v: unknown): string {
     if (!v) return "";
@@ -388,15 +559,23 @@ export default function CreativePage() {
     return `${n - 1}d`;
   }
   function killList() {
-    const byPost = new Map<string, { cost: number; gmv: number; orders: number; imp: number; clicks: number; w2s: number; w6s: number; w25: number; w50: number; w75: number; w100: number; days: Set<string>; perDay: Map<string, { cost: number; gmv: number; orders: number }>; title: string; account: string; status: string; postedAt: string | null }>();
-    for (const r of crRows) {
+    const srcRows = crRows
+      .filter((r) => !crNoCard || String((r as any).tt_account ?? "") !== "Product card")
+      .filter((r) => kindPass((r as any).tt_account))
+      .filter((r) => postedPass(rowPosted(r)))
+      .filter((r) => idPass(r));
+    const byPost = new Map<string, { cost: number; gmv: number; orders: number; imp: number; clicks: number; w2s: number; w6s: number; w25: number; w50: number; w75: number; w100: number; days: Set<string>; perDay: Map<string, { cost: number; gmv: number; orders: number }>; title: string; account: string; status: string; postedAt: string | null; postedSrc: string | null }>();
+    for (const r of srcRows) {
       const id = String(r.item_id ?? "?");
       let e = byPost.get(id);
       if (!e) {
-        e = { cost: 0, gmv: 0, orders: 0, imp: 0, clicks: 0, w2s: 0, w6s: 0, w25: 0, w50: 0, w75: 0, w100: 0, days: new Set(), perDay: new Map(), title: String(r.title ?? ""), account: String(r.tt_account ?? ""), status: String(r.status ?? ""), postedAt: null };
+        e = { cost: 0, gmv: 0, orders: 0, imp: 0, clicks: 0, w2s: 0, w6s: 0, w25: 0, w50: 0, w75: 0, w100: 0, days: new Set(), perDay: new Map(), title: String(r.title ?? ""), account: String(r.tt_account ?? ""), status: String(r.status ?? ""), postedAt: null, postedSrc: null };
         byPost.set(id, e);
       }
-      if (!e.postedAt && (r as any).posted_at) e.postedAt = String((r as any).posted_at);
+      if (!e.postedAt && (r as any).posted_at) { e.postedAt = String((r as any).posted_at); e.postedSrc = "imported"; }
+      // ID fallback: TikTok video IDs carry upload time in the upper 32
+      // bits — local math, no API. Rows without a numeric ID stay blank.
+      if (!e.postedAt) { const f = postedFromId(id); if (f) { e.postedAt = f; e.postedSrc = "id"; } }
       const c = Number(r.cost ?? 0), g = Number(r.gmv ?? 0);
       e.cost += c;
       e.gmv += g;
@@ -423,7 +602,7 @@ export default function CreativePage() {
       if (String(r.status ?? "") === "DELIVERING") e.status = "DELIVERING";
       if (!e.title && r.title) e.title = String(r.title);
     }
-    const allDays = [...new Set(crRows.map((r: any) => String(r.date ?? "").slice(0, 10)))].sort();
+    const allDays = [...new Set(srcRows.map((r: any) => String(r.date ?? "").slice(0, 10)))].sort();
     const fatigueOn = allDays.length >= 3;
     const cut = Math.ceil(allDays.length / 2);
     const lateSet = new Set(allDays.slice(cut));
@@ -465,19 +644,53 @@ export default function CreativePage() {
         verdict = "—"; reason = "no spend";
       }
       if (acctKind(e.account) === "inactive" && e.cost > 0) reason += " · ⚠ inactive account spending";
-      return { id, ...e, days: e.days.size, roi, verdict, reason, hook, ctr, cvr };
-    }).sort((a, b) => (crKillSort === "gmv" ? b.gmv - a.gmv : b.cost - a.cost));
+      const cpm = e.imp > 0 ? (e.cost / e.imp) * 1000 : NaN;
+      const aov = e.orders > 0 ? e.gmv / e.orders : NaN;
+      const r2 = e.imp > 0 ? e.w2s / e.imp : NaN;
+      const r25 = e.imp > 0 ? e.w25 / e.imp : NaN;
+      const r50 = e.imp > 0 ? e.w50 / e.imp : NaN;
+      const r75 = e.imp > 0 ? e.w75 / e.imp : NaN;
+      const r100 = e.imp > 0 ? e.w100 / e.imp : NaN;
+      return { id, ...e, days: e.days.size, roi, verdict, reason, hook, ctr, cvr, cpm, aov, r2, r25, r50, r75, r100 };
+    });
+    // Insight benchmarks over aggregated posts (local computeBench parity).
+    const insBench = (() => {
+      const N = crTopN || 20;
+      const byImp = [...rows].sort((a: any, b: any) => b.imp - a.imp);
+      const top = byImp.slice(0, N);
+      const autoTop = top.length ? top[top.length - 1].imp : 0;
+      const topCpms = top.filter((r: any) => r.imp > 0 && Number.isFinite(r.cpm)).map((r: any) => r.cpm).sort((a: number, b: number) => a - b);
+      const autoCpm = topCpms.length ? topCpms[Math.floor(topCpms.length / 2)] : NaN;
+      const revRows = rows.filter((r: any) => r.gmv > 0);
+      const bench: InsBench = {
+        topN: N,
+        topBar: crTargets?.minImpr ?? autoTop,
+        topSrc: crTargets?.minImpr != null ? "yours" : "auto",
+        cpmBar: crTargets?.maxCpm ?? autoCpm,
+        cpmSrc: crTargets?.maxCpm != null ? "yours" : "auto",
+        medV2: insMedian(rows.filter((r: any) => r.imp >= 200 && Number.isFinite(r.r2)).map((r: any) => r.r2)),
+        medAOV: insMedian(rows.filter((r: any) => r.orders > 0 && Number.isFinite(r.aov)).map((r: any) => r.aov)),
+        p90roi: insPct(revRows.map((r: any) => r.roi), 0.9),
+        medRev: insMedian(revRows.map((r: any) => r.gmv)),
+      };
+      return bench;
+    })();
+    for (const r of rows as any[]) {
+      const ins = insOf({ account: r.account, revenue: r.gmv, roi: r.roi, cost: r.cost, orders: r.orders, impr: r.imp, cpm: r.cpm, aov: r.aov, v2: r.r2, v25: r.r25, v50: r.r50, v75: r.r75, v100: r.r100 }, insBench);
+      r.insChip = ins.chip; r.insLabel = ins.label; r.insDetail = ins.detail; r.insBase = insBase(ins.label);
+    }
+    rows.sort((a: any, b: any) => (crKillSort === "gmv" ? b.gmv - a.gmv : b.cost - a.cost));
     const tc = rows.reduce((s, r) => s + r.cost, 0);
     const tg = rows.reduce((s, r) => s + r.gmv, 0);
     const hero = rows[0];
     const tailWaste = rows.filter((r) => r.roi < 2).reduce((s, r) => s + r.cost, 0);
-    return { rows, totalCost: tc, totalGmv: tg, roi: tc > 0 ? tg / tc : 0, hero, tailWaste, fatigueOn, rangeDays: allDays.length };
+    return { rows, totalCost: tc, totalGmv: tg, roi: tc > 0 ? tg / tc : 0, hero, tailWaste, fatigueOn, rangeDays: allDays.length, bench: insBench };
   }
 
-  function killCsv(rows: { id: string; title: string; account: string; status: string; days: number; cost: number; gmv: number; roi: number; orders: number; imp: number; verdict: string; reason: string; postedAt?: string | null }[]) {
-    const head = "post_id,title,account,status,posted,age_days,days,spend,gmv,roi,orders,impressions,verdict,reason";
+  function killCsv(rows: { id: string; title: string; account: string; status: string; days: number; cost: number; gmv: number; roi: number; orders: number; imp: number; verdict: string; reason: string; postedAt?: string | null; insLabel?: string; insDetail?: string }[]) {
+    const head = "post_id,title,account,status,posted,age_days,days,spend,gmv,roi,orders,impressions,verdict,insight,insight_detail,reason";
     const q = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const lines = rows.map((r) => [r.id, q(r.title), q(r.account), r.status, postedDay((r as any).postedAt), postedAge((r as any).postedAt).replace("d", ""), r.days, r.cost.toFixed(2), r.gmv.toFixed(2), r.roi.toFixed(2), r.orders, r.imp, r.verdict, q(r.reason)].join(","));
+    const lines = rows.map((r) => [r.id, q(r.title), q(r.account), r.status, postedDay((r as any).postedAt), postedAge((r as any).postedAt).replace("d", ""), r.days, r.cost.toFixed(2), r.gmv.toFixed(2), r.roi.toFixed(2), r.orders, r.imp, r.verdict, q((r as any).insLabel ?? ""), q((r as any).insDetail ?? ""), q(r.reason)].join(","));
     const blob = new Blob([[head, ...lines].join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -533,27 +746,54 @@ export default function CreativePage() {
   }
 
   async function syncRows() {
+    if (crBusy || crFetching) return;
     setCrBusy(true);
-    setCrMsg("Syncing from TikTok…");
     try {
-      const r = await fetch("/api/creative-sync", {
-        method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.NEXT_PUBLIC_PRESET_WRITE_KEY ?? ""}` },
-        body: JSON.stringify({ shopNumber: "1", startDate: crStart, endDate: crEnd, campaignId: crCamp === "ALL" ? "" : crCamp, metaForce: true }),
-      });
-      const body = await r.json();
-      if (!r.ok) { const m = body.error ?? `HTTP ${r.status}`; setCrMsg(m); toast(m, "err"); return; }
-      const skips = Object.keys(body.skipped ?? {}).length;
-      const meta = body.meta as { found?: number; missed?: number; skipped?: string | null; debug?: Record<string, string> } | undefined;
-      const dbg = meta?.debug ? Object.entries(meta.debug).map(([k, v]) => `${k}:${v}`).join(" ") : "";
-      const metaMsg = meta
-        ? meta.skipped ? ` · posted: ${meta.skipped}`
-          : (meta.found || meta.missed) ? ` · posted: ${meta.found ?? 0} filled, ${meta.missed ?? 0} unknown${(meta.found ?? 0) === 0 && dbg ? ` [${dbg}]` : ""}`
+      const total = isoDayCount(crStart, crEnd);
+      if (total <= 0) { const m = "Pick a valid date range first."; setCrMsg(m); toast(m, "err"); return; }
+      // Server caps one POST at 7d (Hobby 60s). Split any calendar range
+      // into ≤7d chunks, newest-first so recent data lands even if aborted.
+      const chunks: { s: string; e: string }[] = [];
+      let ce = crEnd;
+      while (ce >= crStart) {
+        const cs = isoAddDays(ce, -6) < crStart ? crStart : isoAddDays(ce, -6);
+        chunks.push({ s: cs, e: ce });
+        ce = isoAddDays(cs, -1);
+      }
+      let totalRows = 0, totalDays = 0, camps = 0, skipCount = 0;
+      let lastMeta: { found?: number; missed?: number; skipped?: string | null; debug?: Record<string, string> } | undefined;
+      const errs: string[] = [];
+      for (let i = 0; i < chunks.length; i++) {
+        const ch = chunks[i];
+        setCrMsg(chunks.length > 1 ? `Syncing from TikTok… chunk ${i + 1}/${chunks.length} (${ch.s}–${ch.e})` : "Syncing from TikTok…");
+        try {
+          const r = await fetch("/api/creative-sync", {
+            method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.NEXT_PUBLIC_PRESET_WRITE_KEY ?? ""}` },
+            body: JSON.stringify({ shopNumber: "1", startDate: ch.s, endDate: ch.e, campaignId: crCamp === "ALL" ? "" : crCamp, metaForce: i === chunks.length - 1 }),
+          });
+          const body = await r.json();
+          if (!r.ok) { errs.push(`${ch.s}–${ch.e}: ${body.error ?? `HTTP ${r.status}`}`); continue; }
+          totalRows += body.rows ?? 0;
+          totalDays += body.days ?? 0;
+          camps = body.campaigns ?? camps;
+          skipCount += Object.keys(body.skipped ?? {}).length;
+          if (body.meta) lastMeta = body.meta;
+        } catch (e) {
+          errs.push(`${ch.s}–${ch.e}: ${e instanceof Error ? e.message : "failed"}`);
+        }
+      }
+      const dbg = lastMeta?.debug ? Object.entries(lastMeta.debug).map(([k, v]) => `${k}:${v}`).join(" ") : "";
+      const metaMsg = lastMeta
+        ? lastMeta.skipped ? ` · posted: ${lastMeta.skipped}`
+          : (lastMeta.found || lastMeta.missed) ? ` · posted: ${lastMeta.found ?? 0} filled, ${lastMeta.missed ?? 0} unknown${(lastMeta.found ?? 0) === 0 && dbg ? ` [${dbg}]` : ""}`
           : " · posted: up to date"
         : "";
-      const okMsg = `Synced ${body.rows} rows (${body.campaigns} campaigns × ${body.days}d${skips ? `, ${skips} skips` : ""})${metaMsg}.`;
+      const skipMsg = skipCount ? `, ${skipCount} skips` : "";
+      const errMsg = errs.length ? ` · ${errs.length} chunk(s) failed: ${errs.join("; ").slice(0, 200)}` : "";
+      const okMsg = `Synced ${totalRows} rows (${camps} campaigns × ${totalDays}d${skipMsg})${metaMsg}.${errMsg}`;
       setCrMsg(okMsg);
-      toast(okMsg);
-      loadRows();
+      toast(okMsg, errs.length ? "err" : "ok");
+      await loadRows();
     } catch (e) {
       const m = e instanceof Error ? e.message : "sync failed";
       setCrMsg(m);
@@ -659,7 +899,7 @@ export default function CreativePage() {
         {sop ? (
           <>
             <span>Top <select value={crTopN} onChange={(e) => setCrTopN(Number(e.target.value))} className="rounded bg-zinc-900 px-1 py-0.5" title="Top-N window for auto benchmarks (view only, not saved)">{[10, 15, 20, 25].map((n) => (<option key={n} value={n}>{n}</option>))}</select> min impr {f0(sop.minImpr)} <span className="text-zinc-600">({sop.minTag})</span> · CPM bar med {f2(sop.maxCpm)} <span className="text-zinc-600">({sop.cpmTag})</span></span>
-            <span className="text-zinc-600">· status: {crStatus}{crTargets ? "" : " · targets table missing (auto)"}</span>
+            <span className="text-zinc-600">· status: {crStatus}{crNoCard ? " · no card" : ""}{crKind !== "all" ? ` · ${crKind}` : ""}{crPosted !== "ALL" ? ` · posted ${crPosted.toLowerCase()}` : ""}{crTargets ? "" : " · targets table missing (auto)"}</span>
           </>
         ) : (
           <span>No cached rows for this range yet — press Sync from TikTok.</span>
@@ -679,17 +919,59 @@ export default function CreativePage() {
             setCalPos({ top: r.bottom + 8, left: r.left });
           }
           setCalOpen((v) => !v);
-        }} className="rounded bg-zinc-900 px-2 py-1">{crStart} – {crEnd} 📅</button>
-        <button onClick={loadRows} className="rounded border border-zinc-700 px-3 py-1 hover:bg-zinc-800">Fetch rows</button>
-        <button onClick={syncRows} disabled={crBusy} className="rounded bg-emerald-700 px-3 py-1 hover:bg-emerald-600 disabled:opacity-50">{crBusy ? "Syncing…" : "Sync from TikTok (≤7d)"}</button>
+        }} className="rounded bg-zinc-900 px-2 py-1">{rangeLabel(crStart, crEnd)} 📅</button>
+        <button onClick={loadRows} disabled={crFetching || crBusy} className="inline-flex items-center gap-2 rounded border border-zinc-700 px-3 py-1 hover:bg-zinc-800 disabled:opacity-50">{crFetching ? (<><Spin />Fetching…</>) : "Fetch rows"}</button>
+        <button onClick={syncRows} disabled={crBusy || crFetching} className="inline-flex items-center gap-2 rounded bg-emerald-700 px-3 py-1 hover:bg-emerald-600 disabled:opacity-50">{crBusy ? (<><Spin className="h-3 w-3 border-white/60 border-t-transparent" />Syncing…</>) : "Sync from TikTok"}</button>
+        <input value={crIdq} onChange={(e) => { setCrIdq(e.target.value); setCrDeepMsg(""); }} onKeyDown={(e) => { if (e.key === "Enter") findEverywhere(); }} placeholder="Post ID…" inputMode="numeric" title="Quick filter loaded rows by Post ID (or title) + Enter = find everywhere in Neon" className="w-44 rounded bg-zinc-900 px-2 py-1 font-mono" />
+        <button onClick={findEverywhere} disabled={crDeepBusy} title="Search Neon across all dates for this Post ID" className="rounded border border-teal-600 px-2 py-1 text-teal-200 hover:bg-teal-900/40 disabled:opacity-50">{crDeepBusy ? "Finding…" : "Find everywhere"}</button>
+        {crIdq && <button onClick={() => { setCrIdq(""); setCrDeep(null); setCrDeepMsg(""); }} title="Clear ID filter" className="rounded border border-zinc-700 px-2 py-1 hover:bg-zinc-800">✕</button>}
         <select value={crStatus} onChange={(e) => setCrStatus(e.target.value)} title="Filter both tables by delivery status" className="max-w-48 rounded bg-zinc-900 px-2 py-1">
           <option value="ALL">Status: All ({crRows.length})</option>
           {crStatusCounts.map(([s, n]) => (
             <option key={s} value={s}>{s} ({n})</option>
           ))}
         </select>
+        <label className="inline-flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-zinc-300 hover:bg-zinc-800" title="Hide TikTok catalogue rows (blank account) from KPIs, tables, trend and CSV — server-exact">
+          <input type="checkbox" checked={crNoCard} onChange={(e) => setCrNoCard(e.target.checked)} />
+          Exclude Product Card
+        </label>
+        <select value={crKind} onChange={(e) => setCrKind(e.target.value)} title="Global account-kind filter (/accounts registry) — KPIs, tables, trend and CSV, server-exact" className="max-w-48 rounded bg-zinc-900 px-2 py-1">
+          {([["all", "Kind: All"], ["internal", "Internal"], ["affiliate", "Affiliate (incl. Top)"], ["inactive", "Inactive"]] as const).map(([v, l]) => (
+            <option key={v} value={v}>{l}</option>
+          ))}
+        </select>
+        <select value={crPosted} onChange={(e) => setCrPosted(e.target.value)} title="Filter tables by video age (auto from Post ID; KPIs stay range-wide)" className="max-w-48 rounded bg-zinc-900 px-2 py-1">
+          {([["ALL", "Posted: All"], ["FRESH", "Fresh ≤7d"], ["NEW", "New 8–30d"], ["MATURING", "Maturing 31–60d"], ["EVERGREEN", "Evergreen 60d+"], ["UNKNOWN", "Unknown date"]] as const).map(([v, l]) => (
+            <option key={v} value={v}>{l}</option>
+          ))}
+        </select>
         <span className="text-zinc-500">{crMsg}</span>
+        {crDeepMsg && <span className="text-amber-300">{crDeepMsg}</span>}
+        <span className="text-zinc-600" title="System-wide ROI bands — edit in /presets General tab">ROI {roiLegend(roiBands)}</span>
       </div>
+      {crDeep && (crDeep as any).found && (
+        <div className="mb-2 rounded-lg border border-teal-800 bg-teal-950/40 px-3 py-2 text-[12px] text-teal-100">
+          <div className="font-medium">Post {(crDeep as any).itemId} found in Neon — {(crDeep as any).rows.length} day-rows{(crDeep as any).totals?.first_date ? ` · ${(crDeep as any).totals.first_date} → ${(crDeep as any).totals.last_date}` : ""}</div>
+          <div className="mt-0.5 text-teal-200/80">
+            GMV MYR {Number((crDeep as any).totals?.gmv ?? 0).toFixed(2)} · Spend MYR {Number((crDeep as any).totals?.cost ?? 0).toFixed(2)} · Orders {Number((crDeep as any).totals?.orders ?? 0).toLocaleString("en-MY", { maximumFractionDigits: 0 })} · {(crDeep as any).rows.length} day-rows
+            {Array.isArray((crDeep as any).campaigns) && (crDeep as any).campaigns.length > 0 && (
+              <> · Campaigns: {(crDeep as any).campaigns.slice(0, 3).map((c: any) => String(c.campaign_id)).join(", ")}{(crDeep as any).campaigns.length > 3 ? ` +${(crDeep as any).campaigns.length - 3}` : ""}</>
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            {(crDeep as any).totals?.first_date && (crDeep as any).totals?.last_date && (
+              <button
+                onClick={() => { const last = String((crDeep as any).totals.last_date).slice(0, 10); const first = String((crDeep as any).totals.first_date).slice(0, 10); const floor = isoAddDays(last, -30); setCrStart(first > floor ? first : floor); setCrEnd(last); setCrIdq(String((crDeep as any).itemId)); }}
+                title="Set the date range to this video (last 31d, Fetch cap), then press Fetch rows"
+                className="rounded border border-teal-600 px-2 py-0.5 hover:bg-teal-900/60"
+              >
+                Load that range
+              </button>
+            )}
+            <span className="text-teal-200/60">range clamps to last 31d (Fetch cap) — then press Fetch rows.</span>
+          </div>
+        </div>
+      )}
       {calOpen && (
         <DateRangePicker
           from={crStart} to={crEnd} pos={calPos}
@@ -698,8 +980,8 @@ export default function CreativePage() {
         />
       )}
       <details className="mb-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 text-[12px] text-zinc-400">
-        <summary className="cursor-pointer hover:text-zinc-200">Import posted times (from TikTok xlsx — the API has no post dates)</summary>
-        <p className="mt-1 text-[11px] text-zinc-500">Paste <span className="text-zinc-300">Post ID,Time posted</span> lines from the export — one per line, comma/tab/semicolon separated. Naive times assumed MYT. Fills empties only, never overwrites. Then Fetch rows.</p>
+        <summary className="cursor-pointer hover:text-zinc-200">Import posted times (from TikTok xlsx — auto-filled from Post ID where missing)</summary>
+        <p className="mt-1 text-[11px] text-zinc-500">Posted/Age now fill automatically from the Post ID (upload time, may run hours before publish). Paste <span className="text-zinc-300">Post ID,Time posted</span> lines only to correct a date — fills empties, never overwrites. Then Fetch rows.</p>
         <textarea value={metaText} onChange={(e) => setMetaText(e.target.value)} rows={4} placeholder={"7701570274545650965,2026-09-14 10:23:00\n7701544367940521237,2026-09-13 21:05:00"} className="mt-1 w-full rounded bg-black/40 px-2 py-1 font-mono text-[11px] text-zinc-200" />
         <div className="mt-1 flex items-center gap-2">
           <button onClick={importMeta} disabled={metaBusy} className="rounded bg-emerald-700 px-3 py-1 text-zinc-100 hover:bg-emerald-600 disabled:opacity-50">{metaBusy ? "Importing…" : "Import"}</button>
@@ -735,8 +1017,8 @@ export default function CreativePage() {
           const kk = acctKind(a.name);
           kindSum.set(kk, (kindSum.get(kk) ?? 0) + a.gmv);
         }
-        const kindTotals = (["internal", "top affiliate", "affiliate", "inactive"] as const)
-          .map((kk) => `${kk} MYR ${(kindSum.get(kk) ?? 0).toFixed(0)}`).join(" · ");
+        const kindTotals = ([["internal", kindSum.get("internal") ?? 0], ["affiliate", (kindSum.get("affiliate") ?? 0) + (kindSum.get("top affiliate") ?? 0)], ["inactive", kindSum.get("inactive") ?? 0]] as const)
+          .map(([kk, v]) => `${kk} MYR ${v.toFixed(0)}`).join(" · ");
         return (
           <div className="mb-4">
             <h3 className="mb-1 text-sm font-semibold text-zinc-200">Top 10 accounts by revenue{crStatus !== "ALL" ? ` · ${crStatus}` : ""}</h3>
@@ -788,7 +1070,8 @@ export default function CreativePage() {
         const k = killList();
         const shown = (crStatus === "ALL" ? k.rows : k.rows.filter((r) => (r.status || "—") === crStatus))
           .filter((r) => crVerdict === "ALL" || r.verdict === crVerdict)
-          .filter((r) => crKind === "all" || (r.account !== "Product card" && acctKind(r.account) === crKind));
+          .filter((r) => kindPass(r.account))
+          .filter((r) => crInsight === "ALL" || (r as any).insBase === crInsight);
         const scaleLimit = crVerdict === "SCALE"
           ? scaleTop === "ALL" ? null : scaleTop === "CUSTOM" ? Math.min(300, Math.max(1, parseInt(scaleCustom) || 0)) || null : Math.min(300, Math.max(1, parseInt(scaleTop) || 0)) || null
           : null;
@@ -827,6 +1110,52 @@ export default function CreativePage() {
         { const nn = isoDayCount(crStart, crEnd); for (let i = 0; i < nn && i < 31; i++) rdays.push(isoAddDays(crStart, i)); }
         const dmv = (o: { gmv: number; cost: number; orders: number }) => (trendMetric === "cost" ? o.cost : trendMetric === "orders" ? o.orders : o.gmv);
         const soloK = soloId ? k.rows.find((x: any) => x.id === soloId) ?? null : null;
+        const medOf = (vals: number[]) => { const s = [...vals].sort((a, b) => a - b); return s.length ? s[Math.floor(s.length / 2)] : NaN; };
+        const pctOf = (vals: number[], p: number) => { const s = [...vals].sort((a, b) => a - b); return s.length ? s[Math.min(s.length - 1, Math.floor(p * s.length))] : NaN; };
+        const refR2 = k.rows.filter((r) => Number(r.imp) >= 500 && Number.isFinite(Number(r.r2))).map((r) => Number(r.r2)); // doc-08 reference population
+        const p25r2 = pctOf(refR2, 0.25);
+        const p75r2 = pctOf(refR2, 0.75);
+        const medR2 = medOf(k.rows.filter((r) => Number(r.imp) >= 500 && Number.isFinite(Number(r.r2))).map((r) => Number(r.r2)));
+        const medR25 = medOf(k.rows.filter((r) => Number(r.imp) >= 500 && Number.isFinite(Number(r.r25))).map((r) => Number(r.r25)));
+        const medR50 = medOf(k.rows.filter((r) => Number(r.imp) >= 500 && Number.isFinite(Number(r.r50))).map((r) => Number(r.r50)));
+        const medR75 = medOf(k.rows.filter((r) => Number(r.imp) >= 500 && Number.isFinite(Number(r.r75))).map((r) => Number(r.r75)));
+        const medR100 = medOf(k.rows.filter((r) => Number(r.imp) >= 500 && Number.isFinite(Number(r.r100))).map((r) => Number(r.r100)));
+        // Product Top-5 (docs/04): 5 ranked lists + Juga + Tiada pertindihan.
+        const tDays = isoDayCount(crStart, crEnd) || 1;
+        const tScale = Math.min(1, tDays / 30);
+        const tImpFloor = Math.max(150, Math.round(1000 * tScale));
+        const tClickFloor = Math.max(10, Math.round(50 * tScale));
+        const tMinOrders = Math.max(1, Math.round(10 * tScale));
+        const tUntung = (r: any) => Number(r.gmv ?? 0) * 0.35 - Number(r.cost ?? 0);
+        const tLists: Record<string, any[]> = {
+          revenue: [...k.rows].filter((r) => Number(r.gmv ?? 0) > 0).sort((a, b) => Number(b.gmv ?? 0) - Number(a.gmv ?? 0)),
+          clickrate: [...k.rows].filter((r) => Number(r.imp ?? 0) >= tImpFloor).sort((a, b) => (Number(b.clicks ?? 0) / Math.max(1, Number(b.imp ?? 0))) - (Number(a.clicks ?? 0) / Math.max(1, Number(a.imp ?? 0)))),
+          cvr: [...k.rows].filter((r) => Number(r.clicks ?? 0) >= tClickFloor && Number(r.orders ?? 0) > 0).sort((a, b) => (Number(b.orders ?? 0) / Math.max(1, Number(b.clicks ?? 0))) - (Number(a.orders ?? 0) / Math.max(1, Number(a.clicks ?? 0)))),
+          view25: [...k.rows].filter((r) => Number(r.imp ?? 0) >= tImpFloor && Number.isFinite(Number(r.r25))).sort((a, b) => Number(b.r25 ?? 0) - Number(a.r25 ?? 0)),
+          untung: [...k.rows].filter((r) => Number(r.orders ?? 0) >= tMinOrders && tUntung(r) > 0).sort((a, b) => tUntung(b) - tUntung(a)),
+        };
+        const tOrder = ["revenue", "clickrate", "cvr", "view25", "untung"] as const;
+        const tFull = tLists[crTopMetric];
+        const tSeen = new Set<string>();
+        for (const m of tOrder) { if (m === crTopMetric) break; for (const r of tLists[m].slice(0, 5)) tSeen.add(String(r.id)); }
+        const tShown = (crTopNoOverlap ? tFull.filter((r: any) => !tSeen.has(String(r.id))) : tFull).slice(0, 5).map((r: any) => ({ r, trueRank: tFull.findIndex((x: any) => String(x.id) === String(r.id)) + 1 }));
+        const tNames: Record<string, string> = { revenue: "Gross Revenue", clickrate: "Click Rate", cvr: "CVR", view25: "25% View", untung: "Untung selepas ads" };
+        const tJuga = (id: string): string[] => { const tags: string[] = []; for (const m of tOrder) { if (m === crTopMetric) continue; const i = tLists[m].findIndex((x: any) => String(x.id) === String(id)); if (i >= 0 && i < 5) tags.push(`Juga #${i + 1} ${tNames[m]}`); } return tags; };
+        const tMetricLabel: Record<string, string> = { revenue: "Gross Revenue", clickrate: "Product Ad Click Rate", cvr: "Ad Conversion Rate", view25: "25% Video View Rate", untung: "Untung selepas ads" };
+        const tTotGmv = k.rows.reduce((s: number, r: any) => s + Number(r.gmv ?? 0), 0);
+        const tTopGmv = tFull.slice(0, 5).reduce((s: number, r: any) => s + Number(r.gmv ?? 0), 0);
+        const tThird = (r: any): [string, string] => {
+          if (crTopMetric === "clickrate") { const v = Number(r.imp) > 0 ? (Number(r.clicks) / Number(r.imp)) * 100 : NaN; return ["Click %", Number.isFinite(v) ? `${v.toFixed(2)}%` : "—"]; }
+          if (crTopMetric === "cvr") { const v = Number(r.clicks) > 0 ? (Number(r.orders) / Number(r.clicks)) * 100 : NaN; return ["CVR", Number.isFinite(v) ? `${v.toFixed(2)}%` : "—"]; }
+          if (crTopMetric === "view25") { const v = Number(r.r25) * 100; return ["25%", Number.isFinite(v) ? `${v.toFixed(1)}%` : "—"]; }
+          if (crTopMetric === "untung") return ["Untung", `RM${Math.round(tUntung(r)).toLocaleString("en-MY")}`];
+          return ["ROI", Number(r.cost) > 0 && Number.isFinite(Number(r.roi)) ? Number(r.roi).toFixed(1) : "—"];
+        };
+        const tSyarat = crTopMetric === "revenue" ? `Hanya video dengan GMV melebihi RM0 layak: ${tFull.length} video.`
+          : crTopMetric === "clickrate" ? `Hanya video dengan paparan ≥ ${tImpFloor} layak: ${tFull.length} video.`
+          : crTopMetric === "cvr" ? `Hanya video dengan klik ≥ ${tClickFloor} dan ada pembelian layak: ${tFull.length} video.`
+          : crTopMetric === "view25" ? `Hanya video dengan paparan ≥ ${tImpFloor} layak: ${tFull.length} video.`
+          : `Hanya video dengan order ≥ ${tMinOrders} dan untung melebihi RM0 layak: ${tFull.length} video.`;
         return (
           <>
           {inactSpend.size > 0 && (
@@ -834,12 +1163,152 @@ export default function CreativePage() {
               ⚠ Inactive but spending: {[...inactSpend.entries()].map(([nm, c]) => `${nm} MYR ${c.toFixed(2)}`).join(" · ")}
             </p>
           )}
+          <div className="mb-3 rounded-xl border border-zinc-800 bg-zinc-950 p-3">
+            <h3 className="font-medium text-zinc-100">Top 5 video: {tMetricLabel[crTopMetric]}</h3>
+            <p className="mb-2 text-[11px] text-zinc-500">Satu senarai satu masa. Video boleh muncul di lebih daripada satu senarai dan ditanda &quot;Juga #N&quot;. Tekan petak video untuk main.</p>
+            <div className="mb-2 flex flex-wrap items-center gap-1.5">
+              {(tOrder as readonly string[]).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => { setCrTopMetric(m as typeof crTopMetric); setCrTopEmbed(null); }}
+                  className={`rounded-full border px-3 py-1 text-xs ${crTopMetric === m ? "border-orange-400 bg-orange-400/20 text-orange-200" : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"}`}
+                >{tMetricLabel[m]}</button>
+              ))}
+              <button
+                onClick={() => setCrTopNoOverlap((v) => !v)}
+                title="Keutamaan Revenue, Click rate, CVR, 25% view, Untung; yang dilangkau diganti seterusnya"
+                className={`ml-auto rounded-full border px-3 py-1 text-xs ${crTopNoOverlap ? "border-zinc-100 bg-zinc-100 text-zinc-900" : "border-zinc-700 text-zinc-300 hover:bg-zinc-800"}`}
+              >Tiada pertindihan</button>
+            </div>
+            <div className="space-y-2">
+              {tShown.map(({ r, trueRank }: any, idx: number) => {
+                const juga = tJuga(String(r.id));
+                const posted = r.postedAt ? String(r.postedAt).slice(0, 10) : "—";
+                const [tLab, tVal] = tThird(r);
+                const kind = acctKind(r.account);
+                const hv = Number(r.r2);
+                const segs: [string, number][] = [["2s", Number(r.r2)], ["25%", Number(r.r25)], ["50%", Number(r.r50)], ["75%", Number(r.r75)], ["habis", Number(r.r100)]];
+                let bigDrop = "";
+                { let bd = -1; for (let i = 1; i < segs.length; i++) { const [a, va] = [segs[i - 1][0], segs[i - 1][1]]; const [b, vb] = [segs[i][0], segs[i][1]]; if (Number.isFinite(va) && Number.isFinite(vb)) { const d = (va - vb) * 100; if (d > bd) { bd = d; bigDrop = `${a} → ${b}`; } } } }
+                const pd = postedDay(r.postedAt);
+                const pAge = pd ? isoDayCount(pd, todayMYT()) - 1 : null;
+                const hookTier = Number.isFinite(hv) && Number.isFinite(p25r2) && Number.isFinite(p75r2) ? (hv >= p75r2 ? "kuat" : hv <= p25r2 ? "lemah" : "sederhana") : "";
+                const reachEnd = Number(r.r50) > 0 && Number.isFinite(Number(r.r100)) ? Number(r.r100) / Number(r.r50) : NaN;
+                const endurance = Number.isFinite(reachEnd) ? (reachEnd >= 0.38 ? "kuat" : reachEnd >= 0.29 ? "biasa" : "ramai tinggalkan di hujung") : "";
+                const pIsReply = /^\s*replying to @/i.test(String(r.title ?? ""));
+                const pIsAuthority = /doktor|\bdr\b|pakar/i.test(String(r.title ?? ""));
+                const pRoi = Number(r.cost) > 0 && Number.isFinite(Number(r.roi)) ? Number(r.roi) : NaN;
+                const pWins: string[] = [];
+                if (hookTier === "kuat") pWins.push("hook 2s di atas 75% video lain");
+                if (endurance === "kuat") pWins.push("tonton habis tinggi");
+                if (pIsReply) pWins.push("format balas komen");
+                if (pIsAuthority) pWins.push("penanda doktor (authority)");
+                if (Number.isFinite(pRoi) && pRoi >= 8) pWins.push(`ROI iklan ${pRoi.toFixed(1)}, jauh melepasi pulang modal`);
+                if (pAge !== null && pAge >= 60) pWins.push(`masih menjual ${pAge} hari selepas post (evergreen)`);
+                return (
+                  <div key={String(r.id)} className={`rounded-xl border px-3 py-2 ${idx === 0 ? "border-amber-300/60 bg-amber-200/10" : "border-zinc-800 bg-zinc-900"}`}>
+                    <div className="flex items-center gap-3">
+                      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${idx === 0 ? "bg-amber-300 text-zinc-900" : "bg-orange-400/20 text-orange-200"}`}>{idx + 1}</span>
+                      <button
+                        onClick={() => setCrTopEmbed(crTopEmbed === String(r.id) ? null : String(r.id))}
+                        title={crTopEmbed === String(r.id) ? "Close player" : "Play video"}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                      >{crTopEmbed === String(r.id) ? (<span className="text-xs text-zinc-300">✕</span>) : (<span>▶</span>)}</button>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-zinc-100" title={r.title ?? r.id}>{(r.title ?? "").slice(0, 90) || r.id}</div>
+                        <div className="font-mono text-[10px] text-zinc-600">{r.id}</div>
+                        <div className="text-[11px] text-zinc-500">{r.account ?? "—"} · dipost {posted}{crTopNoOverlap && trueRank !== idx + 1 ? ` · Ranking sebenar #${trueRank}` : ""}</div>
+                        {juga.length > 0 && <div className="text-[11px] text-orange-300">{juga.join(" · ")}</div>}
+                      </div>
+                      <span className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium sm:inline ${kind === "internal" ? "bg-sky-900 text-sky-200" : kind === "top affiliate" ? "bg-amber-900 text-amber-200" : kind === "inactive" ? "bg-zinc-900 text-zinc-500" : "bg-zinc-800 text-zinc-300"}`}>{kind === "top affiliate" ? "Top Affiliate" : kind}</span>
+                      <span className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium sm:inline ${r.verdict === "SCALE" ? "bg-emerald-900 text-emerald-200" : r.verdict === "KILL" ? "bg-red-900 text-red-200" : r.verdict === "FATIGUE" ? "bg-amber-900 text-amber-200" : r.verdict === "WATCH" ? "bg-sky-900 text-sky-200" : "bg-zinc-800 text-zinc-300"}`}>{r.verdict ?? "—"}</span>
+                      <div className="shrink-0 text-right tabular-nums">
+                        <div className="text-[10px] text-zinc-500">GMV</div>
+                        <div className="text-sm font-semibold text-zinc-100">RM{Math.round(Number(r.gmv ?? 0)).toLocaleString("en-MY")}</div>
+                      </div>
+                      <div className="shrink-0 text-right tabular-nums">
+                        <div className="text-[10px] text-zinc-500">Order</div>
+                        <div className="text-sm font-semibold text-zinc-100">{Math.round(Number(r.orders ?? 0)).toLocaleString("en-MY")}</div>
+                      </div>
+                      <div className="hidden shrink-0 text-right tabular-nums sm:block">
+                        <div className="text-[10px] text-zinc-500">{tLab}</div>
+                        <div className="text-sm font-semibold text-zinc-100">{tVal}</div>
+                      </div>
+                    </div>
+                    {crTopEmbed === String(r.id) && (
+                      <div className="mt-2 flex gap-3 rounded-lg bg-black/30 p-2">
+                        <iframe
+                          key={String(r.id)}
+                          src={`https://www.tiktok.com/player/v1/${r.id}?embed_from=oembed&music_info=1&description=1`}
+                          className="aspect-[325/578] w-40 shrink-0 rounded-lg sm:w-48"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          loading="lazy"
+                          title={`TikTok video ${r.id}`}
+                        />
+                        <div className="min-w-0 flex-1 text-[12px]">
+                          <div className="rounded-lg bg-zinc-100 p-3 text-zinc-900">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100 font-bold text-red-500">{String(r.account ?? "?").slice(0, 1).toUpperCase()}</span>
+                              <div>
+                                <div className="font-medium">{r.account ?? "—"}</div>
+                                <div className="text-[11px] text-zinc-500">@{r.account ?? "—"} · dipost {posted}</div>
+                              </div>
+                            </div>
+                            <div className="mt-2 leading-relaxed">{String(r.title ?? r.id)}</div>
+                          </div>
+                          <div className="mt-2">
+                            <div className="font-medium text-zinc-200">Kenapa kuat:<Hint text="Auto-ditulis daripada angka video ini lawan data dalam julat ini. Bukan penilaian manusia." /></div>
+                            <div className="mt-1 text-zinc-400">GMV RM{Math.round(Number(r.gmv ?? 0)).toLocaleString("en-MY")} daripada {r.orders} order, menjual pada {r.days} hari.</div>
+                          </div>
+                          <div className="mt-2">
+                            <div className="font-medium text-zinc-200">Hook (3 saat pertama):<Hint text={`Kekal lepas 2s vs video ≥500 paparan dalam julat ini (P25 ${Number.isFinite(p25r2) ? `${Math.round(p25r2 * 100)}%` : "—"} / P75 ${Number.isFinite(p75r2) ? `${Math.round(p75r2 * 100)}%` : "—"}).`} /></div>
+                            <div className="text-zinc-400">Diukur: {Number.isFinite(hv) ? `${(hv * 100).toFixed(1)}%` : "—"} penonton kekal lepas 2 saat (P25 {Number.isFinite(p25r2) ? `${(p25r2 * 100).toFixed(0)}%` : "—"} / P75 {Number.isFinite(p75r2) ? `${(p75r2 * 100).toFixed(0)}%` : "—"}): {hookTier ? `hook ${hookTier}.` : ""}{Number(r.imp) > 0 && Number(r.imp) < 1500 ? ` (sampel iklan kecil: ${Math.round(Number(r.imp))} paparan)` : ""}</div>
+                          </div>
+                          <div className="mt-2">
+                            <div className="font-medium text-zinc-200">Penonton stay dan tonton habis:<Hint text="Lengkung tontonan iklan 2s → 25% → 50% → 75% → habis. Segmen penurunan terbesar ditanda." /></div>
+                            <div className="text-zinc-400">Diukur{segs.map(([l, v]) => ` ${l} ${Number.isFinite(v) ? `${(v * 100).toFixed(1)}%` : "—"}`).join(" · ")}.{bigDrop ? ` Segmen penurunan terbesar: ${bigDrop}.` : ""}{endurance ? ` Daya tahan hujung: ${endurance}.` : ""}</div>
+                          </div>
+                          {pWins.length > 0 && (
+                            <div className="mt-2">
+                              <div className="font-medium text-zinc-200">Kenapa boleh menang:<Hint text="Isyarat dalam susunan tetap: hook 2s, tonton habis, format balas komen, penanda doktor, ROI jauh melepasi, evergreen." /></div>
+                              {pWins.map((s, i) => <div key={i} className="text-zinc-400">Isyarat {i + 1}: {s}.</div>)}
+                            </div>
+                          )}
+                          <div className="mt-2 text-[11px] text-zinc-500">Nota: retention iklan tidak meramal ROI — jangan putuskan berdasarkan hook semata-mata. Had: saya tak tonton visual (potongan, teks atas skrin, ekspresi). Kata-kata seperti "hook kuat" bermaksud angka retention tinggi, bukan penilaian kreatif.</div>
+                          <div className="mt-2 grid grid-cols-2 gap-1 text-[11px] text-zinc-400">
+                            <div>Spend: <span className="text-zinc-200">RM{Math.round(Number(r.cost ?? 0)).toLocaleString("en-MY")}</span> · ROI: <span className="text-zinc-200">{Number(r.cost) > 0 && Number.isFinite(Number(r.roi)) ? Number(r.roi).toFixed(1) : "—"}</span><Hint text="ROI = GMV ÷ kos. Pulang modal 2.86 pada margin 35%." /></div>
+                            <div>CTR: <span className="text-zinc-200">{Number(r.imp) > 0 ? `${((Number(r.clicks) / Number(r.imp)) * 100).toFixed(2)}%` : "—"}</span> · CVR: <span className="text-zinc-200">{Number(r.clicks) > 0 ? `${((Number(r.orders) / Number(r.clicks)) * 100).toFixed(2)}%` : "—"}</span><Hint text="CTR = klik ÷ paparan. CVR = order ÷ klik." /></div>
+                            <div>25%: <span className="text-zinc-200">{Number.isFinite(Number(r.r25)) ? `${(Number(r.r25) * 100).toFixed(1)}%` : "—"}</span> · Verdict: <span className="text-zinc-200">{r.verdict ?? "—"}</span><Hint text="SCALE/KILL/WATCH/FATIGUE dari peraturan kill-list (duit dulu, diagnostik kemudian)." /></div>
+                            <div>Kind: <span className="text-zinc-200">{kind}</span> · Status: <span className="text-zinc-200">{r.status ?? "—"}</span></div>
+                          </div>
+                          <a href={`https://www.tiktok.com/@_/video/${r.id}`} target="_blank" rel="noreferrer" className="mt-2 inline-block rounded-lg bg-sky-600 px-3 py-1 font-medium text-white hover:bg-sky-500">Buka di TikTok</a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {tShown.length === 0 && <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-3 text-[12px] text-zinc-500">Tiada video layak dengan penapis semasa.</div>}
+            </div>
+            <div className="mt-2 rounded-xl border border-amber-200/40 bg-amber-200/10 p-3 text-[12px] text-amber-100/90">
+              <div className="font-medium">💡 Analisis: kenapa kategori ini winning</div>
+              <div className="mt-1">Syarat senarai ini: {tSyarat}</div>
+              <div>Lima video ini bawa GMV RM{Math.round(tTopGmv).toLocaleString("en-MY")}{tTotGmv > 0 ? ` (${((tTopGmv / tTotGmv) * 100).toFixed(1)}% daripada GMV semua video)` : ""}.{crTopMetric === "untung" ? ` Untung gabungan RM${Math.round(tFull.slice(0, 5).reduce((s: number, r: any) => s + tUntung(r), 0)).toLocaleString("en-MY")} (GMV×0.35 − kos ads).` : ""}</div>
+            </div>
+          </div>
           <div className="mb-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-medium">Kill list{crStatus !== "ALL" ? ` · ${crStatus}` : ""}{crVerdict !== "ALL" ? ` · ${crVerdict}` : ""}</span>
+              <span className="text-sm font-medium">Kill list{crStatus !== "ALL" ? ` · ${crStatus}` : ""}{crVerdict !== "ALL" ? ` · ${crVerdict}` : ""}{crInsight !== "ALL" ? ` · ${crInsight}` : ""}{crNoCard ? " · no card" : ""}{crKind !== "all" ? ` · ${crKind}` : ""}{crPosted !== "ALL" ? ` · posted ${crPosted.toLowerCase()}` : ""}</span>
               <select value={crVerdict} onChange={(e) => setCrVerdict(e.target.value)} title="Filter by verdict" className="rounded bg-zinc-900 px-2 py-1 text-xs">
                 {["ALL", "SCALE", "WATCH", "KILL", "FATIGUE"].map((v) => (
                   <option key={v} value={v}>{v === "ALL" ? "Verdict: All" : v}</option>
+                ))}
+              </select>
+              <select value={crInsight} onChange={(e) => setCrInsight(e.target.value)} title="Filter by insight (file-adaptive benchmarks; Boost sec-clause KIV)" className="rounded bg-zinc-900 px-2 py-1 text-xs">
+                <option value="ALL">Insight: All</option>
+                {INSIGHT_OPTS.map((v) => (
+                  <option key={v} value={v === "—" ? "—" : v}>{v === "—" ? "Neutral" : v === "Drops" ? "Drops (all @%)" : v}</option>
                 ))}
               </select>
               {crVerdict === "SCALE" && (
@@ -855,11 +1324,6 @@ export default function CreativePage() {
                   )}
                 </span>
               )}
-              <select value={crKind} onChange={(e) => setCrKind(e.target.value)} title="Filter by account kind (/accounts)" className="rounded bg-zinc-900 px-2 py-1 text-xs">
-                {([["all", "Kind: All"], ["internal", "Internal"], ["top affiliate", "Top affiliate"], ["affiliate", "Affiliate"], ["inactive", "Inactive"]] as const).map(([v, l]) => (
-                  <option key={v} value={v}>{l}</option>
-                ))}
-              </select>
               <span className="inline-flex overflow-hidden rounded-lg border border-zinc-700 text-xs" title="Rank kill list by spend or GMV">
                 {(["spend", "gmv"] as const).map((s) => (
                   <button key={s} onClick={() => setCrKillSort(s)} className={`px-2 py-1 ${crKillSort === s ? "bg-zinc-700 text-zinc-100" : "text-zinc-500 hover:text-zinc-300"}`}>{s === "spend" ? "Spend" : "GMV"}</button>
@@ -879,6 +1343,9 @@ export default function CreativePage() {
                 {exCopied ? `Copied ${exSel.size}!` : `Copy draft (${exSel.size})`}
               </button>
             </div>
+            <p className="mt-1 text-[11px] text-zinc-500" title="File-adaptive benchmarks over aggregated posts; Boost sec-clause KIV (no Exploration status in TikTok pulls)">
+              Insight bars: Top-{k.bench.topN} ≥{Math.round(k.bench.topBar).toLocaleString("en-MY")} impr ({k.bench.topSrc}) · CPM ≤{Number.isFinite(k.bench.cpmBar) ? k.bench.cpmBar.toFixed(2) : "—"} ({k.bench.cpmSrc}) · hook med {(k.bench.medV2 * 100).toFixed(1)}% · AOV med RM{Number.isFinite(k.bench.medAOV) ? k.bench.medAOV.toFixed(2) : "—"} · p90 ROI {Number.isFinite(k.bench.p90roi) ? k.bench.p90roi.toFixed(2) : "—"}
+            </p>
             {crColsOpen && (
               <div className="mt-2 flex flex-wrap items-center gap-1 rounded-lg border border-zinc-800 bg-black/40 px-2 py-1.5">
                 <button onClick={() => setCrHidden(new Set())} className="rounded px-1.5 py-0.5 text-[11px] text-emerald-300 hover:bg-zinc-800">All</button>
@@ -900,7 +1367,7 @@ export default function CreativePage() {
                   {!crHidden.has("num") && <th className="px-2 py-1">#</th>}{!crHidden.has("ex") && <th className="px-2 py-1">Ex</th>}{!crHidden.has("post") && <th className="px-2 py-1">Post</th>}{!crHidden.has("postid") && <th className="px-2 py-1">Post ID</th>}{!crHidden.has("posted") && <th className="px-2 py-1">Posted</th>}{!crHidden.has("age") && <th className="px-2 py-1 text-right">Age</th>}{!crHidden.has("shape") && <th className="px-2 py-1">Shape</th>}{!crHidden.has("account") && <th className="px-2 py-1">Account</th>}
                   {!crHidden.has("status") && <th className="px-2 py-1">Status</th>}{!crHidden.has("days") && <th className="px-2 py-1 text-right">Days</th>}
                   {!crHidden.has("spend") && <th className="px-2 py-1 text-right">Spend</th>}{!crHidden.has("gmv") && <th className="px-2 py-1 text-right">GMV</th>}
-                  {!crHidden.has("roi") && <th className="px-2 py-1 text-right">ROI</th>}{!crHidden.has("verdict") && <th className="px-2 py-1">Verdict</th>}{!crHidden.has("why") && <th className="px-2 py-1">Why</th>}
+                  {!crHidden.has("roi") && <th className="px-2 py-1 text-right">ROI</th>}{!crHidden.has("insight") && <th className="px-2 py-1">Insight</th>}{!crHidden.has("verdict") && <th className="px-2 py-1">Verdict</th>}{!crHidden.has("why") && <th className="px-2 py-1">Why</th>}
                   {dailyOpen && rdays.map((d) => (<th key={d} className="px-2 py-1 text-right">{d.slice(5)}</th>))}
                   {dailyOpen && <th className="px-2 py-1 text-right">Total</th>}
                 </tr></thead>
@@ -912,7 +1379,7 @@ export default function CreativePage() {
                       {!crHidden.has("ex") && <td className="px-2 py-1"><input type="checkbox" checked={exSel.has(r.id)} onChange={() => toggleEx(r.id)} aria-label={`exclude ${r.id}`} /></td>}
                       {!crHidden.has("post") && <td className="max-w-64 truncate px-2 py-1" title={`${r.title} · ${r.id}`}><button onClick={() => setKillOpen((p) => { const n = new Set(p); if (n.has(r.id)) n.delete(r.id); else n.add(r.id); return n; })} className="mr-1 text-zinc-500 hover:text-zinc-200" title="Hook/hold diagnostics">{killOpen.has(r.id) ? "▾" : "▸"}</button>{r.title || (r.id === "-1" ? "Unattributed" : `post ${r.id.slice(0, 8)}…`)}</td>}
                       {!crHidden.has("postid") && <td className="whitespace-nowrap px-2 py-1 font-mono text-[11px] text-zinc-300" title={`${r.id} (click to copy)`} onClick={() => { try { void navigator.clipboard.writeText(String(r.id ?? "")); } catch { /* clipboard unavailable */ } }} style={{ cursor: "copy" }}>{r.id === "-1" ? "—" : r.id}</td>}
-                      {!crHidden.has("posted") && <td className="whitespace-nowrap px-2 py-1 text-zinc-300" title={(r as any).postedAt ? `TikTok posted ${(r as any).postedAt}` : "TikTok posted time unknown — Sync from TikTok to fill"}>{postedDay((r as any).postedAt) || "—"}</td>}
+                      {!crHidden.has("posted") && <td className="whitespace-nowrap px-2 py-1 text-zinc-300" title={(r as any).postedAt ? `TikTok posted ${(r as any).postedAt}${(r as any).postedSrc === "id" ? " (from Post ID)" : ""}` : "TikTok posted time unknown — no numeric Post ID"}>{postedDay((r as any).postedAt) || "—"}</td>}
                       {!crHidden.has("age") && <td className="px-2 py-1 text-right tabular-nums text-zinc-400">{postedAge((r as any).postedAt)}</td>}
                       {!crHidden.has("shape") && <td className="px-2 py-1"><button onClick={() => setSoloId(r.id)} title="Enlarge trend">{shapeSvg(rdays.map((d) => { const v = r.perDay.get(d); return v ? dmv(v) : null; }))}</button></td>}
                       {!crHidden.has("account") && <td className="whitespace-nowrap px-2 py-1">{r.account || "—"}{(r.account && r.account !== "Product card") ? (() => {
@@ -925,7 +1392,8 @@ export default function CreativePage() {
                       {!crHidden.has("days") && <td className="px-2 py-1 text-right text-zinc-400">{r.days}</td>}
                       {!crHidden.has("spend") && <td className="px-2 py-1 text-right">{r.cost.toFixed(2)}</td>}
                       {!crHidden.has("gmv") && <td className="px-2 py-1 text-right">{r.gmv.toFixed(2)}</td>}
-                      {!crHidden.has("roi") && <td className={`px-2 py-1 text-right font-medium ${r.roi >= 10 ? "text-emerald-300" : r.roi < 2 && r.cost >= 20 ? "text-red-300" : ""}`}>{r.roi.toFixed(2)}</td>}
+                      {!crHidden.has("roi") && <td className="px-2 py-1 text-right font-medium tabular-nums">{(() => { const t = roiTier(Number(r.roi ?? 0), roiBands); const z = !(Number(r.cost ?? 0) > 0); if (z) return <span>0.00</span>; return <span className={ROI_TIER_CLS[t]}>{Number(r.roi ?? 0).toFixed(2)}{ROI_TIER_MARK[t]}</span>; })()}</td>}
+                      {!crHidden.has("insight") && <td className="whitespace-nowrap px-2 py-1 text-[11px]" title={(r as any).insDetail || ""}>{(r as any).insChip ? `${(r as any).insChip} ${(r as any).insLabel}` : "—"}</td>}
                       {!crHidden.has("verdict") && <td className="px-2 py-1"><span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${r.verdict === "KILL" ? "bg-red-950 text-red-200" : r.verdict === "SCALE" ? "bg-emerald-900 text-emerald-200" : r.verdict === "FATIGUE" ? "bg-orange-950 text-orange-200" : r.verdict === "WATCH" ? "bg-amber-950 text-amber-200" : "text-zinc-500"}`}>{r.verdict}</span></td>}
                       {!crHidden.has("why") && <td className="max-w-64 truncate px-2 py-1 text-[11px] text-zinc-400" title={r.reason}>{r.reason}</td>}
                       {dailyOpen && rdays.map((d) => { const v = r.perDay.get(d); return (<td key={d} className="px-2 py-1 text-right tabular-nums">{v ? dmv(v).toFixed(2) : "="}</td>); })}
@@ -1274,8 +1742,8 @@ export default function CreativePage() {
                   <td className="px-2 py-1 text-zinc-500">{i + 1}</td>
                   <td className="whitespace-nowrap px-2 py-1 text-zinc-500">{String(r.date).slice(0, 10)}</td>
                   <td className="whitespace-nowrap px-2 py-1 font-mono text-[11px] text-zinc-300" title={`${r.item_id ?? ""} (click to copy)`} onClick={() => { try { void navigator.clipboard.writeText(String(r.item_id ?? "")); } catch { /* clipboard unavailable */ } }} style={{ cursor: "copy" }}>{String(r.item_id ?? "—")}</td>
-                  <td className="whitespace-nowrap px-2 py-1 text-zinc-300">{postedDay((r as any).posted_at) || "—"}</td>
-                  <td className="px-2 py-1 text-right tabular-nums text-zinc-400">{postedAge((r as any).posted_at)}</td>
+                  <td className="whitespace-nowrap px-2 py-1 text-zinc-300">{postedDay((r as any).posted_at ?? postedFromId((r as any).item_id)) || "—"}</td>
+                  <td className="px-2 py-1 text-right tabular-nums text-zinc-400">{postedAge((r as any).posted_at ?? postedFromId((r as any).item_id))}</td>
                   <td className="max-w-64 truncate px-2 py-1" title={`${r.title ?? ""} · ${r.item_id ?? ""}`}>{r.title || (r.item_id === "-1" ? "Unattributed" : `post ${r.item_id}`)}</td>
                   <td className="whitespace-nowrap px-2 py-1">{r.tt_account || "—"}</td>
                   <td className="whitespace-nowrap px-2 py-1"><span className={`rounded-full px-2 py-0.5 text-[10px] ${r.status === "DELIVERING" ? "bg-emerald-900 text-emerald-200" : "bg-zinc-700 text-zinc-300"}`}>{r.status || "—"}</span></td>

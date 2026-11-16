@@ -4,8 +4,30 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 14 Nov 2026
+
+- `gmvmax-auto` seller-creative arc (fetch popup, single-GMV Top-5 + tappable player+data panels, /accounts B-taxonomy, Untung = GMV×0.35 − kos, Product 5-list Top-5 per docs/04, All Creative hub, local seller-backfill.py + 12:30am task; 16 deploys, tsc clean, uncommitted)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto` total DB-first + 5m auto-refresh (2 deploys, tsc clean, uncommitted)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+- `gmvmax-auto` sidebar reorg (collapsible sections + Live/Product/Accounts groups, dead shop row killed, Seller Creative → TikTok Shops, icon dedupe with 3 new paths, Shops funnel order, TTAM rename; 9 deploys, tsc clean, uncommitted)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+## 12 Nov 2026
+
+- `gmvmax-auto` calendar TikTok parity (dual Last-7, Sunday weeks, preset hover preview, dd-mm-yyyy labels) + long ranges on GMV/TTAM/ROAS/Shop GMV/shop-cost/hourly tabs (client 30d chunking + merge, progress popup with elapsed/ETA/10s stay; 8 deploys, tsc clean, uncommitted)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+## 10 Nov 2026
+
+- `gmvmax-auto` Seller Creative fix saga (Analytics refresh, timeout budgets, imp split-out, batched saver, money-object + metadata + imp-array mapping via owner probe pastes, DATE/TEXT casts; Phase 1 table upgrades) + hourly retry + system-wide ROI bands with /presets General tab + zero-spend plain 0.00 (14 deploys, tsc clean, all uncommitted; owner runs 038+039 next)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+## 04 Nov 2026
+
+- `gmvmax-auto` creative Sync-flex + Insight + noCard + global Kind + 2nd admin + freshness pill (Sync calendar-chunked, spinners/mutual-disable, Insight port with Boost-sec KIV, `?noCard=1`, server-exact `?kind=`, comma `AUTH_ADMIN_EMAIL` — owner env step pending, pill collapsed; tsc clean, 7 deploys B133–B134, all uncommitted)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
 ## 01 Nov 2026
 
+- `gmvmax-auto` creative SCALE Top + calendar popup task notes (Top All/10/20/30/Custom slices Spend/GMV order, `dpl_4S7mXwrTELcadrJzmipdvYqhQ5sG`; popup opens on task-only days with notes block, `dpl_EQxBdY7o7kRuUMPrvqH4hGEjCmV9`; tsc clean; B132) — calendar file uncommitted
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
 - `gmvmax-auto` /accounts UX polish (@ usernames client+server strip, top-only Edit/Save/Cancel/Export▾, Save auto-exits, Cancel discards, dynamic live-board cards + Unlabeled; B131) — tsc clean, undeployed, uncommitted
   -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
 
@@ -119,7 +141,7 @@ Rule: whoever ships a folder release adds one line here the same session.
 
 ## 07 Oct 2026
 
-- Repo restructure Phases 1+2 (committed + pushed): dash folders (`1-master/`, `1-knowledge/`, `1-1-sales/`, `1-2-tools/`, `2-gmvmax/`, `3-ttam/`, `0-0-tiktok/`); low-risk moves (event, strategy, shop, shop-hourly, sheet-tools, calculator, live) then high-risk trio (`gmvmax-auto/` with `deploy_online.py` ROOT fix, `tiktok-creative-analysis/` + `tiktok-account/` as pair); Vercel Root Dir redeployed + Telegram `/tg-probe` 18/21 + `/fetch` live-verified; `collector_task.bat` path fixed (scheduler task action still needs owner update). Detail: root `repo-restructureplan.md`.
+- Repo restructure Phases 1+2 (committed + pushed): dash folders (`1-master/`, `1-knowledge/`, `1-1-sales/`, `1-2-tools/`, `2-gmvmax/`, `3-ttam/`, `0-0-tiktok/`); low-risk moves (event, strategy, shop, shop-hourly, sheet-tools, calculator, live) then high-risk trio (`gmvmax-auto/` with `deploy_online.py` ROOT fix, `tiktok-creative-analysis/` + `tiktok-account/` as pair); Vercel Root Dir redeployed + Telegram `/tg-probe` 18/21 + `/fetch` live-verified; `collector_task.bat` path fixed (scheduler task action still needs owner update). Detail: `repo-docs/repo-restructureplan.md`.
 - `1-1-sales/sales-performance-analysis` v0 (plan only, uncommitted):
   1–5 Oct Him.DrSamhan analysis (TTAM RM20,668 0-sales CPM verdicts + GMV Max
   RM61,515 9.29x ROI-7.0 cut/boost + L3-exclusion 2.42x→3.27x) + docs

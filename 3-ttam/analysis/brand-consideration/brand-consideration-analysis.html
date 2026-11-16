@@ -1,0 +1,106 @@
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+:root{--bg:#f7f8fa;--card:#fff;--line:#e2e5ea;--txt:#1c2333;--mut:#5f6b7a;--green:#e6f4ea;--yellow:#fef7e0;--red:#fce8e6}
+body{font-family:-apple-system,"Segoe UI",Arial,sans-serif;margin:0;background:var(--bg);color:var(--txt);font-size:14px}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 16px 40px}
+header.card,.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+h1{font-size:18px;margin:0 0 6px}h2{font-size:15px;margin:0 0 10px}
+.sub{color:var(--mut);font-size:12.5px;margin:4px 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:5px 10px;font-size:12px;background:#fbfbfc}
+.chip b{font-weight:700}.ok{background:var(--green)}.warn{background:var(--yellow)}.bad{background:var(--red)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;font-size:12px;color:var(--mut);margin-top:10px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:baseline}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+table{border-collapse:collapse;width:100%;min-width:860px;margin:0}
+th,td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;font-size:12.5px}
+thead th{background:#f2f4f7;position:sticky;top:0;white-space:nowrap;cursor:help}
+tbody tr:last-child td{border-bottom:none}
+.perf{background:var(--green)}.under{background:var(--red)}.watch{background:var(--yellow)}
+.small{color:var(--mut);font-size:12px}
+details.gloss{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:16px}
+details.gloss summary{cursor:pointer;font-weight:700;font-size:14px}
+.gloss dl{display:grid;grid-template-columns:220px 1fr;gap:6px 14px;margin:10px 0 4px}
+.gloss dt{font-weight:700}.gloss dd{margin:0;color:#2a3446}
+@media(max-width:640px){.gloss dl{grid-template-columns:1fr}}
+</style></head><body><div class="wrap">
+<header class="card">
+<h1>Brand Consideration — 30d Cost per consideration (2026-10-13 to 2026-11-11) + 7d 6-second check (2026-11-05 to 2026-11-11)</h1>
+<p class="sub">Nightly yesterday is truth, TikTok restates intraday. API UTC, MYT = UTC+8. Draft only — no account change until owner approves.</p>
+<div class="chips">
+<span class="chip ok"><b>Main 0.04</b> — Performing</span>
+<span class="chip warn"><b>B2 creative 8.51%</b> — Watch, below 12% bar</span>
+<span class="chip bad"><b>Affiliate 0.88</b> — Underperforming</span>
+<span class="chip"><b>Gate</b> — Spend &gt;= RM50</span>
+</div>
+<div class="legend"><span><i class="dot" style="background:#22a06b"></i>Performing</span><span><i class="dot" style="background:#d9a400"></i>Watch</span><span><i class="dot" style="background:#d64545"></i>Underperforming</span><span>Hover any column header for its meaning.</span></div>
+</header>
+
+<details class="gloss" open><summary>Terms glossary — hover headers for quick help, read here for full meaning</summary>
+<dl>
+<dt>Spend</dt><dd>Money spent in the window, RM. Size scales with Spend — judge on cost, not size.</dd>
+<dt>Impressions</dt><dd>Times ads were shown.</dd>
+<dt>CPM</dt><dd>Spend per 1,000 Impressions.</dd>
+<dt>New consideration size</dt><dd>New people who entered consideration.</dd>
+<dt>New consideration rate</dt><dd>New consideration size / Impressions. High rate = creative works.</dd>
+<dt>Cost per consideration</dt><dd>Spend / New consideration size. Formula shown every time. Lower is better.</dd>
+<dt>6-second focused views</dt><dd>True 6-second focused views (hook held).</dd>
+<dt>Focused view 6-second view rate (impression)</dt><dd>6-second focused views / Impressions. 30d = efficiency depth, 7d = fresh fatigue signal. 12% is the pacing bar.</dd>
+<dt>Cost per focused view (computed)</dt><dd>Spend / 6-second focused views. Not a native column — computed when needed.</dd>
+<dt>Internal band</dt><dd>Performing &lt;=0.20 | Watch 0.21-0.40 | Underperforming &gt;0.40.</dd>
+<dt>Affiliate band</dt><dd>Performing &lt;=0.50 | Watch 0.51-0.90 | Underperforming &gt;0.90. PIC RM0.20-0.40 fails 15/16 here, so do not use PIC for affiliate.</dd>
+<dt>PIC benchmark</dt><dd>TikTok person-in-charge guidance RM0.20-0.40, 30d window. Watch guidance for internal, not hard Kill.</dd>
+<dt>Verdict</dt><dd>Performing = keep/scale candidate. Watch = hold, cap if budget tight. Underperforming = pause in place, never move losers to a new adgroup.</dd>
+</dl>
+</details>
+
+<div class="card"><h2>Campaign (30d)</h2><div class="tblwrap"><table>
+<thead><tr><th title="Row number">No</th><th title="Campaign name + Campaign ID">Campaign</th><th title="Money spent in the window, RM">Spend</th><th title="Times ads were shown">Impressions</th><th title="Spend per 1,000 Impressions">CPM</th><th title="New people who entered consideration">New consideration size</th><th title="New consideration size / Impressions">New consideration rate</th><th title="Spend / New consideration size. Lower is better">Cost per consideration</th><th title="Performing / Watch / Underperforming per band + Spend gate">Verdict</th><th>Why</th></tr></thead><tbody>
+<tr class="perf"><td>1</td><td>Brand consideration<br>1872737142142146</td><td>22498.97</td><td>4,740,318</td><td>4.75</td><td>536,133</td><td>11.31%</td><td>0.04</td><td>Performing</td><td>Well below 0.20; rate 11.31% proves creative works, not just big Spend</td></tr>
+<tr class="under"><td>2</td><td>AFFILIATE - Brand consideration<br>1877542598201505</td><td>5999.49</td><td>1,122,831</td><td>5.34</td><td>6,849</td><td>0.61%</td><td>0.88</td><td>Underperforming</td><td>Inside affiliate Watch upper edge overall, but above 0.50; rate 0.61% very low</td></tr>
+</tbody></table></div></div>
+
+<div class="card"><h2>Adgroup (30d Cost + 7d Focused)</h2><div class="tblwrap"><table>
+<thead><tr><th title="Row number">No</th><th title="Adgroup name + Adgroup ID">Adgroup</th><th title="Money spent in the 30d window">30d Spend</th><th title="Spend / New consideration size, 30d">30d Cost per consideration</th><th title="New consideration size / Impressions, 30d">30d New consideration rate</th><th title="6-second focused views / Impressions, 7d fresh window">7d 6-second focused views</th><th title="6-second focused views / Impressions, 7d. 12% is the pacing bar">7d Focused view rate</th><th title="Performing / Watch / Underperforming">Verdict</th><th>Why</th></tr></thead><tbody>
+<tr class="perf"><td>1</td><td>Brand consideration 1<br>1872934377889010</td><td>14997.16</td><td>0.04</td><td>12.44%</td><td>105,726 / 812,373</td><td>13.02%</td><td>Performing</td><td>Passes both: cheap consideration + strong focused rate</td></tr>
+<tr class="perf"><td>2</td><td>Brand consideration 2<br>1880281379491025</td><td>7501.81</td><td>0.05</td><td>8.96%</td><td>66,173 / 777,189</td><td>8.51%</td><td>Performing on cost, Watch on creative</td><td>Cost passes (0.05), but 7d focused rate 8.51% below 12% pacing bar — creative fatigue signal persists</td></tr>
+<tr class="under"><td>3</td><td>Affiliate Brand consideration 1<br>1877542598201521</td><td>5999.49</td><td>0.88</td><td>0.61%</td><td>12,263 / 90,235</td><td>13.59%</td><td>Underperforming</td><td>Affiliate band: 0.88 is Watch upper edge; focused rate OK so hook holds, buying too expensive</td></tr>
+</tbody></table></div>
+<p class="small">Read: 30d cost says if buying is cheap, 7d focused says if creative still holds. B2 fails the second — watch before scaling.</p></div>
+
+<div class="card"><h2>Ad — Brand consideration / Brand consideration 1 (30d)</h2><div class="tblwrap"><table>
+<thead><tr><th title="Row number">No</th><th title="Ad ID (report) — search UI by post URL, not this ID">Ad ID</th><th title="Creative name / post URL. Tail is Post ID">Ad name</th><th title="Money spent in the window">Spend</th><th title="Spend / New consideration size">Cost per consideration</th><th title="New consideration size / Impressions">New consideration rate</th><th title="True 6-second focused views, 30d">6-second focused views (30d)</th><th title="6-second focused views / Impressions, 30d">Focused view rate (30d)</th><th title="Performing / Watch / Underperforming">Verdict</th><th>Why</th></tr></thead><tbody>
+<tr class="perf"><td>1</td><td>1878906070196465<br>B1</td><td>7668984071363513607</td><td>2724.99</td><td>0.05</td><td>7.27%</td><td>188,064</td><td>25.28%</td><td>Performing</td><td>Internal pass; huge focused volume, best scale holder</td></tr>
+<tr class="perf"><td>2</td><td>1873102621494466<br>B1</td><td>https://www.tiktok.com/@drsamhanwellness/video/7665646618452118804</td><td>1434.59</td><td>0.04</td><td>10.49%</td><td>22,078</td><td>6.34%</td><td>Performing on cost, Watch on creative</td><td>Cost passes but focused rate 6.34% weak — 7d weakness persists</td></tr>
+<tr class="perf"><td>3</td><td>1878905875094754<br>B1</td><td>7691593187927870726</td><td>1308.99</td><td>0.03</td><td>17.20%</td><td>62,885</td><td>23.89%</td><td>Performing</td><td>Cheapest in B1 + highest rate — scale candidate</td></tr>
+<tr class="perf"><td>4</td><td>1872944423437346<br>B1</td><td>https://www.tiktok.com/@dr.samhan/video/7666819155785485586</td><td>1026.42</td><td>0.03</td><td>15.77%</td><td>20,674</td><td>10.63%</td><td>Performing</td><td>Cheap + high rate</td></tr>
+</tbody></table></div></div>
+
+<div class="card"><h2>Ad — Brand consideration / Brand consideration 2 (30d)</h2><div class="tblwrap"><table>
+<thead><tr><th title="Row number">No</th><th title="Ad ID (report)">Ad ID</th><th title="Creative name / post URL">Ad name</th><th title="Money spent">Spend</th><th title="Spend / New consideration size">Cost per consideration</th><th title="New consideration size / Impressions">New consideration rate</th><th title="True 6-second focused views">6-second focused views (30d)</th><th title="6-second focused views / Impressions">Focused view rate (30d)</th><th title="Verdict">Verdict</th><th>Why</th></tr></thead><tbody>
+<tr class="perf"><td>1</td><td>1880281585718369<br>B2</td><td>7658940817263824146</td><td>2476.19</td><td>0.05</td><td>8.58%</td><td>42,788</td><td>7.53%</td><td>Performing on cost, Watch on creative</td><td>Passes 0.20 but top B2 Spend at 7.53% focused rate — efficiency risk</td></tr>
+<tr class="perf"><td>2</td><td>1880282038308225<br>B2</td><td>7666819155785485586</td><td>1443.98</td><td>0.05</td><td>11.64%</td><td>28,022</td><td>10.93%</td><td>Performing</td><td>Best rate in B2 top-3</td></tr>
+<tr class="perf"><td>3</td><td>1880281825091793<br>B2</td><td>7689026220369005832</td><td>1176.44</td><td>0.05</td><td>6.54%</td><td>29,018</td><td>8.42%</td><td>Performing</td><td>Passes cost; CPM 3.41 cheapest in B2</td></tr>
+<tr class="perf"><td>4</td><td>1880281848778801<br>B2</td><td>7664155824754789650</td><td>284.01</td><td>0.13</td><td>6.06%</td><td>3,452</td><td>9.93%</td><td>Performing (internal) but worst in B2</td><td>Still under 0.20, but 3x B2 peers + CPM 8.17 — first to pause if capping B2</td></tr>
+</tbody></table></div></div>
+
+<div class="card"><h2>Ad — AFFILIATE - Brand consideration / Affiliate Brand consideration 1 (30d)</h2><div class="tblwrap"><table>
+<thead><tr><th title="Row number">No</th><th title="Ad ID (report)">Ad ID</th><th title="Creative name / post URL">Ad name</th><th title="Money spent">Spend</th><th title="Spend / New consideration size">Cost per consideration</th><th title="New consideration size / Impressions">New consideration rate</th><th title="True 6-second focused views">6-second focused views (30d)</th><th title="Focused view rate (30d)">Focused view rate (30d)</th><th title="Verdict">Verdict</th><th>Why</th></tr></thead><tbody>
+<tr class="under"><td>1</td><td>1877545803807922<br>Aff</td><td>“Saya nak bantu 1juta orang lelaki” _28/9 https://www.tiktok.com/@drhanzalah.extended/video/7633006832654634258</td><td>1915.22</td><td>1.45</td><td>1.23%</td><td>16,587</td><td>15.44%</td><td>Underperforming</td><td>Affiliate &gt;0.90; biggest Spend at 4.6x best affiliate (0.34)</td></tr>
+<tr class="under"><td>2</td><td>1877545801286722<br>Aff</td><td>Dari lelaki untuk lelaki _28/9 https://www.tiktok.com/@nursuhanabakar99/video/7646335771154255125</td><td>858.05</td><td>2.05</td><td>1.32%</td><td>4,396</td><td>13.87%</td><td>Underperforming</td><td>Worst cost; CPM 27.07</td></tr>
+<tr class="perf"><td>3</td><td>1879006267093394<br>Aff</td><td>Bukan wanita je _14/10 https://www.tiktok.com/@amirashraff0/video/7695973714310991124</td><td>504.65</td><td>0.49</td><td>0.65%</td><td>15,363</td><td>9.65%</td><td>Performing (affiliate)</td><td>Inside affiliate Performing; high size offsets CPM 3.17</td></tr>
+<tr class="perf"><td>4</td><td>1880100092199393<br>Aff</td><td>Pian bawa kopi _25/10 7700847867791166741</td><td>418.08</td><td>0.34</td><td>1.43%</td><td>10,141</td><td>11.78%</td><td>Performing (affiliate)</td><td>Only affiliate ad inside PIC too; keep + scale candidate</td></tr>
+<tr class="under"><td>5</td><td>1877545793554562<br>Aff</td><td>aku jumpa pattern _28/9 https://www.tiktok.com/@abangharcos/video/7667601316310502676</td><td>395.98</td><td>0.88</td><td>0.27%</td><td>2,513</td><td>1.48%</td><td>Watch (affiliate upper)</td><td>At affiliate Watch ceiling; rate 0.27% weakest — pause if needs budget</td></tr>
+<tr class="perf"><td>6</td><td>1877545795709953<br>Aff</td><td>#himcoffee #bertenaga _28/9 https://www.tiktok.com/@jkthvgf/video/7652799918196690197</td><td>306.80</td><td>0.46</td><td>0.63%</td><td>2,383</td><td>2.25%</td><td>Performing (affiliate)</td><td>Inside affiliate Performing; focused rate 2.25% weak — watch creative</td></tr>
+</tbody></table></div>
+<p class="small">Report Ad ID differs from UI Smart+ ID — search UI by post URL, not report Ad ID. Example: report 1877545803807922 = UI Smart+ 1877545268978769 for post 7633006832654634258.</p></div>
+
+<div class="card"><h2>Combined read — TTAM + GMV Max (Nov 8-11 cache)</h2>
+<p class="sub">Join key = Post ID (GMV Max item_id = tail of TTAM Ad name). TTAM says how cheap attention is, GMV Max says if it sells. Guardrails: ROI &gt;= 7.0, Cost per order &lt;= RM21.18.</p>
+<div class="tblwrap"><table>
+<thead><tr><th>Post</th><th>TTAM 30d verdict</th><th>GMV Max 4d (Cost / orders / Gross revenue / ROI)</th><th>Combined decision</th></tr></thead><tbody>
+<tr><td>7633006832654634258<br>Saya nak bantu 1juta</td><td>Underperforming (1.45)</td><td>182.21 / 16 / 1184.46 / 6.50 — DELIVERING, Cost per order 11.39 pass, ROI just under 7.0</td><td>Keep in GMV Max, cap in TTAM only. Do not pause GMV Max on TTAM verdict.</td></tr>
+<tr><td>7646335771154255125<br>Dari lelaki untuk lelaki</td><td>Underperforming (2.05)</td><td>4.37 / 6 / 325.70 / ~74 — NOT_DELIVERING, tiny Cost, attribution residual</td><td>Keep, do not scale on RM4. Needs delivery before any call.</td></tr>
+<tr><td>7693111970760789256</td><td>—</td><td>0 / 0 / 0 — NOT_DELIVERING, no signal Nov 11</td><td>No decision yet.</td></tr>
+</tbody></table></div>
+<p class="small">Rule: Both pass = scale. TTAM fail + GMV pass = keep in GMV Max, pause in TTAM. TTAM pass + GMV fail = hook works, offer does not — fix angle. Both fail = pause both. Source: temp-data/creative-sync.json (LIMIT 2000, date DESC).</p></div>
+</div></body></html>

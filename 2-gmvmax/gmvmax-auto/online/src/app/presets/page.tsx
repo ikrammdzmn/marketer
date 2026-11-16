@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { SCORE_NAMES, SCORE_EXPRESSIONS, EXPRESSION_KEYS } from "@/lib/ttam-scores";
+import {
+  GENERAL_BANDS_DEFAULT, roiTier, ROI_TIER_CLS, ROI_TIER_MARK, roiLegend,
+  type RoiBands,
+} from "@/lib/ttam-scores";
 import { toast } from "../toast";
 import { ModuleRedirect } from "../module-gate";
 
@@ -23,6 +27,12 @@ export default function PresetsPage() {
   const [showExport, setShowExport] = useState(false);
   const [expFields, setExpFields] = useState({ expression: "", format: "numeric", inputs: "", params: "" });
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [tab, setTab] = useState<"ttam" | "general">("ttam");
+  const [gbands, setGbands] = useState<RoiBands>(GENERAL_BANDS_DEFAULT);
+  const [gFallback, setGFallback] = useState(false);
+  const [gMeta, setGMeta] = useState("");
+  const [gSaving, setGSaving] = useState(false);
+  const [gMsg, setGMsg] = useState<string | null>(null);
 
   async function loadPresetList(selectKey?: string) {
     const r = await fetch(`/api/ttam-presets`, { cache: "no-store" });
@@ -151,14 +161,71 @@ export default function PresetsPage() {
     }
   }
 
+  async function loadGeneral() {
+    setGMsg(null);
+    try {
+      const r = await fetch(`/api/general-bands`, { cache: "no-store" });
+      if (!r.ok) throw new Error((await r.json()).error ?? "bands failed");
+      const body = await r.json();
+      setGbands({ ...GENERAL_BANDS_DEFAULT, ...body.bands });
+      setGFallback(!!body.fallback);
+      setGMeta(body.fallback
+        ? "DB table missing (039 not run yet) — showing defaults; Save will fail until migrated."
+        : `saved ${String(body.updated_at ?? "").slice(0, 16).replace("T", " ")}${body.updated_by ? ` · by ${body.updated_by}` : ""}`);
+    } catch (e) {
+      setGMsg(e instanceof Error ? e.message : "bands failed");
+    }
+  }
+
+  async function saveGeneral() {
+    const t = Number(gbands.tick_at), g = Number(gbands.green_at);
+    const y = Number(gbands.yellow_at), r = Number(gbands.red_at);
+    if (![t, g, y, r].every(Number.isFinite) || !(t > g && g > y && y > r && r > 0)) {
+      setGMsg("need tick > green > yellow > red > 0");
+      return;
+    }
+    setGSaving(true);
+    setGMsg(null);
+    try {
+      const res = await fetch(`/api/general-bands`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.NEXT_PUBLIC_PRESET_WRITE_KEY ?? ""}`,
+        },
+        body: JSON.stringify({ tick_at: t, green_at: g, yellow_at: y, red_at: r }),
+      });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.error ?? "save failed");
+      setGbands({ ...GENERAL_BANDS_DEFAULT, ...body.bands });
+      setGFallback(false);
+      setGMsg("saved — ROI colors update on next page load");
+      toast("General ROI bands saved");
+    } catch (e) {
+      const m = e instanceof Error ? e.message : "save failed";
+      setGMsg(m);
+      toast(m, "err");
+    } finally {
+      setGSaving(false);
+    }
+  }
+
   const isActive = (presetsList ?? []).find((p: any) => p.preset_key === presetKey)?.active;
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
       <ModuleRedirect module="presets" />
       <div className="mx-auto max-w-6xl px-4 pb-16 pt-4">
-        <h2 className="mb-3 text-lg font-semibold">TTAM Presets</h2>
-        {loading ? (
+        <h2 className="mb-3 text-lg font-semibold">Presets</h2>
+        <div className="mb-3 flex gap-1 rounded-xl border border-zinc-800 bg-zinc-900 p-1 text-xs font-medium">
+          {(["ttam", "general"] as const).map((t) => (
+            <button key={t} onClick={() => { setTab(t); if (t === "general") loadGeneral(); }}
+              className={`rounded-lg px-3 py-1.5 ${tab === t ? "bg-zinc-100 text-zinc-900" : "text-zinc-300 hover:bg-zinc-800"}`}>
+              {t === "ttam" ? "TTAM" : "General"}
+            </button>
+          ))}
+        </div>
+        {tab === "ttam" && (loading ? (
           <p className="text-sm text-zinc-400">Loading…</p>
         ) : (
           <div className="mb-3 grid gap-3 md:grid-cols-[240px,1fr]">
@@ -272,6 +339,40 @@ export default function PresetsPage() {
                 </>
               )}
             </div>
+          </div>
+        ))}
+        {tab === "general" && (
+          <div className={`${cardCls} text-sm`}>
+            <h4 className="mb-1 text-sm font-medium">General · ROI color bands</h4>
+            <p className="mb-2 text-[11px] text-zinc-500">
+              System-wide cutoffs (tick &gt; green &gt; yellow &gt; red &gt; 0; below red = red + ⚠).
+              Colors apply on /gmv-max, /creative, /live-roi. {gMeta}
+              {gFallback && <span className="text-amber-300"> Fallback defaults in use.</span>}
+            </p>
+            <div className="mb-2 flex flex-wrap gap-3 text-xs text-zinc-400">
+              {(["tick_at", "green_at", "yellow_at", "red_at"] as const).map((k) => (
+                <label key={k}>{k}
+                  <input type="number" step="any" value={gbands[k]} onChange={(e) => setGbands({ ...gbands, [k]: Number(e.target.value) })} className={`${inputCls} ml-2 w-24 text-right`} />
+                </label>
+              ))}
+            </div>
+            <div className="mb-2 rounded-xl border border-zinc-800 p-2 text-xs">
+              <span className="text-zinc-500">Preview: </span>
+              {[12, 8, 6, 4.5, 3].map((v) => {
+                const t = roiTier(v, gbands);
+                return (
+                  <span key={v} className={`mr-3 tabular-nums ${ROI_TIER_CLS[t]}`}>
+                    {v.toFixed(2)}x{ROI_TIER_MARK[t]}
+                  </span>
+                );
+              })}
+              <div className="mt-1 text-[11px] text-zinc-500">{roiLegend(gbands)}</div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button disabled={gSaving} onClick={saveGeneral} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium hover:bg-emerald-500 disabled:opacity-50">Save</button>
+              <button disabled={gSaving} onClick={loadGeneral} className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs hover:bg-zinc-800 disabled:opacity-50">Reload</button>
+            </div>
+            {gMsg && <p className="mt-2 break-all text-[11px] text-zinc-400">{gMsg}</p>}
           </div>
         )}
       </div>

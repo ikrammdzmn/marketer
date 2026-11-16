@@ -215,13 +215,14 @@ export interface ShopHourScore {
   cpa: number | null;
 }
 
-// Range scorecard (selected range, cap 31): per-hour averages over cached
-// days present. Future slots of today excluded; explicit zeros stay.
+// Range scorecard (selected range, no day cap — single aggregate query,
+// fail-open empty at the route when the scan is too slow): per-hour averages
+// over cached days present. Future slots of today excluded; explicit zeros stay.
 async function getShopHourlyScorecardBlock(shopNumber: string, startDate: string, endDate: string) {
   const days: string[] = [];
   const d = new Date(`${startDate}T00:00:00`);
   const end = new Date(`${endDate}T00:00:00`);
-  while (d <= end && days.length < 31) {
+  while (d <= end) {
     days.push(d.toISOString().slice(0, 10));
     d.setTime(d.getTime() + 86400000);
   }

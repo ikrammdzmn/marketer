@@ -1,0 +1,84 @@
+{
+ "snapshot_note": "Salinan dashboard Creative Analisis, data hingga 3 Nov 2026. Hari terakhir belum muktamad.",
+ "datasets": {
+  "ads_videos": {
+   "rows": 8,
+   "sha256": "d9620303608b6902dc092e29ecb1094fc10b933901c157084a54c653b2e09d29",
+   "sum_spend": 11280.55
+  },
+  "daily_ads": {
+   "rows": 1275,
+   "sha256": "f7e2073d74f0893a6ae230f4c47f00ef58f73bf49b3d6da1c9725a165182c432",
+   "date_min": "2026-08-01",
+   "date_max": "2026-11-03",
+   "sum_spend": 443641.81
+  },
+  "daily_live_campaigns": {
+   "rows": 824,
+   "sha256": "c1e1349395d610ef2cbc9bbea0d7ed6cb52c61c9d9c466e4e1794512ce699246",
+   "date_min": "2026-08-01",
+   "date_max": "2026-11-03",
+   "sum_gmv": 2143108.11,
+   "sum_orders": 14747,
+   "sum_cost": 162622.25
+  },
+  "daily_product_campaigns": {
+   "rows": 331,
+   "sha256": "17ceb625366f6b781fcd0807f496a2da4015241cf062417f3afa4ace044a2080",
+   "date_min": "2026-08-01",
+   "date_max": "2026-11-03",
+   "sum_gmv": 448427.94,
+   "sum_orders": 4416,
+   "sum_cost": 52539.51
+  },
+  "daily_video_ads": {
+   "rows": 24541,
+   "sha256": "8ee4b8c20932e1576f62015313409418ccba8500d37f5c90abdfee66efda0124",
+   "date_min": "2026-08-01",
+   "date_max": "2026-11-03",
+   "sum_gmv": 222028.97,
+   "sum_orders": 2396,
+   "sum_cost": 32712.29
+  },
+  "daily_videos": {
+   "rows": 1709,
+   "sha256": "b6b80f23cb07097368f8b05af1ad39ace8f490998c88e5ce4ab0d1aa57c8dc03",
+   "date_min": "2026-08-01",
+   "date_max": "2026-11-03",
+   "sum_gmv": 222028.97,
+   "sum_orders": 2396,
+   "sum_cost": 16026.68
+  },
+  "live_rooms": {
+   "rows": 1485,
+   "sha256": "b18bd6b8850010a568101e28762828095ab7e8bf4ca7cb53a874b7567907b412",
+   "date_min": "2026-08-01",
+   "date_max": "2026-11-03",
+   "sum_gmv": 2057442.0,
+   "sum_orders": 14030,
+   "sum_cost": 140731.58,
+   "sum_views": 5228043
+  },
+  "organic_daily": {
+   "rows": 31849,
+   "sha256": "0baf612b692cad4ce728b28580455873e98cb3f189267a968d4d7cc15235c5a7",
+   "date_min": "2026-08-01",
+   "date_max": "2026-11-03",
+   "sum_gmv": 238495.19,
+   "sum_sku_orders": 2746,
+   "sum_views": 90486380
+  },
+  "organic_meta": {
+   "rows": 6586,
+   "sha256": "0d4ef7eeb059a69713867f9bccc4fc298e70f429c7bd3e251c4e2782f43e6266"
+  },
+  "video_insight": {
+   "rows": 810,
+   "sha256": "2fa617a6ad8b5db6c0f7a603e52d4f36374c289ae8b9a31fc504fc207ce1f218"
+  },
+  "video_meta": {
+   "rows": 617,
+   "sha256": "55e164288c751dec24f5204b785a039f43ccf6ca8ce4a414b41ed39b1003e815"
+  }
+ }
+}
