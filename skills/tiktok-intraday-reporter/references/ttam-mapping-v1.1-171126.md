@@ -1,0 +1,14 @@
+# TTAM mapping v1.1-171126 (labels as source of truth)
+
+Advertiser: GMV MAX VOL2 `7505228077656621057`. Supersedes v1.0-171126-1928. Never edit.
+
+## ACTIVE CAMPAIGN `7708970961487364117` (10, re-pulled 17 Nov)
+1881633837554738, 1879541204025441, 1877542598201505, 1876729796667746, 1872737142142146, 1871674073350642, 1871558088306802, 1870481709784130, 1868153954975938, 1858701247728721
+
+## Freshness vs `campaign_get` ENABLED (page 1, 11 ENABLED)
+- MISSING (→ LABEL-MISSING fallback 🟡): 1879541507655026 VV - Affiliate Awareness (in AFFILIATE 2, not in ACTIVE).
+- STALE: none.
+- Fixed since v1.0: Brand consideration, AFFILIATE / MOFU / CONSIDERATION, CI - LIVE - BASE added. 1 remaining.
+
+## Buckets unchanged from v1.0
+CI LIVE 2 (3), AFFILIATE 2 (6), FUNNEL 2 (16), Brand Consideration (2), SEEDING (9).
