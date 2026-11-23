@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ModuleRedirect } from "../module-gate";
+import { toast } from "../toast";
 
 // /calendar — dedicated month view (look-only), separate from /calendar-settings
 // (exclude keywords + connection health). Big current month on top, prev + next
@@ -15,6 +16,7 @@ type CalEv = {
   allDay: boolean;
   link: string | null;
   promo: boolean;
+  task: boolean;
 };
 
 type TaskNote = {
@@ -110,6 +112,20 @@ function fmtHM(ms: number): string {
   return new Date(ms).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+function spanSuffix(pos: number, total: number): string {
+  if (!(total > 1)) return "";
+  if (pos <= 1) return ` [1st day of ${total}]`;
+  if (pos >= total) return ` [last day ${total} of ${total}]`;
+  return ` [day ${pos} of ${total}]`;
+}
+
+function daySuffix(e: CalEv, y: number, m: number, d: number): string {
+  const r = spanRange(e);
+  const total = r.last - r.first + 1;
+  const pos = dayIdx(mytMidnight(y, m, d)) - r.first + 1;
+  return spanSuffix(pos, total);
+}
+
 function SidePanel({ spans, notes }: { spans: { e: CalEv; s: number; en: number }[]; notes: TaskNote[] }) {
   const today = dayIdx(Date.now());
   const collect = (idx: number) => {
@@ -123,6 +139,7 @@ function SidePanel({ spans, notes }: { spans: { e: CalEv; s: number; en: number 
   const row = (idx: number, r: { e: CalEv; s: number; en: number; range: { first: number; last: number } }) => {
     const total = r.range.last - r.range.first + 1;
     const pos = idx - r.range.first + 1;
+    const suffix = spanSuffix(pos, total);
     const endsIn = r.range.last - today;
     const endLabel = endsIn <= 0 ? "Ends today" : endsIn === 1 ? "Ends tomorrow" : `Ends in ${endsIn} days`;
     return (
@@ -130,8 +147,9 @@ function SidePanel({ spans, notes }: { spans: { e: CalEv; s: number; en: number 
         <div className="text-xs text-zinc-400">
           {r.e.allDay ? "All day" : `${fmtHM(r.s)} → ${fmtHM(r.en)}`}
         </div>
-        <div className={`text-sm leading-snug ${r.e.promo ? "text-amber-200" : "text-zinc-100"}`}>
-          {r.e.link ? <a href={r.e.link} target="_blank" rel="noreferrer" className="hover:underline">{r.e.title}</a> : r.e.title}
+        <div className={`text-sm leading-snug ${r.e.task ? "text-rose-200" : r.e.promo ? "text-amber-200" : "text-zinc-100"}`}>
+          {r.e.link ? <a href={r.e.link} target="_blank" rel="noreferrer" className="hover:underline">{r.e.title}{suffix}</a> : <>{r.e.title}{suffix}</>}
+          {r.e.task && <span className="ml-1 rounded bg-rose-950 px-1 text-[10px] font-semibold uppercase tracking-wide text-rose-200">Task</span>}
         </div>
         {total > 1 && (
           <div className="mt-0.5 text-[11px] text-zinc-500">
@@ -218,11 +236,14 @@ function MonthGrid({ y, m, spans, large, notes }: { y: number; m: number; spans:
               <div className={`text-[11px] ${isToday(d) ? "font-bold text-emerald-300" : isTomorrow(d) ? "font-semibold text-zinc-100" : "text-zinc-500"}`}>{d}</div>
               {large ? (
                 <ul className="mt-0.5 space-y-0.5">
-                  {evs.slice(0, 3).map((e) => (
-                    <li key={e.id} className={`truncate text-[11px] leading-tight md:text-xs ${e.promo ? "text-amber-300" : "text-zinc-200"}`} title={e.title}>
-                      {e.link ? <a href={e.link} target="_blank" rel="noreferrer" className="hover:underline">{e.title}</a> : e.title}
+                  {evs.slice(0, 3).map((e) => {
+                    const suffix = daySuffix(e, y, m, d);
+                    return (
+                    <li key={e.id} className={`truncate text-[11px] leading-tight md:text-xs ${e.task ? "font-semibold text-rose-300" : e.promo ? "text-amber-300" : "text-zinc-200"}`} title={e.task ? `${e.title}${suffix} (#task)` : `${e.title}${suffix}`}>
+                      {e.link ? <a href={e.link} target="_blank" rel="noreferrer" className="hover:underline">{e.title}{suffix}</a> : <>{e.title}{suffix}</>}
                     </li>
-                  ))}
+                    );
+                  })}
                   {evs.length > 3 && (
                     <li className="text-[11px] text-zinc-500">+{evs.length - 3} more</li>
                   )}
@@ -239,8 +260,8 @@ function MonthGrid({ y, m, spans, large, notes }: { y: number; m: number; spans:
                   {evs.slice(0, 6).map((e) => (
                     <span
                       key={e.id}
-                      title={e.title}
-                      className={`h-1.5 w-1.5 rounded-full ${e.promo ? "bg-amber-400" : "bg-emerald-500"}`}
+                      title={`${e.title}${daySuffix(e, y, m, d)}`}
+                      className={`h-1.5 w-1.5 rounded-full ${e.task ? "bg-rose-400" : e.promo ? "bg-amber-400" : "bg-emerald-500"}`}
                     />
                   ))}
                   {dayNotes.slice(0, 6).map((n) => (
@@ -266,11 +287,15 @@ function MonthGrid({ y, m, spans, large, notes }: { y: number; m: number; spans:
                     {d} {MONTHS[m]} {y}
                   </div>
                   <ul className="space-y-1.5">
-                    {evs.map((e) => (
-                      <li key={e.id} className={`rounded-lg px-2 py-1 text-xs leading-snug ${e.promo ? "bg-amber-950/50 text-amber-200" : "bg-zinc-800 text-zinc-100"}`}>
-                        {e.link ? <a href={e.link} target="_blank" rel="noreferrer" className="hover:underline">{e.title}</a> : e.title}
+                    {evs.map((e) => {
+                      const suffix = daySuffix(e, y, m, d);
+                      return (
+                      <li key={e.id} className={`rounded-lg px-2 py-1 text-xs leading-snug ${e.task ? "bg-rose-950/50 text-rose-200" : e.promo ? "bg-amber-950/50 text-amber-200" : "bg-zinc-800 text-zinc-100"}`}>
+                        {e.task && <span className="mr-1 rounded bg-rose-900 px-1 text-[10px] font-semibold uppercase tracking-wide text-rose-200">Task</span>}
+                        {e.link ? <a href={e.link} target="_blank" rel="noreferrer" className="hover:underline">{e.title}{suffix}</a> : <>{e.title}{suffix}</>}
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                   {dayNotes.length > 0 && (
                     <ul className="mt-2 space-y-1.5 border-t border-zinc-800 pt-2">
@@ -343,6 +368,10 @@ function TaskNotes({ onChanged }: { onChanged?: () => void }) {
       setFBody("");
       await load();
       onChanged?.();
+      try {
+        const todayMYT = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+        toast(fDate === todayMYT ? "Note added — in today's pill" : "Note added");
+      } catch { /* toast is best-effort */ }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "add failed");
     } finally {
@@ -360,6 +389,11 @@ function TaskNotes({ onChanged }: { onChanged?: () => void }) {
       if (!r.ok) throw new Error((await r.json()).error ?? "update failed");
       await load();
       onChanged?.();
+      try {
+        const todayMYT = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+        const inPill = n.date <= todayMYT;
+        toast(!n.done ? (inPill ? "Marked done ✓ — out of the pill" : "Marked done ✓") : "Reopened — back in the pill");
+      } catch { /* toast is best-effort */ }
     } catch (e) {
       setErr(e instanceof Error ? e.message : "update failed");
     }
@@ -388,6 +422,7 @@ function TaskNotes({ onChanged }: { onChanged?: () => void }) {
       setEditId(null);
       await load();
       onChanged?.();
+      toast("Note saved — pill updated");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "save failed");
     } finally {
@@ -403,6 +438,7 @@ function TaskNotes({ onChanged }: { onChanged?: () => void }) {
       if (editId === n.id) setEditId(null);
       await load();
       onChanged?.();
+      toast("Note deleted — out of the pill");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "delete failed");
     }
@@ -557,7 +593,7 @@ export default function CalendarPage() {
             <MonthGrid y={prev.y} m={prev.m} spans={spans} large={false} notes={taskNotes} />
             <MonthGrid y={next.y} m={next.m} spans={spans} large={false} notes={taskNotes} />
           </div>
-          <TaskNotes onChanged={() => void reloadTaskNotes()} />
+          <TaskNotes onChanged={() => { void reloadTaskNotes(); try { window.dispatchEvent(new Event("task-notes-changed")); } catch { /* non-DOM */ } }} />
         </>
       )}
     </main>

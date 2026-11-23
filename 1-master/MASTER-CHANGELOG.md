@@ -4,6 +4,26 @@ Repo-wide release record, newest first, in plain words. One line per shipped
 release per folder — detail lives in each folder's own changelog/plan (linked).
 Rule: whoever ships a folder release adds one line here the same session.
 
+## 19 Nov 2026
+
+- `gmvmax-auto` shop-live 3-tab redesign + GMV/TTAM blend + hour slice + creator auto-refresh (room picker grouped/filter/Load-more; `ads/ttam-options/blended/hourly-blend/hourly-probe` routes; strict-suggest manual TTAM ticks + fee %; hourly grains verified on prod; 6 deploys, tsc clean, uncommitted)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
+## 18 Nov 2026
+
+- `gmvmax-auto` pill task-notes + overdue + live refresh + toast confirmations (today's undone notes + ≤3 `[overdue]` in ticker, task-first sort; `task-notes-changed` event → instant pill refetch; success toasts via existing bus; 3 deploys, tsc clean, uncommitted)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
+## 17 Nov 2026
+
+- `gmvmax-auto` Evergreen Top-5 v2 + Kuat month-buckets + 91d backfill + player rollback (Top-5 by Untung + analysis box; //evergreen month-bucket API, 32 Evergreen/17 Kuat live; ~19.8k video-days backfilled; TikTok player gated server-side, panels restored; 4 deploys, tsc clean, uncommitted)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
+## 16 Nov 2026
+
+- `gmvmax-auto` doc-08 analysis panels + validation + hints + Evergreen v1 (hook 3-tier, endurance bands, ROI≥8, win order, honesty caveats; validator 81/76/100/87%; `?` bubbles; Calon Evergreen table; 3 deploys, tsc clean, committed)
+  -> `2-gmvmax/gmvmax-auto/CHANGELOG.md`
+
 ## 14 Nov 2026
 
 - `gmvmax-auto` seller-creative arc (fetch popup, single-GMV Top-5 + tappable player+data panels, /accounts B-taxonomy, Untung = GMV×0.35 − kos, Product 5-list Top-5 per docs/04, All Creative hub, local seller-backfill.py + 12:30am task; 16 deploys, tsc clean, uncommitted)

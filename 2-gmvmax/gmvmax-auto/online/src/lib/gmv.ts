@@ -934,6 +934,286 @@ export async function getCampaignSessions(
   return { shopName: shop.name, campaignId, sessions: groupedSessions, totalCost, totalGMV };
 }
 
+// Room-level GMV Max attribution for one Shop LIVE room.
+// TikTok's room_id report grain requires one campaign_id per pull, so this
+// searches candidate LIVE campaigns for the selected room over the room's own
+// calendar window (server-side, fail-open per campaign). Cost/GMV use the
+// same gross terms and FEE_RATE net lock as /gmv-max. "Active during room"
+// means TikTok attributed report activity to this room in that window; it is
+// not a reconstructed historical ON/OFF toggle. A separate statusNow field
+// carries the cached current campaign toggle for context.
+export interface RoomAdsCampaign {
+  campaignId: string;
+  campaignName: string;
+  account: string;
+  identityId: string | null;
+  statusNow: string | null;
+  cost: number;
+  gmv: number;
+  orders: number;
+  grossRoi: number;
+  netRoi: number;
+  activeDuringRoom: boolean;
+  days: number;
+  firstDay: string | null;
+  lastDay: string | null;
+}
+
+export interface RoomAdsAttribution {
+  roomId: string;
+  startDate: string;
+  endDate: string;
+  isLiveNow: boolean;
+  matched: boolean;
+  cost: number;
+  gmv: number;
+  orders: number;
+  grossRoi: number;
+  net: number;
+  netRoi: number;
+  campaigns: RoomAdsCampaign[];
+  checkedCampaigns: number;
+  skippedCampaigns: number;
+  errors: string[];
+  method: string;
+}
+
+function mytDateString(ms: number): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(ms));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+function addDaysISO(iso: string, n: number): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || "");
+  if (!m) return iso;
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function inclusiveDays(startDate: string, endDate: string): number {
+  const a = Date.parse(`${startDate}T00:00:00Z`);
+  const b = Date.parse(`${endDate}T00:00:00Z`);
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return 0;
+  return Math.round((b - a) / 86_400_000) + 1;
+}
+
+async function fetchRoomAdsRows(
+  accessToken: string,
+  advertiserId: string,
+  shopId: string,
+  campaignId: string,
+  roomId: string,
+  startDate: string,
+  endDate: string
+): Promise<{ cost: number; gmv: number; orders: number; days: string[] }> {
+  let cost = 0;
+  let gmv = 0;
+  let orders = 0;
+  const daySet = new Set<string>();
+  let page = 1;
+  // page_size 1000 keeps a one-room hunt to one page in the common case;
+  // keep scanning while TikTok reports more pages so a late-page room is
+  // not mistaken for no spend.
+  for (let i = 0; i < 5; i++) {
+    const params = new URLSearchParams({
+      advertiser_id: advertiserId,
+      store_ids: JSON.stringify([shopId]),
+      gmv_max_promotion_type: "LIVE_GMV_MAX",
+      dimensions: JSON.stringify(["room_id", "stat_time_day"]),
+      filtering: JSON.stringify({ campaign_ids: [campaignId] }),
+      metrics: JSON.stringify(["cost", "orders", "gross_revenue"]),
+      start_date: startDate,
+      end_date: endDate,
+      page: String(page),
+      page_size: "1000",
+    });
+    const res = await fetch(
+      `${BASE_URL}/open_api/${API_VERSION}/gmv_max/report/get/?${params.toString()}`,
+      { headers: { "Access-Token": accessToken, "Content-Type": "application/json" } }
+    );
+    const body = await res.json();
+    if (body.code !== 0) {
+      throw new Error(`room ads report code=${body.code}: ${String(body.message ?? "").slice(0, 120)}`);
+    }
+    for (const item of body.data?.list ?? []) {
+      if (String(item.dimensions?.room_id ?? "") !== String(roomId)) continue;
+      cost += parseFloat(item.metrics?.cost ?? 0) || 0;
+      gmv += parseFloat(item.metrics?.gross_revenue ?? 0) || 0;
+      orders += parseInt(item.metrics?.orders ?? 0, 10) || 0;
+      const day = String(item.dimensions?.stat_time_day ?? "");
+      if (day) daySet.add(day);
+    }
+    const total = Number(body.data?.page_info?.total_page ?? 1) || 1;
+    if (page >= total) break;
+    page++;
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  return { cost, gmv, orders, days: [...daySet].sort() };
+}
+
+export async function getRoomAdsAttribution(
+  shopNumber: string,
+  roomId: string,
+  startSec: number,
+  endSec: number | null
+): Promise<RoomAdsAttribution> {
+  const shop = SHOPS[shopNumber];
+  if (!shop) throw new Error(`invalid shopNumber: ${shopNumber}`);
+  const wantRoom = String(roomId ?? "").trim();
+  if (!wantRoom) throw new Error("need roomId (Shop LIVE live_id)");
+  if (!Number.isFinite(startSec) || startSec <= 0) {
+    throw new Error("need the selected room's start_time (unix seconds)");
+  }
+  const creds = await getAdsCredentials(shop.advertiserId);
+  if (!creds) throw new Error(`no access token for advertiser ${shop.advertiserId}`);
+
+  const startDate = mytDateString(startSec * 1000);
+  const liveNow = !Number.isFinite(endSec) || (Number(endSec) || 0) <= 0 || (Number(endSec) || 0) * 1000 > Date.now();
+  const endDate = liveNow ? mytDateString(Date.now()) : mytDateString(Number(endSec) * 1000);
+  const span = inclusiveDays(startDate, endDate);
+  if (span < 1) throw new Error("room end is before room start");
+  if (span > 7) {
+    throw new Error(`room window is ${span} days; narrow it to 7 days or fewer for one serverless pull`);
+  }
+
+  let cmap;
+  try {
+    cmap = await query(
+      `SELECT campaign_id, name, account, identity_id, status FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2 ORDER BY name`,
+      [shop.shopId, "LIVE_GMV_MAX"]
+    );
+  } catch {
+    try {
+      cmap = await query(
+        `SELECT campaign_id, name, account, status FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2 ORDER BY name`,
+        [shop.shopId, "LIVE_GMV_MAX"]
+      );
+    } catch {
+      try {
+        cmap = await query(
+          `SELECT campaign_id, name, account FROM gmv.gmv_campaigns WHERE shop_id = $1 AND promotion_type = $2 ORDER BY name`,
+          [shop.shopId, "LIVE_GMV_MAX"]
+        );
+      } catch {
+        throw new Error("LIVE_GMV_MAX campaign cache is unreadable — open /gmv-max and Fetch once");
+      }
+    }
+  }
+  const campaigns = (cmap.rows ?? []).map((r: any) => ({
+    id: String(r.campaign_id ?? ""),
+    name: String(r.name ?? r.campaign_id ?? ""),
+    account: String(r.account ?? "Other"),
+    identityId: typeof r.identity_id === "string" && r.identity_id.trim() ? r.identity_id.trim() : null,
+    status: typeof r.status === "string" && r.status ? r.status : null,
+  })).filter((c) => c.id);
+  if (campaigns.length === 0) {
+    throw new Error("no LIVE_GMV_MAX campaigns in Neon cache — open /gmv-max and Fetch once, or run /api/campaigns/sync");
+  }
+
+  // Spend-first candidate order from the hourly cache keeps a one-room hunt
+  // to a few pulls instead of drilling every LIVE campaign.
+  const spendBy = new Map<string, number>();
+  try {
+    const hr = await query(
+      `SELECT campaign_id, SUM(cost)::float AS s FROM gmv.hourly_campaign_metrics
+       WHERE shop_id = $1 AND hour_slot >= $2 AND hour_slot < $3 GROUP BY campaign_id`,
+      [shop.shopId, `${startDate} 00:00:00`, `${addDaysISO(endDate, 1)} 00:00:00`]
+    );
+    for (const row of hr.rows ?? []) spendBy.set(String(row.campaign_id), Number(row.s ?? 0));
+  } catch {
+    // pre-009 DB or empty cache — fall through to the capped full list.
+  }
+  const MAX_CAMPAIGNS = 12;
+  let targets = campaigns;
+  if (spendBy.size > 0) {
+    const spenders = campaigns
+      .map((c) => ({ c, s: spendBy.get(c.id) ?? 0 }))
+      .filter((x) => x.s > 0)
+      .sort((a, b) => b.s - a.s)
+      .map((x) => x.c);
+    if (spenders.length === 0) {
+      return {
+        roomId: wantRoom, startDate, endDate, isLiveNow: liveNow, matched: false,
+        cost: 0, gmv: 0, orders: 0, grossRoi: 0, net: 0, netRoi: 0,
+        campaigns: [], checkedCampaigns: 0, skippedCampaigns: campaigns.length,
+        errors: [], method: "hourly cache shows no LIVE spend in the room window",
+      };
+    }
+    targets = spenders.slice(0, MAX_CAMPAIGNS);
+  } else {
+    targets = targets.slice(0, MAX_CAMPAIGNS);
+  }
+  const skippedCampaigns = campaigns.length - targets.length;
+
+  const matched: RoomAdsCampaign[] = [];
+  const errors: string[] = [];
+  for (let i = 0; i < targets.length; i += 4) {
+    const batch = targets.slice(i, i + 4);
+    const results = await Promise.allSettled(
+      batch.map((c) => fetchRoomAdsRows(creds.access_token, shop.advertiserId, shop.shopId, c.id, wantRoom, startDate, endDate))
+    );
+    results.forEach((r, bi) => {
+      const c = batch[bi];
+      if (r.status !== "fulfilled") {
+        errors.push(`${c.id}: ${r.reason instanceof Error ? r.reason.message : "room pull failed"}`);
+        return;
+      }
+      const v = r.value;
+      const active = v.cost > 0 || v.gmv > 0 || v.orders > 0;
+      if (!active) return;
+      matched.push({
+        campaignId: c.id,
+        campaignName: c.name,
+        account: c.account,
+        identityId: c.identityId,
+        statusNow: c.status,
+        cost: v.cost,
+        gmv: v.gmv,
+        orders: v.orders,
+        grossRoi: v.cost > 0 ? v.gmv / v.cost : 0,
+        netRoi: v.cost > 0 ? (v.gmv * (1 - FEE_RATE)) / v.cost : 0,
+        activeDuringRoom: true,
+        days: v.days.length,
+        firstDay: v.days[0] ?? null,
+        lastDay: v.days[v.days.length - 1] ?? null,
+      });
+    });
+    if (i + 4 < targets.length) await new Promise((r) => setTimeout(r, 300));
+  }
+  matched.sort((a, b) => b.cost - a.cost);
+  const cost = matched.reduce((s, x) => s + x.cost, 0);
+  const gmv = matched.reduce((s, x) => s + x.gmv, 0);
+  const orderCount = matched.reduce((s, x) => s + x.orders, 0);
+  const net = gmv * (1 - FEE_RATE);
+  return {
+    roomId: wantRoom,
+    startDate,
+    endDate,
+    isLiveNow: liveNow,
+    matched: matched.length > 0,
+    cost,
+    gmv,
+    orders: orderCount,
+    grossRoi: cost > 0 ? gmv / cost : 0,
+    net,
+    netRoi: cost > 0 ? net / cost : 0,
+    campaigns: matched,
+    checkedCampaigns: targets.length,
+    skippedCampaigns,
+    errors,
+    method: liveNow
+      ? "room-window report rows; live room: cost is partial until the room ends and TikTok restates intraday data"
+      : "room-window report rows; same gross/net formula as /gmv-max",
+  };
+}
+
 // All GMV Max campaign IDs for an advertiser (both types) — exclusion set for TTAM.
 export async function getGMVMaxIds(accessToken: string, advertiserId: string): Promise<Set<string>> {
   const ids = new Set<string>();

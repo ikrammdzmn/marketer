@@ -207,6 +207,29 @@ export default function CreativePage() {
   const [crMsg, setCrMsg] = useState("");
   const [crBusy, setCrBusy] = useState(false);
   const [crFetching, setCrFetching] = useState(false);
+  // Fetch/Sync progress popup (same pattern as seller-creative/gmv-max:
+  // elapsed ticker, ETA, indeterminate pulse, 10s stay, Cancel).
+  const [fetchProg, setFetchProg] = useState<{ total: number; done: number; label: string; failed: string[]; startedAt: number; finishedAt?: number; kind: "fetch" | "sync" } | null>(null);
+  const fetchCancelRef = useRef(false);
+  const fetchCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearProgClose = () => {
+    if (fetchCloseTimer.current) { clearTimeout(fetchCloseTimer.current); fetchCloseTimer.current = null; }
+  };
+  const [fetchNow, setFetchNow] = useState(0);
+  useEffect(() => {
+    if (!fetchProg) return;
+    setFetchNow(Date.now());
+    const id = setInterval(() => setFetchNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [fetchProg !== null]);
+  useEffect(() => () => clearProgClose(), []);
+  function finishProg(t0: number, total: number, okCount: number, failed: string[], kind: "fetch" | "sync") {
+    const doneCount = okCount + failed.length;
+    const elapsedDone = Math.max(0, Math.round((Date.now() - t0) / 1000));
+    setFetchProg({ total, done: doneCount, label: `Done in ${elapsedDone}s`, failed: [...failed], startedAt: t0, finishedAt: Date.now(), kind });
+    clearProgClose();
+    fetchCloseTimer.current = setTimeout(() => { setFetchProg(null); fetchCloseTimer.current = null; }, 10000);
+  }
   // System-wide ROI color bands (owner-editable in /presets General tab).
   const [roiBands, setRoiBands] = useState<RoiBands>(GENERAL_BANDS_DEFAULT);
   useEffect(() => {
@@ -239,6 +262,7 @@ export default function CreativePage() {
   const [scaleCustom, setScaleCustom] = useState<string>("");
   const [crColsOpen, setCrColsOpen] = useState(false);
   const [crHidden, setCrHidden] = useState<Set<string>>(new Set());
+  const [csvOpen, setCsvOpen] = useState(false);
   const [killOpen, setKillOpen] = useState<Set<string>>(new Set());
   const [dailyOpen, setDailyOpen] = useState(false);
   const [acctOpen, setAcctOpen] = useState(false);
@@ -456,6 +480,9 @@ export default function CreativePage() {
     if (crFetching) return;
     setCrFetching(true);
     setCrMsg("");
+    const t0 = Date.now();
+    fetchCancelRef.current = false;
+    clearProgClose();
     try {
       const camp = crCamp === "ALL" ? "" : crCamp;
       const cid = camp ? `&campaignId=${camp}` : "";
@@ -471,11 +498,16 @@ export default function CreativePage() {
       // even if a single day ever outgrows the cap.
       const n = isoDayCount(crStart, crEnd);
       if (n <= 0 || n > 31) { setCrMsg("Range must be 1–31 days."); return; }
+      setFetchProg({ total: n, done: 0, label: rangeLabel(crStart, crEnd), failed: [], startedAt: t0, kind: "fetch" });
       let all: any[] = [];
       const tot = { cost: 0, gmv: 0, orders: 0, imp: 0, n: 0 };
-      let failed = 0;
+      const failedDays: string[] = [];
+      let doneDays = 0;
+      let cancelled = false;
       for (let i = 0; i < n; i++) {
+        if (fetchCancelRef.current) { cancelled = true; break; }
         const d = isoAddDays(crStart, i);
+        setFetchProg({ total: n, done: i, label: d, failed: [...failedDays], startedAt: t0, kind: "fetch" });
         try {
           const r = await fetch(`/api/creative-sync?shopNumber=1&startDate=${d}&endDate=${d}${cid}${st}${nc}${kd}`).then((x) => x.json());
           if (r.rows) {
@@ -487,22 +519,25 @@ export default function CreativePage() {
               tot.imp += Number(r.totals.imp ?? 0);
               tot.n += Number(r.totals.n ?? 0);
             }
-          } else failed++;
+          } else failedDays.push(d);
         } catch {
-          failed++;
+          failedDays.push(d);
         }
+        doneDays++;
       }
       setCrRows(all);
       setCrTotals(all.length > 0 ? tot : null);
       setCrTotalsStatus(st0);
       setCrTotalsNoCard(wantNoCard);
       setCrTotalsKind(wantKind);
-      if (all.length === 0) setCrMsg("No cached rows for this range yet — press Sync from TikTok.");
-      else setCrMsg(`${all.length} rows${failed > 0 ? ` · ${failed}d failed (partial)` : ""}.`);
+      if (all.length === 0 && !cancelled) setCrMsg("No cached rows for this range yet — press Sync from TikTok.");
+      else setCrMsg(`${cancelled ? "Cancelled: " : ""}${all.length} rows${failedDays.length > 0 ? ` · ${failedDays.length}d failed (partial)` : ""}.`);
+      finishProg(t0, n, doneDays - failedDays.length, failedDays, "fetch");
     } catch (e) {
       const m = e instanceof Error ? e.message : "fetch failed";
       setCrMsg(m);
       toast(m, "err");
+      finishProg(t0, 1, 0, [m.slice(0, 120)], "fetch");
     } finally {
       setCrFetching(false);
     }
@@ -699,6 +734,140 @@ export default function CreativePage() {
     URL.revokeObjectURL(a.href);
   }
 
+  function killCsvVisible(rows: { id: string; title: string; account: string; status: string; days: number; cost: number; gmv: number; roi: number; orders: number; imp: number; verdict: string; reason: string; postedAt?: string | null; insLabel?: string; insDetail?: string }[]) {
+    // Visible-columns export: same column order as the legacy head, but only
+    // columns not hidden in Columns… (ex/shape are UI-only, never exported;
+    // orders/impressions have no toggle so always ride along). num adds #.
+    const q = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const show = (k: string) => !crHidden.has(k);
+    const cols: { head: string; get: (r: any, i: number) => string }[] = [];
+    if (show("num")) cols.push({ head: "#", get: (_r, i) => String(i + 1) });
+    if (show("postid")) cols.push({ head: "post_id", get: (r) => r.id });
+    if (show("post")) cols.push({ head: "title", get: (r) => q(r.title) });
+    if (show("account")) cols.push({ head: "account", get: (r) => q(r.account) });
+    if (show("status")) cols.push({ head: "status", get: (r) => r.status });
+    if (show("posted")) cols.push({ head: "posted", get: (r) => postedDay((r as any).postedAt) });
+    if (show("age")) cols.push({ head: "age_days", get: (r) => postedAge((r as any).postedAt).replace("d", "") });
+    if (show("days")) cols.push({ head: "days", get: (r) => String(r.days) });
+    if (show("spend")) cols.push({ head: "spend", get: (r) => r.cost.toFixed(2) });
+    if (show("gmv")) cols.push({ head: "gmv", get: (r) => r.gmv.toFixed(2) });
+    if (show("roi")) cols.push({ head: "roi", get: (r) => r.roi.toFixed(2) });
+    cols.push({ head: "orders", get: (r) => String(r.orders) });
+    cols.push({ head: "impressions", get: (r) => String(r.imp) });
+    if (show("verdict")) cols.push({ head: "verdict", get: (r) => r.verdict });
+    if (show("insight")) cols.push({ head: "insight", get: (r) => q((r as any).insLabel ?? "") });
+    if (show("insight")) cols.push({ head: "insight_detail", get: (r) => q((r as any).insDetail ?? "") });
+    if (show("why")) cols.push({ head: "reason", get: (r) => q(r.reason) });
+    const head = cols.map((c) => c.head).join(",");
+    const lines = rows.map((r, i) => cols.map((c) => c.get(r, i)).join(","));
+    const blob = new Blob([[head, ...lines].join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `kill-list-${crStart}_${crEnd}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  function killPreview(rows: { id: string; title: string; account: string; status: string; days: number; cost: number; gmv: number; roi: number; orders: number; imp: number; verdict: string; reason: string; postedAt?: string | null; insLabel?: string; insDetail?: string }[]) {
+    // Sheet-like preview (tiktok-creative-analysis pattern): same filtered set
+    // as Export, standalone HTML table in a new tab. Drag-select any cells
+    // (e.g. part of the Post ID column), drag header edges to resize, click a
+    // cell to expand it. Opens with the main table's hidden columns applied.
+    const PREVIEW_COLS = ["#", "Post ID", "Post", "Account", "Status", "Posted", "Age", "Days", "Spend", "GMV", "ROI", "Orders", "Impressions", "Verdict", "Insight", "Insight detail", "Reason"];
+    const PREVIEW_WIDTHS = [50, 170, 300, 150, 110, 110, 60, 60, 90, 110, 70, 80, 110, 90, 150, 220, 240];
+    const esc = (v: unknown) => String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const keyOfIdx: (string | null)[] = ["num", "postid", "post", "account", "status", "posted", "age", "days", "spend", "gmv", "roi", null, null, "verdict", "insight", "insight", "why"];
+    const hiddenIdx: number[] = [];
+    keyOfIdx.forEach((k, i) => { if (k && crHidden.has(k)) hiddenIdx.push(i); });
+    const css = "body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;margin:0;background:#f3f4f6;color:#111827}" +
+      "@media (prefers-color-scheme:dark){body{background:#111827;color:#e5e7eb}}" +
+      "header{position:sticky;top:0;z-index:5;background:inherit;padding:12px 16px;border-bottom:1px solid #d1d5db}" +
+      "h1{font-size:16px;margin:0 0 4px}p.meta{font-size:12px;color:#6b7280;margin:0 0 8px}" +
+      ".toolbar{display:flex;gap:8px;align-items:center;font-size:13px;flex-wrap:wrap}.tip{color:#6b7280}" +
+      ".toolbar button{padding:4px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;cursor:pointer;font-size:12px}" +
+      "@media (prefers-color-scheme:dark){.toolbar button{background:#374151;border-color:#4b5563;color:#e5e7eb}}" +
+      ".toolbar button:hover{background:#e5e7eb}" +
+      "@media (prefers-color-scheme:dark){.toolbar button:hover{background:#4b5563}}" +
+      ".colpick{position:relative}.colpick summary{cursor:pointer;padding:4px 10px;border:1px solid #d1d5db;border-radius:6px;background:#fff;font-size:12px;list-style:none}" +
+      "@media (prefers-color-scheme:dark){.colpick summary{background:#374151;border-color:#4b5563}}" +
+      ".colpick .colist{position:absolute;top:110%;left:0;z-index:10;background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;max-height:300px;overflow:auto;min-width:220px;font-size:12px}" +
+      "@media (prefers-color-scheme:dark){.colpick .colist{background:#1f2937;border-color:#4b5563}}" +
+      "#copyStatus{font-size:12px;color:#059669}" +
+      ".wrap-scroll{overflow:auto;max-height:calc(100vh - 140px)}" +
+      "table{border-collapse:collapse;table-layout:fixed;width:max-content;min-width:100%;font-size:12px;background:#fff}" +
+      "@media (prefers-color-scheme:dark){table{background:#1f2937}}" +
+      "th,td{border:1px solid #e5e7eb;padding:6px 8px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}" +
+      "@media (prefers-color-scheme:dark){th,td{border-color:#374151}}" +
+      "thead th{position:sticky;top:0;background:#e5e7eb;resize:horizontal;overflow:hidden;min-width:60px;max-width:800px;z-index:2}" +
+      "@media (prefers-color-scheme:dark){thead th{background:#030712}}" +
+      "tbody tr:nth-child(even){background:rgba(0,0,0,0.04)}" +
+      "td.num{text-align:right;font-variant-numeric:tabular-nums}td.mono{font-family:ui-monospace,monospace;font-size:11px}" +
+      "td.open{white-space:normal;overflow:visible}table.wrap-all td{white-space:normal;overflow:visible}";
+    const js = "function setCol(i,show){var s='[data-col=\"'+i+'\"]';" +
+      "document.querySelectorAll('th'+s+',td'+s+',col'+s).forEach(function(el){el.style.display=show?'':'none';});" +
+      "var cb=document.querySelector('#colList input[data-col=\"'+i+'\"]');if(cb)cb.checked=!!show;}" +
+      "function setAll(show){for(var i=0;i<" + PREVIEW_COLS.length + ";i++)setCol(i,show);}" +
+      "document.querySelector('tbody').addEventListener('click',function(e){" +
+      "var td=e.target.closest?e.target.closest('td'):null;if(td)td.classList.toggle('open');});" +
+      "document.getElementById('wrapAll').addEventListener('change',function(e){" +
+      "document.querySelector('table').classList.toggle('wrap-all',e.target.checked);});" +
+      "document.getElementById('btnShowAll').addEventListener('click',function(){setAll(true);});" +
+      "document.getElementById('btnPostId').addEventListener('click',function(){for(var i=0;i<" + PREVIEW_COLS.length + ";i++)setCol(i,i===1);});" +
+      "document.getElementById('btnHideAll').addEventListener('click',function(){setAll(false);});" +
+      "document.getElementById('colList').addEventListener('change',function(e){" +
+      "var cb=e.target.closest?e.target.closest('input[data-col]'):null;if(!cb)return;" +
+      "setCol(parseInt(cb.getAttribute('data-col'),10),cb.checked);});" +
+      "document.getElementById('btnCopyIds').addEventListener('click',function(){" +
+      "var ids=Array.prototype.map.call(document.querySelectorAll('tbody tr td[data-col=\"1\"]')," +
+      "function(td){return (td.textContent||'').trim();}).filter(function(x){return x;});" +
+      "var msg=document.getElementById('copyStatus');" +
+      "function done(ok,n){msg.textContent=ok?('Copied '+n+' Post ID'+(n===1?'':'s')):'Copy failed — select the Post ID column and press Ctrl+C';}" +
+      "if(!ids.length){msg.textContent='No Post IDs to copy';return;}" +
+      "var txt=ids.join('\\n');" +
+      "if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(function(){done(true,ids.length);},function(){fallback();});}" +
+      "else fallback();" +
+      "function fallback(){var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);" +
+      "ta.select();try{done(document.execCommand('copy'),ids.length);}catch(err){done(false,0);}document.body.removeChild(ta);}});" +
+      "var HIDDEN=" + JSON.stringify(hiddenIdx) + ";HIDDEN.forEach(function(i){setCol(i,false);});";
+    const head = "<tr>" + PREVIEW_COLS.map((c, i) => '<th data-col="' + i + '">' + esc(c) + "</th>").join("") + "</tr>";
+    const cols = PREVIEW_WIDTHS.map((w, i) => '<col data-col="' + i + '" style="width:' + w + 'px">').join("");
+    const body = rows.map((r, i) => "<tr>" +
+      '<td class="num" data-col="0">' + (i + 1) + "</td>" +
+      '<td class="mono" data-col="1">' + esc(r.id) + "</td>" +
+      '<td data-col="2">' + esc(r.title) + "</td>" +
+      '<td data-col="3">' + esc(r.account) + "</td>" +
+      '<td data-col="4">' + esc(r.status) + "</td>" +
+      '<td data-col="5">' + esc(postedDay((r as any).postedAt)) + "</td>" +
+      '<td data-col="6">' + esc(postedAge((r as any).postedAt)) + "</td>" +
+      '<td class="num" data-col="7">' + r.days + "</td>" +
+      '<td class="num" data-col="8">' + r.cost.toFixed(2) + "</td>" +
+      '<td class="num" data-col="9">' + r.gmv.toFixed(2) + "</td>" +
+      '<td class="num" data-col="10">' + r.roi.toFixed(2) + "</td>" +
+      '<td class="num" data-col="11">' + r.orders + "</td>" +
+      '<td class="num" data-col="12">' + r.imp + "</td>" +
+      '<td data-col="13">' + esc(r.verdict) + "</td>" +
+      '<td data-col="14">' + esc((r as any).insLabel ?? "") + "</td>" +
+      '<td data-col="15">' + esc((r as any).insDetail ?? "") + "</td>" +
+      '<td data-col="16">' + esc(r.reason) + "</td></tr>").join("");
+    const colChecks = PREVIEW_COLS.map((c, i) => '<label><input type="checkbox" data-col="' + i + '" checked> ' + esc(c) + "</label>").join("");
+    const html = "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">" +
+      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
+      "<title>Preview (" + rows.length + " rows) — Creative kill list</title>" +
+      "<style>" + css + "</style></head><body>" +
+      "<header><h1>Preview — " + rows.length + " rows</h1>" +
+      "<p class=\"meta\">kill-list " + esc(crStart) + " → " + esc(crEnd) + " · generated " + esc(new Date().toLocaleString("en-GB")) + "</p>" +
+      "<div class=\"toolbar\"><label><input type=\"checkbox\" id=\"wrapAll\"> Wrap all cells</label>" +
+      "<button type=\"button\" id=\"btnShowAll\">Show all</button>" +
+      "<button type=\"button\" id=\"btnPostId\">Post ID only</button>" +
+      "<button type=\"button\" id=\"btnHideAll\">Hide all</button>" +
+      "<button type=\"button\" id=\"btnCopyIds\">Copy Post IDs</button><span id=\"copyStatus\"></span>" +
+      "<details class=\"colpick\"><summary>Columns…</summary><div class=\"colist\" id=\"colList\">" + colChecks + "</div></details>" +
+      "<span class=\"tip\">Tip: drag to select any cells, drag a column edge to resize, click any cell to expand it, Ctrl+F to find.</span></div></header>" +
+      "<div class=\"wrap-scroll\"><table><colgroup>" + cols + "</colgroup><thead>" + head + "</thead><tbody>" + body + "</tbody></table></div>" +
+      "<script>" + js + "</scr" + "ipt></body></html>";
+    window.open(URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" })), "_blank");
+  }
+
   function trendCsv(rows: { id: string; title: string; account: string; verdict: string; dm: Map<string, { gmv: number; cost: number; orders: number }>; tot: { gmv: number; cost: number; orders: number } }[], days: string[], metric: string) {
     const mv = (o: { gmv: number; cost: number; orders: number }) => (metric === "cost" ? o.cost : metric === "orders" ? o.orders : o.gmv);
     const head = ["post_id", "title", "account", "verdict", `total_${metric}`, ...days].join(",");
@@ -748,6 +917,9 @@ export default function CreativePage() {
   async function syncRows() {
     if (crBusy || crFetching) return;
     setCrBusy(true);
+    const t0 = Date.now();
+    fetchCancelRef.current = false;
+    clearProgClose();
     try {
       const total = isoDayCount(crStart, crEnd);
       if (total <= 0) { const m = "Pick a valid date range first."; setCrMsg(m); toast(m, "err"); return; }
@@ -760,12 +932,16 @@ export default function CreativePage() {
         chunks.push({ s: cs, e: ce });
         ce = isoAddDays(cs, -1);
       }
-      let totalRows = 0, totalDays = 0, camps = 0, skipCount = 0;
+      setFetchProg({ total: chunks.length, done: 0, label: rangeLabel(chunks[0].s, chunks[0].e), failed: [], startedAt: t0, kind: "sync" });
+      let totalRows = 0, totalDays = 0, camps = 0, skipCount = 0, doneChunks = 0;
       let lastMeta: { found?: number; missed?: number; skipped?: string | null; debug?: Record<string, string> } | undefined;
       const errs: string[] = [];
+      let cancelled = false;
       for (let i = 0; i < chunks.length; i++) {
+        if (fetchCancelRef.current) { cancelled = true; break; }
         const ch = chunks[i];
         setCrMsg(chunks.length > 1 ? `Syncing from TikTok… chunk ${i + 1}/${chunks.length} (${ch.s}–${ch.e})` : "Syncing from TikTok…");
+        setFetchProg({ total: chunks.length, done: i, label: rangeLabel(ch.s, ch.e), failed: [...errs], startedAt: t0, kind: "sync" });
         try {
           const r = await fetch("/api/creative-sync", {
             method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.NEXT_PUBLIC_PRESET_WRITE_KEY ?? ""}` },
@@ -778,6 +954,7 @@ export default function CreativePage() {
           camps = body.campaigns ?? camps;
           skipCount += Object.keys(body.skipped ?? {}).length;
           if (body.meta) lastMeta = body.meta;
+          doneChunks++;
         } catch (e) {
           errs.push(`${ch.s}–${ch.e}: ${e instanceof Error ? e.message : "failed"}`);
         }
@@ -790,14 +967,16 @@ export default function CreativePage() {
         : "";
       const skipMsg = skipCount ? `, ${skipCount} skips` : "";
       const errMsg = errs.length ? ` · ${errs.length} chunk(s) failed: ${errs.join("; ").slice(0, 200)}` : "";
-      const okMsg = `Synced ${totalRows} rows (${camps} campaigns × ${totalDays}d${skipMsg})${metaMsg}.${errMsg}`;
+      const okMsg = `${cancelled ? "Cancelled: " : ""}Synced ${totalRows} rows (${camps} campaigns × ${totalDays}d${skipMsg})${metaMsg}.${errMsg}`;
       setCrMsg(okMsg);
       toast(okMsg, errs.length ? "err" : "ok");
+      finishProg(t0, chunks.length, doneChunks, errs, "sync");
       await loadRows();
     } catch (e) {
       const m = e instanceof Error ? e.message : "sync failed";
       setCrMsg(m);
       toast(m, "err");
+      finishProg(t0, 1, 0, [m.slice(0, 120)], "sync");
     } finally {
       setCrBusy(false);
     }
@@ -1337,7 +1516,38 @@ export default function CreativePage() {
                 {sTail > 0 ? ` · tail waste MYR ${sTail.toFixed(0)}` : ""}
               </span>
               {!k.fatigueOn && <span className="text-[11px] text-zinc-600">(FATIGUE off — need 3+ days)</span>}
-              <button onClick={() => killCsv(displayed)} className="ml-auto rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800">CSV</button>
+              <button onClick={() => killPreview(displayed)} title="Open sheet-like preview in a new tab (drag-select any cells)" className="ml-auto rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800">Preview</button>
+              <div className="relative">
+                <button onClick={() => setCsvOpen((v) => !v)} title="Export kill list as CSV with column picks" className="rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800">Export ▾</button>
+                {csvOpen && (
+                  <div className="absolute right-0 z-20 mt-1 w-72 rounded-lg border border-zinc-700 bg-zinc-900 p-2 shadow-lg">
+                    <div className="mb-1 flex items-center gap-1 text-[11px]">
+                      <span className="text-zinc-400">Columns for CSV</span>
+                      <span className="flex-1" />
+                      <button onClick={() => setCrHidden(new Set())} className="rounded px-1.5 py-0.5 text-emerald-300 hover:bg-zinc-800">All</button>
+                      <button onClick={() => { setCrHidden(new Set(KILL_COLS.map((c) => c.key).filter((k) => k !== "postid"))); setDailyOpen(false); }} title="Show only Post ID" className="rounded px-1.5 py-0.5 text-teal-200 hover:bg-zinc-800">Post ID only</button>
+                      <button onClick={() => setCrHidden(new Set(KILL_COLS.map((c) => c.key)))} className="rounded px-1.5 py-0.5 text-zinc-400 hover:bg-zinc-800">None</button>
+                    </div>
+                    <div className="flex max-h-56 flex-wrap gap-1 overflow-auto">
+                      {KILL_COLS.map((c) => {
+                        const uiOnly = c.key === "ex" || c.key === "shape";
+                        return (
+                          <label key={c.key} title={uiOnly ? "UI-only, never exported" : c.label} className={`inline-flex cursor-pointer items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-zinc-800 ${uiOnly ? "text-zinc-600" : "text-zinc-300"}`}>
+                            <input type="checkbox" checked={!crHidden.has(c.key)} disabled={uiOnly} onChange={() => toggleCol(c.key)} />
+                            {c.label}{uiOnly ? "*" : ""}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-1 text-[10px] text-zinc-500">Rows = current table (no-card + filters applied). *Ex/Shape never exported; orders/impressions always ride along; Daily ▸ columns not exported.</p>
+                    <div className="mt-1 flex gap-1">
+                      <button onClick={() => { setCsvOpen(false); killCsvVisible(displayed); }} className="flex-1 rounded border border-teal-700 px-2 py-1 text-[11px] text-teal-200 hover:bg-teal-950">Download CSV (visible)</button>
+                      <button onClick={() => { setCsvOpen(false); killCsv(displayed); }} title="Legacy full-column export" className="flex-1 rounded border border-zinc-700 px-2 py-1 text-[11px] hover:bg-zinc-800">Download CSV (all)</button>
+                    </div>
+                    <button onClick={() => setCsvOpen(false)} className="mt-1 w-full rounded px-2 py-1 text-[11px] text-zinc-500 hover:bg-zinc-800">Cancel</button>
+                  </div>
+                )}
+              </div>
               <button onClick={selectKills} className="rounded-lg border border-zinc-700 px-2 py-1 text-xs hover:bg-zinc-800" title="Select all KILL rows (excludes Unattributed)">Select KILL</button>
               <button onClick={() => void copyDraft()} disabled={exSel.size === 0} className="rounded-lg border border-red-900 px-2 py-1 text-xs text-red-200 hover:bg-red-950 disabled:opacity-50" title="Copy selected post IDs — remove them in Ads Manager by hand">
                 {exCopied ? `Copied ${exSel.size}!` : `Copy draft (${exSel.size})`}
@@ -1757,6 +1967,39 @@ export default function CreativePage() {
           </table>
         </div>
       )}
+      {fetchProg && (() => {
+        const endTs = fetchProg.finishedAt ?? fetchNow ?? fetchProg.startedAt;
+        const elapsed = Math.max(0, Math.floor((endTs - fetchProg.startedAt) / 1000));
+        const finished = !!fetchProg.finishedAt;
+        const verb = fetchProg.kind === "sync" ? "Syncing TikTok" : "Fetching";
+        const eta = !finished && fetchProg.total > 1 && fetchProg.done > 0
+          ? Math.max(0, Math.round((elapsed / fetchProg.done) * (fetchProg.total - fetchProg.done)))
+          : null;
+        const pct = fetchProg.total ? Math.round((fetchProg.done / fetchProg.total) * 100) : 0;
+        const indeterminate = !finished && fetchProg.done === 0;
+        return (
+        <div className="fixed bottom-4 right-4 z-[60] w-72 rounded-xl border border-zinc-700 bg-zinc-900 p-3 shadow-xl">
+          <div className="flex items-center justify-between text-sm font-medium text-zinc-100">
+            <span>{finished ? `Done ✓ ${fetchProg.done}/${fetchProg.total} · ${elapsed}s` : `${verb}… ${fetchProg.done}/${fetchProg.total} · ${elapsed}s`}</span>
+            {fetchProg.total > 1 && !finished && (
+            <button
+              onClick={() => { fetchCancelRef.current = true; }}
+              className="rounded border border-zinc-700 px-2 py-0.5 text-xs text-zinc-200 hover:bg-zinc-800"
+            >Cancel</button>
+            )}
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-800">
+            {indeterminate
+              ? <div className="h-full w-1/4 animate-pulse rounded-full bg-emerald-500" />
+              : <div className="h-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />}
+          </div>
+          <div className="mt-1.5 text-[11px] text-zinc-400">{fetchProg.label}{eta !== null ? ` · ≈${eta}s left` : ""}</div>
+          {fetchProg.failed.length > 0 && (
+            <div className="mt-1 text-[11px] text-amber-300">{fetchProg.failed.length} slice(s) failed: {fetchProg.failed.join(", ")}</div>
+          )}
+        </div>
+        );
+      })()}
     </main>
   );
 }

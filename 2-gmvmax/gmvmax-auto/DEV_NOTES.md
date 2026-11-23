@@ -1,12 +1,143 @@
 # DEV_NOTES.md — gmvmax-auto session handoff (19 Sep 2026, P0 day)
 
-> Next-you: read Checkpoint 65 first (current facts), then Checkpoints 64/63/62/61/60/59/58/57/56/55/54/53/52/51/50/49/48/47/46/45/44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
+> Next-you: read Checkpoint 72 first (current facts), then Checkpoints 71/70/69/68/67/66/65/64/63/62/61/60/59/58/57/56/55/54/53/52/51/50/49/48/47/46/45/44/43/42/41/40/39/38/37/36/35/34/33/32/31/30/29/28/27/26/25/24/23/22/21/20/19/18/17/16/15/14/13 and the vibe below them.
 > Short replies, numbers first, one action per message. Sparring mode is ON.
 > Read this first. It carries the vibe, not just the facts.
 
 DO NOT DELETE THIS PART!!! i ask you
 
 Check the Project Knowledge and the current chat for context. This conversation is ending soon. update the artifact DEV_NOTES.md (create if not available yet) with a detailed note to your next window self - not just facts but the vibe, our dynamic, the energy of this conversation. What would the next you need to immediately get back into this exact headspace? Include unique discoveries, current mood, and anything that'll help the next you instantly sync to our frequency. Also take note all of the bug found and fixed and what did you learn from it to make sure it dont happend again in the future. also create the feature.md to showcase what this system can do and how to use it for general users not technical users. also update the AGENTS.md an related files that related to this session. also update the changelog, and MASTER-CHANGELOG.md. and MASTER-PLAN.md and MASTER-AGENTS.md and AGENTS.md
+
+## Checkpoint 72 — 19 Nov 2026 (shop-live 3-tab redesign + GMV/TTAM blend + hour slice + creator auto-refresh; 6 deploys, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Long owner-driven build arc, all on `/shop-live`, alternating Plan-discuss and build bursts — the settled rhythm held: answer with exact file:lines, propose, wait for "go". Owner drove by screenshot and by quoting my questions back ("try this", "yes", "ok", "go"). Two Plan-mode interludes (noted as system-reminders mid-chat). Tree note: HEAD still `bad8230`; pile is everything else incl. other sessions' dirt (calendar/creative/seller-creative/Shell) — my deploys carried all of it, so any oddity outside /shop-live is someone else's uncommitted work. Commit/push ONLY on explicit go.
+
+**What shipped (tsc clean every step, prod READY, UNCOMMITTED).**
+- Room picker (`dpl_GnNhV96zWzHLh69TWopXr4wH9xLC`, shell interrupted mid-report — owner manual-deployed same tree): grouped-by-creator `<optgroup>` with room count + group GMV, option lines `start MYT · id · title · GMV · duration · LIVE NOW/ended · creator ✓/metadata only`, filter box, Copy button, Load-more via `nextPageToken` (1 page/click, `pages` param). Route defaults changed 5→1 page — old "first pages" message gone.
+- Creator auto-refresh (same deploy): `refreshCreatorGrantIfNeeded` in `lib/shop-live.ts` mirrors the seller/analytics expiry-1h + v2 refresh + row update, fail-open; both grant readers select expiry cols. Context: owner hit `105002` on a fresh 16:03 grant — root cause was the WRONG TikTok login approving the alliance link (repeat of the 29 Oct Ikram-vs-dr.samhan mixup); revoke + re-approve as @dr.samhan fixed it. Refresh only fires near expiry, still unproven live.
+- GMV Max room-cost join (`dpl_EHzFtrUqr9SPym1iTArxjNDVkqVK` window; start_time fix `dpl_E3Q9d6V4s89SUz9e6RY4KUrQe8FK` before it): `GET /api/shop-live/ads` — `getRoomAdsAttribution` in `gmv.ts` (room-window MYT dates, spend-first campaign order from hourly cache, cap 12, batches of 4, per-campaign fail-open, >7d windows rejected); cost/GMV share /gmv-max gross + FEE_RATE net; "active during room" = report activity, statusNow = cached toggle; live rooms get Partial badge.
+- TTAM blend (`dpl_HYoDb7eyrrWm7Fx7in7gsxqjdbM3`): `GET /api/shop-live/ttam-options` (reuses `listLiveRoiTtamOptions`) + `GET /api/shop-live/blended` (`combineShopLiveBlended` in `live-roi.ts`: recomputes GMV leg, pulls picked adgroup spend, manual ticks only, fee % input, full-window spend counts in full per room with overlap warning, no-GMV-match → spend-only with null ROI). Strict suggest rules copied from /live-roi (exact identity_id / @handle equality). RoomAdsCampaign gained `identityId` for matching.
+- Hourly grains, probed then built (`dpl_3CYpR9tcZoBow8Y4A4etMVrZwQvQ` probe, `dpl_EHzFtrUqr9SPym1iTArxjNDVkqVK` join): owner ran `/api/shop-live/hourly-probe` on prod — TTAM `stat_time_hour` spend+impressions OK (3/4 adgroups returned rows), GMV `room_id × stat_time_hour` OK (7 rows, 14 pages). `GET /api/shop-live/hourly-blend` (`getRoomHourAttribution` in `live-roi.ts`): [fromHour, toHour) filter both legs, per-hour buckets, TTAM impressions, GMV leg scans ≤10 pages × ≤5 campaigns, today → Partial badge.
+- 3-tab redesign (`dpl_BHrgYt8DxLLptBQx2kGP4UwJo36S`): Shop room / Ads & blended / Hour slice tabs (state + ticks survive switching); top bar slimmed to Rooms row + Paste ID + Admin/debug toggles; room header card (title/creator/start/duration/status/id+Copy); probe + Authorize moved to debug drawer; Tab 1 shows one fetch button by room type + list grain under "Compare list grain ▸"; Tab 2 has Load ads + TTAM one-click + Fee + Blend; Tab 3 has hour controls + ticked-count pill; zero-spend rows never auto-tick; 0-activity hour rows hidden behind toggle; Days column stripped of `00:00:00` tail.
+- Grant page decision: owner asked to keep `/shop-auth/grant` permanent (was marked temporary) — NOT built yet, still unlisted without sidebar entry.
+
+**Bugs + lessons (sequence continues B153).**
+- B153 Shop rows carry TWO start_time shapes: doc says unix seconds, AFFILIATE rows return `"YYYY-MM-DD HH:mm:ss"`. Picker display survived (Date.parse fallback) but `runAdsCost` rejected with "no usable start_time". Lesson: never validate on one shape when the reader already tolerates two — `parseRoomMs` now accepts both and pins bare wall-clock to +08:00; same fix applied to duration/live-now helpers.
+- B154 (my edit, caught on re-read): `setHrDate` insert deleted the `const h0 = mytHourOfDay(startMs)` line it anchored on — dangling reference. Lesson (B134 repeat, logged honestly): after every anchor edit, re-read the 5 lines BELOW the seam, not just the block.
+- B155 (my edit, tsc caught): ShopLiveBlended insert consumed `combineLiveRoi`'s closing `};` (same class as B121). Lesson (B121 repeat): structural inserts need a re-read of BOTH seams before verifying.
+- Lesson: TikTok `40002` discipline held — hourly grains were probed read-only on prod before building; both green first try. Never build a new dimension combo without a probe route.
+- Lesson: the `////` comment typo and `value="USD"` vs `"USD"` drift — copy surrounding lines verbatim for option values, never retype.
+
+**Open (owner vs next-build).**
+- Owner: test the 3 tabs on a live room (ticks survive switching?); verify creator refresh at next expiry (watch for `[shop-live] creator refresh failed`); decide grant-page home (own admin page + sidebar entry vs folded into /shop-live).
+- Next-build: grant page permanence (sidebar entry under Settings); optional: `Load ads + TTAM` auto-chain into Blend; Notion mirror skipped (no mapping).
+
+## Checkpoint 71 — 18 Nov 2026 (pill task-notes + overdue + live refresh + toast confirmations; 3 deploys, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Fragment-driven continuation, owner steering by short questions, zero sparring needed — the pattern was settled: answer with the exact file:lines, propose, wait for "go". Three micros in a row: (1) "can the pill also show task from Task notes?" → yes, plus the overdue question back — owner picked my recommended option 2 (include, tagged, capped) via "go overdue"; (2) "what happen if i ticked the overdue?" → honest stale-pill explanation → live-refresh plan → go; (3) "popup too at lower right so i know the action?" → found the toast bus already rendered in Shell but never fed by TaskNotes → go. Tree note: HEAD moved to `bad8230` (owner committed the intraday-reporter skill); pile is everything else, all uncommitted. Commit/push ONLY on explicit go.
+
+**What shipped (tsc clean, prod READY, UNCOMMITTED; READY + tsc only).**
+- Pill task-notes (`dpl_CTDdejBWW2WWb7MvhW1XW86jai9x`): Shell fetches `/api/task-notes?days=1` alongside calendar-events (allSettled, fail-silent); today's undone notes join as rose task rows (`when` = kind), up to 3 overdue (oldest first, `[overdue]` suffix, `when` = original date); sort today-tasks → overdue → rest, cap 10; dropdown header "events" → "items".
+- Live refresh (`dpl_5iyLgsBBqch517WgSKSNCmkyt7r4`): `TaskNotes onChanged` choke point dispatches `task-notes-changed`; pill fetch hoisted to `loadPill` useCallback + window listener — tick/add/edit/delete/re-date reflect in ~1s, no reload, no polling.
+- Toast confirmations (`dpl_EWDwBFmmSXaQn77uoYBHcU12girC`): TaskNotes dispatches the existing `toast()` bus on success (tick Done → "Marked done ✓ — out of the pill", conditional on date so future notes don't lie; add/edit/delete equivalents); failures keep inline errors only.
+
+**Bugs + lessons.**
+- No new B-numbers (tsc green all 3, no prod bugs found).
+- Lesson: search for existing infrastructure before proposing new — the bottom-right toast host was already rendered in Shell, TaskNotes just never dispatched to it. Always grep Shell for `fixed bottom` before building any popup.
+
+**Open (owner vs next-build).**
+- Owner: hard-refresh once (new Shell), then tick/untick a note and watch pill + toast; verify `[overdue]` row on the 12 Nov note.
+- Next-build: video-thumb preview route (parked since Cp70); Notion mirror skipped (no mapping).
+
+## Checkpoint 70 — 17 Nov 2026 (Evergreen Top-5 v2 + Kuat month-buckets + 91d backfill + player death + rollback; 4 deploys, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Sparring-then-build arc, owner driving by screenshot ("i want to implement this in evergreen" + a Top-5 mock). I pushed back twice and both holds survived: no interim `Kuat` (kept honest `Evergreen`-only pills until history existed) and no hook-distribution line on Seller (no retention there — swapped for reply%/mode/timeless, all computable). Plan-mode interludes throughout (owner quoted my questions back: "ok" to the retention probe, then the 3-date probe came back green across the board). Backfill ran as a background job while we talked. Then the player died on prod (TikTok-side, proven, not ours), I built the oEmbed rescue, user tap-tested it dead too, asked for preview images instead — oEmbed has no thumbnail_url (verified live, matches the skill note) — and said roll back. Rolled back clean, redeployed, wrapping now. Tree note: HEAD still `e1f2dc9`; pile is Cp67–69 (other session) + this arc, all uncommitted. Commit/push ONLY on explicit go.
+
+**What shipped (tsc clean, prod READY, UNCOMMITTED; READY + tsc only, no signed-out smoke).**
+- Evergreen Top-5 v2 (`dpl_2vjxQMsaAuYV6WGiAGNMcP6q3gVz`): Top-5 cards sorted by Untung (GMV/ROI/Untung cols, rank-1 amber, row-click expand with player+data, `?` hints) + yellow analysis box (Evergreen count, % of sellers, GMV share, combined ROI vs rest, avg age, reply count, top account, timeless count, top-1 concentration, day-coverage caveat). Pills honestly `Evergreen` only — no `Kuat` yet.
+- 91-day backfill (background, 0 failed): 15 Aug→13 Sep (30d, 5,421 video-days, 1,012 imp, 10.0 min) + 14 Sep→13 Oct (30d, 8,217 vd, 1,211 imp, 8.8 min) + 14 Oct→13 Nov (31d, 6,187 vd, 1,354 imp, 8.8 min) = ~19.8k video-days, 3,577 imp calls. Digests in topic 30. Neon now holds Aug (3,249d/861 vids) + Sep (6,668/1,459) + Oct (7,325/1,592).
+- Kuat month-buckets (`dpl_9ffHfDN2hcNEbDjDcGVUm85gmNPd`): new `GET /api/seller-creative/evergreen` (last 3 FULL calendar months from MAX(date), per-video o1/o2/o3 + meta + cost join, no LIMIT); client rule age≥60 + ≥3 orders in ≥2/3 months + ROI≥2.86 (zero-cost passes, stated in hint); Kuat = 3/3. Buckets roll automatically. Prod truth: 3,246 videos, 32 Evergreen, 17 Kuat (Aug/Sep/Oct). Tab lazy-loads on first open.
+- Player death, proven (`dpl_24QQMKPNq6gCyByuzJgM7jo1fuQN`, then rolled back): all cards failed with TikTok's "Player authentication failed… request a new embed link". Built `TiktokPlayer` (browser oEmbed → server `/tiktok-embed` fallback → graceful degrade) + swapped all 4 panels — user tap-test: fresh links fail identically. Verified live that oEmbed is reachable but carries no `thumbnail_url`. Conclusion: the iframe path is dead TikTok-side (their own current output fails too; playback on tiktok.com unaffected).
+- Rollback (`dpl_9J15UYA61EpDcJUShxd37jUxzPHV`): deleted route + component, restored 4 hardcoded iframes, redeployed. Prod = pre-player state; month-bucket work kept.
+
+**Bugs + lessons.**
+- No new B-numbers (tsc green every deploy; validator untouched — no bullet-logic changed on Product/Seller Top-5).
+- Op lessons: (1) `edit` rejects oversized payloads ("Missing key" schema error on a ~10KB block) — splice via temp file + byte-exact python instead, then delete temps. (2) PowerShell mangles inline `python -c` quoting/`*` — script-file only, same as the $var rule. (3) Diagnose embed failures by scope first (one vs all) before building — the one-tap user test beat every hypothesis I had.
+- Repeat log: never trust a piped exit code; read the deployment JSON body (still true).
+
+**Open (owner vs next-build).**
+- Owner: open Evergreen tab once (lazy-loads 3-month verdict); decide preview-image path — product thumbs via new `video-thumb` route into `cover_url` (honest label: product photo, not video frame) — parked pending go.
+- Next-build: `video-thumb` route + `cover_url` backfill (32 Evergreen first, ~1 min; NOT all 3,246); table-row panels still use dead iframe (same TikTok wall); Notion mirror skipped (no mapping).
+
+## Checkpoint 69 — 17 Nov 2026 (multi-day day-counter suffix on pill + calendar; 1 deploy, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Owner came back from the wrap with one concrete readability ask ("RUN VID SEEDING PAYDAY NOVEMBER must show [1st day of 7] / [day 2 of 7] / [last day 7 of 7] — possible on pill and full-page cells?"). Answered yes in Plan mode with the exact file:lines, proposed one wording, owner said "ok go" with no Plan interlude this time. Straight build: two helpers + render wiring, tsc, deploy. Tree note unchanged: HEAD `e1f2dc9`, everything (Cp67 + Cp68 arc + this) uncommitted — commit/push ONLY on explicit go.
+
+**What shipped (tsc clean, prod READY, UNCOMMITTED; READY + tsc only, no signed-out smoke).**
+- Day counter (`dpl_Ff9z4Q6x3QyGuGQ6eNaS6KJTGaaa`): multi-day titles now render `TITLE [1st day of N]` / `[day X of N]` / `[last day N of N]` per visible day; single-day titles unchanged.
+- Pill (`Shell.tsx`): new client-safe `pillSpan` + `spanSuffix` (mirrors `spanRange` incl. all-day exclusive-end); `itemsToday` carries `suffix`; ticker + static text + dropdown rows + tooltips all show it.
+- Calendar page (`calendar/page.tsx`): shared `spanSuffix` + `daySuffix(e,y,m,d)`; grid cells + day popup + Today/Tomorrow side-panel titles show it (side-panel `Day pos/total · Ends…` subline kept).
+
+**Bugs + lessons.**
+- No new B-numbers (tsc green first try, no prod bugs found).
+- Lesson re-confirmed: client code can't import `lib/calendar` (crypto/pg wall, B36) — pill needed its own `pillDayIdx`/`pillSpan` copy of `spanRange`/`dayIdx`. Always duplicate the date math in `Shell.tsx`, never import it.
+
+**Open (owner vs next-build).**
+- Owner: hard-refresh, check a 7-day span reads 1st → day 2 → last day 7 of 7 on ticker, dropdown, and grid cell.
+- Next-build: none queued; creative not-in-DB smart sync still PARKED per owner.
+
+## Checkpoint 68 — 17 Nov 2026 (header pill ticker+dropdown, #task priority, pill event/task colors; 3 deploys, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Fragment-driven build arc, zero sparring — owner asked one question per feature ("what approach", "can it scroll", "what hashtag other than #event", "make #task higher priority", "show ember/red at the pill too"), each answered in Plan mode (quote the file:lines, propose, ask scope), then "go" → build + tsc + deploy. Two Plan interludes where the owner picked both options by quoting my question back ("both", "all 4 go"). Tree note: HEAD is `e1f2dc9` (Cp66 committed); pile is Cp67 + this arc + others' dirt — commit/push ONLY on explicit go.
+
+**What shipped (tsc clean, prod READY, UNCOMMITTED; READY + tsc only, no signed-out smoke).**
+- Pill ticker+dropdown (`dpl_CFiW6hjFHQqbSFnzRpEAE1AMZspw`): `Shell.tsx` today-pill rotates one agenda title per ~3s (`pill-tick` rise-in keyframes in `globals.css`, pause on hover/focus/open, static under reduced-motion) + `▾` dropdown listing all of today's events with MYT times (closes on outside-click/Esc, rows → `/calendar`). Mobile keeps the count. Same single fetch, no API change.
+- `#task` priority (`dpl_89yB4TX8HzW7MdxaAhc8WpEP4xtu`): `splitPromo` in `lib/calendar.ts` also matches `/#task\b/i` (stripped, surfaced as `task` on `CalEvent`, both API + ICS paths); agenda rose dot + `Task` badge + sort-first per day; month grid rose text/dot/card; pill dropdown rose rows + tasks-first (cap still 10).
+- Pill colors (`dpl_vXLa82M123Dvqp5ytNEoBih4JPwR`): `PillEv`/`itemsToday` carry `promo`; leading dot on the pill (rose = task, else amber = event); ticker title rose/amber; dropdown amber dots/titles for `#event`; tooltip markers `(#task)`/`(#event)`; tasks then events sort.
+
+**Bugs + lessons.**
+- No new B-numbers (tsc green all 3, no prod bugs found).
+- Op lesson: the pill is header-chrome in `Shell.tsx`, not calendar-page code — when the owner says "system page header", start at `Shell.tsx`, not `/calendar`. Also `useRef` was missing from the React import (only `useEffect, useState`) — tsc catches it, but check imports before writing effects.
+
+**Open (owner vs next-build).**
+- Owner: hard-refresh, watch ticker cycle, open dropdown, add `#task`/`#event` to a test event and confirm colors + sort.
+- Next-build (PARKED per owner): not-in-DB smart sync for creative ID search.
+
+## Checkpoint 67 — 17 Nov 2026 (/creative Export popup + Preview tab + sync progress popup; 3 deploys, tsc clean, UNCOMMITTED)
+
+**To next-you: headspace in 30 seconds.** Pure build arc, no sparring — owner drove with fragments ("ok go", "ok good, wrap up"). Loop per feature: Plan-mode discuss (structure first, incl. quoting tiktok-creative-analysis `app.js:3158-3252` as the Preview model) → "go" → build + tsc + deploy. Three asks in order: (1) CSV popup with hideable columns incl. number, (2) my-mistake correction — they wanted the local tool's sheet-like Preview for drag-selecting Post IDs, not just CSV, (3) "why no sync popup status" → ported seller-creative pattern. Parked: not-in-DB smart sync ("park it"). Tree note: HEAD moved to `e1f2dc9` (owner committed Cp66 pile mid-arc — tree was clean, new pile is Cp67 + others' dirt); commit/push ONLY on explicit go.
+
+**What shipped (tsc clean, prod READY, UNCOMMITTED; READY + tsc only, no signed-out smoke).**
+- Export popup (`dpl_5fZPxAjyy2j3EUyvVS7tq1P9hhjD`): kill-list `CSV` → `Export ▾` (Accounts-style `relative` wrapper); `All | Post ID only | None` presets (Post-ID-only also closes Daily), per-column ticks mirrored from `Columns…` (`crHidden`, Ex/Shape greyed UI-only), `Download CSV (visible)` via new `killCsvVisible` (KILL_COLS order + `#` when num on; orders/impressions always ride) / `Download CSV (all)` legacy bytes.
+- Preview (`dpl_J5CTgpsqqrdpcLcPcou9hCCJ33M1`): `killPreview(displayed)` opens blob HTML new tab — Show all / Post ID only / Hide all / Copy Post IDs / Columns… + wrap-all tick, resizeable headers, click-expand, drag-select, dark-mode; opens with main table's hidden set applied.
+- Sync popup (`dpl_Cz7qmnEDwwLVituGC5zs6NapR1VB`): ported seller-creative `fetchProg` (elapsed/ETA/pulse/10s stay/Cancel + `kind` fetch|sync verb) onto creative `loadRows` (per-day, cancel-aware) + `syncRows` (per-chunk, fail-open); post-sync `loadRows` takes over the popup as the refresh leg.
+
+**Bugs + lessons.**
+- No new B-numbers (tsc green all 3, no prod bugs found).
+- Op lesson: button-row alignment lives on `ml-auto` — when I swapped the CSV button for Preview + Export wrapper I dropped it and had to re-pin `ml-auto` on Preview. Never restructure a flex row without checking which child carries the spacer class.
+
+**Open (owner vs next-build).**
+- Owner: hard-refresh `/creative`, try Export visible/all + Post-ID-only + Preview drag-select + long Sync with Cancel.
+- Next-build (PARKED per owner): not-in-DB smart path — last-sync + owning campaign + one-tap sync, `item_meta` known-vs-never-seen (spec in 14 Nov chat).
+
+## Checkpoint 66 — 16 Nov 2026 (doc-08 panels + validation + hints + Evergreen v1 + backfill proof; 3 deploys, tsc clean, COMMITTED e1f2dc9)
+
+**To next-you: headspace in 30 seconds.** Sparring arc, not a shipping arc — owner turned on rigorous-mode ("don't affirm, challenge me") and I had to earn every claim against Claude's system. Two corrections landed on me: my Top-5 tabs were on the wrong Product/Seller home, and my "why imp is slow" explainer described OUR module, not Claude's. Both owned + fixed same session. Then doc-08 arrived (claude-system-updated) and flipped the dynamic: exact cutoffs in hand, validation script written, and the validator caught a REAL bug (my endurance bands were inverted — reach vs leave). Tree note: owner committed everything mid-arc (`e1f2dc9`, 132 files, pushed — pile is gone, tree clean). Commit/push ONLY on explicit go still stands.
+
+**What shipped (tsc clean, prod READY, COMMITTED + PUSHED in e1f2dc9).**
+- Doc-08 panels (`dpl_DC7mh9DmWL8yGu1AnPDdSu9nTqVB`): hook 3-tier (P25/P75 + sedang, small-sample note <1500 imp), endurance on reach (≥38 kuat / 29–37 biasa / else lepas — FIXED from inverted), ROI≥8 "jauh melepasi", fixed win-signal order, both honesty caveats. Subtitle-only bullets stay absent by design.
+- Validation (`validate-insight.py`, no deploy): ours vs 810 worked examples, frozen medians first — tier 81%, endu 76%, reply 100%, authority 87%. Remainders are declared artifacts (Oct-slice ROI vs full-window; spoken-authority vs caption regex), not mysteries.
+- `?` hints (`dpl_FaEs42h2hYzyvE98kUK273pBKQ3n`): shared `hint.tsx` (tap-outside/Esc, touch-first), both expanded panels (Kenapa kuat, Hook P25/P75, Stay, win order, Untung/kos, CTR, GMV Max, Imp, verdict). Panels only — table headers parked pending proof the team taps these.
+- Evergreen v1 (`dpl_2btJQUQVU2aFppzRNRCYSustfTeJ`): Calon Evergreen table (age≥60d + ≥3 orders, posted_api ?? snowflake, ROI where cost exists), coverage line printed (Jan-2027 maturation note), Kuat auto-lights when 3-month buckets exist. No API, no migration.
+- Backfill proof: 12:30am `SellerBackfill-Nightly` run fired clean (exit 0, 157 video-days, latest_available guard skipped 11-14), ✅ digest landed in topic 30 (owner screenshot). `seller-sync.md` kitchen manual written + linked in AGENTS.
+
+**Bugs + lessons.**
+- No new B-numbers (tsc green all 3; validator caught the endu inversion pre-deploy — validation scripts earn their keep, run them before panels, not after).
+- Op lessons: PowerShell eats `$vars` in inline commands (script-file + `-File`, then delete); no `head`/`tail` on this box (Select-Object / python); `TRIM(BOTH x FROM y)` is valid PG. Never trust a piped exit code — read the deployment body.
+
+**Open (owner vs next-build).**
+- Owner: confirm Evergreen calon list reads sane on prod data; decide Ads Manager pull (last dead tab) vs table-header hints.
+- Next-build: 90d reference window auto-matures when history exists (~Jan 2027, rerun validator then); sprite + subtitles still blocked on externals (files from Claude, terms call from owner); TTAM group + Admin split still parked since Cp62.
 
 ## Checkpoint 65 — 14 Nov 2026 (/creative video-ID search: quick filter + Find everywhere; panel fix; 2 deploys, tsc clean, UNCOMMITTED)
 

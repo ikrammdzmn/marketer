@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useWhoami } from "../../module-gate";
 
-// /shop-auth/grant — TEMPORARY admin-only grant page (unlisted, no sidebar).
+// /shop-auth/grant — permanent admin-only grant page (Settings → Shop grants).
 // Mints 10-minute seller + creator authorize links for copy-share.
-// Remove this route once creator grants are collected.
 function fmtMYT(v: string | null): string {
   if (!v) return "?";
   const d = new Date(v);
@@ -148,10 +147,11 @@ export default function ShopAuthGrantPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="border-b border-zinc-800 px-4 py-3">
-        <h2 className="text-sm font-semibold">Shop grants (temporary)</h2>
+        <h2 className="text-sm font-semibold">Shop grants</h2>
         <p className="text-xs text-zinc-500">
-          Admin-minted 10-minute authorize links. Unlisted page — remove after
-          creator grants are collected. Prod callback must be registered in
+          Admin-minted 10-minute authorize links. Permanent page under
+          Settings — re-grant here whenever a token expires or a new creator
+          joins. Prod callback must be registered in
           Partner Center (
           <span className="text-zinc-300">https://marketer-hw.vercel.app/api/shop-auth/callback</span>
           , keep localhost too).

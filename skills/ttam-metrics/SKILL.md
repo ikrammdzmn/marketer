@@ -32,6 +32,15 @@ Related repo-local skills (do not duplicate, cross-load):
    any calibration math.
 5. Keep junk rows (`Other` x4) as `--`; never score them.
 
+## Technique → verdicts map (Nov 2026)
+
+> Last updated: 2026-11-17 MYT. Technique detail: `skills/tiktok-ads/SKILL.md` § Observed TTAM feeder technique.
+
+- TOFU REACH/VV rows → score reach/CPM + VV rates only; never kill on ROAS.
+- MOFU VV/BC rows → score consideration rate + CPO vs RM21.18; pair with `Spend >= RM50 + 0 sales`.
+- CI LIVE bridge rows → score on live-window delivery only; `TIME_DONE` / `LIVE_NOT_START` is schedule, not failure.
+- Seeding event pairs → score reach + vv together per event date, not standalone.
+
 ## Boundaries
 
 - Repo guardrails win over TikTok generic benchmarks:

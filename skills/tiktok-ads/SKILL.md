@@ -42,6 +42,19 @@ Related repo-local skills (do not duplicate, cross-load):
 - Repo guardrails win over generic benchmarks: ROI >= 7.0, CPA <= RM21.18
   (`1-knowledge/tiktok-strategy/`).
 
+## Observed TTAM feeder technique (Nov 2026)
+
+> Last updated: 2026-11-17 MYT (evidence: GMV MAX VOL2 `campaign_get` + `adgroup_get`, 30d to 15 Nov 2026).
+
+Layered Smart+ feeder, no `PRODUCT_SALES` in TTAM (sales left to GMV Max):
+- TOFU cold: L0 REACH batches (RM20, BROAD) + Reach/VV Affiliate Awareness + Reach fake.
+- TOFU→MOFU: L1 VV → L2 VV MOFU.
+- MOFU intent: L3 VV HIGH INTENT + L5/L6 BC WINNING ADS (CA + BROAD).
+- MOFU affiliate: AFFILIATE|MOFU G1-G5 + EVENT (RM20-40), AFFILIATE-BC, Brand consideration.
+- Bridge live: CI LIVE BASE / BOOSTER (1-2 jam AM/PM splits, live-triggered).
+- Event burst: paired `seeding event <date>` reach + vv, then off.
+- Sales objective never appears in TTAM here — feeder only (warm pool for GMV Max at ROI ≥7.0).
+
 ## Output
 
 Return platform health, evidence coverage, regulatory exposure, observations,

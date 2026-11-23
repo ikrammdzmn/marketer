@@ -18,6 +18,7 @@ Base params always: `advertiser_id` + `store_ids: [shopId]` (+ `gmv_max_promotio
 | Campaign × day | `["campaign_id","stat_time_day"]` | — | Dashboard main pull. Metrics: `cost/orders/gross_revenue/roi` (+`cost_per_order`,`net_cost`). |
 | Campaign × hour | `["campaign_id","stat_time_hour"]` | — | 1-day span max. Returns full-day grid incl. future zero slots — detect edge by activity, never store future (B23). Slots are MYT. |
 | Room × day | `["room_id","stat_time_day"]` | `campaign_ids: [ONE]` | Sessions drill. Single-ID only; multi-ID 40002. |
+| Room × hour | `["room_id","stat_time_hour"]` | `campaign_ids: [ONE]` | Nov-19 `/shop-live/hourly-probe` green: cost/orders/gross_revenue per room-hour; 1-day span; page through (14 pages seen) — target room can sit late. |
 | Room meta | `["room_id"]` | `campaign_ids: [ONE]` | `live_status/live_launched_time/live_duration/live_name`. Status = CURRENT TikTok state, launched UTC → MYT +8. `live_name` may be `""` (valid, fallback to `room {id}`). |
 | **Creative (`item_id` = Post ID)** | `["item_id"]` | `campaign_ids: [ONE]` **+** `item_group_ids: [...]` | Dual filter REQUIRED — campaign-only fails (`must have at least 1 campaign ID and 1 item group ID`). Discover groups first via product grain (`["item_group_id"]`, campaign filter). |
 | Product | `["item_group_id"]` | `campaign_ids: [ONE]` | SPU list per campaign. |
@@ -48,7 +49,9 @@ field — re-derive from benchmarks, never fetch-chase it.**
 
 Valid `data_level`: `AUCTION_ADVERTISER/AUCTION_CAMPAIGN/AUCTION_ADGROUP/AUCTION_AD`
 (`AUCTION_VIDEO` invalid). Parent+child dimension combos 40002 — pull child
-grain alone, filter client-side (B37). **Parent filter uses `filters`
+grain alone, filter client-side (B37). Hour grain green at ADGROUP:
+`["stat_time_hour","adgroup_id"]` with `spend/impressions` (Nov-19
+`/shop-live/hourly-probe` on prod, 1-day span). **Parent filter uses `filters`
 (typed array), NOT `filtering`:** `[{field_name:"campaign_ids",
 filter_type:"IN", filter_value:[...]}]` — `filtering` object fails
 (`Not a valid list`).

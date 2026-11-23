@@ -1,3 +1,5 @@
+> Archived broad strategy (renamed from `full-strategy.md` 16 Nov 2026). Monthly ops now in Notion `ADS MONTHLY` + `docs/ads-monthly-continuation.md`. Guardrails unchanged: ROI ≥7.0, CPA ≤RM21.18.
+
 Here is **Batch 1 (Strategies 1 to 5)**, fully aligned with your setup: **Target ROI locked at $\ge$ 7.0**, **1 campaign per SKU**, **AOV of RM 148.29**, and your **3 peak conversion windows**.
 
 ---

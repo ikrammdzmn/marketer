@@ -100,18 +100,23 @@ export interface ShopLiveSession {
 
 // Collection path verified: DOC MD/Get Shop LIVE Performance List.md
 // (202609 is its own version line, separate from the 202510 minute path).
+// Paged for the picker Load-more button: each request pulls `maxPages`
+// (default 1 × 100 rooms) starting from `startPageToken`, and returns the
+// next `nextPageToken` ("" = done). Hobby-safe: one page per click.
 export async function fetchShopLiveSessions(
   shopNumber: string,
   startDateGe: string,
   endDateLt: string,
   accountType: string,
-  maxPages = MAX_LIST_PAGES,
-  currency = "LOCAL"
+  maxPages = 1,
+  currency = "LOCAL",
+  startPageToken = ""
 ): Promise<{
   sessions: ShopLiveSession[];
   latestAvailableDate: string | null;
   totalCount: number;
   pages: number;
+  nextPageToken: string;
 }> {
   if (shopNumber !== "1") throw new Error("shop-live is shop-1-only for now");
   if (!startDateGe || !endDateLt) throw new Error("need startDateGe + endDateLt (YYYY-MM-DD)");
@@ -121,7 +126,7 @@ export async function fetchShopLiveSessions(
   let sessions: ShopLiveSession[] = [];
   let latestAvailableDate: string | null = null;
   let totalCount = 0;
-  let pageToken = "";
+  let pageToken = startPageToken || "";
   let pages = 0;
   for (let i = 0; i < Math.min(Math.max(maxPages, 1), MAX_LIST_PAGES); i++) {
     const qp: Record<string, string> = {
@@ -180,7 +185,7 @@ export async function fetchShopLiveSessions(
     if (!pageToken) break;
     await new Promise((r) => setTimeout(r, 400));
   }
-  return { sessions, latestAvailableDate, totalCount, pages };
+  return { sessions, latestAvailableDate, totalCount, pages, nextPageToken: pageToken };
 }
 
 // Debug-only: first page of UNFILTERED TikTok rows (reveals fields the
@@ -583,12 +588,46 @@ export async function fetchLiveCoreStats(
 
 // Creator-token reader for 036 (fail-closed: no row = no call, never falls
 // back to the seller token — that path is the 28001022 under test).
+// Auto-refresh mirrors getShopAnalyticsCredentials: past expiry-1h +
+// refresh_token present → v2 refresh + row update, fail-open (a dead
+// refresh returns the stored row so the caller surfaces TikTok's verdict).
 export interface CreatorGrant {
   creator_open_id: string;
   creator_user: string | null;
   creator_name: string | null;
   access_token: string;
   refresh_token: string | null;
+}
+
+async function refreshCreatorGrantIfNeeded(row: any): Promise<any> {
+  try {
+    if (!row?.refresh_token) return row;
+    const { shopTokenExpiryMs, refreshShopToken } = await import("./shop-credentials");
+    const { getAnalyticsAppKeys } = await import("./shop-analytics-credentials");
+    const ana = getAnalyticsAppKeys();
+    if (!ana.key || !ana.secret || !row.updated_at) return row;
+    const expiry = shopTokenExpiryMs(row.updated_at, row.access_token_expire_in ?? 86400);
+    if (expiry === null || Date.now() < expiry - 3600_000) return row;
+    const fresh = await refreshShopToken(ana.key, ana.secret, String(row.refresh_token));
+    if (!fresh?.access_token) {
+      console.error("[shop-live] creator refresh failed");
+      return row;
+    }
+    const { query } = await import("./db");
+    await query(
+      `UPDATE credentials.shop_creator_tokens
+       SET access_token = $1, refresh_token = $2,
+           access_token_expire_in = $3, updated_at = now()
+       WHERE shop_id = $4 AND creator_open_id = $5`,
+      [fresh.access_token, fresh.refresh_token ?? row.refresh_token, fresh.expires_in ?? 86400, SHOP1_ID, String(row.creator_open_id ?? "")]
+    );
+    row.access_token = fresh.access_token;
+    row.refresh_token = fresh.refresh_token ?? row.refresh_token;
+    row.access_token_expire_in = fresh.expires_in ?? 86400;
+  } catch (e) {
+    console.error("[shop-live] creator refresh error", e instanceof Error ? e.message : "failed");
+  }
+  return row;
 }
 
 export async function getShopCreatorGrant(
@@ -602,11 +641,15 @@ export async function getShopCreatorGrant(
     throw new Error("creator table unreadable (run 036 on this DB?)");
   }
   const r = await query(
-    `SELECT creator_open_id, creator_user, creator_name, access_token, refresh_token
+    `SELECT creator_open_id, creator_user, creator_name, access_token, refresh_token,
+            access_token_expire_in, updated_at
      FROM credentials.shop_creator_tokens WHERE shop_id = $1 AND creator_open_id = $2`,
     [SHOP1_ID, creatorOpenId]
   );
-  if (r.rows.length > 0 && r.rows[0].access_token) return r.rows[0] as CreatorGrant;
+  if (r.rows.length > 0 && r.rows[0].access_token) {
+    const row = await refreshCreatorGrantIfNeeded(r.rows[0]);
+    return row as CreatorGrant;
+  }
   throw new Error(
     `no creator grant for open_id ${creatorOpenId.slice(0, 8)}… (len ${creatorOpenId.length}) — Copy id from /shop-auth/grant status`
   );
@@ -721,7 +764,8 @@ export async function findShopCreatorGrantByUser(
   let rows: any[] = [];
   try {
     const r = await query(
-      `SELECT creator_open_id, creator_user, creator_name, access_token, refresh_token
+      `SELECT creator_open_id, creator_user, creator_name, access_token, refresh_token,
+              access_token_expire_in, updated_at
        FROM credentials.shop_creator_tokens WHERE shop_id = $1`,
       [SHOP1_ID]
     );
@@ -737,7 +781,8 @@ export async function findShopCreatorGrantByUser(
       `no creator grant labeled "${want}" (mint a link on /shop-auth/grant, approve as @${want}, then set Name/Username)`
     );
   }
-  return hit as CreatorGrant;
+  const fresh = await refreshCreatorGrantIfNeeded(hit);
+  return fresh as CreatorGrant;
 }
 
 // Full room bundle for /shop-live AFFILIATE rooms: all four Live Data

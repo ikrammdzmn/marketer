@@ -11,6 +11,7 @@ type Ev = {
   allDay: boolean;
   link: string | null;
   promo: boolean;
+  task: boolean;
 };
 
 function fmtTime(iso: string): string {
@@ -83,7 +84,9 @@ function rowsFor(events: Ev[]): { rows: Row[]; overflow: number } {
       }
     });
   }
-  out.sort((a, b) => a.day.getTime() - b.day.getTime() || a.ev.start.localeCompare(b.ev.start));
+  out.sort((a, b) => a.day.getTime() - b.day.getTime()
+    || Number(b.ev.task ?? false) - Number(a.ev.task ?? false)
+    || a.ev.start.localeCompare(b.ev.start));
   const CAP = 60; // a 30-day span clips to 7 rows max; cap guards stacked sales
   return { rows: out.slice(0, CAP), overflow: Math.max(0, out.length - CAP) };
 }
@@ -122,8 +125,8 @@ function RowItem({ r, compact }: { r: Row; compact?: boolean }) {
   return (
     <div className={`flex items-baseline gap-2 ${compact ? "text-[13px]" : "text-sm"}`}>
       <span
-        title={e.promo ? "Sale/campaign period (#event)" : multi ? "Multi-day event" : "One-day event"}
-        className={`h-1.5 w-1.5 shrink-0 translate-y-[-1px] self-center rounded-full ${e.promo ? "bg-amber-400" : multi ? "bg-emerald-400" : "bg-zinc-600"}`}
+        title={e.task ? "High-priority task (#task)" : e.promo ? "Sale/campaign period (#event)" : multi ? "Multi-day event" : "One-day event"}
+        className={`h-1.5 w-1.5 shrink-0 translate-y-[-1px] self-center rounded-full ${e.task ? "bg-rose-400" : e.promo ? "bg-amber-400" : multi ? "bg-emerald-400" : "bg-zinc-600"}`}
       />
       <span className={`shrink-0 tabular-nums ${compact ? "w-20 text-[11px] text-zinc-500" : "w-24 text-xs text-zinc-400"}`}>
         {timeFor(r)}
@@ -143,6 +146,11 @@ function RowItem({ r, compact }: { r: Row; compact?: boolean }) {
         </a>
       ) : (
         <span className={`min-w-0 ${compact ? "truncate text-zinc-400" : ""}`}>{e.title}</span>
+      )}
+      {e.task && (
+        <span className="shrink-0 rounded bg-rose-950 px-1 py-px text-[10px] font-semibold uppercase tracking-wide text-rose-200">
+          Task
+        </span>
       )}
       {e.promo && (
         <span className="shrink-0 rounded bg-amber-900 px-1 py-px text-[10px] font-semibold uppercase tracking-wide text-amber-200">

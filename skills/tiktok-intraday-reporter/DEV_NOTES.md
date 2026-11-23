@@ -1,5 +1,27 @@
 # DEV_NOTES — tiktok-intraday-reporter (mandatory, append-only)
 
+## Checkpoint 36 — 19 Nov daypart A/B test parked (review ~26/11)
+- BASE split test live: `.2` AM/PM vs `.3` OFFICE/MALAM (RM50+50, both ENABLED 19/11). Winner = less stranded budget, smoother handoffs. REMIND owner to review ~26/11.
+
+## Checkpoint 35 — 18 Nov session wrap (room analysis era)
+- Headspace: owner in live ops seat, driving per-room reads on real sessions. Vibe stayed: prove with pulls, plain words on verdicts, never silent-truncate.
+- Shipped (uncommitted): ci-live2-playbook + room-hour/adgroup-hour recipe + same-window rule + Checkpoint 34. Live cases: `…2082` 17/11, `…2721` 18/11 ongoing (API 14.23/3/159 vs dashboard SKU 3/219 — dashboard wins, API lags).
+- Lesson: dashboard counts SKU orders, API counts orders — state which when they disagree.
+- Open: commit playbook batch when owner says so; push `bad8230` still pending; 4 playbook opens (daypart, RT rename, BOOSTER auto-trigger, hands-free repull).
+
+## Checkpoint 34 — 18 Nov CI LIVE 2 playbook + room analysis filed
+- New `references/ci-live2-playbook.md`: label `7708974613593964564` = 3 campaigns (BASE planned / BOOSTER <10k-hr1 rescue / RT dr.samhan-only), verified membership 18/11. No BASE adgroup for dr.samhan (RT replaces it — full 805 scan).
+- Room recipe locked: room-hour + adgroup-hour joins, same-window attribution with pre-window context line, `room_ids` server-filter bug, room-grain 40002 fields, newest-hour-partial tag, manual-cue repull.
+- Proved live: `…2082` 17/11 (AM pre-heat + PM/BOOSTER cover, 29.28→636) and `…2721` 18/11 ongoing (14:00-open, RT 14:00-forward 229.70 vs room 53→106→159; dashboard SKU 3/219 wins over API lag).
+- Open: BASE daypart standard, RT rename (match on ID till then), BOOSTER auto-trigger (re-baseline source+threshold), hands-free repull script.
+- Uncommitted: SKILL.md pointer + playbook + this checkpoint (Checkpoint 33 commit `bad8230` still unpushed).
+
+## Checkpoint 33 — 18 Nov wrap (commit + shop truth online)
+- Headspace: owner driving, tight verify loops; sparring held on budgets/labels/tables. Vibe: lock rules, prove with data, never silently truncate.
+- Shipped: skill committed `bad8230` (9 files, unpushed); report template + top-10/remainder + ended-with-spend locked; mapping v1.2 CLEAN; vol2-registry; TTAM impressions + Post ID + campaign-column + -1 exclusion rules; direct Neon read-only verified (prod shop 16/11: 27236.2/189 vs ads 28187.82/192); creative top-30 by GMV + snowflake post dates.
+- Lessons: (1) verify page totals before claiming counts; (2) sort server-side; (3) one short table per message; (4) ACTIVE roster vs bucket labels are different jobs — check both directions every pull.
+- Open: TTAM adgroup 16-30 with ROI; ENABLED audit beyond first 100; other 4 advertisers on demand; v1.3 on next label change; push `bad8230` when owner says so.
+
 ## Checkpoint 32 — 18 Nov direct Neon read-only works + refetch locked
 - Path: node + online/node_modules/pg, creds from .local_secrets.json (never in chat). Dev SELECT 1 green, prod `daily_shop_metrics` green.
 - Latest shop day 16/11: shop 27236.2/189 vs ads 28187.82/192 (matches our pull exactly). Lag ~1d.

@@ -62,3 +62,10 @@ html.light .hover\:text-zinc-100:hover { color: #18181b; }
 html.light .hover\:border-zinc-600:hover { border-color: #a1a1aa; }
 html.light input::placeholder,
 html.light textarea::placeholder { color: #a1a1aa; }
+
+/* Header calendar-pill ticker: gentle rise-in on each rotate. */
+@keyframes pill-tick {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.pill-tick { animation: pill-tick 0.35s ease-out; }

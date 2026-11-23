@@ -7,7 +7,7 @@ import { requireShopTokenAccess } from "@/lib/authz";
 // HMAC state discipline for both; the link itself is the capability.
 // - 302 (default): legacy same-browser flow (sets shop_auth_state cookie,
 //   TikTok echoes bare `state=rand`). Seller authorizes on this browser.
-// - format=json: returns { url, expiresAt } for sharing (temp /shop-auth/grant
+// - format=json: returns { url, expiresAt } for sharing (/shop-auth/grant
 //   page). Full `app.role.exp.rand.hmac` state travels IN the url query so the
 //   approver's browser needs no cookie; /callback verifies it statelessly.
 // Seller page:  https://services.tiktokshop.com/open/authorize (service_id)

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/nightly-sync",
       "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/cron/calendar-reminder",
+      "schedule": "0 0 * * *"
     }
   ]
 }

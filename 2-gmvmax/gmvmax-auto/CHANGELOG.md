@@ -2,6 +2,52 @@
 
 Newest first. One line per shipped step. Rollup: `1-MASTER/MASTER-CHANGELOG.md`.
 
+## 19 Nov 2026 — shop-live 3-tab redesign + GMV/TTAM blend + hour slice + creator auto-refresh (tsc clean, 6 deploys, UNCOMMITTED)
+
+- Room picker (`dpl_GnNhV96zWzHLh69TWopXr4wH9xLC`, owner manual-deployed same tree): creator-grouped picker with room IDs, MYT start times, filter box, Copy ID, Load-more paging.
+- Creator auto-refresh (same deploy): expiry-1h + v2 refresh + row update, fail-open (mirrors seller/analytics readers).
+- GMV Max room-cost join (`dpl_EHzFtrUqr9SPym1iTArxjNDVkqVK`; start_time dual-format fix `dpl_E3Q9d6V4s89SUz9e6RY4KUrQe8FK`): `GET /api/shop-live/ads` — room-window cost/GMV/orders + campaign table + Active-during-room + Partial badge.
+- TTAM blend (`dpl_HYoDb7eyrrWm7Fx7in7gsxqjdbM3`): `GET /api/shop-live/ttam-options` + `GET /api/shop-live/blended` — strict-suggest manual ticks, fee % input, spend-only-with-null-ROI when no GMV match.
+- Hourly grains (`dpl_3CYpR9tcZoBow8Y4A4etMVrZwQvQ` probe green on prod, `dpl_EHzFtrUqr9SPym1iTArxjNDVkqVK` join): `GET /api/shop-live/hourly-blend` — [from,to) hour slice with GMV cost/GMV, TTAM spend+impressions, per-hour buckets, Partial-today badge.
+- 3-tab redesign (`dpl_BHrgYt8DxLLptBQx2kGP4UwJo36S`): Shop room / Ads & blended / Hour slice tabs; slim top bar + room header card + debug drawer; zero-spend never auto-ticked; list grain under toggle; 0-activity hour rows hidden by default; Days column date-only.
+
+## 18 Nov 2026 — pill task-notes + overdue + live refresh + toast confirmations (tsc clean, 3 deploys, UNCOMMITTED)
+
+- Pill notes (`dpl_CTDdejBWW2WWb7MvhW1XW86jai9x`): today's undone task notes join the ticker as rose rows + up to 3 overdue tagged `[overdue]` (oldest first); sort today-tasks → overdue → rest, cap 10.
+- Live refresh (`dpl_5iyLgsBBqch517WgSKSNCmkyt7r4`): `task-notes-changed` window event from the onChanged choke point; pill refetch in ~1s, no reload.
+- Toast confirmations (`dpl_EWDwBFmmSXaQn77uoYBHcU12girC`): TaskNotes success dispatches via existing bus (tick/add/edit/delete with pill-accurate wording).
+
+## 17 Nov 2026 — Evergreen Top-5 v2 + Kuat month-buckets + 91d backfill + player rollback (tsc clean, 4 deploys, UNCOMMITTED)
+
+- Evergreen Top-5 v2 (`dpl_2vjxQMsaAuYV6WGiAGNMcP6q3gVz`): Top-5 cards by Untung (GMV/ROI/Untung, rank-1 amber, tap-to-expand player+data, `?` hints) + analysis box (counts, shares, combined ROI, avg age, reply/mode/timeless, Amaran 1+2).
+- 91-day backfill (background, 0 failed): 15 Aug→13 Nov, ~19.8k video-days, 3,577 imp calls, ~27.6 min over 3 chunks; digests in topic 30.
+- Kuat month-buckets (`dpl_9ffHfDN2hcNEbDjDcGVUm85gmNPd`): new `GET /api/seller-creative/evergreen` (last 3 full months, per-video o1/o2/o3, no LIMIT); Kuat = 3/3 months + ROI≥2.86 (zero-cost passes); prod truth 32 Evergreen / 17 Kuat; buckets auto-roll.
+- Player rescue + rollback (`dpl_24QQMKPNq6gCyByuzJgM7jo1fuQN` built, `dpl_9J15UYA61EpDcJUShxd37jUxzPHV` rolled back): TikTok's player/v1 gated server-side (fresh oEmbed links fail identically; oEmbed has no thumbnail_url — verified live); panels restored to original iframes.
+
+## 17 Nov 2026 — multi-day day-counter suffix on pill + calendar (tsc clean, 1 deploy, UNCOMMITTED)
+
+- Day counter (`dpl_Ff9z4Q6x3QyGuGQ6eNaS6KJTGaaa`): `TITLE [1st day of N]` / `[day X of N]` / `[last day N of N]` on pill ticker+dropdown and calendar grid+popup+side panel; single-day titles unchanged.
+
+## 17 Nov 2026 — header pill ticker+dropdown + #task priority + pill colors (tsc clean, 3 deploys, UNCOMMITTED)
+
+- Pill ticker+dropdown (`dpl_CFiW6hjFHQqbSFnzRpEAE1AMZspw`): rotating agenda title (~3s, pause on hover, reduced-motion static) + `▾` dropdown with times; closes on outside-click/Esc.
+- `#task` priority (`dpl_89yB4TX8HzW7MdxaAhc8WpEP4xtu`): new hashtag (stripped, rose dot + `Task` badge); sort-first in agenda + pill dropdown; rose styling on month grid.
+- Pill colors (`dpl_vXLa82M123Dvqp5ytNEoBih4JPwR`): rose/amber leading dot on pill, colored ticker + dropdown rows, tooltip markers.
+
+## 17 Nov 2026 — /creative Export popup + Preview + sync progress popup (tsc clean, 3 deploys, UNCOMMITTED)
+
+- Export popup (`dpl_5fZPxAjyy2j3EUyvVS7tq1P9hhjD`): kill-list `CSV` → `Export ▾`; `All | Post ID only | None` presets + per-column ticks (mirrors `Columns…`); `Download CSV (visible)` (+`#` when num on) / `Download CSV (all)` legacy.
+- Preview (`dpl_J5CTgpsqqrdpcLcPcou9hCCJ33M1`): sheet-like new-tab table (local-tool pattern) — Show all / Post ID only / Hide all / Copy Post IDs / Columns… + resize/expand/drag-select; opens with table's hidden set.
+- Sync popup (`dpl_Cz7qmnEDwwLVituGC5zs6NapR1VB`): seller-creative `fetchProg` ported to creative Fetch (per-day) + Sync (per-chunk) with elapsed/ETA/Cancel/10s stay.
+
+## 16 Nov 2026 — doc-08 panels + validation + hints + Evergreen v1 (tsc clean, 3 deploys, COMMITTED e1f2dc9)
+
+- Analysis panels per doc-08 (`dpl_DC7mh9DmWL8yGu1AnPDdSu9nTqVB`): hook 3-tier (P25/P75 + sedang, <1500-imp note), endurance on reach (inversion FIXED by validator), ROI≥8 signal, fixed win order, both honesty caveats; subtitle-only bullets absent by design.
+- Validation script (`validate-insight.py`, no deploy): ours vs 810 worked examples — tier 81%, endu 76%, reply 100%, authority 87%; remainders declared (Oct-slice ROI, spoken-authority gap).
+- `?` hint bubbles (`dpl_FaEs42h2hYzyvE98kUK273pBKQ3n`): shared `hint.tsx`, both expanded panels; tables parked.
+- Evergreen v1 (`dpl_2btJQUQVU2aFppzRNRCYSustfTeJ`): Calon Evergreen table (age≥60d + ≥3 orders, posted_api ?? snowflake), coverage line, Kuat auto-matures with history. No API/migration.
+- Backfill live proof: 12:30am run exit 0, ✅ digest in topic 30; `seller-sync.md` kitchen manual linked in AGENTS.
+
 ## 14 Nov 2026 — /creative video-ID search (tsc clean, 2 deploys, UNCOMMITTED)
 
 - Quick + deep ID search (`dpl_2FQQCDgvywPRqkMVkWaei84D6MHM`): `Post ID…` box filters loaded rows (ID/title, both tables) + `Find everywhere` (`GET /api/creative-sync?itemId=`, ≤200 rows + totals + campaigns + span) with `Load that range` (last-31d clamp).

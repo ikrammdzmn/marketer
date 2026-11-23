@@ -27,7 +27,7 @@ Shop truth via direct Neon read (`gmv.daily_shop_metrics`, prod, SELECT-only; sc
 
 ## Probes done (16 Nov 2026)
 1. TTAM hourly GREEN: `report_integrated_get` `report_type:"BASIC"` + `AUCTION_CAMPAIGN/ADGROUP` + ["id","stat_time_hour"], 1-day max.
-2. Live hourly GREEN at campaign grain. Room minute still out.
+2. Live hourly GREEN at campaign grain. Room-hour GREEN 18/11: `[campaign_id,room_id,stat_time_hour]` 1-day max, campaign-grain pull + client-side room match (`room_ids` server filter returns empty — never use). `live_name/status/launched/duration` unavailable at room grain (40002).
 3. TTAM taxonomy v1 in `references/ttam-taxonomy.md`.
 4. Budgets: TTAM = sum ENABLED adgroups (paginate all pages); GMV Max = `target_roi_budget` (fallback `max_delivery_budget`).
 
@@ -46,6 +46,9 @@ Order per pull: freshness block → Live table → Product table → TTAM campai
 
 ## TTAM mapping (labels as source of truth, versioned)
 Latest: `references/ttam-mapping-v1.2-171126.md` (supersedes v1.1, v1.0). Format `vMajor.Minor-DDMMYY HHMM` MYT. Every pull prints freshness block first (ACTIVE vs ENABLED: missing + stale). Active-but-unlabeled → `LABEL-MISSING (fallback)` 🟡, never dropped. Name-parse fallback only for UNMAPPED.
+
+## CI LIVE 2 playbook
+Label `7708974613593964564`: BASE (`…721`) planned cover, BOOSTER (`…746`) <10k-hr1 rescue, RT (`…802`) dr.samhan-only. Same-window room attribution (pre-window parked as context). Full recipe + trigger spec + open items: `references/ci-live2-playbook.md`.
 
 ## TTAM adgroup default (locked per owner)
 Always break TTAM campaigns to ENABLED adgroups: `adgroup_get` for budget + `report_integrated_get` `AUCTION_ADGROUP` for spend 00-window. Flag per-adgroup `>=70%`. Campaign rollup hides G1 70.7% type cases. Example 16 Nov 00-15: BROAD|VR 207.4/250=83% 138 conv CPA 1.5 = upscale draft; G1 14.13/20=70.7% CHECK.

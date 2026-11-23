@@ -14,7 +14,7 @@ import { rangeLabel } from "@/lib/ttam-scores";
 //   Product = GMV Max video ads (served by /creative, same video IDs).
 //   Live = live rooms (served by /shop-live).
 //   Ads = Ads Manager boost rows (pending integrated-API pull).
-//   Evergreen = age + monthly-order rule (pending owner approval, doc 04).
+//   Evergreen = month-bucket Top-5 by Untung (3 full months, Kuat auto).
 // Rule: GMV Max reads ~13% higher than Seller Center for the same
 // video/day — compare side-by-side, never sum.
 
@@ -306,6 +306,14 @@ export default function SellerCreativePage() {
   const f2 = (v: number) => (Number.isFinite(v) ? v.toFixed(2) : "—");
   const f0 = (v: number) => (Number.isFinite(v) ? Math.round(v).toLocaleString("en-MY") : "—");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [evData, setEvData] = useState<any>(null);
+  const [evLoading, setEvLoading] = useState(false);
+  useEffect(() => {
+    if (tab !== "evergreen" || evData || evLoading) return;
+    setEvLoading(true);
+    fetch("/api/seller-creative/evergreen").then((x) => x.json()).then((d) => { setEvData(d); setEvLoading(false); }).catch(() => setEvLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
   const tabs: [Tab, string][] = [
     ["seller", "Seller Center"],
     ["product", "Product GMV Max"],
@@ -692,58 +700,167 @@ export default function SellerCreativePage() {
       )}
 
       {tab === "evergreen" && (() => {
-        const evRows = rows.map((r: any) => {
+        if (evLoading) return (<div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] text-zinc-400">Memuatkan 3 bulan penuh data organik…</div>);
+        if (!evData || evData.error) return (<div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-[12px] text-zinc-400">{evData?.error ?? "Belum dimuat — buka tab ini semula."}</div>);
+        const months: string[] = evData.months ?? [];
+        const mShort = months.map((mo: string) => new Date(mo + "T00:00:00").toLocaleDateString("ms-MY", { month: "short" }));
+        const mLong = months.map((mo: string) => new Date(mo + "T00:00:00").toLocaleDateString("ms-MY", { month: "long", year: "numeric" }));
+        // Full rule (doc 04): age ≥60d, ≥3 orders in ≥2 of last 3 FULL months,
+        // combined ROI ≥2.86; Kuat = all three months. Zero-cost (organic-only)
+        // videos pass ROI (tiada belanja = tidak boleh gagal ROI).
+        const evRowsAll = ((evData.rows ?? []) as any[]).map((r: any) => {
           const age = ageD(r.posted_api ?? r.posted_from_id);
-          const orders = Number(r.orders ?? 0);
-          const roi = r.roi === null || r.roi === undefined || !Number.isFinite(Number(r.roi)) ? null : Number(r.roi);
-          const st = age === null ? "Umur tidak diketahui" : age < 60 ? "Belum layak" : orders < 3 ? "Belum layak" : "Calon Evergreen";
-          return { r, age, orders, roi, st };
-        }).sort((a: any, b: any) => ((b.st === "Calon Evergreen") ? 1 : 0) - ((a.st === "Calon Evergreen") ? 1 : 0) || Number(b.r.gmv ?? 0) - Number(a.r.gmv ?? 0));
-        const nCalon = evRows.filter((x: any) => x.st === "Calon Evergreen").length;
-        const nDays = Math.max(1, Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1);
+          const ms = [Number(r.o1 ?? 0), Number(r.o2 ?? 0), Number(r.o3 ?? 0)];
+          const hits = ms.filter((v) => v >= 3).length;
+          const cost = num(r.gmvmax_cost);
+          const gmv = num(r.gmv);
+          const roi = cost > 0 ? gmv / cost : null;
+          const roiPass = roi === null || roi >= 2.86;
+          const untung = gmv * 0.35 - cost;
+          const st = age === null ? "Umur tidak diketahui" : age < 60 ? "Belum layak" : !roiPass ? "Belum layak" : hits >= 3 ? "Evergreen kuat" : hits >= 2 ? "Evergreen" : "Belum layak";
+          return { r: { ...r, untung, roi }, age, ms, hits, roi, st };
+        });
+        const evList = evRowsAll.filter((x: any) => x.st === "Evergreen kuat" || x.st === "Evergreen");
+        const nKuat = evList.filter((x: any) => x.st === "Evergreen kuat").length;
+        const byUntung = [...evList].sort((a: any, b: any) => num(b.r.untung) - num(a.r.untung));
+        const top5 = byUntung.slice(0, 5);
+        const sellRows = evRowsAll.filter((x: any) => num(x.r.orders) > 0 || num(x.r.gmv) > 0);
+        const gmvEv = evList.reduce((s: number, x: any) => s + num(x.r.gmv), 0);
+        const gmvTot = evRowsAll.reduce((s: number, x: any) => s + num(x.r.gmv), 0);
+        const costEv = evList.reduce((s: number, x: any) => s + num(x.r.gmvmax_cost), 0);
+        const oth = sellRows.filter((x: any) => x.st !== "Evergreen kuat" && x.st !== "Evergreen");
+        const gmvOth = oth.reduce((s: number, x: any) => s + num(x.r.gmv), 0);
+        const costOth = oth.reduce((s: number, x: any) => s + num(x.r.gmvmax_cost), 0);
+        const roiEv = costEv > 0 ? gmvEv / costEv : null;
+        const roiOth = costOth > 0 ? gmvOth / costOth : null;
+        const ages = evList.map((x: any) => x.age).filter((a: any) => a !== null) as number[];
+        const avgAge = ages.length ? ages.reduce((a, b) => a + b, 0) / ages.length : NaN;
+        const acctCount: Record<string, number> = {};
+        evList.forEach((x: any) => { const k = String(x.r.username ?? "—"); acctCount[k] = (acctCount[k] ?? 0) + 1; });
+        const acctMode = Object.entries(acctCount).sort((a, b) => b[1] - a[1])[0] ?? null;
+        const replyN = evList.filter((x: any) => /^\s*replying to @/i.test(String(x.r.caption ?? ""))).length;
+        const dateTok = /\d{1,2}[-/]\d{1,2}|promo|diskaun|diskon|\blive\b|hari ini|esok|hari terakhir|tarikh|join live|jam \d/i;
+        const timelessN = evList.filter((x: any) => !dateTok.test(String(x.r.caption ?? ""))).length;
+        const top1share = gmvEv > 0 && top5.length ? (num(top5[0].r.gmv) / gmvEv) * 100 : NaN;
+        const evShareSell = sellRows.length ? (evList.length / sellRows.length) * 100 : NaN;
+        const evShareGmv = gmvTot > 0 ? (gmvEv / gmvTot) * 100 : NaN;
         return (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-          <h3 className="font-medium">Evergreen — Calon (v1)</h3>
-          <p className="mt-1 text-[12px] text-zinc-400">
-            Rule penuh: posted ≥60 hari, ≥3 order dalam sekurang-kurangnya 2 daripada 3 bulan terkini, ROI gabungan ≥2.86 ("Kuat" = layak ketiga-tiga bulan).
-            Liputan data: {start} → {end} ({nDays} hari) — rule penuh perlukan 3 bulan sejarah, matang automatik bila Neon cukup umur. "Kuat" dikira sendiri bila data tiba.
-            {nCalon > 0 ? ` ${nCalon} calon daripada ${evRows.length} video.` : ` Tiada calon dalam julat ini (${evRows.length} video).`}
-          </p>
-          {evRows.length > 0 && (
-          <div className="mt-2 overflow-x-auto rounded-xl border border-zinc-800">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-zinc-800 text-left text-zinc-400">
-                  <th className="px-2 py-1.5">Video</th>
-                  <th className="px-2 py-1.5">Dipost</th>
-                  <th className="px-2 py-1.5 text-right">Umur</th>
-                  <th className="px-2 py-1.5 text-right">Order</th>
-                  <th className="px-2 py-1.5 text-right">GMV</th>
-                  <th className="px-2 py-1.5 text-right">ROI</th>
-                  <th className="px-2 py-1.5">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {evRows.map(({ r, age, roi, st }: any) => (
-                  <tr key={r.video_id} className="border-b border-zinc-800/60 hover:bg-zinc-900/60">
-                    <td className="max-w-56 truncate px-2 py-1.5" title={`${r.caption ?? ""}\n${r.video_id}`}>
-                      <a className="text-sky-300 hover:underline" href={`https://www.tiktok.com/@_/video/${r.video_id}`} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-                        {(r.caption ?? "").slice(0, 40) || r.video_id}
-                      </a>
-                      <div className="font-mono text-[10px] text-zinc-600">{r.video_id}</div>
-                    </td>
-                    <td className="px-2 py-1.5 text-zinc-400">{String(r.posted_api ?? r.posted_from_id ?? "").slice(0, 10) || "—"}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{age === null ? "—" : `${age}d`}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{f0(Number(r.orders ?? NaN))}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{f2(Number(r.gmv ?? NaN))}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{roi === null ? "—" : roi.toFixed(1)}</td>
-                    <td className="px-2 py-1.5">
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${st === "Calon Evergreen" ? "bg-emerald-900 text-emerald-200" : "bg-zinc-800 text-zinc-300"}`}>{st}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div>
+          <div className="mb-3 rounded-xl border border-zinc-800 bg-zinc-950 p-3">
+            <h3 className="font-medium text-zinc-100">5 video Evergreen terbaik</h3>
+            <p className="mb-2 text-[11px] text-zinc-500">
+              Disusun ikut untung selepas ads. Tekan petak video untuk main + analisis.
+              Bulan dinilai: {mLong.join(", ")} — 3 bulan penuh terakhir (data tersedia hingga {evData.maxDate ?? "—"}).
+              {evList.length ? ` ${evList.length} Evergreen (${nKuat} kuat) daripada ${evRowsAll.length} video.` : ` Tiada Evergreen dalam 3 bulan ini (${evRowsAll.length} video).`}
+            </p>
+            <div className="space-y-2">
+              {top5.map((x: any, idx: number) => {
+                const r = x.r;
+                const open = openId === r.video_id;
+                const posted = String(r.posted_api ?? r.posted_from_id ?? "").slice(0, 10) || "—";
+                const o1k = num(r.views) > 0 ? (num(r.orders) / num(r.views)) * 1000 : 0;
+                const isReply = /^\s*replying to @/i.test(String(r.caption ?? ""));
+                const isAuthority = /doktor|\bdr\b|pakar/i.test(String(r.caption ?? ""));
+                const winSignals: string[] = [];
+                if (isReply) winSignals.push("format balas komen (menjawab soalan penonton)");
+                if (isAuthority) winSignals.push("penanda doktor (authority)");
+                if (x.roi !== null && x.roi >= 8) winSignals.push(`ROI iklan ${x.roi.toFixed(1)}, jauh melepasi pulang modal`);
+                if (x.age !== null && x.age >= 60) winSignals.push(`masih menjual ${x.age} hari selepas post (evergreen)`);
+                const kuat = x.st === "Evergreen kuat";
+                return (
+                  <div key={r.video_id} onClick={() => setOpenId(open ? null : r.video_id)} className={`cursor-pointer rounded-xl border px-3 py-2 ${idx === 0 ? "border-amber-300/60 bg-amber-200/10" : "border-zinc-800 bg-zinc-900 hover:border-zinc-600"}`}>
+                    <div className="flex items-center gap-3">
+                      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${idx === 0 ? "bg-amber-300 text-zinc-900" : "bg-orange-400/20 text-orange-200"}`}>{idx + 1}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setOpenId(open ? null : r.video_id); }}
+                        title={open ? "Close" : "Open video + data"}
+                        className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-zinc-800 hover:bg-zinc-700"
+                      >
+                        {open ? (
+                          <span className="flex h-full w-full items-center justify-center text-xs text-zinc-300">✕</span>
+                        ) : r.cover_url ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={r.cover_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-zinc-400">▶</span>
+                        )}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-zinc-100" title={r.caption ?? r.video_id}>{(r.caption ?? "").slice(0, 90) || r.video_id}</div>
+                        <div className="font-mono text-[10px] text-zinc-600" title={r.video_id}>{r.video_id}</div>
+                        <div className="text-[11px] text-zinc-500">{r.username ?? "—"} · dipost {posted}{x.age !== null ? ` (${x.age} hari)` : ""}</div>
+                      </div>
+                      <span className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium sm:inline ${kuat ? "bg-emerald-400 text-zinc-900" : "bg-emerald-900 text-emerald-200"}`}>{x.st}</span>
+                      <div className="shrink-0 text-right tabular-nums">
+                        <div className="text-[10px] text-zinc-500">GMV</div>
+                        <div className="text-sm font-semibold text-zinc-100">RM{f0(num(r.gmv))}</div>
+                      </div>
+                      <div className="hidden shrink-0 text-right tabular-nums sm:block">
+                        <div className="text-[10px] text-zinc-500">ROI</div>
+                        <div className="text-sm font-semibold text-zinc-100">{x.roi === null ? "—" : x.roi.toFixed(1)}</div>
+                      </div>
+                      <div className="shrink-0 text-right tabular-nums">
+                        <div className="text-[10px] text-zinc-500">Untung</div>
+                        <div className="text-sm font-semibold text-zinc-100">RM{f0(num(r.untung))}</div>
+                      </div>
+                    </div>
+                    {open && (
+                      <div onClick={(e) => e.stopPropagation()} className="mt-2 flex flex-col gap-2 rounded-lg bg-black/30 p-2 sm:flex-row">
+                        <iframe
+                          key={r.video_id}
+                          src={`https://www.tiktok.com/player/v1/${r.video_id}?embed_from=oembed&music_info=1&description=1`}
+                          className="aspect-[325/578] w-40 shrink-0 rounded-lg sm:w-48"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; fullscreen; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          loading="lazy"
+                          title={`TikTok video ${r.video_id}`}
+                        />
+                        <div className="min-w-0 flex-1 text-[12px]">
+                          <div className="rounded-lg bg-zinc-100 p-3 text-zinc-900">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100 font-bold text-red-500">{String(r.username ?? "?").slice(0, 1).toUpperCase()}</span>
+                              <div>
+                                <div className="font-medium">{r.username ?? "—"}</div>
+                                <div className="text-[11px] text-zinc-500">@{r.username ?? "—"} · dipost {posted}{x.age !== null ? ` (${x.age} hari lalu)` : ""}</div>
+                              </div>
+                            </div>
+                            <div className="mt-2 leading-relaxed">{linkTags(String(r.caption ?? r.video_id))}</div>
+                          </div>
+                          <div className="mt-2">
+                            <div className="font-medium text-zinc-200">Kenapa Evergreen:<Hint text="Auto-ditulis daripada angka video ini dalam 3 bulan ini. Bukan penilaian manusia." /></div>
+                            <div className="mt-1 text-zinc-400">GMV RM{f0(num(r.gmv))} daripada {f0(num(r.orders))} order, menjual pada {r.days} hari — dipost {posted}{x.age !== null ? ` (${x.age} hari lalu)` : ""}.<Hint text="Video lama yang masih menjual tanpa dibuat semula. Umur dari tarikh post Shop (post ID bila tiada)." /></div>
+                            <div className="text-zinc-400">Bulanan: {x.ms[0]}/{x.ms[1]}/{x.ms[2]} order ({mShort.join("/")}).<Hint text="Order setiap bulan penuh. Kuat = ≥3 order ketiga-tiga bulan; Evergreen = ≥3 order sekurang-kurangnya 2 bulan." /></div>
+                            <div className="text-zinc-400">Penonton masih beli: {f2(o1k)} order setiap 1k tontonan.<Hint text="Kadar beli = order ÷ tontonan × 1000 (3 bulan ini)." /></div>
+                            <div className="text-zinc-400">Untung RM{f0(num(r.untung))} (GMV × 0.35 − kos ads RM{f0(num(r.gmvmax_cost))}){x.roi !== null ? ` · ROI ${x.roi.toFixed(1)}` : " · tiada kos ads — lulus ROI automatik"}.<Hint text="Untung = GMV × 0.35 − kos ads (margin 35% andaian). ROI = GMV ÷ kos; tiada belanja = tidak boleh gagal ROI." /></div>
+                          </div>
+                          {winSignals.length > 0 && (
+                            <div className="mt-2">
+                              <div className="font-medium text-zinc-200">Kenapa boleh menang:<Hint text="Isyarat dalam susunan tetap: format balas komen, penanda doktor, ROI jauh melepasi, evergreen." /></div>
+                              {winSignals.map((s, i) => <div key={i} className="text-zinc-400">Isyarat {i + 1}: {s}.</div>)}
+                            </div>
+                          )}
+                          <div className="mt-2 text-[11px] text-zinc-500">Had: tak tonton visual (potongan, teks atas skrin, ekspresi). Kata-kata seperti "hook kuat" bermaksud angka tinggi, bukan penilaian kreatif.</div>
+                          <a href={`https://www.tiktok.com/@_/video/${r.video_id}`} target="_blank" rel="noreferrer" className="mt-2 inline-block rounded-lg bg-sky-600 px-3 py-1 font-medium text-white hover:bg-sky-500">Buka di TikTok</a>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {top5.length === 0 && (
+                <p className="text-[12px] text-zinc-500">Tiada video layak Evergreen dalam 3 bulan ini.</p>
+              )}
+            </div>
+          </div>
+          {evList.length > 0 && (
+          <div className="rounded-xl border border-amber-300/60 bg-amber-100 p-3 text-[12px] leading-relaxed text-zinc-900">
+            <div className="font-medium">💡 Analisis: kenapa video ini Evergreen</div>
+            <div className="mt-1">{evList.length} video Evergreen menjual dalam tempoh ini ({nKuat} Evergreen kuat daripada {evList.length} keseluruhan). Mereka {Number.isFinite(evShareSell) ? `${evShareSell.toFixed(1)}%` : "—"} daripada video yang menjual tetapi membawa {Number.isFinite(evShareGmv) ? `${evShareGmv.toFixed(1)}%` : "—"} GMV video.<Hint text="Evergreen = umur ≥60 hari + ≥3 order dalam ≥2 bulan penuh. Kuat = ketiga-tiga bulan. Menjual = ≥1 order atau GMV > 0." /></div>
+            <div>ROI gabungan Evergreen {roiEv !== null ? roiEv.toFixed(1) : "— (tiada kos ads)"} berbanding {roiOth !== null ? roiOth.toFixed(1) : "—"} bagi video lain. Purata umur {Number.isFinite(avgAge) ? `${Math.round(avgAge)} hari` : "—"}: video lama boleh terus menjual tanpa dibuat semula.<Hint text="ROI gabungan = jumlah GMV ÷ jumlah kos ads grup. — = grup tiada belanja GMV Max." /></div>
+            <div>Ciri sempurna: format balas komen {replyN} daripada {evList.length}{acctMode ? `, akaun paling kerap ${acctMode[0]} (${acctMode[1]})` : ""}, caption tidak menyebut tarikh {timelessN} daripada {evList.length} — jadi tidak luput.<Hint text="Timeless = caption tiada tarikh, hari, jam live atau promo. Kiraan auto daripada teks, bukan tontonan visual." /></div>
+            <div>Kenapa mereka kekal menjual: jawapan kepada soalan yang pembeli sentiasa ada (kesan, cara guna, kesesuaian), bukan promo sementara. Ini tekaan berasas daripada caption; sahkan dengan menonton video.</div>
+            <div>Amaran 1: video teratas sahaja membawa {Number.isFinite(top1share) ? `${top1share.toFixed(1)}%` : "—"} GMV Evergreen, jadi bahagian GMV condong kepadanya.</div>
+            <div>Amaran 2: ujian merentas tiga bulan penuh {mShort.join("–")}. Status dikira semula bila bulan berganti.</div>
           </div>
           )}
         </div>

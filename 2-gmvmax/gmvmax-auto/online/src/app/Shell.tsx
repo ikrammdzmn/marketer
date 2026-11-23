@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { logOut } from "./logout-action";
 import type { ToastKind } from "./toast";
 import { canSee, useWhoami } from "./module-gate";
@@ -87,7 +87,7 @@ const VALID_METRICS = new Set([...ADS_LINKS, ...SHOP_METRIC_LINKS].map((m) => m.
 
 // Header today-pill: same MYT day edges as lib/calendar edgeMs, client-safe copy
 // (client code must not import lib/calendar — it pulls crypto/pg).
-type PillEv = { title: string; start: string; end: string; allDay: boolean };
+type PillEv = { title: string; start: string; end: string; allDay: boolean; task: boolean; promo: boolean };
 
 function pillEdge(s: string, allDay: boolean, isEnd: boolean): number {
   if (allDay) {
@@ -99,19 +99,74 @@ function pillEdge(s: string, allDay: boolean, isEnd: boolean): number {
   return isEnd ? Infinity : -Infinity;
 }
 
-function titlesToday(events: PillEv[]): string[] {
+function pillWhen(e: PillEv): string {
+  if (e.allDay) return "all day";
+  const f = (s: string) => {
+    const t = Date.parse(s);
+    if (Number.isNaN(t)) return "";
+    return new Date(t).toLocaleTimeString("en-GB", { timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit" });
+  };
+  const a = f(e.start), b = f(e.end || e.start);
+  if (!a) return "";
+  return b && b !== a ? `${a}–${b}` : a;
+}
+
+function pillDayIdx(ms: number): number {
+  return Math.floor((ms + 8 * 3600 * 1000) / 86400000);
+}
+
+function pillSpan(e: PillEv): { first: number; last: number } {
+  const s = pillEdge(e.start, e.allDay, false);
+  const raw = pillEdge(e.end || e.start, e.allDay, true);
+  const first = pillDayIdx(s);
+  let last: number;
+  if (!(raw > s)) last = first;
+  else if ((raw + 8 * 3600 * 1000) % 86400000 === 0) last = pillDayIdx(raw) - 1;
+  else last = pillDayIdx(raw);
+  if (last < first) last = first;
+  return { first, last };
+}
+
+function spanSuffix(pos: number, total: number): string {
+  if (!(total > 1)) return "";
+  if (pos <= 1) return ` [1st day of ${total}]`;
+  if (pos >= total) return ` [last day ${total} of ${total}]`;
+  return ` [day ${pos} of ${total}]`;
+}
+
+type PillItem = { title: string; suffix: string; when: string; task: boolean; promo: boolean; overdue: boolean };
+
+function itemsToday(events: PillEv[], notes: { date: string; title: string; kind: string; done: boolean }[], todayMYT: string): PillItem[] {
   const now = Date.now();
   const dayStart = Math.floor((now + 8 * 3600 * 1000) / 86400000) * 86400000 - 8 * 3600 * 1000;
   const dayEnd = dayStart + 86400000;
-  const out: string[] = [];
+  const todayIdx = pillDayIdx(dayStart);
+  const out: PillItem[] = [];
   for (const e of events) {
     const s = pillEdge(e.start, e.allDay, false);
     const rawEnd = pillEdge(e.end || e.start, e.allDay, true);
     const end = rawEnd > s ? rawEnd : s + 1;
-    if (s < dayEnd && end > dayStart) out.push(e.title);
-    if (out.length >= 10) break;
+    if (s < dayEnd && end > dayStart) {
+      const r = pillSpan(e);
+      const total = r.last - r.first + 1;
+      const pos = todayIdx - r.first + 1;
+      out.push({ title: e.title, suffix: spanSuffix(pos, total), when: pillWhen(e), task: !!e.task, promo: !!e.promo, overdue: false });
+    }
   }
-  return out;
+  // Task notes: today's undone + up to 3 overdue (oldest first), tagged so
+  // the ticker stays honest about what is late.
+  const open = notes.filter((n) => !n.done && n.date <= todayMYT);
+  for (const n of open.filter((n) => n.date === todayMYT)) {
+    out.push({ title: n.title, suffix: "", when: n.kind || "note", task: true, promo: false, overdue: false });
+  }
+  const overdue = open.filter((n) => n.date < todayMYT).sort((a, b) => (a.date < b.date ? -1 : 1)).slice(0, 3);
+  for (const n of overdue) {
+    out.push({ title: n.title, suffix: " [overdue]", when: n.date, task: true, promo: false, overdue: true });
+  }
+  // Today's tasks first, then overdue notes, then the rest — high-priority
+  // items surface even when truncated.
+  out.sort((a, b) => Number(b.task && !b.overdue) - Number(a.task && !a.overdue) || Number(b.overdue) - Number(a.overdue) || Number(b.promo) - Number(a.promo));
+  return out.slice(0, 10);
 }
 
 export default function Shell({
@@ -148,8 +203,17 @@ export default function Shell({
     try { return localStorage.getItem("shell-accounts-open") === "1"; } catch { return false; }
   });
   const [toasts, setToasts] = useState<{ id: number; message: string; kind: ToastKind }[]>([]);
-  const [todayTitles, setTodayTitles] = useState<string[] | null>(null);
+  const [todayItems, setTodayItems] = useState<PillItem[] | null>(null);
   const [theme, setTheme] = useTheme();
+  // Pill ticker + dropdown: rotate one title at a time (~3s), pause on
+  // hover/focus/open, static when reduced-motion is preferred.
+  const [tick, setTick] = useState(0);
+  const [pillPaused, setPillPaused] = useState(false);
+  const [pillOpen, setPillOpen] = useState(false);
+  const [reduceMotion] = useState(() =>
+    typeof window !== "undefined" && typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const pillWrapRef = useRef<HTMLDivElement | null>(null);
 
   // Global save-toast host: any page dispatches window event "app-toast".
   useEffect(() => {
@@ -164,17 +228,53 @@ export default function Shell({
     return () => window.removeEventListener("app-toast", onToast);
   }, []);
 
-  // Header today-pill: one quiet fetch, fail silent (pill just stays hidden).
-  useEffect(() => {
+  // Header today-pill: quiet fetches, fail silent (pill just stays hidden).
+  // Re-runs on mount + whenever task notes change anywhere (toggle/add/edit/delete).
+  const loadPill = useCallback(() => {
     if (!email) return;
-    fetch("/api/calendar-events", { cache: "no-store" })
-      .then(async (r) => {
+    const todayMYT = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kuala_Lumpur" });
+    Promise.allSettled([
+      fetch("/api/calendar-events", { cache: "no-store" }).then(async (r) => {
         const body = await r.json();
-        if (!r.ok || !Array.isArray(body.events)) return;
-        setTodayTitles(titlesToday(body.events as PillEv[]));
+        return r.ok && Array.isArray(body.events) ? (body.events as PillEv[]) : [];
+      }),
+      fetch("/api/task-notes?days=1", { cache: "no-store" }).then(async (r) => {
+        const body = await r.json();
+        return r.ok && Array.isArray(body.notes) ? body.notes : [];
+      }),
+    ])
+      .then(([ev, nt]) => {
+        const events = ev.status === "fulfilled" ? ev.value : [];
+        const notes = nt.status === "fulfilled" ? nt.value : [];
+        setTodayItems(itemsToday(events, notes, todayMYT));
       })
       .catch(() => {});
   }, [email]);
+  useEffect(() => { loadPill(); }, [loadPill]);
+  useEffect(() => {
+    window.addEventListener("task-notes-changed", loadPill);
+    return () => window.removeEventListener("task-notes-changed", loadPill);
+  }, [loadPill]);
+
+  // Ticker rotation + dropdown close (outside-click / Esc).
+  useEffect(() => {
+    if (!todayItems || todayItems.length < 2 || pillPaused || pillOpen || reduceMotion) return;
+    const id = setInterval(() => setTick((t) => t + 1), 3000);
+    return () => clearInterval(id);
+  }, [todayItems, pillPaused, pillOpen, reduceMotion]);
+  useEffect(() => {
+    if (!pillOpen) return;
+    const onDown = (e: PointerEvent) => {
+      if (pillWrapRef.current && !pillWrapRef.current.contains(e.target as Node)) setPillOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setPillOpen(false); };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [pillOpen]);
 
   // Bare login page: no sidebar, top bar, or menus for signed-out visitors.
   if (pathname === "/sign-in") {
@@ -612,26 +712,95 @@ export default function Shell({
         </button>
         <h1 className="text-sm font-semibold">Marketer HW</h1>
         <span className="rounded-full bg-emerald-900 px-2 py-0.5 text-xs text-emerald-200">PROD</span>
-        {todayTitles !== null && (
-          <Link
-            href="/calendar"
-            title={todayTitles.length > 0 ? todayTitles.join(" · ") : "Open calendar"}
-            className="ml-auto inline-flex max-w-56 items-center truncate rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 hover:border-zinc-600 md:max-w-md"
+        {todayItems !== null && (
+          <div
+            ref={pillWrapRef}
+            className="relative ml-auto"
+            onMouseEnter={() => setPillPaused(true)}
+            onMouseLeave={() => setPillPaused(false)}
           >
-            <span className="hidden truncate md:inline">
-              {todayTitles.length > 0
-                ? `· ${todayTitles.length} today: ${todayTitles.slice(0, 2).join(", ")}${todayTitles.length > 2 ? ` +${todayTitles.length - 2}` : ""}`
-                : "· nothing today"}
-            </span>
-            <span className="md:hidden">{todayTitles.length > 0 ? `[${todayTitles.length} today]` : "[none today]"}</span>
-          </Link>
+            <div className="flex items-center">
+              <Link
+                href="/calendar"
+                title={todayItems.length > 0 ? todayItems.map((t) => `${t.title}${t.suffix}${t.task ? " (#task)" : t.promo ? " (#event)" : ""}`).join(" · ") : "Open calendar"}
+                onFocus={() => setPillPaused(true)}
+                onBlur={() => setPillPaused(false)}
+                className="inline-flex max-w-56 items-center truncate rounded-l-full border border-r-0 border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 hover:border-zinc-600 md:max-w-md"
+              >
+                {todayItems.some((t) => t.task) ? (
+                  <span title="Has high-priority tasks today" className="mr-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" />
+                ) : todayItems.some((t) => t.promo) ? (
+                  <span title="Has sale/campaign events today" className="mr-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                ) : null}
+                <span className="hidden truncate md:inline">
+                  {todayItems.length > 0 ? (
+                    reduceMotion || todayItems.length < 2 ? (
+                      `· ${todayItems.length} today: ${todayItems.slice(0, 2).map((t) => `${t.title}${t.suffix}`).join(", ")}${todayItems.length > 2 ? ` +${todayItems.length - 2}` : ""}`
+                    ) : (
+                      (() => {
+                        const cur = todayItems[tick % todayItems.length];
+                        const cls = cur.task ? "text-rose-200" : cur.promo ? "text-amber-200" : "";
+                        return <>· {todayItems.length} today: <span key={tick % todayItems.length} className={`pill-tick inline-block ${cls}`}>{cur.title}{cur.suffix} ({(tick % todayItems.length) + 1}/{todayItems.length})</span></>;
+                      })()
+                    )
+                  ) : (
+                    "· nothing today"
+                  )}
+                </span>
+                <span className="md:hidden">{todayItems.length > 0 ? `[${todayItems.length} today]` : "[none today]"}</span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setPillOpen((v) => !v)}
+                aria-expanded={pillOpen}
+                aria-label={pillOpen ? "Hide today's agenda" : "Show all of today's agenda"}
+                title="See all today"
+                className="rounded-r-full border border-zinc-800 bg-zinc-900 px-1.5 py-1 text-xs text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
+              >
+                {pillOpen ? "▴" : "▾"}
+              </button>
+            </div>
+            {pillOpen && (
+              <div className="absolute right-0 top-full z-[70] mt-1 w-72 overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 shadow-xl">
+                <div className="border-b border-zinc-800 px-3 py-2 text-xs font-medium text-zinc-300">
+                  Today · {todayItems.length} {todayItems.length === 1 ? "item" : "items"}
+                </div>
+                <div className="max-h-64 overflow-auto">
+                  {todayItems.length === 0 ? (
+                    <div className="px-3 py-2 text-xs text-zinc-500">Nothing today.</div>
+                  ) : (
+                    todayItems.map((t, i) => (
+                      <Link
+                        key={i}
+                        href="/calendar"
+                        onClick={() => setPillOpen(false)}
+                        title={t.task ? `${t.title}${t.suffix} (#task)` : t.promo ? `${t.title}${t.suffix} (#event)` : `${t.title}${t.suffix}`}
+                        className="flex items-baseline gap-2 px-3 py-1.5 text-xs hover:bg-zinc-800"
+                      >
+                        <span className={`h-1.5 w-1.5 shrink-0 translate-y-[-1px] self-center rounded-full ${t.task ? "bg-rose-400" : t.promo ? "bg-amber-400" : "bg-zinc-600"}`} />
+                        <span className="shrink-0 tabular-nums text-zinc-500">{t.when}</span>
+                        <span className={`truncate ${t.task ? "font-medium text-rose-200" : t.promo ? "text-amber-200" : "text-zinc-200"}`}>{t.title}{t.suffix}</span>
+                      </Link>
+                    ))
+                  )}
+                </div>
+                <Link
+                  href="/calendar"
+                  onClick={() => setPillOpen(false)}
+                  className="block border-t border-zinc-800 px-3 py-2 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                >
+                  Open calendar →
+                </Link>
+              </div>
+            )}
+          </div>
         )}
         <button
           type="button"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          className={`rounded-lg px-2 py-1.5 text-zinc-200 hover:bg-zinc-800 ${todayTitles === null ? "ml-auto" : ""}`}
+          className={`rounded-lg px-2 py-1.5 text-zinc-200 hover:bg-zinc-800 ${todayItems === null ? "ml-auto" : ""}`}
         >
           {theme === "dark" ? (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
