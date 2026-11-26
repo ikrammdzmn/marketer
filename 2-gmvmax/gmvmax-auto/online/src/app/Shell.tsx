@@ -87,7 +87,7 @@ const VALID_METRICS = new Set([...ADS_LINKS, ...SHOP_METRIC_LINKS].map((m) => m.
 
 // Header today-pill: same MYT day edges as lib/calendar edgeMs, client-safe copy
 // (client code must not import lib/calendar — it pulls crypto/pg).
-type PillEv = { title: string; start: string; end: string; allDay: boolean; task: boolean; promo: boolean };
+type PillEv = { title: string; start: string; end: string; allDay: boolean; task: boolean; promo: boolean; audience?: boolean };
 
 function pillEdge(s: string, allDay: boolean, isEnd: boolean): number {
   if (allDay) {
@@ -134,7 +134,7 @@ function spanSuffix(pos: number, total: number): string {
   return ` [day ${pos} of ${total}]`;
 }
 
-type PillItem = { title: string; suffix: string; when: string; task: boolean; promo: boolean; overdue: boolean };
+type PillItem = { title: string; suffix: string; when: string; task: boolean; promo: boolean; audience: boolean; overdue: boolean };
 
 function itemsToday(events: PillEv[], notes: { date: string; title: string; kind: string; done: boolean }[], todayMYT: string): PillItem[] {
   const now = Date.now();
@@ -150,18 +150,18 @@ function itemsToday(events: PillEv[], notes: { date: string; title: string; kind
       const r = pillSpan(e);
       const total = r.last - r.first + 1;
       const pos = todayIdx - r.first + 1;
-      out.push({ title: e.title, suffix: spanSuffix(pos, total), when: pillWhen(e), task: !!e.task, promo: !!e.promo, overdue: false });
+      out.push({ title: e.title, suffix: spanSuffix(pos, total), when: pillWhen(e), task: !!e.task, promo: !!e.promo, audience: !!e.audience, overdue: false });
     }
   }
   // Task notes: today's undone + up to 3 overdue (oldest first), tagged so
   // the ticker stays honest about what is late.
   const open = notes.filter((n) => !n.done && n.date <= todayMYT);
   for (const n of open.filter((n) => n.date === todayMYT)) {
-    out.push({ title: n.title, suffix: "", when: n.kind || "note", task: true, promo: false, overdue: false });
+    out.push({ title: n.title, suffix: "", when: n.kind || "note", task: true, promo: false, audience: false, overdue: false });
   }
   const overdue = open.filter((n) => n.date < todayMYT).sort((a, b) => (a.date < b.date ? -1 : 1)).slice(0, 3);
   for (const n of overdue) {
-    out.push({ title: n.title, suffix: " [overdue]", when: n.date, task: true, promo: false, overdue: true });
+    out.push({ title: n.title, suffix: " [overdue]", when: n.date, task: true, promo: false, audience: false, overdue: true });
   }
   // Today's tasks first, then overdue notes, then the rest — high-priority
   // items surface even when truncated.
@@ -722,7 +722,7 @@ export default function Shell({
             <div className="flex items-center">
               <Link
                 href="/calendar"
-                title={todayItems.length > 0 ? todayItems.map((t) => `${t.title}${t.suffix}${t.task ? " (#task)" : t.promo ? " (#event)" : ""}`).join(" · ") : "Open calendar"}
+                title={todayItems.length > 0 ? todayItems.map((t) => `${t.title}${t.suffix}${t.task ? " (#task)" : t.promo ? " (#event)" : t.audience ? " (#audience)" : ""}`).join(" · ") : "Open calendar"}
                 onFocus={() => setPillPaused(true)}
                 onBlur={() => setPillPaused(false)}
                 className="inline-flex max-w-56 items-center truncate rounded-l-full border border-r-0 border-zinc-800 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300 hover:border-zinc-600 md:max-w-md"
@@ -731,6 +731,8 @@ export default function Shell({
                   <span title="Has high-priority tasks today" className="mr-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400" />
                 ) : todayItems.some((t) => t.promo) ? (
                   <span title="Has sale/campaign events today" className="mr-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" />
+                ) : todayItems.some((t) => t.audience) ? (
+                  <span title="Has audience actions today" className="mr-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
                 ) : null}
                 <span className="hidden truncate md:inline">
                   {todayItems.length > 0 ? (
@@ -739,7 +741,7 @@ export default function Shell({
                     ) : (
                       (() => {
                         const cur = todayItems[tick % todayItems.length];
-                        const cls = cur.task ? "text-rose-200" : cur.promo ? "text-amber-200" : "";
+                        const cls = cur.task ? "text-rose-200" : cur.promo ? "text-amber-200" : cur.audience ? "text-sky-200" : "";
                         return <>· {todayItems.length} today: <span key={tick % todayItems.length} className={`pill-tick inline-block ${cls}`}>{cur.title}{cur.suffix} ({(tick % todayItems.length) + 1}/{todayItems.length})</span></>;
                       })()
                     )
@@ -774,12 +776,12 @@ export default function Shell({
                         key={i}
                         href="/calendar"
                         onClick={() => setPillOpen(false)}
-                        title={t.task ? `${t.title}${t.suffix} (#task)` : t.promo ? `${t.title}${t.suffix} (#event)` : `${t.title}${t.suffix}`}
+                        title={t.task ? `${t.title}${t.suffix} (#task)` : t.promo ? `${t.title}${t.suffix} (#event)` : t.audience ? `${t.title}${t.suffix} (#audience)` : `${t.title}${t.suffix}`}
                         className="flex items-baseline gap-2 px-3 py-1.5 text-xs hover:bg-zinc-800"
                       >
-                        <span className={`h-1.5 w-1.5 shrink-0 translate-y-[-1px] self-center rounded-full ${t.task ? "bg-rose-400" : t.promo ? "bg-amber-400" : "bg-zinc-600"}`} />
+                        <span className={`h-1.5 w-1.5 shrink-0 translate-y-[-1px] self-center rounded-full ${t.task ? "bg-rose-400" : t.promo ? "bg-amber-400" : t.audience ? "bg-sky-400" : "bg-zinc-600"}`} />
                         <span className="shrink-0 tabular-nums text-zinc-500">{t.when}</span>
-                        <span className={`truncate ${t.task ? "font-medium text-rose-200" : t.promo ? "text-amber-200" : "text-zinc-200"}`}>{t.title}{t.suffix}</span>
+                        <span className={`truncate ${t.task ? "font-medium text-rose-200" : t.promo ? "text-amber-200" : t.audience ? "text-sky-200" : "text-zinc-200"}`}>{t.title}{t.suffix}</span>
                       </Link>
                     ))
                   )}

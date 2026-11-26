@@ -91,7 +91,7 @@ const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 function eventLine(e: CalEvent): string {
-  const mark = e.task ? "❗ " : e.promo ? "🏷 " : "";
+  const mark = e.task ? "❗ " : e.promo ? "🏷 " : e.audience ? "🎯 " : "";
   return `${mark}${e.title} <i>(${esc(fmtTime(e))})</i>`;
 }
 
@@ -186,7 +186,7 @@ export async function buildCalendarReminder(dateOverride?: string) {
       [cell("Time", true), cell("Event", true)],
       ...dayEv.map((e) => [
         nameCell(fmtTime(e)),
-        nameCell(`${e.task ? "❗ " : e.promo ? "🏷 " : ""}${e.title}`.slice(0, 120)),
+        nameCell(`${e.task ? "❗ " : e.promo ? "🏷 " : e.audience ? "🎯 " : ""}${e.title}`.slice(0, 120)),
       ]),
     ],
   });

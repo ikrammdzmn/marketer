@@ -17,6 +17,7 @@ type CalEv = {
   link: string | null;
   promo: boolean;
   task: boolean;
+  audience?: boolean;
 };
 
 type TaskNote = {
@@ -147,9 +148,10 @@ function SidePanel({ spans, notes }: { spans: { e: CalEv; s: number; en: number 
         <div className="text-xs text-zinc-400">
           {r.e.allDay ? "All day" : `${fmtHM(r.s)} → ${fmtHM(r.en)}`}
         </div>
-        <div className={`text-sm leading-snug ${r.e.task ? "text-rose-200" : r.e.promo ? "text-amber-200" : "text-zinc-100"}`}>
+        <div className={`text-sm leading-snug ${r.e.task ? "text-rose-200" : r.e.promo ? "text-amber-200" : r.e.audience ? "text-sky-200" : "text-zinc-100"}`}>
           {r.e.link ? <a href={r.e.link} target="_blank" rel="noreferrer" className="hover:underline">{r.e.title}{suffix}</a> : <>{r.e.title}{suffix}</>}
           {r.e.task && <span className="ml-1 rounded bg-rose-950 px-1 text-[10px] font-semibold uppercase tracking-wide text-rose-200">Task</span>}
+          {r.e.audience && <span className="ml-1 rounded bg-sky-950 px-1 text-[10px] font-semibold uppercase tracking-wide text-sky-200">Audience</span>}
         </div>
         {total > 1 && (
           <div className="mt-0.5 text-[11px] text-zinc-500">
@@ -239,7 +241,7 @@ function MonthGrid({ y, m, spans, large, notes }: { y: number; m: number; spans:
                   {evs.slice(0, 3).map((e) => {
                     const suffix = daySuffix(e, y, m, d);
                     return (
-                    <li key={e.id} className={`truncate text-[11px] leading-tight md:text-xs ${e.task ? "font-semibold text-rose-300" : e.promo ? "text-amber-300" : "text-zinc-200"}`} title={e.task ? `${e.title}${suffix} (#task)` : `${e.title}${suffix}`}>
+                    <li key={e.id} className={`truncate text-[11px] leading-tight md:text-xs ${e.task ? "font-semibold text-rose-300" : e.promo ? "text-amber-300" : e.audience ? "text-sky-300" : "text-zinc-200"}`} title={e.task ? `${e.title}${suffix} (#task)` : e.audience ? `${e.title}${suffix} (#audience)` : `${e.title}${suffix}`}>
                       {e.link ? <a href={e.link} target="_blank" rel="noreferrer" className="hover:underline">{e.title}{suffix}</a> : <>{e.title}{suffix}</>}
                     </li>
                     );
@@ -261,7 +263,7 @@ function MonthGrid({ y, m, spans, large, notes }: { y: number; m: number; spans:
                     <span
                       key={e.id}
                       title={`${e.title}${daySuffix(e, y, m, d)}`}
-                      className={`h-1.5 w-1.5 rounded-full ${e.task ? "bg-rose-400" : e.promo ? "bg-amber-400" : "bg-emerald-500"}`}
+                      className={`h-1.5 w-1.5 rounded-full ${e.task ? "bg-rose-400" : e.promo ? "bg-amber-400" : e.audience ? "bg-sky-400" : "bg-emerald-500"}`}
                     />
                   ))}
                   {dayNotes.slice(0, 6).map((n) => (
@@ -290,8 +292,9 @@ function MonthGrid({ y, m, spans, large, notes }: { y: number; m: number; spans:
                     {evs.map((e) => {
                       const suffix = daySuffix(e, y, m, d);
                       return (
-                      <li key={e.id} className={`rounded-lg px-2 py-1 text-xs leading-snug ${e.task ? "bg-rose-950/50 text-rose-200" : e.promo ? "bg-amber-950/50 text-amber-200" : "bg-zinc-800 text-zinc-100"}`}>
+                      <li key={e.id} className={`rounded-lg px-2 py-1 text-xs leading-snug ${e.task ? "bg-rose-950/50 text-rose-200" : e.promo ? "bg-amber-950/50 text-amber-200" : e.audience ? "bg-sky-950/50 text-sky-200" : "bg-zinc-800 text-zinc-100"}`}>
                         {e.task && <span className="mr-1 rounded bg-rose-900 px-1 text-[10px] font-semibold uppercase tracking-wide text-rose-200">Task</span>}
+                        {e.audience && <span className="mr-1 rounded bg-sky-900 px-1 text-[10px] font-semibold uppercase tracking-wide text-sky-200">Audience</span>}
                         {e.link ? <a href={e.link} target="_blank" rel="noreferrer" className="hover:underline">{e.title}{suffix}</a> : <>{e.title}{suffix}</>}
                       </li>
                       );

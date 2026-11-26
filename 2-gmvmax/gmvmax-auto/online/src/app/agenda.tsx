@@ -12,6 +12,7 @@ type Ev = {
   link: string | null;
   promo: boolean;
   task: boolean;
+  audience?: boolean;
 };
 
 function fmtTime(iso: string): string {
@@ -125,8 +126,8 @@ function RowItem({ r, compact }: { r: Row; compact?: boolean }) {
   return (
     <div className={`flex items-baseline gap-2 ${compact ? "text-[13px]" : "text-sm"}`}>
       <span
-        title={e.task ? "High-priority task (#task)" : e.promo ? "Sale/campaign period (#event)" : multi ? "Multi-day event" : "One-day event"}
-        className={`h-1.5 w-1.5 shrink-0 translate-y-[-1px] self-center rounded-full ${e.task ? "bg-rose-400" : e.promo ? "bg-amber-400" : multi ? "bg-emerald-400" : "bg-zinc-600"}`}
+        title={e.task ? "High-priority task (#task)" : e.promo ? "Sale/campaign period (#event)" : e.audience ? "Audience action (#audience)" : multi ? "Multi-day event" : "One-day event"}
+        className={`h-1.5 w-1.5 shrink-0 translate-y-[-1px] self-center rounded-full ${e.task ? "bg-rose-400" : e.promo ? "bg-amber-400" : e.audience ? "bg-sky-400" : multi ? "bg-emerald-400" : "bg-zinc-600"}`}
       />
       <span className={`shrink-0 tabular-nums ${compact ? "w-20 text-[11px] text-zinc-500" : "w-24 text-xs text-zinc-400"}`}>
         {timeFor(r)}
@@ -155,6 +156,11 @@ function RowItem({ r, compact }: { r: Row; compact?: boolean }) {
       {e.promo && (
         <span className="shrink-0 rounded bg-amber-900 px-1 py-px text-[10px] font-semibold uppercase tracking-wide text-amber-200">
           Event
+        </span>
+      )}
+      {e.audience && (
+        <span className="shrink-0 rounded bg-sky-900 px-1 py-px text-[10px] font-semibold uppercase tracking-wide text-sky-200">
+          Audience
         </span>
       )}
     </div>

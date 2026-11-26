@@ -22,11 +22,13 @@
 - `skills/creative-analysis/` — local tool rules + online module state. Load before creative work.
 - `skills/telegram-rich/` — bot delivery rules + verified block shapes. Load before bot work.
 - `skills/session-handoff/` — now global (`session-handoff` skill in agent skills). Load on wrap-up requests.
+- `skills/tiktok-audience-upkeep/` — TTMS (Market Scope) audience build rules, 60-day auto-update cutoff, package status, Eymdvz x work reminder. Load before creating, pushing or deleting TTMS audiences. Reminder steps: global `calendar-reminders`.
 - `skills/calendar-picker/` — date-range picker pattern. Load before picker work.
 - `skills/ttam-metrics/` — TTAM metric glossary + kill/scale/watch verdicts (All Metrics sheet, OMTM bands). Load before metrics/verdict work.
 - `skills/chart-legend-gating/` — multi-series Chart.js chart with legend-gated lines + synced KPI cards. Load before chart work with optional series.
 - `1-knowledge/tiktok-strategy/` — guardrails owner (ROI ≥7.0, CPA ≤RM21.18). Automation obeys, never re-derives.
 - `1-knowledge/tiktok-event/` — RACI board. `1-knowledge/0-0-tiktok/gmvmax/` — knowledge only, no code.
+- `1-knowledge/marketscope/` — TTMS (Market Scope) knowledge, dated: `discussion.md` (log), `findings.md` (screen facts), `audience-catalog.md` (package status snapshots), `seller-center-customer-profile.md` (customer snapshot). Procedure: `skills/tiktok-audience-upkeep/`.
 - `docs/` + `tiktok*.txt` — app-review pages + domain verification, frozen.
 - `1-2-tools/g-sheet_tools/` — Sheets Apps Script tools (own AGENTS.md): `aff-notify/` 4x-daily
   Affiliate Collection digest (`code.gs` email + `tg_bot/` Telegram sender,

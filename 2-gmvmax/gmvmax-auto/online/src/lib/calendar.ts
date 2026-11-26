@@ -27,17 +27,24 @@ export interface CalEvent {
   link: string | null;
   promo: boolean;
   task: boolean;
+  audience: boolean;
 }
 
 // #event tag (case-insensitive): marks sale/campaign periods. #task tag:
-// marks high-priority tasks. Both stripped from the display title; surfaced
-// as promo/task flags for styling. Look-only: span behavior is identical
-// for tagged and untagged events.
-function splitPromo(raw: string): { title: string; promo: boolean; task: boolean } {
+// marks high-priority tasks. #audience tag: marks audience build/check/apply
+// actions. All stripped from the display title; surfaced as flags for styling.
+// Look-only: span behavior is identical for tagged and untagged events.
+function splitPromo(raw: string): { title: string; promo: boolean; task: boolean; audience: boolean } {
   const promo = /#event\b/i.test(raw);
   const task = /#task\b/i.test(raw);
-  const title = raw.replace(/\s*#event\b\s*/gi, " ").replace(/\s*#task\b\s*/gi, " ").replace(/\s+/g, " ").trim() || "(no title)";
-  return { title, promo, task };
+  const audience = /#audience\b/i.test(raw);
+  const title = raw
+    .replace(/\s*#event\b\s*/gi, " ")
+    .replace(/\s*#task\b\s*/gi, " ")
+    .replace(/\s*#audience\b\s*/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim() || "(no title)";
+  return { title, promo, task, audience };
 }
 
 function saKey(): { email: string; key: string } | null {
@@ -128,7 +135,7 @@ async function viaApiRange(fromMs: number, toMs: number, maxResults: number): Pr
     .filter((e) => e?.status !== "cancelled")
     .map((e) => {
       const allDay = !!e?.start?.date;
-      const { title, promo, task } = splitPromo(String(e?.summary ?? "(no title)"));
+      const { title, promo, task, audience } = splitPromo(String(e?.summary ?? "(no title)"));
       return {
         id: String(e?.id ?? Math.random()),
         title,
@@ -138,6 +145,7 @@ async function viaApiRange(fromMs: number, toMs: number, maxResults: number): Pr
         link: typeof e?.htmlLink === "string" ? e.htmlLink : null,
         promo,
         task,
+        audience,
       };
     })
     // Keep only events overlapping [fromMs, toMs]: catches spans that started
@@ -179,6 +187,7 @@ async function viaIcsRange(fromMs: number, toMs: number, maxResults: number): Pr
         title: e.title,
         promo: e.promo,
         task: e.task,
+        audience: e.audience,
         start: new Date(occ.start).toISOString(),
         end: new Date(occ.end).toISOString(),
         allDay: e.allDay,
@@ -298,7 +307,7 @@ function parseDates(val: string, isDate: boolean): number | null {
   return Date.UTC(y, mo, d, hh, mm, ss) - 8 * 3600 * 1000; // TZID wall time treated as MYT
 }
 
-interface Raw { uid: string; title: string; promo: boolean; task: boolean; start: number; end: number; allDay: boolean; link: string | null; rrule: string | null }
+interface Raw { uid: string; title: string; promo: boolean; task: boolean; audience: boolean; start: number; end: number; allDay: boolean; link: string | null; rrule: string | null }
 
 function prop(body: string, key: string): { params: string; val: string } | null {
   for (const line of body.split("\n")) {
@@ -334,10 +343,10 @@ function parseIcs(text: string): Raw[] {
     const status = prop(body, "STATUS");
     if (status && status.val.toUpperCase() === "CANCELLED") continue;
     const rr = prop(body, "RRULE");
-    const { title, promo, task } = splitPromo((sum?.val ?? "(no title)").replace(/\\(.)/g, "$1"));
+    const { title, promo, task, audience } = splitPromo((sum?.val ?? "(no title)").replace(/\\(.)/g, "$1"));
     out.push({
       uid: uid?.val ?? `${start}-${sum?.val ?? ""}`,
-      title, promo, task,
+      title, promo, task, audience,
       start, end: end ?? start, allDay,
       link: url?.val ?? null,
       rrule: rr?.val ?? null,

@@ -2,6 +2,14 @@
 > Read this first in a new session, then `1-MASTER/MASTER-PLAN.md`,
 > then the folder you will touch (`AGENTS.md` + `plan.md` + `DEV_NOTES.md`).
 
+## Update — 26 Nov 2026 (TTMS audiences + reminder skills)
+
+- Market Scope (Dr Samhan, Malaysia Health, Lite) audiences rebuilt on rolling windows. Old fixed-range packages were outdated; owner renamed one and kept the rest. Status and settings live in `skills/tiktok-audience-upkeep/SKILL.md`.
+- New marketer skill `skills/tiktok-audience-upkeep/` (indexed in `AGENTS.md`). Global `calendar-reminders` skill added in agents_skills.
+- Reminder: Google Calendar **Eymdvz x work**, every 60 days from 26 Nov 2026, for Market Scope auto-update checks.
+- Knowledge recorded in `1-knowledge/marketscope/` (discussion log, findings, audience-catalog, seller-center-customer-profile). Snapshots are dated and kept as history. No new Seller Center skill; `tiktok-audience-upkeep` updated with verified builder rules and now points to the knowledge files for status.
+- Not committed or pushed. Pending: owner to push Consideration 7D (23230741) once confirmed; AD-CLICK (23230770) still processing; delete `TTMS CONSIDERATION – OUDATED` (23198575) on owner confirm.
+
 ## Vibe
 
 Marathon closeout session, owner's tidying energy all the way through -
